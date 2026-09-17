@@ -20,6 +20,8 @@ final class ListeningModel {
     private(set) var phase: Phase = .idle
     private(set) var isLoadingMore = false
     private(set) var canLoadMore = true
+    private(set) var listeningActivity: [ListeningActivityPeriod: ListeningActivityLoadState] = [:]
+    private var listeningActivityRequestIDs: [ListeningActivityPeriod: UUID] = [:]
     var feedback: [String: RecordingFeedback] = [:]
     var actionError: String?
     private var didLoad = false
@@ -108,6 +110,41 @@ final class ListeningModel {
         } catch {
             feedback[recording.id] = previous
             actionError = error.localizedDescription
+        }
+    }
+
+    func activityState(for period: ListeningActivityPeriod) -> ListeningActivityLoadState {
+        listeningActivity[period] ?? .idle
+    }
+
+    func loadListeningActivity(for period: ListeningActivityPeriod, retrying: Bool = false) async {
+        switch activityState(for: period) {
+        case .loaded:
+            return
+        case .failed where !retrying:
+            return
+        case .idle, .loading, .failed:
+            listeningActivity[period] = .loading
+        }
+
+        // SwiftUI cancels the previous `.task(id:)` before starting its
+        // replacement, but cancellation can take a moment to reach the
+        // provider. Let the replacement supersede that request and prevent
+        // the older task from resetting the newer state when it unwinds.
+        let requestID = UUID()
+        listeningActivityRequestIDs[period] = requestID
+
+        do {
+            let activity = try await provider.listenActivity(username: account.username, period: period)
+            guard listeningActivityRequestIDs[period] == requestID else { return }
+            listeningActivity[period] = .loaded(activity)
+            listeningActivityRequestIDs[period] = nil
+        } catch {
+            guard listeningActivityRequestIDs[period] == requestID else { return }
+            listeningActivity[period] = Task.isCancelled
+                ? .idle
+                : .failed(error.localizedDescription)
+            listeningActivityRequestIDs[period] = nil
         }
     }
 

@@ -8,6 +8,7 @@ protocol ListeningProvider: Sendable {
     func topArtists(username: String, count: Int) async throws -> [RankedArtist]
     func topReleases(username: String, count: Int) async throws -> [RankedRelease]
     func topRecordings(username: String, count: Int) async throws -> [RankedRecording]
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws
 }
 

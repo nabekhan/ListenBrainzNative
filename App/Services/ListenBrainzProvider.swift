@@ -93,6 +93,30 @@ struct ListenBrainzProvider: ListeningProvider {
         }
     }
 
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        try await perform {
+            let result = try await client.stats.listenActivity(user: username, range: Self.range(for: period))
+            guard let result else {
+                return ListeningActivity(
+                    period: period,
+                    from: .distantPast,
+                    to: .distantPast,
+                    lastUpdated: .distantPast,
+                    buckets: []
+                )
+            }
+            return ListeningActivity(
+                period: period,
+                from: result.from,
+                to: result.to,
+                lastUpdated: Date(timeIntervalSince1970: TimeInterval(result.lastUpdated)),
+                buckets: result.activity.map {
+                    .init(label: $0.timeRange, from: $0.from, to: $0.to, listenCount: $0.listenCount)
+                }
+            )
+        }
+    }
+
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {
         if let mbid = recording.identity.mbid {
             try await perform {
@@ -134,6 +158,18 @@ struct ListenBrainzProvider: ListeningProvider {
             insertedAt: listen.insertedAt,
             isPlayingNow: false
         )
+    }
+
+    static func range(for period: ListeningActivityPeriod) -> LBStatRange {
+        switch period {
+        case .thisWeek: .thisWeek
+        case .thisMonth: .thisMonth
+        case .thisYear: .thisYear
+        case .lastWeek: .week
+        case .lastMonth: .month
+        case .lastYear: .year
+        case .allTime: .allTime
+        }
     }
 
     private static func map(_ metadata: LBTrackMetadata, msid: UUID?) -> Recording {

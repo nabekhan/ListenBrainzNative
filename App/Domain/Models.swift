@@ -117,3 +117,58 @@ enum RecordingFeedback: Int, Sendable {
     case none = 0
     case love = 1
 }
+
+enum ListeningActivityPeriod: String, CaseIterable, Identifiable, Sendable {
+    case thisWeek
+    case thisMonth
+    case thisYear
+    case lastWeek
+    case lastMonth
+    case lastYear
+    case allTime
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .thisWeek: "This Week"
+        case .thisMonth: "This Month"
+        case .thisYear: "This Year"
+        case .lastWeek: "Last Week"
+        case .lastMonth: "Last Month"
+        case .lastYear: "Last Year"
+        case .allTime: "All Time"
+        }
+    }
+
+    var accessibilityLabel: String { title }
+}
+
+struct ListeningActivity: Hashable, Sendable {
+    let period: ListeningActivityPeriod
+    let from: Date
+    let to: Date
+    let lastUpdated: Date
+    let buckets: [Bucket]
+
+    struct Bucket: Identifiable, Hashable, Sendable {
+        let label: String
+        let from: Date
+        let to: Date
+        let listenCount: Int
+
+        var id: String {
+            "\(from.timeIntervalSince1970):\(to.timeIntervalSince1970):\(label)"
+        }
+    }
+
+    var totalListens: Int { buckets.reduce(into: 0) { $0 += $1.listenCount } }
+    var busiestBucket: Bucket? { buckets.max { $0.listenCount < $1.listenCount } }
+}
+
+enum ListeningActivityLoadState: Equatable {
+    case idle
+    case loading
+    case loaded(ListeningActivity)
+    case failed(String)
+}

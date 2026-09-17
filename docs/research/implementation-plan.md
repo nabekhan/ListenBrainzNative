@@ -54,7 +54,8 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 
 - Production website interactive inspection was blocked by the unavailable configured browser; current frontend source/routes and public API calls were inspected instead.
 - Xcode 27, the iOS 27 runtime, app build, test bundle, real simulator tests, and live public data have now been exercised. Visual checkpoints cover onboarding plus real-data Home in light/dark mode; smaller-device validation is recorded with the build evidence.
-- The verified checkpoint currently passes 44 vendored-package tests, 10 app tests with no runtime warnings, and the opt-in production public API smoke suite.
+- The verified checkpoint currently passes 45 vendored-package tests, 14 app tests with no runtime warnings, and the paced opt-in production public API smoke suite.
+- Phase 3 statistics now includes on-demand server activity for the website's seven primary ranges, per-period request caching, accessible native charts, and explicit empty/retry behavior. Real-data visual checks covered all-time activity on large and small simulators in dark and light modes.
 - Official KMP framework export was attempted and currently fails at the native Room KSP step; it remains a behavior reference rather than an app dependency.
 
 ## Rate-limit behavior decision

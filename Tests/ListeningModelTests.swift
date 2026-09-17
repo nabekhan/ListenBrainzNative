@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import ListenBrainzKit
 
 @testable import Brainz
 
@@ -87,6 +88,85 @@ final class ListeningModelTests: XCTestCase {
         let secondLease = await cache.beginSession(username: username)
         let valueAfterInvalidation = await cache.load(username: username, lease: secondLease)
         XCTAssertNil(valueAfterInvalidation)
+    }
+
+    func testListeningActivityUsesServerBucketsAndCachesEachPeriod() async {
+        let provider = FixtureProvider()
+        let model = ListeningModel(
+            account: Account(username: "fixture-\(UUID().uuidString)", token: ""),
+            provider: provider
+        )
+
+        await model.loadListeningActivity(for: .thisMonth)
+        await model.loadListeningActivity(for: .lastMonth)
+        await model.loadListeningActivity(for: .thisMonth)
+
+        guard case let .loaded(activity) = model.activityState(for: .thisMonth) else {
+            return XCTFail("Expected This Month activity to load")
+        }
+        XCTAssertEqual(activity.totalListens, 15)
+        XCTAssertEqual(activity.busiestBucket?.label, "Tuesday")
+        XCTAssertEqual(activity.busiestBucket?.listenCount, 9)
+        let thisMonthRequests = await provider.activityRequestCount(for: .thisMonth)
+        let lastMonthRequests = await provider.activityRequestCount(for: .lastMonth)
+        XCTAssertEqual(thisMonthRequests, 1)
+        XCTAssertEqual(lastMonthRequests, 1)
+    }
+
+    func testListeningActivityPeriodMapsToListenBrainzRanges() {
+        XCTAssertEqual(ListenBrainzProvider.range(for: .thisWeek).rawValue, "this_week")
+        XCTAssertEqual(ListenBrainzProvider.range(for: .thisMonth).rawValue, "this_month")
+        XCTAssertEqual(ListenBrainzProvider.range(for: .thisYear).rawValue, "this_year")
+        XCTAssertEqual(ListenBrainzProvider.range(for: .lastWeek).rawValue, "week")
+        XCTAssertEqual(ListenBrainzProvider.range(for: .lastMonth).rawValue, "month")
+        XCTAssertEqual(ListenBrainzProvider.range(for: .lastYear).rawValue, "year")
+        XCTAssertEqual(ListenBrainzProvider.range(for: .allTime).rawValue, "all_time")
+    }
+
+    func testCancelledActivityLoadReturnsToIdle() async throws {
+        let provider = FixtureProvider(activityDelay: .seconds(1))
+        let model = ListeningModel(
+            account: Account(username: "fixture-\(UUID().uuidString)", token: ""),
+            provider: provider
+        )
+        let task = Task { await model.loadListeningActivity(for: .thisWeek) }
+        let clock = ContinuousClock()
+        while await provider.activityRequestCount(for: .thisWeek) == 0 {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+
+        task.cancel()
+        await task.value
+
+        XCTAssertEqual(model.activityState(for: .thisWeek), .idle)
+    }
+
+    func testReplacementActivityLoadSurvivesOlderCancellation() async throws {
+        let provider = FixtureProvider(activityDelay: .milliseconds(80))
+        let model = ListeningModel(
+            account: Account(username: "fixture-\(UUID().uuidString)", token: ""),
+            provider: provider
+        )
+        let first = Task { await model.loadListeningActivity(for: .thisWeek) }
+        let clock = ContinuousClock()
+        while await provider.activityRequestCount(for: .thisWeek) < 1 {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+
+        let replacement = Task { await model.loadListeningActivity(for: .thisWeek) }
+        while await provider.activityRequestCount(for: .thisWeek) < 2 {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+        first.cancel()
+
+        await first.value
+        await replacement.value
+
+        guard case .loaded = model.activityState(for: .thisWeek) else {
+            return XCTFail("Expected the replacement request to remain loaded")
+        }
+        let requestCount = await provider.activityRequestCount(for: .thisWeek)
+        XCTAssertEqual(requestCount, 2)
     }
 
     nonisolated func testRequestGateSpacesActualOperationStarts() async throws {
@@ -261,6 +341,12 @@ private actor FixtureProvider: ListeningProvider {
     static let artistMBID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
     static let releaseMBID = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
     static let recordingMBID = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
+    private let activityDelay: Duration?
+    private var activityRequests: [ListeningActivityPeriod: Int] = [:]
+
+    init(activityDelay: Duration? = nil) {
+        self.activityDelay = activityDelay
+    }
 
     func validateToken() async throws -> String { "fixture-user" }
 
@@ -307,7 +393,38 @@ private actor FixtureProvider: ListeningProvider {
         ]
     }
 
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        activityRequests[period, default: 0] += 1
+        if let activityDelay {
+            try await ContinuousClock().sleep(for: activityDelay)
+        }
+        return ListeningActivity(
+            period: period,
+            from: Date(timeIntervalSince1970: 1_700_000_000),
+            to: Date(timeIntervalSince1970: 1_700_086_400),
+            lastUpdated: Date(timeIntervalSince1970: 1_700_100_000),
+            buckets: [
+                .init(
+                    label: "Monday",
+                    from: Date(timeIntervalSince1970: 1_700_000_000),
+                    to: Date(timeIntervalSince1970: 1_700_043_200),
+                    listenCount: 6
+                ),
+                .init(
+                    label: "Tuesday",
+                    from: Date(timeIntervalSince1970: 1_700_043_200),
+                    to: Date(timeIntervalSince1970: 1_700_086_400),
+                    listenCount: 9
+                ),
+            ]
+        )
+    }
+
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+
+    func activityRequestCount(for period: ListeningActivityPeriod) -> Int {
+        activityRequests[period, default: 0]
+    }
 
     private func listen(title: String, timestamp: TimeInterval, isPlayingNow: Bool = false) -> Listen {
         Listen(
@@ -356,6 +473,15 @@ private actor BoundaryProvider: ListeningProvider {
     func topArtists(username: String, count: Int) async throws -> [RankedArtist] { [] }
     func topReleases(username: String, count: Int) async throws -> [RankedRelease] { [] }
     func topRecordings(username: String, count: Int) async throws -> [RankedRecording] { [] }
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        ListeningActivity(
+            period: period,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            buckets: []
+        )
+    }
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
 
     func requestedBefore() -> Date? { lastBefore }

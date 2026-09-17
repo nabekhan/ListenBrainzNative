@@ -9,6 +9,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Paginated, date-grouped history
 - Recording and artist detail views
 - Listen count and top artist, album, and recording rankings
+- Server-calculated listening-activity charts across seven ListenBrainz periods
 - Recording feedback for authenticated users
 - Cached snapshots for useful cold starts and degraded-network behavior
 - Native iPhone/iPad navigation, Dynamic Type, dark mode, VoiceOver labels, and an iOS 26 bottom accessory with an iOS 18 fallback

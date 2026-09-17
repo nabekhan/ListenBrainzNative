@@ -11,13 +11,14 @@ struct TasteView: View {
 
     @Bindable var model: ListeningModel
     @State private var ranking: Ranking = .artists
+    @AppStorage("taste.activityPeriod") private var activityPeriod: ListeningActivityPeriod = .thisWeek
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 28) {
                     overview
-                    recentActivity
+                    listeningActivity
                     rankings
                 }
                 .padding(.horizontal, 18)
@@ -27,6 +28,9 @@ struct TasteView: View {
             .navigationTitle("Taste")
             .navigationBarTitleDisplayMode(.large)
             .mediaDestinations(model: model)
+            .task(id: activityPeriod) {
+                await model.loadListeningActivity(for: activityPeriod)
+            }
         }
     }
 
@@ -82,35 +86,189 @@ struct TasteView: View {
         .background(.thinMaterial, in: .rect(cornerRadius: 18, style: .continuous))
     }
 
-    @ViewBuilder
-    private var recentActivity: some View {
-        let values = chartValues
-        if !values.isEmpty {
-            VStack(alignment: .leading, spacing: 14) {
-                SectionHeader(
-                    title: "Recent rhythm",
-                    subtitle: "Daily listens in the currently loaded history"
-                )
-                Chart(values) { value in
-                    BarMark(
-                        x: .value("Day", value.date, unit: .day),
-                        y: .value("Listens", value.count)
-                    )
-                    .foregroundStyle(AppTheme.accent.gradient)
-                    .cornerRadius(4)
+    private var listeningActivity: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Listening activity",
+                subtitle: "Calculated by ListenBrainz"
+            )
+            activityPeriodPicker
+
+            switch model.activityState(for: activityPeriod) {
+            case .idle, .loading:
+                activityLoading
+            case let .loaded(activity):
+                if activity.buckets.isEmpty {
+                    activityEmpty
+                } else {
+                    activityChart(activity)
                 }
-                .chartXAxis {
-                    AxisMarks(values: .stride(by: .day)) { _ in
-                        AxisValueLabel(format: .dateTime.weekday(.narrow))
-                    }
-                }
-                .chartYAxis(.hidden)
-                .frame(height: 150)
-                .accessibilityChartDescriptor(RecentActivityDescriptor(values: values))
-                .padding(16)
-                .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+            case let .failed(message):
+                activityFailure(message)
             }
         }
+    }
+
+    private var activityPeriodPicker: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(ListeningActivityPeriod.allCases) { period in
+                        Button {
+                            activityPeriod = period
+                        } label: {
+                            Text(period.title)
+                                .font(.subheadline.weight(activityPeriod == period ? .semibold : .regular))
+                                .foregroundStyle(activityPeriod == period ? .white : .primary)
+                                .padding(.horizontal, 13)
+                                .padding(.vertical, 9)
+                                .background(
+                                    activityPeriod == period ? AppTheme.accent : Color.secondary.opacity(0.12),
+                                    in: .capsule
+                                )
+                        }
+                        .id(period)
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(period.accessibilityLabel)
+                        .accessibilityAddTraits(activityPeriod == period ? .isSelected : [])
+                    }
+                }
+            }
+            .onAppear { proxy.scrollTo(activityPeriod, anchor: .center) }
+            .onChange(of: activityPeriod) { _, period in
+                withAnimation(.snappy) { proxy.scrollTo(period, anchor: .center) }
+            }
+        }
+        .accessibilityLabel("Activity period")
+    }
+
+    private var activityLoading: some View {
+        HStack(spacing: 12) {
+            ProgressView()
+            Text("Loading listening activity…")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, minHeight: 164, alignment: .center)
+        .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var activityEmpty: some View {
+        ContentUnavailableView(
+            "No activity yet",
+            systemImage: "chart.bar.xaxis",
+            description: Text("ListenBrainz has no listening-activity buckets for \(activityPeriod.title.lowercased()).")
+        )
+        .frame(maxWidth: .infinity, minHeight: 190)
+        .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+    }
+
+    private func activityFailure(_ message: String) -> some View {
+        ContentUnavailableView {
+            Label("Activity unavailable", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text(message)
+        } actions: {
+            Button("Try Again") {
+                Task { await model.loadListeningActivity(for: activityPeriod, retrying: true) }
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 190)
+        .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+    }
+
+    private func activityChart(_ activity: ListeningActivity) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                activitySummary(
+                    activity.totalListens.formatted(),
+                    label: "Listens",
+                    symbol: "waveform"
+                )
+                if let busiest = activity.busiestBucket {
+                    activitySummary(
+                        busiest.listenCount.formatted(),
+                        label: "Peak · \(busiest.label)",
+                        symbol: "chart.bar.fill"
+                    )
+                }
+            }
+
+            Chart(activity.buckets) { bucket in
+                BarMark(
+                    x: .value("Time", bucket.label),
+                    y: .value("Listens", bucket.listenCount)
+                )
+                .foregroundStyle(AppTheme.accent.gradient)
+                .cornerRadius(4)
+                .accessibilityLabel("\(bucket.label): \(bucket.listenCount) listens")
+            }
+            .chartYAxis {
+                AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                        .foregroundStyle(.tertiary)
+                    AxisValueLabel {
+                        if let count = value.as(Int.self) {
+                            Text(count.formatted())
+                        }
+                    }
+                }
+            }
+            .chartXAxis(.hidden)
+            .frame(height: 180)
+            .accessibilityChartDescriptor(ListeningActivityDescriptor(activity: activity))
+
+            HStack(spacing: 0) {
+                ForEach(chartAxisLabels(activity.buckets), id: \.self) { label in
+                    Text(label)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.leading, 38)
+
+            Text(activityDateRange(activity))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+    }
+
+    private func chartAxisLabels(_ buckets: [ListeningActivity.Bucket]) -> [String] {
+        guard buckets.count > 6 else { return buckets.map(\.label) }
+        let step = max(1, Int(ceil(Double(buckets.count - 1) / 5)))
+        var labels = stride(from: 0, to: buckets.count, by: step).map { buckets[$0].label }
+        if let last = buckets.last?.label, labels.last != last {
+            labels.append(last)
+        }
+        return labels
+    }
+
+    private func activitySummary(_ value: String, label: String, symbol: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: symbol)
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.accent)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value).font(.headline.monospacedDigit())
+                Text(label).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func activityDateRange(_ activity: ListeningActivity) -> String {
+        guard activity.from != .distantPast, activity.to != .distantPast else {
+            return "Server-calculated activity"
+        }
+        return "\(activity.from.formatted(date: .abbreviated, time: .omitted)) – \(activity.to.formatted(date: .abbreviated, time: .omitted))"
     }
 
     private var rankings: some View {
@@ -192,48 +350,31 @@ struct TasteView: View {
             .frame(width: 26)
     }
 
-    private var chartValues: [ActivityValue] {
-        let calendar = Calendar.autoupdatingCurrent
-        let grouped = Dictionary(grouping: model.snapshot.recentListens) {
-            calendar.startOfDay(for: $0.listenedAt)
-        }
-        return Array(
-            grouped.map { ActivityValue(date: $0.key, count: $0.value.count) }
-                .sorted { $0.date < $1.date }
-                .suffix(10)
-        )
-    }
 }
 
-private struct ActivityValue: Identifiable {
-    let date: Date
-    let count: Int
-    var id: Date { date }
-}
-
-private struct RecentActivityDescriptor: AXChartDescriptorRepresentable {
-    let values: [ActivityValue]
+private struct ListeningActivityDescriptor: AXChartDescriptorRepresentable {
+    let activity: ListeningActivity
 
     func makeChartDescriptor() -> AXChartDescriptor {
         let xAxis = AXCategoricalDataAxisDescriptor(
-            title: "Day",
-            categoryOrder: values.map { $0.date.formatted(date: .abbreviated, time: .omitted) }
+            title: "Time",
+            categoryOrder: activity.buckets.map(\.label)
         )
-        let maximum = Double(values.map(\.count).max() ?? 1)
+        let maximum = Double(activity.buckets.map(\.listenCount).max() ?? 1)
         let yAxis = AXNumericDataAxisDescriptor(
             title: "Listens",
             range: 0 ... maximum,
             gridlinePositions: []
         ) { $0.formatted() }
-        let points = values.map {
+        let points = activity.buckets.map {
             AXDataPoint(
-                x: $0.date.formatted(date: .abbreviated, time: .omitted),
-                y: Double($0.count)
+                x: $0.label,
+                y: Double($0.listenCount)
             )
         }
         return AXChartDescriptor(
-            title: "Recent listening activity",
-            summary: "Daily listen counts from loaded history",
+            title: "\(activity.period.title) listening activity",
+            summary: "\(activity.totalListens) listens calculated by ListenBrainz",
             xAxis: xAxis,
             yAxis: yAxis,
             additionalAxes: [],

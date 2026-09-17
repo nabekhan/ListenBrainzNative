@@ -37,7 +37,7 @@ Snapshot: 2026-09-16. Server `e83a7ab`; ListenBrainzKit `c06b12f` (2025-02-05).
 
 ## Build result
 
-The development-only SwiftLint plugin was removed from the vendored package target because it prevented clean consumers from building under Command Line Tools. Under Xcode 27, `swift test` builds successfully and runs 44 tests with the token-dependent and opt-in live suites skipped. A separate `LISTENBRAINZ_PUBLIC_SMOKE=1` run passes against current production recent-listen, count, Playing Now, and top-artist endpoints.
+The development-only SwiftLint plugin was removed from the vendored package target because it prevented clean consumers from building under Command Line Tools. Under Xcode 27, `swift test` builds successfully and runs 45 tests with the token-dependent and opt-in live suites skipped. A separate, explicitly paced `LISTENBRAINZ_PUBLIC_SMOKE=1` run passes against current production recent-listen, count, Playing Now, top-artist, and listening-activity endpoints.
 
 The local fork also now verifies path-safe endpoint construction, required User-Agent behavior, omission of empty authorization, explicit authorization before a custom API origin receives a token, rejection of insecure roots and cross-origin authenticated redirects, and conservative interpretation of `Retry-After` / `X-RateLimit-Reset-In`.
 

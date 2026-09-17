@@ -1,10 +1,18 @@
 import SwiftUI
 
 struct MainTabView: View {
+    private enum Destination: String, Hashable {
+        case home
+        case history
+        case taste
+        case profile
+    }
+
     let account: Account
     @Bindable var session: SessionModel
     @State private var model: ListeningModel
     @State private var presentedListen: Listen?
+    @AppStorage("main.selectedTab") private var selectedTab: Destination = .home
 
     init(account: Account, session: SessionModel) {
         self.account = account
@@ -56,17 +64,17 @@ struct MainTabView: View {
     }
 
     private var tabs: some View {
-        TabView {
-            Tab("Home", systemImage: "house.fill") {
+        TabView(selection: $selectedTab) {
+            Tab("Home", systemImage: "house.fill", value: .home) {
                 HomeView(model: model)
             }
-            Tab("History", systemImage: "clock.arrow.circlepath") {
+            Tab("History", systemImage: "clock.arrow.circlepath", value: .history) {
                 HistoryView(model: model)
             }
-            Tab("Taste", systemImage: "chart.bar.xaxis") {
+            Tab("Taste", systemImage: "chart.bar.xaxis", value: .taste) {
                 TasteView(model: model)
             }
-            Tab("Profile", systemImage: "person.crop.circle") {
+            Tab("Profile", systemImage: "person.crop.circle", value: .profile) {
                 ProfileView(model: model, session: session)
             }
         }
