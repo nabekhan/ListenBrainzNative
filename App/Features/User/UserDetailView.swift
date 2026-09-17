@@ -4,6 +4,7 @@ struct UserDetailView: View {
     let viewer: Account
     @State private var model: UserDetailModel
     @State private var pins: PinsModel
+    @State private var isShowingSocial = false
 
     init(user: SearchUser, viewer: Account) {
         self.viewer = viewer
@@ -38,6 +39,9 @@ struct UserDetailView: View {
         }
         .navigationTitle(model.user.username)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(isPresented: $isShowingSocial) {
+            UserSocialView(user: model.user, viewer: viewer)
+        }
         .toolbar {
             if let url = model.user.listenBrainzURL {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -53,6 +57,11 @@ struct UserDetailView: View {
         .task {
             await model.load()
             await pins.load()
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-brainz-open-user-social") {
+                isShowingSocial = true
+            }
+            #endif
         }
     }
 
@@ -104,8 +113,39 @@ struct UserDetailView: View {
         CurrentPinSection(isOwner: false)
             .environment(pins)
 
+        socialLink
+
         recentListens
         topArtists
+    }
+
+    private var socialLink: some View {
+        Button { isShowingSocial = true } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "person.2.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .frame(width: 48, height: 48)
+                    .background(AppTheme.heroGradient, in: .circle)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Social")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text("Followers, similar listeners, and your match")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(15)
+            .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens this listener’s social connections")
     }
 
     private var recentListens: some View {

@@ -336,6 +336,14 @@ struct SearchUser: Identifiable, Hashable, Sendable {
     }
 }
 
+struct SimilarListener: Identifiable, Hashable, Sendable {
+    let user: SearchUser
+    let similarity: Double
+
+    var id: String { user.id }
+    var normalizedSimilarity: Double { min(max(similarity, 0), 1) }
+}
+
 struct SearchPlaylist: Identifiable, Hashable, Sendable {
     let title: String
     let creator: String

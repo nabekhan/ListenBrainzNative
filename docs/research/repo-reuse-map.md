@@ -35,6 +35,7 @@ Snapshot: 2026-09-17. Repository/source inspection, Xcode 27 builds, simulator r
 | Stats/heatmap | Autohop MIT portions + native Swift Charts | Period/history coordinator patterns | Server-stat adapters and music wording |
 | Scoped search | Official Android behavior + first.fm structure + Minidisc limiter concept | One-scope debounce/cache behavior and cancellation-safe pacing concepts; no donor UI copied | Native search sheet, separate LB/MB gates, MBID-aware routing, compact truthful fallbacks |
 | Visited-user profile | Current LB web + official Android/iOS behavior + first.fm personality | Profile hierarchy and ListenBrainz semantics; no GPL UI copied | Staged native overview, latest context, pin, listens, lazy stats, section-aware bounded cache |
+| User social graph | Current LB API/web + official Android/KMP behavior | Relationship semantics and similarity direction; no GPL UI copied | Lazy native destination, isolated viewer/public caches, non-hydrating rows, optimistic follow rollback |
 | Pins | Current LB API/web + official Android/iOS behavior | Product semantics and response contracts; no GPL UI copied | Typed MPL Kit extension, profile card, lazy history, owner actions, optimistic rollback |
 | Auth/Keychain | first.fm/Cassette patterns | Small MIT/MPL patterns | Token validation and onboarding copy |
 | Caching | Cassette/Minidisc + URLCache | Actor/service patterns | Small stale-while-revalidate cache boundary |
