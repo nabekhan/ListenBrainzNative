@@ -106,6 +106,30 @@ import Testing
         #expect(client.rateLimitDelay(from: response) == 7)
     }
 
+    @Test("Mapped 204 responses are handled before body decoding")
+    func noContentResponse() throws {
+        let client = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+        let response = try #require(
+            HTTPURLResponse(
+                url: URL(string: "https://api.listenbrainz.org/1/stats/user/test/listening-activity")!,
+                statusCode: 204,
+                httpVersion: nil,
+                headerFields: nil
+            )
+        )
+
+        #expect(
+            client.responseError(
+                from: response,
+                for: StatsActivityRequest(user: "test", range: .thisWeek)
+            ) == .noContent
+        )
+    }
+
     @Test("Authenticated redirects stay on the original origin")
     func authenticatedRedirectPolicy() throws {
         let policy = AuthenticatedRedirectDelegate()

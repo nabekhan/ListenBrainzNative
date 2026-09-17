@@ -21,12 +21,22 @@ struct LBPublicSmokeTests {
     @Test("Current public ListenBrainz endpoints decode")
     func publicReadSurface() async throws {
         let listens = try await client.core.userListens(username: username, count: 2)
+        try await pace()
         let count = try await client.core.userListensCount(username: username)
+        try await pace()
         _ = try await client.core.userPlayingNow(username: username)
+        try await pace()
         let artists = try await client.stats.topArtists(user: username, count: 2, range: .allTime)
+        try await pace()
+        let activity = try await client.stats.listenActivity(user: username, range: .allTime)
 
         #expect(!listens.listens.isEmpty)
         #expect(count > 0)
         #expect(artists?.artists.isEmpty == false)
+        #expect(activity?.activity.isEmpty == false)
+    }
+
+    private func pace() async throws {
+        try await ContinuousClock().sleep(for: .milliseconds(1_050))
     }
 }

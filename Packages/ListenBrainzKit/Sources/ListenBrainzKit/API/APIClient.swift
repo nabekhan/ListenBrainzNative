@@ -46,12 +46,8 @@ struct ListenBrainzAPIClient: APIClient {
         let (data, resp) = try await Self.session.data(for: req)
 
         if let httpResp = resp as? HTTPURLResponse,
-           !(200 ... 299).contains(httpResp.statusCode) {
-            let code = httpResp.statusCode
-            if code == 429 {
-                throw LBError.rateLimited(resetIn: rateLimitDelay(from: httpResp))
-            }
-            throw request.data.statusErrors[httpResp.statusCode] ?? .unknownError
+           let error = responseError(from: httpResp, for: request) {
+            throw error
         }
 
         return try JSONDecoder.ListenBrainz.decode(Request.Result.self, from: data)
@@ -91,6 +87,19 @@ struct ListenBrainzAPIClient: APIClient {
             .compactMap { response.value(forHTTPHeaderField: $0) }
             .compactMap(Int.init)
             .max() ?? 10
+    }
+
+    func responseError<Request: APIRequest>(
+        from response: HTTPURLResponse,
+        for request: Request
+    ) -> LBError? {
+        if response.statusCode == 429 {
+            return .rateLimited(resetIn: rateLimitDelay(from: response))
+        }
+        if let mappedError = request.data.statusErrors[response.statusCode] {
+            return mappedError
+        }
+        return (200 ... 299).contains(response.statusCode) ? nil : .unknownError
     }
 }
 
