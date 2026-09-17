@@ -1,9 +1,13 @@
 .DS_Store
 /.build/
 /DerivedData/
+/.derived-data/
 /References/
 *.xcuserstate
 xcuserdata/
 Secrets.xcconfig
 *.mobileprovision
-
+.env
+.env.*
+*.p12
+*.key

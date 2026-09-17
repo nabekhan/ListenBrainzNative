@@ -23,7 +23,7 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 
 - Organize concrete feature folders only as screens land: Authentication, Home, History, Recording, Artist, Profile, then Stats/Discover/Social/Playlists.
 - UI never imports API response models directly. Stable app models preserve MBID/MSID/release/release-group distinctions and tolerate incomplete mapping.
-- One actor handles the one-request-per-second ListenBrainz policy, coalescing, cancellation, and rate-limit reset. URLCache plus a small typed disk cache supplies stale-while-revalidate behavior.
+- One actor handles the one-request-per-second ListenBrainz policy, serial request ownership, cancellation, and rate-limit reset. A small typed disk cache supplies stale-while-revalidate snapshots without persisting authenticated HTTP responses.
 - Keychain owns the token. No token in defaults/logs/previews.
 - Native SwiftUI/Charts/NavigationStack/search/context menus/accessibility first. No third-party architecture framework.
 
@@ -53,6 +53,12 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 ## Constraints recorded
 
 - Production website interactive inspection was blocked by the unavailable configured browser; current frontend source/routes and public API calls were inspected instead.
-- Full Xcode 27 installation was initiated. Until it completes, simulator/Xcode builds are not decisive.
-- Official KMP framework export remains a follow-up experiment, not a blocker.
+- Xcode 27, the iOS 27 runtime, app build, test bundle, real simulator tests, and live public data have now been exercised. Visual checkpoints cover onboarding plus real-data Home in light/dark mode; smaller-device validation is recorded with the build evidence.
+- The verified checkpoint currently passes 44 vendored-package tests, 10 app tests with no runtime warnings, and the opt-in production public API smoke suite.
+- Official KMP framework export was attempted and currently fails at the native Room KSP step; it remains a behavior reference rather than an app dependency.
 
+## Rate-limit behavior decision
+
+- The current API documentation is authoritative: ListenBrainz clients should start no more than one API request per second and honor server rate-limit timing.
+- The official Android/KMP client maps HTTP 429 but has no global scheduler or reset-header handling. The official iOS client likewise has no pacing/retry interceptor. These are implementation gaps, not product behavior to copy.
+- This app begins operations inside a serialized gate and conservatively spaces each next operation from completion, so scheduling cannot reorder admitted calls. It propagates cancellation and installs `Retry-After` or `X-RateLimit-Reset-In` deferrals before queued ownership transfers. Mutations are not blindly retried. Cover Art Archive and other non-ListenBrainz hosts remain outside this gate.

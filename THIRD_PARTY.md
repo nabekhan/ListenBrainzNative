@@ -4,7 +4,9 @@ This project is intended to be licensed under MPL-2.0. This file is updated when
 
 ## Included source
 
-No third-party source has been copied into the application yet. The first planned inclusion is an MPL-2.0 local fork of ListenBrainzKit at commit `c06b12f8c35bfee8fcf11dc973b5d78e23719cdf`; its original license and file notices will be preserved in `Packages/ListenBrainzKit/`.
+- ListenBrainzKit, commit `c06b12f8c35bfee8fcf11dc973b5d78e23719cdf`, is vendored at `Packages/ListenBrainzKit/` and locally patched for transport correctness, public model access, and tolerant identifier decoding. It is licensed under MPL-2.0; its original license and per-file notices are preserved.
+
+No UI source from the design-reference repositories has been copied into the application. Their inspected behavior and visual ideas informed an independent native SwiftUI implementation.
 
 ## Design and behavior references
 
@@ -17,4 +19,3 @@ No third-party source has been copied into the application yet. The first planne
 - Beans Music, Bòcan Music, Finale, and Discrobble: secondary UI/architecture references.
 
 See `docs/research/license-map.md` and `docs/research/repo-reuse-map.md` for the working audit.
-

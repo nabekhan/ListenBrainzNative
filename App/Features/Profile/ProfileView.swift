@@ -1,0 +1,141 @@
+import SwiftUI
+
+struct ProfileView: View {
+    @Bindable var model: ListeningModel
+    @Bindable var session: SessionModel
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 30) {
+                    profileHeader
+                    if !model.snapshot.topArtists.isEmpty { favoriteArtists }
+                    if !model.snapshot.topReleases.isEmpty { favoriteReleases }
+                    accountSection
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 40)
+            }
+            .refreshable { await model.refresh() }
+            .navigationTitle("Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .mediaDestinations(model: model)
+            .alert(
+                "Account",
+                isPresented: Binding(
+                    get: { session.errorMessage != nil },
+                    set: { if !$0 { session.errorMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) { session.errorMessage = nil }
+            } message: {
+                Text(session.errorMessage ?? "")
+            }
+        }
+    }
+
+    private var profileHeader: some View {
+        VStack(spacing: 16) {
+            ZStack {
+                Circle().fill(AppTheme.heroGradient)
+                Text(model.account.username.prefix(1).uppercased())
+                    .font(.system(size: 58, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+            .frame(width: 132, height: 132)
+            .shadow(color: AppTheme.accent.opacity(0.24), radius: 22, y: 10)
+
+            VStack(spacing: 5) {
+                Text(model.account.username)
+                    .font(.largeTitle.bold())
+                Label(
+                    model.account.isAuthenticated ? "Connected to ListenBrainz" : "Public profile",
+                    systemImage: model.account.isAuthenticated ? "checkmark.seal.fill" : "eye.fill"
+                )
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(model.account.isAuthenticated ? AppTheme.secondary : .secondary)
+            }
+
+            HStack(spacing: 0) {
+                profileMetric(model.snapshot.listenCount?.formatted() ?? "—", label: "Listens")
+                Divider().frame(height: 36)
+                profileMetric(model.snapshot.topArtists.count.formatted(), label: "Top artists loaded")
+                Divider().frame(height: 36)
+                profileMetric(model.snapshot.topReleases.count.formatted(), label: "Albums loaded")
+            }
+            .padding(.vertical, 16)
+            .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 12)
+    }
+
+    private func profileMetric(_ value: String, label: String) -> some View {
+        VStack(spacing: 3) {
+            Text(value).font(.headline.monospacedDigit()).lineLimit(1).minimumScaleFactor(0.7)
+            Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var favoriteArtists: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(title: "Defining artists", subtitle: "The artists at the center of this profile")
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 16)], spacing: 18) {
+                ForEach(model.snapshot.topArtists.prefix(8)) { artist in
+                    NavigationLink(value: artist) {
+                        VStack(spacing: 8) {
+                            ArtistArtworkView(artist: artist)
+                                .aspectRatio(1, contentMode: .fit)
+                            Text(artist.name)
+                                .font(.caption.weight(.semibold))
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private var favoriteReleases: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(title: "Most played albums")
+            ForEach(model.snapshot.topReleases.prefix(6)) { release in
+                HStack(spacing: 13) {
+                    ArtworkView(url: release.artworkURL, title: release.name, cornerRadius: 9)
+                        .frame(width: 60, height: 60)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(release.name).font(.body.weight(.semibold)).lineLimit(1)
+                        Text(release.artistName).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    Spacer()
+                    Text(release.listenCount.formatted())
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var accountSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(title: "Account")
+            Link(destination: URL(string: "https://listenbrainz.org/user/\(model.account.username.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? model.account.username)/")!) {
+                Label("Open profile on ListenBrainz", systemImage: "arrow.up.right.square")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(.thinMaterial, in: .rect(cornerRadius: 14, style: .continuous))
+            }
+            Button(role: .destructive) {
+                Task { await session.signOut() }
+            } label: {
+                Label(model.account.isAuthenticated ? "Disconnect account" : "Leave public profile", systemImage: "rectangle.portrait.and.arrow.right")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(.thinMaterial, in: .rect(cornerRadius: 14, style: .continuous))
+            }
+        }
+    }
+}

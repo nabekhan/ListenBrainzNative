@@ -37,11 +37,12 @@ Snapshot: 2026-09-16. Server `e83a7ab`; ListenBrainzKit `c06b12f` (2025-02-05).
 
 ## Build result
 
-`swift test` downloaded dependencies but did not reach compilation under Command Line Tools: the SwiftLint build plugin could not load `sourcekitdInProc.framework`. Re-run under the installed full Xcode. The SwiftLint plugin is a development-only build dependency worth removing from the library target if it continues to harm consumers.
+The development-only SwiftLint plugin was removed from the vendored package target because it prevented clean consumers from building under Command Line Tools. Under Xcode 27, `swift test` builds successfully and runs 44 tests with the token-dependent and opt-in live suites skipped. A separate `LISTENBRAINZ_PUBLIC_SMOKE=1` run passes against current production recent-listen, count, Playing Now, and top-artist endpoints.
+
+The local fork also now verifies path-safe endpoint construction, required User-Agent behavior, omission of empty authorization, explicit authorization before a custom API origin receives a token, rejection of insecure roots and cross-origin authenticated redirects, and conservative interpretation of `Retry-After` / `X-RateLimit-Reset-In`.
 
 ## Recommendation
 
 Use an MPL-2.0 local fork for P0 core listens, metadata, basic stats, and feedback; make only the transport/policy/model fixes needed to become reliable. Keep `ListeningProvider` as the app-facing boundary. Add missing generic endpoint groups as small extensions and prepare them as upstreamable commits. Do not adopt KMP merely to fill API gaps today.
 
 Evidence: `References/ListenBrainzKit/Package.swift`, `Sources/ListenBrainzKit/API/APIClient.swift`, the public client files, and current server views/docs.
-

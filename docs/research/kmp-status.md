@@ -14,7 +14,8 @@ Snapshot: 2026-09-16, Android checkout `3a0e4ef`.
 - Room KSP is configured for both iOS targets, indicating intent to compile the database layer.
 - No checked-in XCFramework, Swift wrapper, generated API guide, sample iOS consumer, or native iOS app integration exists in the Android repository.
 - The shared graph includes Compose UI, Koin, Room, Ktorfit, paging, sockets, Coil, and palette dependencies. That makes binary size, build integration, Swift API ergonomics, and lifecycle behavior materially more complex than ListenBrainzKit.
-- Framework compilation/export could not be independently verified before full Xcode became available; it remains a follow-up build check.
+- Framework compilation/export was attempted under Xcode 27 with the repository's current Gradle 9.4.1 wrapper and JDK 17. `linkDebugFrameworkIosSimulatorArm64` fails in `kspKotlinIosSimulatorArm64`: Room rejects multiple non-suspending DAO methods in `PendingListensDao`, `SongDao`, `AlbumDao`, and `ArtistDao` for a non-Android target. No `sharedKit` framework was produced.
+- The same build reports incompatible Skiko versions between Coil (`0.9.22.2`) and resolved Compose/Skiko (`0.144.6`), another current iOS-integration risk even after the Room errors are addressed.
 
 ## Still Android-specific
 
@@ -42,7 +43,6 @@ The KMP module uses Compose dependencies and has migrated meaningful supporting 
 
 ## Recommendation
 
-Ship native SwiftUI over an app-facing provider using the fixed Swift package now. Keep provider models independent from both LBKit and KMP. Re-evaluate KMP only when MetaBrainz publishes a stable XCFramework, documents Swift interop, demonstrates an iOS consumer, and can be adopted per domain without pulling the full Compose/app graph.
+Ship native SwiftUI over an app-facing provider using the fixed Swift package now. Keep provider models independent from both LBKit and KMP. The current upstream shared module demonstrably does not link for the iOS Simulator without source changes, so it cannot be a present dependency. Re-evaluate only when MetaBrainz publishes a stable XCFramework, fixes the native Room/Skiko build, documents Swift interop, demonstrates an iOS consumer, and can be adopted per domain without pulling the full Compose/app graph.
 
 Evidence: `References/listenbrainz-android/shared/build.gradle.kts`, `shared/src/{commonMain,androidMain,iosMain}`, and official iOS/Android application source.
-
