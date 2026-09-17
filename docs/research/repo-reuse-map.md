@@ -1,0 +1,43 @@
+# Repository reuse map
+
+Snapshot: 2026-09-16. Build status is evidence-based: repository/source inspection is complete; Xcode builds await completion of the Xcode 27 installation.
+
+| Repository | Purpose / state | License | Best reusable value | Modernization / difficulty | Decision |
+|---|---|---|---|---|---|
+| ListenBrainz server | Authoritative API + production web, active today | GPL-2.0 | Product semantics, current API, UI relationships | Never transplant frontend code | Reference only |
+| ListenBrainz Android/KMP | Mature official client; active | GPL-3+ with stated Apache sections | Edge cases, feature behavior, shared service shapes | KMP framework/export weight is high | Reference now; re-evaluate sharedKit |
+| ListenBrainz iOS | Official SwiftUI beta, iOS 16.2 | GPL-3+ with stated Apache sections | Apple constraints, feed/YiM/profile behavior | Combine/Alamofire architecture and uneven feature depth | Reference; independently implement |
+| ListenBrainzKit | Swift 6 API wrapper, iOS 16+, last commit 2025-02 | MPL-2.0 | P0 core, metadata, stats, feedback models/calls | Fix URL/User-Agent/rate policy; fill gaps incrementally | Vendor/fork under MPL |
+| first.fm | Last.fm SwiftUI client, iOS 15.5, 2024 | MIT | Overall IA/personality; profile, scrobbles, rankings, entity pages, search | Replace callbacks/ObservableObject and Spotify artwork N+1 | Adapt concepts and selected MIT components |
+| AppleMusicBottombarSwiftUI | iOS 26 accessory/transition demo, active 2026 | No license | `tabViewBottomAccessory`, minimized bar, zoom transition behavior | Small, current, but legally non-reusable | Independently reproduce with Apple APIs |
+| Cassette | Full SwiftUI music app, iOS 18, active 2026 | MPL-2.0 | Media rows/cards/shelves, entity/detail VMs, empty/loading UI, Fresh Releases, LB behavior | Large but clean; preserve file notices | Selectively adapt MPL files |
+| Minidisc | Cassette fork, iPhone-first iOS 26, active 2026 | MPL-2.0 | Polished tab/accessory behavior, home shelves, palette, quick actions, offline queue | iOS 26-only source; inherited attribution | Primary current interaction donor |
+| Volta | Rich SwiftUI player, iOS 16, active 2026 | GPL-3.0 | Artist hero, artwork-derived background, top songs, transitions | GPL incompatible with intended MPL app unless whole app GPL | Visual reference only |
+| Autohop | Native podcast/history/stats app, iOS 17, active 2026 | MIT; four named MPL files | Stats coordinator/store, heatmap/trends/period interaction | Translate time metrics to listen counts; avoid exception files | Adapt MIT stats patterns |
+| Beans Music | SwiftUI multi-service player, iOS 15, active 2026 | MIT | Compact root/tab/history/cache patterns | Service-specific; less cohesive than Cassette | Secondary component reference |
+| Bòcan Music | Very large Swift 6 desktop media app, active 2026 | Apache-2.0 | Cache/persistence and Now Playing strip patterns | Desktop-first and oversized | Selective reference/Apache reuse only |
+| FastScrobbler | Apple Music + ListenBrainz/Last.fm behavior, active 2026 | No license | Retry/backlog/duplicate avoidance, MusicKit constraints | Legally reference-only | Scrobbling behavior reference |
+| Finale | Cross-platform Last.fm app | BSD-3-Clause | Widgets, story/collage ideas | Flutter core, not native presentation | Inspiration/selective BSD widget ideas |
+| Discrobble | KMP + SwiftUI architecture docs | MIT | ADRs for shared-core/native UI boundary | No meaningful Swift implementation | Architecture reference only |
+
+## Component ownership
+
+| Requirement | Best donor | What can be reused | What is written here |
+|---|---|---|---|
+| Overall information architecture | first.fm + current LB web | Profile/history/ranking hierarchy and LB product grouping | Native tab/search flow for Home, History, Discover, Stats, Profile |
+| API/domain | ListenBrainzKit | Existing P0 clients/models | Reliability fixes, app adapters, missing endpoint extensions |
+| Product behavior | LB API/web + Android | Semantics, event types, pagination, edge cases | Native iOS interaction |
+| Bottom accessory | Apple native APIs + Minidisc behavior | System API behavior; MPL patterns where needed | Conditional Playing Now/latest-listen accessory |
+| History/listen row | first.fm + LB website + Cassette | Dense scrobble hierarchy, media-row mechanics | MBID-aware row, source/time/feedback/context menu |
+| Home shelves | Cassette/Minidisc | Shelf sizing, section headers, loading/empty states | LB-specific curation |
+| Artist screen | Volta visual reference + first.fm | Concept only from GPL Volta; MIT structure from first.fm | Independent stretchy artwork/stat/entity implementation |
+| Release/recording detail | Cassette + first.fm | Media layout patterns | ListenBrainz identity/actions/history |
+| Stats/heatmap | Autohop MIT portions + native Swift Charts | Period/history coordinator patterns | Server-stat adapters and music wording |
+| Auth/Keychain | first.fm/Cassette patterns | Small MIT/MPL patterns | Token validation and onboarding copy |
+| Caching | Cassette/Minidisc + URLCache | Actor/service patterns | Small stale-while-revalidate cache boundary |
+| Scrobbling/offline retry | FastScrobbler behavior + Cassette/Minidisc | MPL queue code only if later adopted | Deferred capture module |
+
+## Additional discovery verdict
+
+The strongest newly discovered candidates are Minidisc (current iPhone/iOS 26 polish), Bòcan (cache/robust scrobbling reference), FastScrobbler (Apple Music limitation evidence), and Finale (widgets/share concepts). None displaces first.fm for personality/IA or Cassette/Minidisc for current native media components.
+
