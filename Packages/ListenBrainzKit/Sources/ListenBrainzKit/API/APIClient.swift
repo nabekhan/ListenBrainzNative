@@ -55,11 +55,15 @@ struct ListenBrainzAPIClient: APIClient {
 
     func makeURLRequest<Request: APIRequest>(_ request: Request) throws -> URLRequest {
         let relativePath = request.data.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        let url = root
-            .appending(path: relativePath)
-            .appending(queryItems: request.data.queryItems.flatMap { entry in
-                entry.value.map { URLQueryItem(name: entry.key, value: $0) }
-            })
+        let endpoint = root.appending(path: relativePath)
+        var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)
+        if request.data.preservesTrailingSlash && request.data.path.hasSuffix("/") {
+            components?.path += "/"
+        }
+        components?.queryItems = request.data.queryItems.flatMap { entry in
+            entry.value.map { URLQueryItem(name: entry.key, value: $0) }
+        }
+        let url = components?.url ?? endpoint
 
         var req = URLRequest(url: url)
         req.httpMethod = request.data.method.rawValue

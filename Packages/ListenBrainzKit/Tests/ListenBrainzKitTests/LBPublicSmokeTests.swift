@@ -29,11 +29,14 @@ struct LBPublicSmokeTests {
         let artists = try await client.stats.topArtists(user: username, count: 2, range: .allTime)
         try await pace()
         let activity = try await client.stats.listenActivity(user: username, range: .allTime)
+        try await pace()
+        let freshReleases = try await client.freshReleases.sitewide(days: 7)
 
         #expect(!listens.listens.isEmpty)
         #expect(count > 0)
         #expect(artists?.artists.isEmpty == false)
         #expect(activity?.activity.isEmpty == false)
+        #expect(freshReleases?.releases.isEmpty == false)
     }
 
     private func pace() async throws {

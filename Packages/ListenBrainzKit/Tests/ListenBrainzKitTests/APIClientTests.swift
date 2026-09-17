@@ -24,6 +24,22 @@ import Testing
         #expect(request.url?.query?.contains("count=25") == true)
     }
 
+    @Test("Endpoint-required terminal slash is preserved")
+    func endpointTerminalSlash() throws {
+        let client = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+
+        let request = try client.makeURLRequest(
+            SitewideFreshReleasesRequest(days: 14, includePast: true, includeFuture: true, sort: .releaseDate)
+        )
+
+        #expect(request.url?.absoluteString.contains("/1/explore/fresh-releases/?") == true)
+        #expect(request.url?.query?.contains("days=14") == true)
+    }
+
     @Test("Requests identify the application without sending an empty token")
     func requiredHeaders() throws {
         let userAgent = "TestClient/1.0 (+https://example.com)"

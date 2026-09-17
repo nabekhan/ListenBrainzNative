@@ -26,18 +26,21 @@ struct APIRequestData<Body: Encodable> {
     let headers: [String: String]
     let body: Body?
     let statusErrors: [Int: LBError]
+    let preservesTrailingSlash: Bool
 
     init(path: String,
          method: Method,
          queryItems: [String: [String]] = [:],
          headers: [String: String] = [:],
          body: Body? = nil,
-         statusErrors: [Int: LBError] = [:]) {
+         statusErrors: [Int: LBError] = [:],
+         preservesTrailingSlash: Bool = false) {
         self.path = path
         self.method = method
         self.queryItems = queryItems
         self.headers = headers
         self.body = body
         self.statusErrors = statusErrors
+        self.preservesTrailingSlash = preservesTrailingSlash
     }
 }
