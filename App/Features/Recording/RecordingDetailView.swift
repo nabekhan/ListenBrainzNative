@@ -3,12 +3,16 @@ import SwiftUI
 struct RecordingDetailView: View {
     let recording: Recording
     @Bindable var model: ListeningModel
+    @Environment(PinsModel.self) private var pins
+    @State private var isPinEditorPresented = false
+    @State private var pinBlurb = ""
 
     var body: some View {
         ScrollView {
             VStack(spacing: 26) {
                 hero
                 feedbackControls
+                pinControls
                 metadata
                 relatedListens
             }
@@ -23,6 +27,7 @@ struct RecordingDetailView: View {
         }
         .navigationTitle(recording.title)
         .navigationBarTitleDisplayMode(.inline)
+        .task { await pins.load() }
         .toolbar {
             if let mbid = recording.identity.mbid {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -72,6 +77,68 @@ struct RecordingDetailView: View {
             .buttonStyle(.bordered)
             .buttonBorderShape(.roundedRectangle(radius: 13))
         }
+    }
+
+    private var pinControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if !model.account.isAuthenticated {
+                Label("Sign in with a token to pin this recording", systemImage: "lock")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else if recording.identity.mbid == nil && recording.identity.msid == nil {
+                Label("This recording needs a MusicBrainz or MessyBrainz ID before it can be pinned", systemImage: "questionmark.diamond")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else if pins.phase == .idle || pins.phase == .loading {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Checking your current pin…")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            } else if case .failed = pins.phase {
+                Button { Task { await pins.refresh() } } label: {
+                    Label("Retry pin status", systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.roundedRectangle(radius: 13))
+            } else if isCurrentPin {
+                Button(role: .destructive) { Task { await pins.unpin() } } label: {
+                    Label("Unpin recording", systemImage: "pin.slash")
+                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.roundedRectangle(radius: 13))
+                .disabled(!pins.canMutate)
+            } else {
+                Button { pinBlurb = ""; isPinEditorPresented = true } label: {
+                    Label(pins.currentPin == nil ? "Pin recording" : "Replace pinned recording", systemImage: "pin.fill")
+                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.roundedRectangle(radius: 13))
+                .tint(AppTheme.accent)
+                .disabled(!pins.canMutate)
+            }
+        }
+        .sheet(isPresented: $isPinEditorPresented) {
+            NavigationStack {
+                PinBlurbEditor(title: "Pin recording", blurb: $pinBlurb) {
+                    Task { await pins.pin(recording, blurb: pinBlurb) }
+                }
+            }
+        }
+    }
+
+    private var isCurrentPin: Bool {
+        guard let current = pins.currentPin else { return false }
+        if let mbid = recording.identity.mbid,
+           current.recording.identity.mbid == mbid { return true }
+        if let msid = recording.identity.msid,
+           current.recording.identity.msid == msid { return true }
+        return false
     }
 
     @ViewBuilder

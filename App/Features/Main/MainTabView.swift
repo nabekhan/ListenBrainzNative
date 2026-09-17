@@ -12,6 +12,7 @@ struct MainTabView: View {
     let account: Account
     @Bindable var session: SessionModel
     @State private var model: ListeningModel
+    @State private var pins: PinsModel
     @State private var presentedListen: Listen?
     @AppStorage("main.selectedTab") private var selectedTab: Destination = .home
 
@@ -19,11 +20,13 @@ struct MainTabView: View {
         self.account = account
         _session = Bindable(wrappedValue: session)
         _model = State(initialValue: ListeningModel(account: account))
+        _pins = State(initialValue: PinsModel(account: account))
     }
 
     var body: some View {
         accessoryTabs
             .task { await model.load() }
+            .environment(pins)
             .sheet(item: $presentedListen) { listen in
                 NavigationStack {
                     RecordingDetailView(recording: listen.recording, model: model)
@@ -32,13 +35,21 @@ struct MainTabView: View {
             .alert(
                 "ListenBrainz",
                 isPresented: Binding(
-                    get: { model.actionError != nil },
-                    set: { if !$0 { model.actionError = nil } }
+                    get: { model.actionError != nil || pins.actionError != nil },
+                    set: {
+                        if !$0 {
+                            model.actionError = nil
+                            pins.actionError = nil
+                        }
+                    }
                 )
             ) {
-                Button("OK", role: .cancel) { model.actionError = nil }
+                Button("OK", role: .cancel) {
+                    model.actionError = nil
+                    pins.actionError = nil
+                }
             } message: {
-                Text(model.actionError ?? "")
+                Text(pins.actionError ?? model.actionError ?? "")
             }
     }
 

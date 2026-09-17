@@ -17,7 +17,7 @@ Snapshot: 2026-09-17. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-
 | LB Radio | PARTIALLY_SUPPORTED | Tags and artist seed only | Re-evaluate against current prompt-generation API |
 | New activity/identity statistics | MISSING | Daily, artist, era, genre, evolution, map, listeners absent | Add in a focused upstream extension |
 | Year in Music | MISSING | Current and legacy endpoints absent | App extension first; upstream candidate |
-| Pins | MISSING | No current/history/following/mutation support | App extension; upstream candidate |
+| Pins | PARTIALLY_SUPPORTED | Current pin, paginated history, create, unpin, note update, and delete are typed; following pins remain absent | Reuse native slice; add following pins with Social; upstream candidate |
 | Social/follow/feed/thanks | MISSING | Entire category absent | App extension in Phase 3 |
 | Recommendations and feedback | MISSING | CF retrieval/feedback absent | App extension in Discover phase |
 | Popularity | MISSING | Entity counts and artist top entities absent | App extension for detail screens |
@@ -37,9 +37,9 @@ Snapshot: 2026-09-17. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-
 
 ## Build result
 
-The development-only SwiftLint plugin was removed from the vendored package target because it prevented clean consumers from building under Command Line Tools. Under Xcode 27, `swift test` builds successfully and runs 54 tests with the token-dependent and opt-in live suites skipped. A separate, explicitly paced `LISTENBRAINZ_PUBLIC_SMOKE=1` run passes against current production recent-listen, count, Playing Now, top-artist, listening-activity, sitewide Fresh Releases, public-playlist search, and canonical user-search endpoints.
+The development-only SwiftLint plugin was removed from the vendored package target because it prevented clean consumers from building under Command Line Tools. Under Xcode 27, `swift test` builds successfully and runs 60 tests with the token-dependent and opt-in live suites skipped. A separate, explicitly paced `LISTENBRAINZ_PUBLIC_SMOKE=1` run passes against current production recent-listen, count, Playing Now, top-artist, listening-activity, current/history Pins, sitewide Fresh Releases, public-playlist search, and canonical user-search endpoints.
 
-The local fork also now verifies path-safe endpoint construction, endpoint-required trailing slashes, required User-Agent behavior, omission of empty authorization, explicit authorization before a custom API origin receives a token, rejection of insecure roots and cross-origin authenticated redirects, conservative interpretation of `Retry-After` / `X-RateLimit-Reset-In`, and tolerant playlist timestamps.
+The local fork also now verifies path-safe endpoint construction, endpoint-required trailing slashes, required User-Agent behavior, omission of empty authorization, explicit authorization before a custom API origin receives a token, rejection of insecure roots and cross-origin authenticated redirects, conservative interpretation of `Retry-After` / `X-RateLimit-Reset-In`, tolerant playlist timestamps, and the Pins API's distinct string versus Boolean mutation responses.
 
 ## Recommendation
 

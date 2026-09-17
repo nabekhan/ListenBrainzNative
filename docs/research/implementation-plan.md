@@ -13,7 +13,8 @@ SwiftUI Features + shared Components
               ↓
 App-owned provider boundaries
   ├─ ListeningProvider → ListenBrainzProvider
-  └─ SearchProviding → ListenBrainz + MusicBrainz
+  ├─ SearchProviding → ListenBrainz + MusicBrainz
+  └─ PinProviding → ListenBrainzKit pins extension
   ├─ fixed ListenBrainzKit core/metadata/stats/feedback
   ├─ focused endpoint extensions (only when Kit is missing them)
   └─ per-service request gates + response/metadata caches
@@ -39,25 +40,25 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 
 ## Staging after the slice
 
-- Phase 3: full history/date jump, release pages, users/follows/similarity, pins, feed, recommendations, and richer playlist browsing. Statistics, Fresh Releases, and scoped search now have initial native slices.
+- Phase 3: full history/date jump, release pages, users/follows/similarity, feed, recommendations, and richer playlist browsing. Statistics, Fresh Releases, scoped search, and Pins now have initial native slices.
 - Phase 4: Year in Music, shareable art, LB Radio, playlist editing, playback/content resolution, MusicKit-scoped capture, offline submit queue, inspect/mapping tools.
 
 ## Next implementation sequence
 
 1. Turn user-search results into a cached native user detail surface without Android's eager multi-call waterfall.
-2. Add current pin and paginated pin history through an upstreamable ListenBrainzKit extension.
-3. Add lazy followers/following/similar-user sections and optimistic follow state.
-4. Build native release-group/release and playlist detail screens on the identities already established by search.
-5. Continue recommendations and feed only after those reusable destinations are real.
+2. Add lazy followers/following/similar-user sections and optimistic follow state.
+3. Build native release-group/release and playlist detail screens on the identities already established by search.
+4. Continue recommendations and feed only after those reusable destinations are real.
 
 ## Constraints recorded
 
 - Production website interactive inspection was blocked by the unavailable configured browser; current frontend source/routes and public API calls were inspected instead.
 - Xcode 27, the iOS 27 runtime, app build, test bundle, real simulator tests, and live public data have now been exercised. Visual checkpoints cover onboarding plus real-data Home in light/dark mode; smaller-device validation is recorded with the build evidence.
-- The verified checkpoint currently passes 54 vendored-package tests and 28 app tests, plus the deliberately paced opt-in production public API smoke suite.
+- The verified checkpoint currently passes 60 vendored-package tests and 34 app tests, plus the deliberately paced opt-in production public API smoke suite.
 - Phase 3 statistics now includes on-demand server activity for the website's seven primary ranges, per-period request caching, accessible native charts, and explicit empty/retry behavior. Real-data visual checks covered all-time activity on large and small simulators in dark and light modes.
 - Fresh Releases now uses an upstreamable ListenBrainzKit extension. Personalized results are the default and an HTTP 204 becomes an honest empty state; selecting All is the only route that makes a sitewide request. The native slice follows the website's one-week window and newest-first presentation, while distinguishing upcoming releases and concrete release versus release-group identity. The API client preserves the sitewide endpoint's required terminal slash, with regression coverage.
 - Search now exposes Users, Artists, Albums (release groups), Tracks, and public Playlists in one native sheet. It sends only the selected scope after a 500 ms debounce, caches per normalized query, cancels abandoned/stale work, preserves release-group identity, and reuses the native artist/recording destinations. ListenBrainz and MusicBrainz have independent process-shared gates; canonical paths avoid hidden redirect requests. Real MusicBrainz results were visually checked in dark/light mode and XXL Dynamic Type.
+- Pins now includes a current-profile card, lazy paginated history, recording-detail pin/unpin, 280-character notes, and owner-only edit/delete actions. Mutations are optimistic with rollback, and the ListenBrainzKit extension follows the endpoint-specific response contracts (including the Boolean update result). Public-profile empty-state presentation was visually checked in the simulator; production mutations were deliberately not exercised.
 - Official KMP framework export was attempted and currently fails at the native Room KSP step; it remains a behavior reference rather than an app dependency.
 
 ## Rate-limit behavior decision

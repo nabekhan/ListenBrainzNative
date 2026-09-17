@@ -3,12 +3,14 @@ import SwiftUI
 struct ProfileView: View {
     @Bindable var model: ListeningModel
     @Bindable var session: SessionModel
+    @Environment(PinsModel.self) private var pins
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 30) {
                     profileHeader
+                    CurrentPinSection(isOwner: model.account.isAuthenticated)
                     if !model.snapshot.topArtists.isEmpty { favoriteArtists }
                     if !model.snapshot.topReleases.isEmpty { favoriteReleases }
                     accountSection
@@ -16,7 +18,11 @@ struct ProfileView: View {
                 .padding(.horizontal, 18)
                 .padding(.bottom, 40)
             }
-            .refreshable { await model.refresh() }
+            .refreshable {
+                await model.refresh()
+                await pins.refresh()
+            }
+            .task { await pins.load() }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
             .mediaDestinations(model: model)

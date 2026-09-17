@@ -44,6 +44,18 @@ struct Listen: Identifiable, Hashable, Codable, Sendable {
     var id: String { "\(recording.id):\(listenedAt.timeIntervalSince1970):\(isPlayingNow)" }
 }
 
+struct PinnedRecording: Identifiable, Hashable, Sendable {
+    let rowID: Int
+    let created: Date
+    let pinnedUntil: Date?
+    let blurb: String?
+    let username: String?
+    let recording: Recording
+    let isCurrent: Bool
+
+    var id: Int { rowID }
+}
+
 struct RankedArtist: Identifiable, Hashable, Codable, Sendable {
     let mbid: UUID?
     let name: String
