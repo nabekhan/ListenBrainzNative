@@ -42,7 +42,11 @@ struct HomeView: View {
                     .foregroundStyle(.secondary)
 
                 if let listen = model.snapshot.playingNow ?? model.snapshot.recentListens.first {
-                    nowListeningCard(listen)
+                    FeaturedListenCard(
+                        listen: listen,
+                        label: listen.isPlayingNow ? "Playing now" : "Latest listen",
+                        systemImage: listen.isPlayingNow ? "waveform" : "clock.fill"
+                    )
                 }
 
                 snapshotStrip
@@ -63,50 +67,6 @@ struct HomeView: View {
             .padding(.bottom, 36)
         }
         .refreshable { await model.refresh() }
-    }
-
-    private func nowListeningCard(_ listen: Listen) -> some View {
-        NavigationLink(value: listen.recording) {
-            ZStack(alignment: .bottomLeading) {
-                ArtworkView(
-                    url: listen.recording.artworkURL,
-                    title: listen.recording.title,
-                    cornerRadius: 24,
-                    showsPlaceholderSymbol: false
-                )
-                    .frame(maxWidth: .infinity)
-                    .aspectRatio(1.45, contentMode: .fill)
-                    .overlay {
-                        LinearGradient(
-                            colors: [.clear, .black.opacity(0.78)],
-                            startPoint: .center,
-                            endPoint: .bottom
-                        )
-                    }
-                    .clipShape(.rect(cornerRadius: 24, style: .continuous))
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Label(
-                        listen.isPlayingNow ? "PLAYING NOW" : "LATEST LISTEN",
-                        systemImage: listen.isPlayingNow ? "waveform" : "clock.fill"
-                    )
-                    .font(.caption2.bold())
-                    .tracking(1.1)
-                    .foregroundStyle(.white.opacity(0.8))
-
-                    Text(listen.recording.title)
-                        .font(.title.bold())
-                        .lineLimit(2)
-                    Text(listen.recording.artistName)
-                        .font(.headline)
-                        .foregroundStyle(.white.opacity(0.8))
-                }
-                .foregroundStyle(.white)
-                .padding(20)
-            }
-            .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
-        }
-        .buttonStyle(.plain)
     }
 
     private var snapshotStrip: some View {

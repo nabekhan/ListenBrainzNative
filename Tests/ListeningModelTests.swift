@@ -346,6 +346,26 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(scopedRequestCount, 2)
     }
 
+    func testInitialSearchConfigurationStartsOnlyOnce() async throws {
+        let provider = SearchFixtureProvider()
+        let model = SearchModel(
+            account: Account(username: "fixture", token: ""),
+            provider: provider,
+            debounceDuration: .milliseconds(1),
+            initialQuery: "listener",
+            initialScope: .users
+        )
+
+        model.startInitialSearchIfNeeded()
+        model.startInitialSearchIfNeeded()
+        try await ContinuousClock().sleep(for: .milliseconds(20))
+
+        XCTAssertEqual(model.scope, .users)
+        XCTAssertEqual(model.state, .loaded)
+        let requestCount = await provider.requestCount()
+        XCTAssertEqual(requestCount, 1)
+    }
+
     func testPlaylistSearchRequiresThreeCharactersBeforeCallingProvider() async {
         let provider = SearchFixtureProvider()
         let model = SearchModel(

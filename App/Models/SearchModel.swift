@@ -17,10 +17,14 @@ final class SearchModel {
     init(
         account: Account,
         provider: (any SearchProviding)? = nil,
-        debounceDuration: Duration = .milliseconds(500)
+        debounceDuration: Duration = .milliseconds(500),
+        initialQuery: String = "",
+        initialScope: SearchScope = .artists
     ) {
         self.provider = provider ?? SearchProvider(token: account.token)
         self.debounceDuration = debounceDuration
+        self.query = initialQuery
+        self.scope = initialScope
     }
 
     func update(query: String) {
@@ -60,6 +64,13 @@ final class SearchModel {
             catch { return }
             await search(request: request, requestID: id)
         }
+    }
+
+    func startInitialSearchIfNeeded() {
+        guard state == .idle,
+              !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
+        scheduleSearch()
     }
 
     func cancel() {

@@ -12,7 +12,11 @@ struct ArtworkView: View {
             case let .success(image):
                 image.resizable().scaledToFill()
             case .empty:
-                placeholder.overlay { ProgressView().tint(.white.opacity(0.8)) }
+                if url == nil {
+                    placeholder
+                } else {
+                    placeholder.overlay { ProgressView().tint(.white.opacity(0.8)) }
+                }
             case .failure:
                 placeholder
             @unknown default:

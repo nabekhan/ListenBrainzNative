@@ -124,6 +124,26 @@ struct ListeningSnapshot: Codable, Sendable {
     )
 }
 
+struct UserProfileSnapshot: Sendable {
+    var recentListens: [Listen]
+    var playingNow: Listen?
+    var listenCount: Int?
+    var topArtists: [RankedArtist]
+    var hasLoadedOverview: Bool
+    var hasLoadedTopArtists: Bool
+    var savedAt: Date
+
+    static let empty = UserProfileSnapshot(
+        recentListens: [],
+        playingNow: nil,
+        listenCount: nil,
+        topArtists: [],
+        hasLoadedOverview: false,
+        hasLoadedTopArtists: false,
+        savedAt: .distantPast
+    )
+}
+
 enum RecordingFeedback: Int, Sendable {
     case hate = -1
     case none = 0

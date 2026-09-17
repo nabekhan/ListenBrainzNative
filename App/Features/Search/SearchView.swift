@@ -3,23 +3,36 @@ import SwiftUI
 struct SearchView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: SearchModel
+    @State private var path: [SearchResult] = []
+    @State private var didOpenDebugResult = false
     @Bindable var listeningModel: ListeningModel
 
     init(account: Account, listeningModel: ListeningModel) {
-        let model = SearchModel(account: account)
+        var initialQuery = ""
+        var initialScope: SearchScope = .artists
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
+        if let flag = arguments.firstIndex(of: "-brainz-search-scope"),
+           arguments.indices.contains(flag + 1),
+           let scope = SearchScope(rawValue: arguments[flag + 1]) {
+            initialScope = scope
+        }
         if let flag = arguments.firstIndex(of: "-brainz-search-query"),
            arguments.indices.contains(flag + 1) {
-            model.update(query: arguments[flag + 1])
+            initialQuery = arguments[flag + 1]
         }
         #endif
+        let model = SearchModel(
+            account: account,
+            initialQuery: initialQuery,
+            initialScope: initialScope
+        )
         _model = State(initialValue: model)
         _listeningModel = Bindable(wrappedValue: listeningModel)
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if model.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     ContentUnavailableView(
@@ -60,6 +73,22 @@ struct SearchView: View {
             }
             .navigationDestination(for: SearchResult.self) { result in
                 destination(for: result)
+            }
+            .mediaDestinations(model: listeningModel)
+            .task { model.startInitialSearchIfNeeded() }
+            .onChange(of: model.state) { _, state in
+                #if DEBUG
+                guard state == .loaded,
+                      !didOpenDebugResult,
+                      ProcessInfo.processInfo.arguments.contains("-brainz-open-user-detail"),
+                      let result = model.results.first(where: {
+                          if case .user = $0 { return true }
+                          return false
+                      })
+                else { return }
+                didOpenDebugResult = true
+                path.append(result)
+                #endif
             }
             .onDisappear { model.cancel() }
         }
@@ -112,7 +141,7 @@ struct SearchView: View {
         case let .releaseGroup(group):
             SearchReleaseGroupDetailView(group: group)
         case let .user(user):
-            SearchUserDetailView(user: user)
+            UserDetailView(user: user, viewer: listeningModel.account)
         case let .playlist(playlist):
             SearchPlaylistDetailView(playlist: playlist)
         }
@@ -165,20 +194,6 @@ private struct SearchReleaseGroupDetailView: View {
             if let type = group.primaryType { detail("Type", type) }
             Link(destination: group.musicBrainzURL) {
                 Label("Open release group in MusicBrainz", systemImage: "arrow.up.right.square")
-            }
-        }
-    }
-}
-
-private struct SearchUserDetailView: View {
-    let user: SearchUser
-
-    var body: some View {
-        SearchCompactDetail(title: user.username, subtitle: "ListenBrainz user", systemImage: "person.crop.circle") {
-            if let url = user.listenBrainzURL {
-                Link(destination: url) {
-                    Label("Open profile in ListenBrainz", systemImage: "arrow.up.right.square")
-                }
             }
         }
     }
