@@ -100,6 +100,38 @@ import Testing
         #expect(metadata.lastModifiedAt != nil)
     }
 
+    @Test("Generated playlist metadata exposes source and expiry")
+    func generatedPlaylistMetadata() throws {
+        let data = Data(#"""
+        {
+          "playlists": [{"playlist": {
+            "creator": "troi-bot",
+            "title": "Weekly Jams for listener",
+            "identifier": "https://listenbrainz.org/playlist/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "extension": {
+              "https://musicbrainz.org/doc/jspf#playlist": {
+                "public": true,
+                "created_for": "listener",
+                "additional_metadata": {
+                  "algorithm_metadata": {"source_patch": "weekly-jams"},
+                  "expires_at": "2026-09-24T12:00:00+00:00"
+                }
+              }
+            },
+            "track": []
+          }}]
+        }
+        """#.utf8)
+
+        let response = try JSONDecoder.ListenBrainz.decode(RawPlaylistResponse.self, from: data)
+        let playlist = try #require(response.playlists.first?.playlist)
+        let metadata = LBPlaylistMetadata(raw: playlist)
+
+        #expect(metadata.createdFor == "listener")
+        #expect(metadata.recommendationType == "weekly-jams")
+        #expect(metadata.expiresAt != nil)
+    }
+
     @Test("Submit multiple listens")
     func submitListens() async throws {
         let date1 = Date.now.addingTimeInterval(-300)

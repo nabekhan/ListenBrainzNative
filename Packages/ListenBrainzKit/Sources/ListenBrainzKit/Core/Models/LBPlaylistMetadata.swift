@@ -40,6 +40,12 @@ public struct LBPlaylistMetadata: Sendable {
     public let copiedFrom: String?
     public let copiedFromDeleted: Bool?
 
+    /// ListenBrainz generator slug, for example `weekly-jams`.
+    public let recommendationType: String?
+
+    /// When an ephemeral generated playlist is scheduled to expire.
+    public let expiresAt: Date?
+
     init(raw: RawPlaylist) {
         self.title = raw.title
         self.annotation = raw.annotation
@@ -53,6 +59,8 @@ public struct LBPlaylistMetadata: Sendable {
         self.collaborators = raw.ext.listenbrainz.collaborators
         self.copiedFrom = raw.ext.listenbrainz.copiedFromMbid
         self.copiedFromDeleted = raw.ext.listenbrainz.copiedFromDeleted
+        self.recommendationType = raw.ext.listenbrainz.additionalMetadata?.algorithmMetadata?.sourcePatch
+        self.expiresAt = parsePlaylistDate(raw.ext.listenbrainz.additionalMetadata?.expiresAt)
     }
 }
 

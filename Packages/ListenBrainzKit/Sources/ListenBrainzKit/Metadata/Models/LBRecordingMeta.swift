@@ -4,13 +4,13 @@
 
 import Foundation
 
-public struct LBRecordingMeta: Decodable {
+public struct LBRecordingMeta: Decodable, Sendable {
     /// Name of the recording
-    let name: String
+    public let name: String
     /// Length of recording in milliseconds
-    let length: Int?
+    public let length: Int?
     /// People involved in the recording
-    let relations: [LBRecordingRelation]
+    public let relations: [LBRecordingRelation]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -143,16 +143,16 @@ struct ArtistMetaTags: Decodable {
     let artist: [LBTag]?
 }
 
-public struct LBReleaseMeta: Decodable {
-    let mbid: UUID
-    let releaseGroupMbid: UUID
+public struct LBReleaseMeta: Decodable, Sendable {
+    public let mbid: UUID
+    public let releaseGroupMbid: UUID
 
-    let name: String
-    let albumArtistName: String
+    public let name: String
+    public let albumArtistName: String
     /// Year of release
-    let year: Int?
+    public let year: Int?
     /// Cover art file ID in the Cover Art Archive
-    let caaId: Int?
+    public let caaId: Int?
     /// Release's MBID on Cover Art Archive
-    let caaReleaseMbid: UUID?
+    public let caaReleaseMbid: UUID?
 }

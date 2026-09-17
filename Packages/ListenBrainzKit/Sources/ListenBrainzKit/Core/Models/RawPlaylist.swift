@@ -73,7 +73,7 @@ struct ListenBrainzPlaylistExt: Decodable {
     var copiedFromDeleted: Bool?
     var isPublic: Bool
     var lastModifiedAt: String?
-    // var additionalMetadata:
+    var additionalMetadata: PlaylistAdditionalMetadata?
 
     enum CodingKeys: String, CodingKey {
         case createdFor
@@ -83,7 +83,17 @@ struct ListenBrainzPlaylistExt: Decodable {
         case copiedFromDeleted
         case isPublic = "public"
         case lastModifiedAt
+        case additionalMetadata
     }
+}
+
+struct PlaylistAdditionalMetadata: Decodable {
+    var algorithmMetadata: PlaylistAlgorithmMetadata?
+    var expiresAt: String?
+}
+
+struct PlaylistAlgorithmMetadata: Decodable {
+    var sourcePatch: String?
 }
 
 struct TrackExtension: Decodable {

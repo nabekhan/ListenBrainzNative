@@ -55,6 +55,26 @@ import Testing
         #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
     }
 
+    @Test("Encoded request bodies declare JSON content")
+    func jsonBodyContentType() throws {
+        let client = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+        let request = try client.makeURLRequest(MetadataRecordingRequest(
+            mbids: [
+                UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab")!,
+                UUID(uuidString: "a6081bc1-2a76-4984-b21f-38bc3dcca3a5")!,
+            ],
+            including: [.artist, .release]
+        ))
+
+        #expect(request.httpMethod == "POST")
+        #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
+        #expect(request.httpBody?.isEmpty == false)
+    }
+
     @Test("Authenticated requests use ListenBrainz token authentication")
     func tokenHeader() throws {
         let client = ListenBrainzAPIClient(

@@ -7,6 +7,19 @@ import Foundation
 import Testing
 
 @Suite struct LBMetadataTests {
+    @Test("Recording metadata GET and POST preserve the canonical terminal slash")
+    func recordingCanonicalPath() {
+        let first = UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab")!
+        let second = UUID(uuidString: "a6081bc1-2a76-4984-b21f-38bc3dcca3a5")!
+        let single = MetadataRecordingRequest(mbids: [first], including: [.artist, .release])
+        let batch = MetadataRecordingRequest(mbids: [first, second], including: [.artist, .release])
+
+        #expect(single.data.path == "/1/metadata/recording/")
+        #expect(single.data.preservesTrailingSlash)
+        #expect(batch.data.path == "/1/metadata/recording/")
+        #expect(batch.data.preservesTrailingSlash)
+    }
+
     @Test("Release-group metadata uses its canonical terminal-slash endpoint")
     func releaseGroupCanonicalPath() {
         let mbid = UUID(uuidString: "6e335887-60ba-38f0-95af-fae7774336bf")!

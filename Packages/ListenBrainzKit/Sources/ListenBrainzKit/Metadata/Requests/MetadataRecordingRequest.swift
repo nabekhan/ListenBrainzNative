@@ -21,13 +21,15 @@ public struct MetadataRecordingRequest: APIRequest {
             self.data = .init(path: "/1/metadata/recording/",
                               method: .get,
                               queryItems: query,
-                              statusErrors: [400: .badRequest])
+                              statusErrors: [400: .badRequest],
+                              preservesTrailingSlash: true)
         } else {
             let body = Body(recordingMbids: mbids, inc: inclusions)
             self.data = .init(path: "/1/metadata/recording/",
                               method: .post,
                               body: body,
-                              statusErrors: [400: .badRequest])
+                              statusErrors: [400: .badRequest],
+                              preservesTrailingSlash: true)
         }
     }
 

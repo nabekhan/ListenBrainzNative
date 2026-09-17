@@ -80,6 +80,9 @@ struct ListenBrainzAPIClient: APIClient {
         }
 
         if let body = request.data.body {
+            if req.value(forHTTPHeaderField: "Content-Type") == nil {
+                req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            }
             let bodyData = try JSONEncoder.ListenBrainz.encode(body)
             req.httpBody = bodyData
         }

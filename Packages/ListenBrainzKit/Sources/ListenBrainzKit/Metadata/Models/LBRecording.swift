@@ -5,15 +5,15 @@
 import Foundation
 
 /// Contains metadata for a given recording, along with related items if requested
-public struct LBRecording: Decodable {
+public struct LBRecording: Decodable, Sendable {
     /// Metadata for this recording
-    let recording: LBRecordingMeta
+    public let recording: LBRecordingMeta
     /// Metadata for this recording's artist(s) if requested
-    let artist: LBArtist?
+    public let artist: LBArtist?
     /// Metadata for this recording's associated release if requested
-    let release: LBReleaseMeta?
+    public let release: LBReleaseMeta?
     /// MusicBrainz tags related to this recording
-    let tags: LBTags?
+    public let tags: LBTags?
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)

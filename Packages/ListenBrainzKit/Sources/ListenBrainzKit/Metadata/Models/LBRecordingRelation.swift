@@ -5,11 +5,11 @@
 import Foundation
 
 /// A relation between an artist and a recording
-public struct LBRecordingRelation: Decodable {
-    let artistName: String
-    let artistMbid: UUID
+public struct LBRecordingRelation: Decodable, Sendable {
+    public let artistName: String
+    public let artistMbid: UUID
     /// The type of the artist's involvement (vocal, instrument, etc.)
-    let type: String
+    public let type: String
     /// Instrument played, if any
-    let instrument: String?
+    public let instrument: String?
 }
