@@ -11,6 +11,7 @@ public struct LBClient: Sendable {
     public let stats: LBStatisticsClient
     public let freshReleases: LBFreshReleasesClient
     public let pins: LBPinsClient
+    public let social: LBSocialClient
 
     public init(
         token: String,
@@ -31,5 +32,6 @@ public struct LBClient: Sendable {
         self.stats = LBStatisticsClient(client)
         self.freshReleases = LBFreshReleasesClient(client)
         self.pins = LBPinsClient(client)
+        self.social = LBSocialClient(client)
     }
 }
