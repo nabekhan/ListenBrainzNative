@@ -80,11 +80,7 @@ struct SearchView: View {
                 #if DEBUG
                 guard state == .loaded,
                       !didOpenDebugResult,
-                      ProcessInfo.processInfo.arguments.contains("-brainz-open-user-detail"),
-                      let result = model.results.first(where: {
-                          if case .user = $0 { return true }
-                          return false
-                      })
+                      let result = debugResultToOpen
                 else { return }
                 didOpenDebugResult = true
                 path.append(result)
@@ -139,13 +135,31 @@ struct SearchView: View {
         case let .recording(recording):
             RecordingDetailView(recording: recording, model: listeningModel)
         case let .releaseGroup(group):
-            SearchReleaseGroupDetailView(group: group)
+            ReleaseGroupDetailView(group: group, token: listeningModel.account.token)
         case let .user(user):
             UserDetailView(user: user, viewer: listeningModel.account)
         case let .playlist(playlist):
-            SearchPlaylistDetailView(playlist: playlist)
+            PlaylistDetailView(playlist: playlist, viewer: listeningModel.account)
         }
     }
+
+    #if DEBUG
+    private var debugResultToOpen: SearchResult? {
+        let arguments = ProcessInfo.processInfo.arguments
+        return model.results.first { result in
+            switch result {
+            case .user:
+                arguments.contains("-brainz-open-user-detail")
+            case .releaseGroup:
+                arguments.contains("-brainz-open-release-detail")
+            case .playlist:
+                arguments.contains("-brainz-open-playlist-detail")
+            default:
+                false
+            }
+        }
+    }
+    #endif
 }
 
 private struct SearchResultRow: View {
@@ -182,74 +196,5 @@ private struct SearchResultRow: View {
         case .recording: "music.note"
         case .playlist: "music.note.list"
         }
-    }
-}
-
-private struct SearchReleaseGroupDetailView: View {
-    let group: SearchReleaseGroup
-
-    var body: some View {
-        SearchCompactDetail(title: group.title, subtitle: group.artistName, systemImage: "square.stack") {
-            if let date = group.firstReleaseDate { detail("First released", date) }
-            if let type = group.primaryType { detail("Type", type) }
-            Link(destination: group.musicBrainzURL) {
-                Label("Open release group in MusicBrainz", systemImage: "arrow.up.right.square")
-            }
-        }
-    }
-}
-
-private struct SearchPlaylistDetailView: View {
-    let playlist: SearchPlaylist
-
-    var body: some View {
-        SearchCompactDetail(title: playlist.title, subtitle: "By \(playlist.creator)", systemImage: "music.note.list") {
-            if let annotation = playlist.annotation, !annotation.isEmpty { detail("About", annotation) }
-            detail("Visibility", playlist.isPublic ? "Public" : "Private")
-            if let lastModifiedAt = playlist.lastModifiedAt {
-                detail("Updated", lastModifiedAt.formatted(date: .abbreviated, time: .shortened))
-            }
-            if let url = playlist.listenBrainzURL {
-                Link(destination: url) {
-                    Label("Open playlist in ListenBrainz", systemImage: "arrow.up.right.square")
-                }
-            }
-        }
-    }
-}
-
-private struct SearchCompactDetail<Content: View>: View {
-    let title: String
-    let subtitle: String
-    let systemImage: String
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                VStack(spacing: 10) {
-                    Image(systemName: systemImage)
-                        .font(.system(size: 54))
-                        .foregroundStyle(AppTheme.accent)
-                    Text(title).font(.title.bold()).multilineTextAlignment(.center)
-                    Text(subtitle).font(.title3).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                VStack(alignment: .leading, spacing: 14, content: content)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(18)
-                    .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
-            }
-            .padding(20)
-        }
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-private func detail(_ label: String, _ value: String) -> some View {
-    VStack(alignment: .leading, spacing: 3) {
-        Text(label).font(.caption).foregroundStyle(.secondary)
-        Text(value).font(.body)
     }
 }

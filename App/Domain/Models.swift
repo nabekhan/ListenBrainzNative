@@ -1,5 +1,15 @@
 import Foundation
 
+enum CoverArtArchiveURL {
+    static func release(_ mbid: UUID) -> URL? {
+        URL(string: "https://coverartarchive.org/release/\(mbid.uuidString.lowercased())/front-500")
+    }
+
+    static func releaseGroup(_ mbid: UUID) -> URL? {
+        URL(string: "https://coverartarchive.org/release-group/\(mbid.uuidString.lowercased())/front-500")
+    }
+}
+
 struct Account: Hashable, Sendable {
     let username: String
     let token: String
@@ -31,7 +41,7 @@ struct Recording: Identifiable, Hashable, Codable, Sendable {
 
     var artworkURL: URL? {
         guard let id = artworkReleaseMBID ?? releaseMBID else { return nil }
-        return URL(string: "https://coverartarchive.org/release/\(id.uuidString)/front-500")
+        return CoverArtArchiveURL.release(id)
     }
 }
 
@@ -74,7 +84,7 @@ struct RankedRelease: Identifiable, Hashable, Codable, Sendable {
     var id: String { mbid?.uuidString ?? "release:\(artistName):\(name)" }
     var artworkURL: URL? {
         guard let mbid else { return nil }
-        return URL(string: "https://coverartarchive.org/release/\(mbid.uuidString)/front-500")
+        return CoverArtArchiveURL.release(mbid)
     }
 }
 
@@ -234,7 +244,7 @@ struct FreshRelease: Identifiable, Hashable, Sendable {
 
     var artworkURL: URL? {
         guard let artworkReleaseMBID else { return nil }
-        return URL(string: "https://coverartarchive.org/release/\(artworkReleaseMBID.uuidString)/front-500")
+        return CoverArtArchiveURL.release(artworkReleaseMBID)
     }
 
     var typeDescription: String? {
@@ -326,6 +336,24 @@ struct SearchReleaseGroup: Identifiable, Hashable, Sendable {
     var musicBrainzURL: URL { URL(string: "https://musicbrainz.org/release-group/\(mbid.uuidString)")! }
 }
 
+struct ReleaseGroupDetail: Hashable, Sendable {
+    let mbid: UUID
+    let title: String
+    let artistCreditName: String
+    let artists: [RankedArtist]
+    let releaseDate: String?
+    let primaryType: String?
+    let tags: [String]
+    let artworkReleaseMBID: UUID?
+
+    var artworkURL: URL? {
+        if let artworkReleaseMBID {
+            return CoverArtArchiveURL.release(artworkReleaseMBID)
+        }
+        return CoverArtArchiveURL.releaseGroup(mbid)
+    }
+}
+
 struct SearchUser: Identifiable, Hashable, Sendable {
     let username: String
     var id: String { username.lowercased() }
@@ -353,17 +381,61 @@ struct SearchPlaylist: Identifiable, Hashable, Sendable {
     let lastModifiedAt: Date?
 
     var id: String { identifier }
-    var listenBrainzURL: URL? {
+    var playlistMBID: UUID? {
         guard let source = URL(string: identifier),
               source.scheme?.lowercased() == "https",
               source.host?.lowercased() == "listenbrainz.org",
               source.user == nil,
               source.password == nil,
               source.port == nil || source.port == 443,
-              source.pathComponents.dropFirst().first == "playlist"
+              source.query == nil,
+              source.fragment == nil
         else { return nil }
-        return source
+
+        let components = source.pathComponents.filter { $0 != "/" }
+        guard components.count == 2,
+              components[0].lowercased() == "playlist"
+        else { return nil }
+        return UUID(uuidString: components[1])
     }
+
+    var listenBrainzURL: URL? {
+        guard let playlistMBID else { return nil }
+        return URL(string: "https://listenbrainz.org/playlist/\(playlistMBID.uuidString)")
+    }
+}
+
+struct PlaylistDetail: Hashable, Sendable {
+    let mbid: UUID
+    let title: String
+    let creator: String
+    let annotation: String?
+    let createdAt: Date?
+    let lastModifiedAt: Date?
+    let isPublic: Bool
+    let createdFor: String?
+    let collaborators: [String]
+    let copiedFrom: String?
+    let tracks: [PlaylistTrack]
+
+    var listenBrainzURL: URL {
+        URL(string: "https://listenbrainz.org/playlist/\(mbid.uuidString)")!
+    }
+
+    var totalDurationMilliseconds: Int? {
+        let durations = tracks.compactMap(\.recording.durationMilliseconds)
+        guard !durations.isEmpty else { return nil }
+        return durations.reduce(0, +)
+    }
+}
+
+struct PlaylistTrack: Identifiable, Hashable, Sendable {
+    let position: Int
+    let recording: Recording
+    let addedAt: Date?
+    let addedBy: String?
+
+    var id: String { "\(position):\(recording.id)" }
 }
 
 enum SearchResult: Identifiable, Hashable, Sendable {

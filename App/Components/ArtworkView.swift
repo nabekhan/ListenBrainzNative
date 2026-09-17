@@ -52,6 +52,10 @@ struct ArtistArtworkView: View {
                     .font(.title.bold())
                     .foregroundStyle(.white)
             }
-            .accessibilityLabel("\(artist.name), \(artist.listenCount.formatted()) listens")
+            .accessibilityLabel(
+                artist.listenCount > 0
+                    ? "\(artist.name), \(artist.listenCount.formatted()) listens"
+                    : "\(artist.name), MusicBrainz artist"
+            )
     }
 }

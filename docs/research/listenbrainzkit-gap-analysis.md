@@ -14,7 +14,7 @@ Snapshot: 2026-09-17. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-
 | Top artist/release/release-group/recording | SUPPORTED | User and sitewide | Reuse |
 | Listening activity | SUPPORTED | User and sitewide | Reuse |
 | Recording feedback | SUPPORTED | Love/hate/clear and lookup | Reuse |
-| Playlist lists/search | PARTIALLY_SUPPORTED | User/created-for/collaborator/recommendation listings plus public text search | Reuse list/search calls; add detail/mutation endpoints upstream |
+| Playlist lists/search/detail | SUPPORTED | User/created-for/collaborator/recommendation listings, public search, and complete typed JSPF detail/track payloads | Reuse; detail extension is an upstream candidate |
 | LB Radio | PARTIALLY_SUPPORTED | Tags and artist seed only | Re-evaluate against current prompt-generation API |
 | New activity/identity statistics | MISSING | Daily, artist, era, genre, evolution, map, listeners absent | Add in a focused upstream extension |
 | Year in Music | MISSING | Current and legacy endpoints absent | App extension first; upstream candidate |
@@ -24,7 +24,7 @@ Snapshot: 2026-09-17. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-
 | Popularity | MISSING | Entity counts and artist top entities absent | App extension for detail screens |
 | Fresh Releases/explore | SUPPORTED | Personalized and sitewide Fresh Releases, tolerant models, explicit 204 empty result | Discover slice; Music Neighborhood and AI Brainz remain missing |
 | Art/share endpoints | MISSING | Grid/stat/YiM/playlist art absent | Small typed art service |
-| Full playlist CRUD/import/export | MISSING | Detail, items, ordering, copy, import/export absent | Focused playlist extension |
+| Playlist mutations/import/export | MISSING | Create/edit/delete, items, ordering, copy, import/export absent | Focused playlist extension after browse paths |
 | Player/JSPF resolution | MISSING | Instant-play endpoints absent | Delay until read paths are strong |
 | Settings/status/data tools | MISSING | Preferences and maintenance endpoints absent | Add only when UI requires them |
 
@@ -38,9 +38,9 @@ Snapshot: 2026-09-17. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-
 
 ## Build result
 
-The development-only SwiftLint plugin was removed from the vendored package target because it prevented clean consumers from building under Command Line Tools. Under Xcode 27, `swift test` builds successfully and runs 63 tests with the token-dependent and opt-in live suites skipped. A separate, explicitly paced `LISTENBRAINZ_PUBLIC_SMOKE=1` run passes against current production recent-listen, count, Playing Now, top-artist, listening-activity, current/history Pins, sitewide Fresh Releases, public-playlist search, and canonical user-search endpoints.
+The development-only SwiftLint plugin was removed from the vendored package target because it prevented clean consumers from building under Command Line Tools. Under Xcode 27, `swift test` builds successfully and runs 68 tests with the token-dependent and opt-in live suites skipped. A separate, explicitly paced `LISTENBRAINZ_PUBLIC_SMOKE=1` run passes against current production recent-listen, count, Playing Now, top-artist, listening-activity, current/history Pins, sitewide Fresh Releases, public-playlist search, and canonical user-search endpoints.
 
-The local fork also now verifies path-safe endpoint construction, endpoint-required trailing slashes, required User-Agent behavior, omission of empty authorization, explicit authorization before a custom API origin receives a token, rejection of insecure roots and cross-origin authenticated redirects, conservative interpretation of `Retry-After` / `X-RateLimit-Reset-In`, tolerant playlist timestamps, the Pins API's distinct string versus Boolean mutation responses, and exact social relationship paths/status contracts.
+The local fork also now verifies path-safe endpoint construction, endpoint-required trailing slashes (including release-group metadata), required User-Agent behavior, omission of empty authorization, explicit authorization before a custom API origin receives a token, rejection of insecure roots and cross-origin authenticated redirects, conservative interpretation of `Retry-After` / `X-RateLimit-Reset-In`, tolerant playlist timestamps, complete JSPF identity decoding, the Pins API's distinct string versus Boolean mutation responses, and exact social relationship paths/status contracts.
 
 ## Recommendation
 

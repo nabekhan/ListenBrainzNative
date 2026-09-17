@@ -31,7 +31,8 @@ Snapshot: 2026-09-17. Repository/source inspection, Xcode 27 builds, simulator r
 | History/listen row | first.fm + LB website + Cassette | Dense scrobble hierarchy, media-row mechanics | MBID-aware row, source/time/feedback/context menu |
 | Home shelves | Cassette/Minidisc | Shelf sizing, section headers, loading/empty states | LB-specific curation |
 | Artist screen | Volta visual reference + first.fm | Concept only from GPL Volta; MIT structure from first.fm | Independent stretchy artwork/stat/entity implementation |
-| Release/recording detail | Cassette + first.fm | Media layout patterns | ListenBrainz identity/actions/history |
+| Release/recording detail | Cassette + first.fm + current LB metadata behavior | Media layout patterns and release/release-group semantics | Native enriched release-group page, canonical identities, bounded detail cache; concrete track listing remains |
+| Playlist detail | Current LB JSPF API + Android behavior + Cassette media patterns | Payload semantics and native artwork/list hierarchy; no GPL UI copied | One-request typed detail, mosaic, creator/metadata summary, lazy non-hydrating track rows |
 | Stats/heatmap | Autohop MIT portions + native Swift Charts | Period/history coordinator patterns | Server-stat adapters and music wording |
 | Scoped search | Official Android behavior + first.fm structure + Minidisc limiter concept | One-scope debounce/cache behavior and cancellation-safe pacing concepts; no donor UI copied | Native search sheet, separate LB/MB gates, MBID-aware routing, compact truthful fallbacks |
 | Visited-user profile | Current LB web + official Android/iOS behavior + first.fm personality | Profile hierarchy and ListenBrainz semantics; no GPL UI copied | Staged native overview, latest context, pin, listens, lazy stats, section-aware bounded cache |
