@@ -3,6 +3,7 @@ import SwiftUI
 struct DiscoverView: View {
     @State private var model: FreshReleasesModel
     @State private var isSearchPresented = false
+    @State private var isRecommendationsPresented = false
     @Bindable var listeningModel: ListeningModel
     private let account: Account
     @AppStorage("discover.freshReleaseScope") private var scope: FreshReleaseScope = .forYou
@@ -18,6 +19,7 @@ struct DiscoverView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 22) {
                     header
+                    recommendationsLink
                     scopePicker
                     content
                 }
@@ -47,12 +49,56 @@ struct DiscoverView: View {
                 if ProcessInfo.processInfo.arguments.contains("-brainz-open-search") {
                     isSearchPresented = true
                 }
+                if ProcessInfo.processInfo.arguments.contains("-brainz-open-recommendations") {
+                    isRecommendationsPresented = true
+                }
                 #endif
             }
             .sheet(isPresented: $isSearchPresented) {
                 SearchView(account: account, listeningModel: listeningModel)
             }
+            .navigationDestination(isPresented: $isRecommendationsPresented) {
+                RecommendationsView(account: account, listeningModel: listeningModel)
+            }
+            .mediaDestinations(model: listeningModel)
         }
+    }
+
+    private var recommendationsLink: some View {
+        NavigationLink {
+            RecommendationsView(account: account, listeningModel: listeningModel)
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(AppTheme.heroGradient)
+                    Image(systemName: "wand.and.stars")
+                        .font(.system(size: 29, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 72, height: 72)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Made for you")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text("Recommended tracks, Weekly Jams, and exploration playlists")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(14)
+            .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Open ListenBrainz recommendations")
     }
 
     private var header: some View {

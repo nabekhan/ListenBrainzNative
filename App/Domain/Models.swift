@@ -379,6 +379,28 @@ struct SearchPlaylist: Identifiable, Hashable, Sendable {
     let identifier: String
     let isPublic: Bool
     let lastModifiedAt: Date?
+    let recommendationType: String?
+    let expiresAt: Date?
+
+    init(
+        title: String,
+        creator: String,
+        annotation: String?,
+        identifier: String,
+        isPublic: Bool,
+        lastModifiedAt: Date?,
+        recommendationType: String? = nil,
+        expiresAt: Date? = nil
+    ) {
+        self.title = title
+        self.creator = creator
+        self.annotation = annotation
+        self.identifier = identifier
+        self.isPublic = isPublic
+        self.lastModifiedAt = lastModifiedAt
+        self.recommendationType = recommendationType
+        self.expiresAt = expiresAt
+    }
 
     var id: String { identifier }
     var playlistMBID: UUID? {
@@ -403,6 +425,25 @@ struct SearchPlaylist: Identifiable, Hashable, Sendable {
         guard let playlistMBID else { return nil }
         return URL(string: "https://listenbrainz.org/playlist/\(playlistMBID.uuidString)")
     }
+}
+
+struct RecommendedRecording: Identifiable, Hashable, Sendable {
+    let recording: Recording
+    let score: Double
+    let lastListenedAt: Date?
+
+    var id: String { recording.id }
+}
+
+struct RecordingRecommendationPage: Hashable, Sendable {
+    let username: String
+    let lastUpdated: Date
+    let offset: Int
+    let serverCount: Int
+    let totalCount: Int
+    let recommendations: [RecommendedRecording]
+
+    var nextOffset: Int { offset + serverCount }
 }
 
 struct PlaylistDetail: Hashable, Sendable {

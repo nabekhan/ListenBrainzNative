@@ -41,10 +41,10 @@ Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or
 | Recommend recording/personal blurb | Y | Y | Y | Y | — | Y | P1 | Contextual action |
 | Reviews/CritiqueBrainz events | Y | Y | Y | Y | — | Y | P2 | Link/write where useful |
 | Thanks/hide/unhide/delete feed event | Y | Y | Y | P | — | Y | P2 | Secondary feed actions |
-| Collaborative-filter recommendations | Y | Y | Y | P | — | P | P1 | Discovery shelf and feedback |
+| Collaborative-filter recommendations | Y | Y | Y | P | Y | P | P1 | Native For You tracks landed with paginated batch hydration; feedback remains staged |
 | Recommendation feedback | Y | Y | P | P | — | P | P1 | Train server recommendations |
 | Fresh Releases | Y | Y | P | P | Y | — | P1 | Native Discover grid; personalized default and explicit sitewide scope |
-| Created For You/recommended playlists | Y | Y | Y | Y | P | Y | P1 | Discovery and profile |
+| Created For You/recommended playlists | Y | Y | Y | Y | Y | Y | P1 | Lazy native For You list uses server generator/expiry metadata and the shared playlist detail |
 | User/collaborator playlists | Y | Y | Y | Y | P | Y | P1 | Browse before edit |
 | Playlist detail/create/edit/delete | Y | Y | Y | P | P | Y | P2 | Native one-request detail landed; mutations remain staged |
 | Playlist add/remove/reorder/copy | Y | Y | Y | ? | — | Y | P2 | Stage after playlist detail |

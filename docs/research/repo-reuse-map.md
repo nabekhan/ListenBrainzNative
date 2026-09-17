@@ -7,7 +7,7 @@ Snapshot: 2026-09-17. Repository/source inspection, Xcode 27 builds, simulator r
 | ListenBrainz server | Authoritative API + production web, active today | GPL-2.0 | Product semantics, current API, UI relationships | Never transplant frontend code | Reference only |
 | ListenBrainz Android/KMP | Mature official client; active | GPL-3+ with stated Apache sections | Edge cases, feature behavior, shared service shapes | KMP framework/export weight is high | Reference now; re-evaluate sharedKit |
 | ListenBrainz iOS | Official SwiftUI beta, iOS 16.2 | GPL-3+ with stated Apache sections | Apple constraints, feed/YiM/profile behavior | Combine/Alamofire architecture and uneven feature depth | Reference; independently implement |
-| ListenBrainzKit | Swift 6 API wrapper, iOS 16+, last commit 2025-02 | MPL-2.0 | P0 core, metadata, stats, feedback models/calls | Fix URL/User-Agent/rate policy; fill gaps incrementally | Vendor/fork under MPL |
+| ListenBrainzKit | Swift 6 API wrapper, iOS 16+, last commit 2025-02 | MPL-2.0 | P0 core, metadata, stats, feedback, playlist, and typed CF recommendation calls | Fix transport/rate policy; fill gaps incrementally | Vendor/fork under MPL |
 | first.fm | Last.fm SwiftUI client, iOS 15.5, 2024 | MIT | Overall IA/personality; profile, scrobbles, rankings, entity pages, search | Replace callbacks/ObservableObject and Spotify artwork N+1 | Adapt concepts and selected MIT components |
 | AppleMusicBottombarSwiftUI | iOS 26 accessory/transition demo, active 2026 | No license | `tabViewBottomAccessory`, minimized bar, zoom transition behavior | Small, current, but legally non-reusable | Independently reproduce with Apple APIs |
 | Cassette | Full SwiftUI music app, iOS 18, active 2026 | MPL-2.0 | Media rows/cards/shelves, entity/detail VMs, empty/loading UI, Fresh Releases, LB behavior | Large but clean; preserve file notices | Selectively adapt MPL files |
@@ -25,14 +25,15 @@ Snapshot: 2026-09-17. Repository/source inspection, Xcode 27 builds, simulator r
 | Requirement | Best donor | What can be reused | What is written here |
 |---|---|---|---|
 | Overall information architecture | first.fm + current LB web | Profile/history/ranking hierarchy and LB product grouping | Native tab/search flow for Home, History, Discover, Stats, Profile |
-| API/domain | ListenBrainzKit | Existing P0 clients/models | Reliability fixes, app adapters, missing endpoint extensions |
+| API/domain | ListenBrainzKit | Existing P0 clients/models | Reliability fixes, app adapters, typed CF/social/pins/detail extensions |
 | Product behavior | LB API/web + Android | Semantics, event types, pagination, edge cases | Native iOS interaction |
 | Bottom accessory | Apple native APIs + Minidisc behavior | System API behavior; MPL patterns where needed | Conditional Playing Now/latest-listen accessory |
 | History/listen row | first.fm + LB website + Cassette | Dense scrobble hierarchy, media-row mechanics | MBID-aware row, source/time/feedback/context menu |
 | Home shelves | Cassette/Minidisc | Shelf sizing, section headers, loading/empty states | LB-specific curation |
 | Artist screen | Volta visual reference + first.fm | Concept only from GPL Volta; MIT structure from first.fm | Independent stretchy artwork/stat/entity implementation |
 | Release/recording detail | Cassette + first.fm + current LB metadata behavior | Media layout patterns and release/release-group semantics | Native enriched release-group page, canonical identities, bounded detail cache; concrete track listing remains |
-| Playlist detail | Current LB JSPF API + Android behavior + Cassette media patterns | Payload semantics and native artwork/list hierarchy; no GPL UI copied | One-request typed detail, mosaic, creator/metadata summary, lazy non-hydrating track rows |
+| Playlist detail | Current LB JSPF API + Android behavior + Cassette media patterns | Payload semantics and native artwork/list hierarchy; no GPL UI copied | One-request typed detail, mosaic, creator/metadata summary, lazy non-hydrating track rows, and Created For You entry points |
+| For You recommendations | Current LB API/web + Android/KMP behavior | CF paging, generated-playlist taxonomy, and empty-state semantics; no donor UI copied | Independent native SwiftUI tracks/playlists surface with one batched metadata hydration request per nonempty page |
 | Stats/heatmap | Autohop MIT portions + native Swift Charts | Period/history coordinator patterns | Server-stat adapters and music wording |
 | Scoped search | Official Android behavior + first.fm structure + Minidisc limiter concept | One-scope debounce/cache behavior and cancellation-safe pacing concepts; no donor UI copied | Native search sheet, separate LB/MB gates, MBID-aware routing, compact truthful fallbacks |
 | Visited-user profile | Current LB web + official Android/iOS behavior + first.fm personality | Profile hierarchy and ListenBrainz semantics; no GPL UI copied | Staged native overview, latest context, pin, listens, lazy stats, section-aware bounded cache |

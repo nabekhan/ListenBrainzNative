@@ -26,6 +26,13 @@ struct MainTabView: View {
     var body: some View {
         accessoryTabs
             .task { await model.load() }
+            .onAppear {
+                #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-brainz-open-recommendations") {
+                    selectedTab = .discover
+                }
+                #endif
+            }
             .environment(pins)
             .sheet(item: $presentedListen) { listen in
                 NavigationStack {

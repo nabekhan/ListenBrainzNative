@@ -4,7 +4,7 @@ This project is intended to be licensed under MPL-2.0. This file is updated when
 
 ## Included source
 
-- ListenBrainzKit, commit `c06b12f8c35bfee8fcf11dc973b5d78e23719cdf`, is vendored at `Packages/ListenBrainzKit/` and locally patched for transport correctness, public model access, and tolerant identifier decoding. It is licensed under MPL-2.0; its original license and per-file notices are preserved.
+- ListenBrainzKit, commit `c06b12f8c35bfee8fcf11dc973b5d78e23719cdf`, is vendored at `Packages/ListenBrainzKit/` and locally patched for transport correctness, public model access, tolerant identifier decoding, and typed social, Pins, detail, Fresh Releases, and recommendation APIs. It is licensed under MPL-2.0; its original license and per-file notices are preserved.
 
 No UI source from the design-reference repositories has been copied into the application. Their inspected behavior and visual ideas informed an independent native SwiftUI implementation.
 

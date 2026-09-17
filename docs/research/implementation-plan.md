@@ -16,6 +16,7 @@ App-owned provider boundaries
   ├─ SearchProviding → ListenBrainz + MusicBrainz
   ├─ PinProviding → ListenBrainzKit pins extension
   ├─ SocialProviding → ListenBrainzKit social/core clients
+  ├─ RecommendationsProviding → typed CF + generated-playlist reads
   ├─ ReleaseDetailProviding/PlaylistDetailProviding → typed metadata/JSPF reads
   └─ Feature models → staged reads + bounded section/entity caches
               ↓
@@ -44,19 +45,19 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 
 ## Staging after the slice
 
-- Phase 3: full history/date jump, feed, recommendations, and broader playlist browsing. Statistics, Fresh Releases, scoped search, Pins, native visited-user/social profiles, release-group details, and playlist details now have initial slices.
+- Phase 3: full history/date jump, feed, recommendation actions, and broader playlist browsing. Statistics, Fresh Releases, scoped search, Pins, native visited-user/social profiles, release-group/playlist details, and For You recommendations now have initial slices.
 - Phase 4: Year in Music, shareable art, LB Radio, playlist editing, playback/content resolution, MusicKit-scoped capture, offline submit queue, inspect/mapping tools.
 
 ## Next implementation sequence
 
-1. Build recommendations and the music-first social feed on the reusable entity destinations now in place.
+1. Build the music-first social feed and recommendation feedback/actions on the reusable entity destinations now in place.
 2. Add concrete release track listings and broader playlist/profile entry points without introducing metadata waterfalls.
 
 ## Constraints recorded
 
 - Production website interactive inspection was blocked by the unavailable configured browser; current frontend source/routes and public API calls were inspected instead.
 - Xcode 27, the iOS 27 runtime, app build, test bundle, real simulator tests, and live public data have now been exercised. Visual checkpoints cover onboarding plus real-data Home in light/dark mode; smaller-device validation is recorded with the build evidence.
-- The verified checkpoint currently passes 68 vendored-package tests and 58 app tests, plus the deliberately paced opt-in production public API smoke suite.
+- The verified checkpoint currently passes 74 vendored-package tests and 65 app tests, plus the deliberately paced opt-in production public API smoke suite.
 - Phase 3 statistics now includes on-demand server activity for the website's seven primary ranges, per-period request caching, accessible native charts, and explicit empty/retry behavior. Real-data visual checks covered all-time activity on large and small simulators in dark and light modes.
 - Fresh Releases now uses an upstreamable ListenBrainzKit extension. Personalized results are the default and an HTTP 204 becomes an honest empty state; selecting All is the only route that makes a sitewide request. The native slice follows the website's one-week window and newest-first presentation, while distinguishing upcoming releases and concrete release versus release-group identity. The API client preserves the sitewide endpoint's required terminal slash, with regression coverage.
 - Search now exposes Users, Artists, Albums (release groups), Tracks, and public Playlists in one native sheet. It sends only the selected scope after a 500 ms debounce, caches per normalized query, cancels abandoned/stale work, preserves release-group identity, and reuses the native artist/recording destinations. ListenBrainz and MusicBrainz have independent process-shared gates; canonical paths avoid hidden redirect requests. Real MusicBrainz results were visually checked in dark/light mode and XXL Dynamic Type.
@@ -64,7 +65,8 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 - User search now opens a native visited-user profile with identity and listen count, latest/Playing Now context, current pin, recent listens, and a lazy all-time artist shelf. Reads are staged instead of using Android's eager profile waterfall. A five-minute, 100-entry LRU cache tracks overview and artist freshness separately so stale content remains visible while only the expired section revalidates. Dark-mode real-data simulator QA covered missing artwork and the finite request sequence.
 - Visited-user profiles now link to a lazy native Social destination with complete follower/following lists, similar listeners, pairwise compatibility, and authenticated follow state. Public graph data and viewer-specific relationship data use separate five-minute bounded caches. Follow/unfollow is serialized, optimistic, and rollback-safe; rows intentionally avoid profile hydration and N+1 requests. Real public data was visually checked in dark mode and at accessibility-extra-large Dynamic Type; production mutations were deliberately not exercised.
 - Album search now opens a native release-group page enriched by one ListenBrainz metadata request: artwork, credited artists, tags, dates/types, and an explicit release-group identity. The endpoint's misleading `release` inclusion mirrors group metadata, so it is not presented as a concrete edition. Playlist search now opens a complete JSPF-backed page with an artwork mosaic, creator, visibility/dates, duration, and a lazy ordered track list; a 289-track production playlist rendered from one detail response with no row hydration. Both use five-minute bounded UUID caches and preserve stale or search-seed content through refresh failures.
-- Runtime QA exposed two transport/metadata defects that source-only tests had missed: the release-group metadata route requires a terminal slash to avoid a hidden HTTP 308 request, and Cover Art Archive rejects uppercase UUID paths. Canonical request tests and centralized lowercase artwork URL tests now guard both fixes.
+- For You now presents paginated collaborative-filter tracks and server-generated Daily Jams, Weekly Jams, and exploration playlists. A nonempty track page costs exactly one CF request plus one batch `/1/metadata/recording/` request through the shared gate; empty pages skip hydration, playlist reads remain lazy, and rows reuse the canonical recording/playlist destinations. Real data was checked in dark/light mode and at an accessibility text size.
+- Runtime QA exposed three transport/metadata defects that source-only tests had missed: release-group and recording-metadata routes require terminal slashes to avoid hidden redirects, encoded JSON bodies need an explicit content type, and Cover Art Archive rejects uppercase UUID paths. Canonical request/header tests and centralized lowercase artwork URL tests now guard the fixes.
 - Official KMP framework export was attempted and currently fails at the native Room KSP step; it remains a behavior reference rather than an app dependency.
 
 ## Rate-limit behavior decision

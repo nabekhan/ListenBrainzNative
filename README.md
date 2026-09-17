@@ -1,6 +1,6 @@
 # Brainz for iOS
 
-Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening history, taste, and music identity. The project is currently an early vertical slice: it connects to real ListenBrainz data and prioritizes a polished read experience before broader social, discovery, playlist, playback, and scrobbling work.
+Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening history, taste, discovery graph, and music identity. The project is a growing Phase 3 implementation: it connects to real ListenBrainz data and prioritizes a polished read experience before playback and scrobbling work.
 
 ## Current vertical slice
 
@@ -11,6 +11,9 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Listen count and top artist, album, and recording rankings
 - Server-calculated listening-activity charts across seven ListenBrainz periods
 - Fresh Releases discovery with deliberate personalized and sitewide scopes
+- For You recording recommendations plus Daily/Weekly generated playlists
+- Native user search, visited-user profiles, followers/following, similar listeners, and compatibility
+- Pin history and owner pin actions; public playlist search and complete playlist detail
 - Recording feedback for authenticated users
 - Cached snapshots for useful cold starts and degraded-network behavior
 - Native iPhone/iPad navigation, Dynamic Type, dark mode, VoiceOver labels, and an iOS 26 bottom accessory with an iOS 18 fallback
