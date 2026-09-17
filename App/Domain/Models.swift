@@ -262,6 +262,120 @@ enum FreshReleaseScope: String, CaseIterable, Identifiable, Sendable {
     var title: String { self == .forYou ? "For You" : "All" }
 }
 
+enum SearchScope: String, CaseIterable, Identifiable, Sendable {
+    case users
+    case artists
+    case releaseGroups
+    case recordings
+    case playlists
+
+    var id: Self { self }
+    var title: String {
+        switch self {
+        case .users: "Users"
+        case .artists: "Artists"
+        case .releaseGroups: "Albums"
+        case .recordings: "Tracks"
+        case .playlists: "Playlists"
+        }
+    }
+
+    var minimumQueryLength: Int { self == .playlists ? 3 : 1 }
+}
+
+struct SearchReleaseGroup: Identifiable, Hashable, Sendable {
+    let mbid: UUID
+    let title: String
+    let artistName: String
+    let primaryType: String?
+    let firstReleaseDate: String?
+
+    var id: UUID { mbid }
+    var musicBrainzURL: URL { URL(string: "https://musicbrainz.org/release-group/\(mbid.uuidString)")! }
+}
+
+struct SearchUser: Identifiable, Hashable, Sendable {
+    let username: String
+    var id: String { username.lowercased() }
+    var listenBrainzURL: URL? {
+        URL(string: "https://listenbrainz.org")?
+            .appending(path: "user")
+            .appending(path: username)
+    }
+}
+
+struct SearchPlaylist: Identifiable, Hashable, Sendable {
+    let title: String
+    let creator: String
+    let annotation: String?
+    let identifier: String
+    let isPublic: Bool
+    let lastModifiedAt: Date?
+
+    var id: String { identifier }
+    var listenBrainzURL: URL? {
+        guard let source = URL(string: identifier),
+              source.scheme?.lowercased() == "https",
+              source.host?.lowercased() == "listenbrainz.org",
+              source.user == nil,
+              source.password == nil,
+              source.port == nil || source.port == 443,
+              source.pathComponents.dropFirst().first == "playlist"
+        else { return nil }
+        return source
+    }
+}
+
+enum SearchResult: Identifiable, Hashable, Sendable {
+    case user(SearchUser)
+    case artist(RankedArtist)
+    case releaseGroup(SearchReleaseGroup)
+    case recording(Recording)
+    case playlist(SearchPlaylist)
+
+    var id: String {
+        switch self {
+        case let .user(value): "user:\(value.id)"
+        case let .artist(value): "artist:\(value.id)"
+        case let .releaseGroup(value): "release-group:\(value.id.uuidString)"
+        case let .recording(value): "recording:\(value.id)"
+        case let .playlist(value): "playlist:\(value.id)"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case let .user(value): value.username
+        case let .artist(value): value.name
+        case let .releaseGroup(value): value.title
+        case let .recording(value): value.title
+        case let .playlist(value): value.title
+        }
+    }
+
+    var subtitle: String? {
+        switch self {
+        case .user: "ListenBrainz user"
+        case let .artist(value): value.listenCount > 0 ? "\(value.listenCount.formatted()) of your listens" : "MusicBrainz artist"
+        case let .releaseGroup(value): [value.artistName.nilIfEmpty, value.firstReleaseDate, value.primaryType]
+                .compactMap { $0 }
+                .joined(separator: " · ")
+        case let .recording(value): [value.artistName.nilIfEmpty, value.releaseTitle]
+                .compactMap { $0 }
+                .joined(separator: " · ")
+        case let .playlist(value): "By \(value.creator)"
+        }
+    }
+}
+
+enum SearchLoadState: Equatable {
+    case idle
+    case waiting
+    case loading
+    case loaded
+    case failed(String)
+}
+
 enum FreshReleasesLoadState: Equatable {
     case idle
     case loading

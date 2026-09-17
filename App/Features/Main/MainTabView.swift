@@ -73,7 +73,7 @@ struct MainTabView: View {
                 HistoryView(model: model)
             }
             Tab("Discover", systemImage: "sparkles", value: .discover) {
-                DiscoverView(account: account)
+                DiscoverView(account: account, listeningModel: model)
             }
             Tab("Taste", systemImage: "chart.bar.xaxis", value: .taste) {
                 TasteView(model: model)

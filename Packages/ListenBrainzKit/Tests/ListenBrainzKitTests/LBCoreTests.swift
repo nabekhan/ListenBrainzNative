@@ -15,6 +15,89 @@ import Testing
         let client = LBCoreClient(MockAPIClient(result: .success(mockRes)))
 
         #expect(try await client.searchUser(term: "") == ["abc", "def"])
+        let request = try #require((client.apiClient as? MockAPIClient)?.request as? SearchUserRequest)
+        #expect(request.data.path == "/1/search/users/")
+        #expect(request.data.preservesTrailingSlash)
+    }
+
+    @Test("Public playlist search uses the generic search endpoint and clamps paging")
+    func searchPlaylists() async throws {
+        let client = LBCoreClient(MockAPIClient(result: .success(
+            RawPlaylistResponse(playlists: [])
+        )))
+
+        let playlists = try await client.searchPlaylists(query: "ambient", count: 400, offset: -9)
+
+        #expect(playlists.isEmpty)
+        let request = try #require((client.apiClient as? MockAPIClient)?.request as? SearchPlaylistsRequest)
+        #expect(request.data.path == "/1/playlist/search")
+        #expect(request.data.queryItems["query"] == ["ambient"])
+        #expect(request.data.queryItems["count"] == ["100"])
+        #expect(request.data.queryItems["offset"] == ["0"])
+    }
+
+    @Test("Public playlist search rejects short queries before transport")
+    func searchPlaylistsRejectsShortQuery() async {
+        let mock = MockAPIClient(result: .success(RawPlaylistResponse(playlists: [])))
+        let client = LBCoreClient(mock)
+
+        await #expect(throws: LBError.invalidParam) {
+            _ = try await client.searchPlaylists(query: " ab ")
+        }
+        #expect(mock.request == nil)
+    }
+
+    @Test("Playlist search metadata tolerates an absent last-modified timestamp")
+    func playlistMetadataWithoutLastModifiedAt() throws {
+        let data = Data(#"""
+        {
+          "playlists": [{"playlist": {
+            "creator": "listener",
+            "title": "Quiet records",
+            "identifier": "https://listenbrainz.org/playlist/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "date": "2026-09-17T12:00:00.000000+00:00",
+            "extension": {
+              "https://musicbrainz.org/doc/jspf#playlist": {"public": true}
+            },
+            "track": []
+          }}],
+          "playlist_count": 1,
+          "count": 1,
+          "offset": 0
+        }
+        """#.utf8)
+
+        let response = try JSONDecoder.ListenBrainz.decode(RawPlaylistResponse.self, from: data)
+        let playlist = try #require(response.playlists.first?.playlist)
+        let metadata = LBPlaylistMetadata(raw: playlist)
+        #expect(metadata.lastModifiedAt == nil)
+    }
+
+    @Test("Playlist metadata accepts server timestamps with and without fractional seconds")
+    func playlistMetadataTimestampFormats() throws {
+        let data = Data(#"""
+        {
+          "playlists": [{"playlist": {
+            "creator": "listener",
+            "title": "Quiet records",
+            "identifier": "https://listenbrainz.org/playlist/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "date": "2026-09-17T12:00:00.123456+00:00",
+            "extension": {
+              "https://musicbrainz.org/doc/jspf#playlist": {
+                "public": true,
+                "last_modified_at": "2026-09-17T13:00:00+00:00"
+              }
+            },
+            "track": []
+          }}]
+        }
+        """#.utf8)
+
+        let response = try JSONDecoder.ListenBrainz.decode(RawPlaylistResponse.self, from: data)
+        let playlist = try #require(response.playlists.first?.playlist)
+        let metadata = LBPlaylistMetadata(raw: playlist)
+        #expect(metadata.date != nil)
+        #expect(metadata.lastModifiedAt != nil)
     }
 
     @Test("Submit multiple listens")

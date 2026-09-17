@@ -318,6 +318,147 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(sorted.map(\.releaseDate), ["2026-09-20", "2026-09-10", nil])
     }
 
+    func testSearchTrimsCachesPerScopeAndAvoidsEmptyRequests() async {
+        let provider = SearchFixtureProvider()
+        let model = SearchModel(
+            account: Account(username: "fixture", token: ""),
+            provider: provider
+        )
+
+        await model.searchImmediatelyForTesting()
+        let emptyRequestCount = await provider.requestCount()
+        XCTAssertEqual(emptyRequestCount, 0)
+
+        model.update(query: "  Björk  ")
+        await model.searchImmediatelyForTesting()
+        XCTAssertEqual(model.results.first?.title, "Björk")
+        let firstQueries = await provider.queries()
+        XCTAssertEqual(firstQueries, ["Björk"])
+
+        model.update(query: "BJÖRK")
+        await model.searchImmediatelyForTesting()
+        let cachedRequestCount = await provider.requestCount()
+        XCTAssertEqual(cachedRequestCount, 1)
+
+        model.update(scope: .recordings)
+        await model.searchImmediatelyForTesting()
+        let scopedRequestCount = await provider.requestCount()
+        XCTAssertEqual(scopedRequestCount, 2)
+    }
+
+    func testPlaylistSearchRequiresThreeCharactersBeforeCallingProvider() async {
+        let provider = SearchFixtureProvider()
+        let model = SearchModel(
+            account: Account(username: "fixture", token: ""),
+            provider: provider
+        )
+        model.update(scope: .playlists)
+        model.update(query: "ab")
+
+        await model.searchImmediatelyForTesting()
+
+        XCTAssertEqual(model.state, .idle)
+        let requestCount = await provider.requestCount()
+        XCTAssertEqual(requestCount, 0)
+    }
+
+    func testSupersededSearchCannotOverwriteNewerResults() async throws {
+        let provider = SearchFixtureProvider(delay: .milliseconds(40))
+        let model = SearchModel(
+            account: Account(username: "fixture", token: ""),
+            provider: provider
+        )
+        model.update(query: "older")
+        let older = Task { await model.searchImmediatelyForTesting() }
+        try await ContinuousClock().sleep(for: .milliseconds(5))
+        model.update(query: "newer")
+        await model.searchImmediatelyForTesting()
+        await older.value
+
+        XCTAssertEqual(model.results.first?.title, "newer")
+    }
+
+    func testMusicBrainzSearchUsesLiteralQueryAndClampedLimit() throws {
+        let request = try MusicBrainzSearchClient.makeRequest(
+            query: "A/B + C && D || E",
+            scope: .artists,
+            limit: 999,
+            userAgent: "Brainz test"
+        )
+        let components = try XCTUnwrap(URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false))
+        let values = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
+
+        XCTAssertEqual(values["query"], "\"A\\/B \\+ C \\&\\& D \\|\\| E\"")
+        XCTAssertEqual(values["limit"], "25")
+        XCTAssertEqual(values["fmt"], "json")
+        XCTAssertTrue(components.path.hasSuffix("/artist/"))
+        XCTAssertEqual(request.value(forHTTPHeaderField: "User-Agent"), "Brainz test")
+    }
+
+    func testMusicBrainzSearchNeutralizesLuceneWordOperators() {
+        XCTAssertEqual(
+            MusicBrainzSearchClient.escapeLuceneLiteral("Björk OR Prince NOT remix"),
+            "\"Björk OR Prince NOT remix\""
+        )
+    }
+
+    func testMusicBrainzRetryAfterSupportsHTTPDate() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "EEE',' dd MMM yyyy HH':'mm':'ss z"
+        let response = try XCTUnwrap(HTTPURLResponse(
+            url: URL(string: "https://musicbrainz.org")!,
+            statusCode: 429,
+            httpVersion: nil,
+            headerFields: ["Retry-After": formatter.string(from: now.addingTimeInterval(12))]
+        ))
+
+        XCTAssertEqual(MusicBrainzSearchClient.retryAfter(response, now: now), 12)
+    }
+
+    func testMusicBrainzRecordingDecodeToleratesSparseMetadataAndKeepsCreditJoinPhrases() throws {
+        let data = Data(#"""
+        {
+          "recordings": [{
+            "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "title": "A sparse recording",
+            "artist-credit": [
+              {"name": "One", "joinphrase": " feat. ", "artist": {"id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "name": "One"}},
+              {"name": "Two", "artist": {"id": "cccccccc-cccc-cccc-cccc-cccccccccccc", "name": "Two"}}
+            ]
+          }]
+        }
+        """#.utf8)
+
+        let result = try XCTUnwrap(MusicBrainzSearchClient.decode(data: data, scope: .recordings).first)
+        guard case let .recording(recording) = result else {
+            return XCTFail("Expected a recording result")
+        }
+        XCTAssertEqual(recording.artistName, "One feat. Two")
+        XCTAssertEqual(recording.releaseTitle, nil)
+        XCTAssertEqual(recording.artistMBIDs.count, 2)
+    }
+
+    func testClosingSearchCancelsAnInFlightProviderRequest() async throws {
+        let provider = SearchFixtureProvider(delay: .seconds(2))
+        let model = SearchModel(
+            account: Account(username: "fixture", token: ""),
+            provider: provider,
+            debounceDuration: .milliseconds(1)
+        )
+        model.update(query: "abandoned")
+        try await ContinuousClock().sleep(for: .milliseconds(20))
+
+        model.cancel()
+        try await ContinuousClock().sleep(for: .milliseconds(20))
+
+        XCTAssertEqual(model.state, .idle)
+        let cancellationCount = await provider.cancellationCount()
+        XCTAssertEqual(cancellationCount, 1)
+    }
+
     nonisolated func testRequestGateSpacesActualOperationStarts() async throws {
         let gate = RequestGate(minimumInterval: .milliseconds(40))
         let clock = ContinuousClock()
@@ -484,6 +625,31 @@ private actor GateProbe {
 
     func markStarted() { started = true }
     func hasStarted() -> Bool { started }
+}
+
+private actor SearchFixtureProvider: SearchProviding {
+    private let delay: Duration?
+    private var calls: [(String, SearchScope)] = []
+    private var cancellations = 0
+
+    init(delay: Duration? = nil) { self.delay = delay }
+
+    func search(query: String, scope: SearchScope) async throws -> [SearchResult] {
+        calls.append((query, scope))
+        if let delay {
+            do {
+                try await ContinuousClock().sleep(for: delay)
+            } catch {
+                cancellations += 1
+                throw error
+            }
+        }
+        return [.user(.init(username: query))]
+    }
+
+    func requestCount() -> Int { calls.count }
+    func queries() -> [String] { calls.map(\.0) }
+    func cancellationCount() -> Int { cancellations }
 }
 
 private actor FixtureProvider: ListeningProvider {

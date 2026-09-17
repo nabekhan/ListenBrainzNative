@@ -1,6 +1,6 @@
 # ListenBrainz capability map
 
-Snapshot: 2026-09-16. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence comes from the current production frontend source because the production site requires JavaScript and the configured interactive browser was unavailable.
+Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence comes from the current production frontend source because the production site requires JavaScript and the configured interactive browser was unavailable.
 
 | User capability | API | Web | Android | iOS | LBKit | KMP | Priority | Product decision |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
@@ -10,9 +10,9 @@ Snapshot: 2026-09-16. `Y` means source/API evidence exists; `P` means partial or
 | Listen count | Y | Y | Y | Y | Y | Y | P0 | Profile/home summary |
 | Delete a listen | Y | Y | Y | ? | Y | Y | P1 | Context action with confirmation/rollback |
 | Submit/batch-submit/Playing Now | Y | Y | Y | ? | Y | Y | P2 | Separate capture layer; do not block viewer |
-| User search | Y | Y | Y | Y | Y | Y | P1 | Global search scope |
-| Artist/release/recording search | Y* | Y | Y | — | — | Y | P1 | MusicBrainz-backed; `*` adjacent MB APIs |
-| Playlist search | Y | Y | Y | — | P | Y | P1 | Reuse entity result UI |
+| User search | Y | Y | Y | Y | Y | Y | P1 | Native scoped search landed; no N+1 profile hydration |
+| Artist/release/recording search | Y* | Y | Y | — | — | Y | P1 | Native MusicBrainz scopes landed; `*` adjacent MB APIs |
+| Playlist search | Y | Y | Y | — | Y | Y | P1 | Public search added to LBKit and native scoped search |
 | Recording/release-group/artist metadata | Y | Y | Y | P | Y | Y | P0 | MBIDs are canonical identities |
 | Inspect raw listen/mapping state | Y | Y | P | ? | P | P | P2 | Advanced detail sheet |
 | Manual metadata mapping | Y | Y | ? | ? | Y | ? | P3 | Advanced workflow only |

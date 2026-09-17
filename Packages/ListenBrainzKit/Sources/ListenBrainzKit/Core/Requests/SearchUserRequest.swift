@@ -6,9 +6,10 @@ struct SearchUserRequest: APIRequest {
     let data: APIRequestData<NoBody>
 
     init(_ term: String) {
-        self.data = .init(path: "/1/search/users",
+        self.data = .init(path: "/1/search/users/",
                           method: .get,
-                          queryItems: ["search_term": [term]])
+                          queryItems: ["search_term": [term]],
+                          preservesTrailingSlash: true)
     }
 
     struct Result: Decodable {

@@ -197,6 +197,25 @@ public struct LBCoreClient: Sendable {
         }
     }
 
+    /// Search public ListenBrainz playlists. The API requires at least three
+    /// non-whitespace characters; enforce that at the call site so a client
+    /// never spends a rate-limited request on an invalid query.
+    public func searchPlaylists(
+        query: String,
+        count: Int = 20,
+        offset: Int = 0
+    ) async throws -> [LBPlaylistMetadata] {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedQuery.count >= 3 else { throw LBError.invalidParam }
+        let request = SearchPlaylistsRequest(
+            query: trimmedQuery,
+            count: min(max(count, 1), 100),
+            offset: max(offset, 0)
+        )
+        let result = try await apiClient.execute(request)
+        return result.playlists.map { LBPlaylistMetadata(raw: $0.playlist) }
+    }
+
     /// Get playlists created for the given user
     /// - Parameters:
     ///   - username: User the playlists are created for

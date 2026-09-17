@@ -68,7 +68,7 @@ struct ListenBrainzPlaylistExt: Decodable {
     var copiedFrom: String?
     var copiedFromDeleted: Bool?
     var isPublic: Bool
-    var lastModifiedAt: String
+    var lastModifiedAt: String?
     // var additionalMetadata:
 
     enum CodingKeys: String, CodingKey {

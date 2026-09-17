@@ -31,12 +31,18 @@ struct LBPublicSmokeTests {
         let activity = try await client.stats.listenActivity(user: username, range: .allTime)
         try await pace()
         let freshReleases = try await client.freshReleases.sitewide(days: 7)
+        try await pace()
+        let playlists = try await client.core.searchPlaylists(query: "jazz", count: 2)
+        try await pace()
+        let users = try await client.core.searchUser(term: username)
 
         #expect(!listens.listens.isEmpty)
         #expect(count > 0)
         #expect(artists?.artists.isEmpty == false)
         #expect(activity?.activity.isEmpty == false)
         #expect(freshReleases?.releases.isEmpty == false)
+        #expect(!playlists.isEmpty)
+        #expect(users.contains { $0.caseInsensitiveCompare(username) == .orderedSame })
     }
 
     private func pace() async throws {

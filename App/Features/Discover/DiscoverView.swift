@@ -2,10 +2,15 @@ import SwiftUI
 
 struct DiscoverView: View {
     @State private var model: FreshReleasesModel
+    @State private var isSearchPresented = false
+    @Bindable var listeningModel: ListeningModel
+    private let account: Account
     @AppStorage("discover.freshReleaseScope") private var scope: FreshReleaseScope = .forYou
 
-    init(account: Account) {
+    init(account: Account, listeningModel: ListeningModel) {
+        self.account = account
         _model = State(initialValue: FreshReleasesModel(account: account))
+        _listeningModel = Bindable(wrappedValue: listeningModel)
     }
 
     var body: some View {
@@ -23,6 +28,12 @@ struct DiscoverView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
+                    Button { isSearchPresented = true } label: {
+                        Image(systemName: "magnifyingglass")
+                    }
+                    .accessibilityLabel("Search ListenBrainz and MusicBrainz")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button { Task { await model.refresh(scope: scope) } } label: {
                         Image(systemName: "arrow.clockwise")
                     }
@@ -31,6 +42,16 @@ struct DiscoverView: View {
                 }
             }
             .task(id: scope) { await model.load(scope: scope) }
+            .onAppear {
+                #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-brainz-open-search") {
+                    isSearchPresented = true
+                }
+                #endif
+            }
+            .sheet(isPresented: $isSearchPresented) {
+                SearchView(account: account, listeningModel: listeningModel)
+            }
         }
     }
 

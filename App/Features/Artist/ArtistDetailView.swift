@@ -46,9 +46,15 @@ struct ArtistDetailView: View {
             Text(artist.name)
                 .font(.largeTitle.bold())
                 .multilineTextAlignment(.center)
-            Label("\(artist.listenCount.formatted()) of your listens", systemImage: "waveform")
-                .font(.headline)
-                .foregroundStyle(.secondary)
+            if artist.listenCount > 0 {
+                Label("\(artist.listenCount.formatted()) of your listens", systemImage: "waveform")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+            } else {
+                Label("MusicBrainz artist", systemImage: "music.mic")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: .infinity)
     }

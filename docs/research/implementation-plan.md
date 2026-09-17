@@ -11,19 +11,19 @@ SwiftUI Features + shared Components
               ↓
 @Observable feature models
               ↓
-ListeningProvider (app-owned domain models)
-              ↓
-ListenBrainzProvider
+App-owned provider boundaries
+  ├─ ListeningProvider → ListenBrainzProvider
+  └─ SearchProviding → ListenBrainz + MusicBrainz
   ├─ fixed ListenBrainzKit core/metadata/stats/feedback
   ├─ focused endpoint extensions (only when Kit is missing them)
-  └─ request gate + response/metadata cache
+  └─ per-service request gates + response/metadata caches
               ↓
 ListenBrainz / MusicBrainz / Cover Art Archive
 ```
 
 - Organize concrete feature folders only as screens land: Authentication, Home, History, Recording, Artist, Profile, then Stats/Discover/Social/Playlists.
 - UI never imports API response models directly. Stable app models preserve MBID/MSID/release/release-group distinctions and tolerate incomplete mapping.
-- One actor handles the one-request-per-second ListenBrainz policy, serial request ownership, cancellation, and rate-limit reset. A small typed disk cache supplies stale-while-revalidate snapshots without persisting authenticated HTTP responses.
+- One process-shared actor handles the one-request-per-second ListenBrainz policy, serial request ownership, cancellation, and rate-limit reset. MusicBrainz has an independent process-shared gate so unrelated hosts do not block one another. A small typed disk cache supplies stale-while-revalidate snapshots without persisting authenticated HTTP responses.
 - Keychain owns the token. No token in defaults/logs/previews.
 - Native SwiftUI/Charts/NavigationStack/search/context menus/accessibility first. No third-party architecture framework.
 
@@ -39,28 +39,29 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 
 ## Staging after the slice
 
-- Phase 3: full history/date jump, stats, search, release pages, users/follows/similarity, feedback, pins, feed, recommendations, and playlist browsing. Fresh Releases now has an initial native Discover slice.
+- Phase 3: full history/date jump, release pages, users/follows/similarity, pins, feed, recommendations, and richer playlist browsing. Statistics, Fresh Releases, and scoped search now have initial native slices.
 - Phase 4: Year in Music, shareable art, LB Radio, playlist editing, playback/content resolution, MusicKit-scoped capture, offline submit queue, inspect/mapping tools.
 
-## Immediate implementation sequence
+## Next implementation sequence
 
-1. Vendor ListenBrainzKit under MPL and repair/test URL construction and User-Agent behavior.
-2. Generate a minimal Xcode project from tracked `project.yml` (XcodeGen via temporary Nix shell).
-3. Implement domain models/provider and fixture provider first, then the real provider.
-4. Build the visible Home → History → Recording → Artist → Profile navigation before expanding infrastructure.
-5. Run with real public data, then authenticated data when a user token is supplied locally.
+1. Turn user-search results into a cached native user detail surface without Android's eager multi-call waterfall.
+2. Add current pin and paginated pin history through an upstreamable ListenBrainzKit extension.
+3. Add lazy followers/following/similar-user sections and optimistic follow state.
+4. Build native release-group/release and playlist detail screens on the identities already established by search.
+5. Continue recommendations and feed only after those reusable destinations are real.
 
 ## Constraints recorded
 
 - Production website interactive inspection was blocked by the unavailable configured browser; current frontend source/routes and public API calls were inspected instead.
 - Xcode 27, the iOS 27 runtime, app build, test bundle, real simulator tests, and live public data have now been exercised. Visual checkpoints cover onboarding plus real-data Home in light/dark mode; smaller-device validation is recorded with the build evidence.
-- The verified checkpoint currently passes 50 vendored-package tests, 20 app tests with no runtime warnings, and the paced opt-in production public API smoke suite.
+- The verified checkpoint currently passes 54 vendored-package tests and 28 app tests, plus the deliberately paced opt-in production public API smoke suite.
 - Phase 3 statistics now includes on-demand server activity for the website's seven primary ranges, per-period request caching, accessible native charts, and explicit empty/retry behavior. Real-data visual checks covered all-time activity on large and small simulators in dark and light modes.
 - Fresh Releases now uses an upstreamable ListenBrainzKit extension. Personalized results are the default and an HTTP 204 becomes an honest empty state; selecting All is the only route that makes a sitewide request. The native slice follows the website's one-week window and newest-first presentation, while distinguishing upcoming releases and concrete release versus release-group identity. The API client preserves the sitewide endpoint's required terminal slash, with regression coverage.
+- Search now exposes Users, Artists, Albums (release groups), Tracks, and public Playlists in one native sheet. It sends only the selected scope after a 500 ms debounce, caches per normalized query, cancels abandoned/stale work, preserves release-group identity, and reuses the native artist/recording destinations. ListenBrainz and MusicBrainz have independent process-shared gates; canonical paths avoid hidden redirect requests. Real MusicBrainz results were visually checked in dark/light mode and XXL Dynamic Type.
 - Official KMP framework export was attempted and currently fails at the native Room KSP step; it remains a behavior reference rather than an app dependency.
 
 ## Rate-limit behavior decision
 
 - The current API documentation is authoritative: ListenBrainz clients should start no more than one API request per second and honor server rate-limit timing.
 - The official Android/KMP client maps HTTP 429 but has no global scheduler or reset-header handling. The official iOS client likewise has no pacing/retry interceptor. These are implementation gaps, not product behavior to copy.
-- This app begins operations inside a serialized gate and conservatively spaces each next operation from completion, so scheduling cannot reorder admitted calls. It propagates cancellation and installs `Retry-After` or `X-RateLimit-Reset-In` deferrals before queued ownership transfers. Mutations are not blindly retried. Cover Art Archive and other non-ListenBrainz hosts remain outside this gate.
+- This app begins operations inside a serialized gate and conservatively spaces each next operation from completion, so scheduling cannot reorder admitted calls. It propagates cancellation and installs `Retry-After` or `X-RateLimit-Reset-In` deferrals before queued ownership transfers. Canonical endpoint URLs prevent a redirect from becoming a hidden second request. Mutations are not blindly retried. MusicBrainz uses its own equivalent gate; Cover Art Archive remains outside both until its resolver lands.

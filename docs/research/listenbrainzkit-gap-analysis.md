@@ -1,6 +1,6 @@
 # ListenBrainzKit gap analysis
 
-Snapshot: 2026-09-16. Server `e83a7ab`; ListenBrainzKit `c06b12f` (2025-02-05).
+Snapshot: 2026-09-17. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-05) plus the local audited extensions.
 
 | Area | Classification | Current finding | Decision |
 |---|---|---|---|
@@ -13,7 +13,7 @@ Snapshot: 2026-09-16. Server `e83a7ab`; ListenBrainzKit `c06b12f` (2025-02-05).
 | Top artist/release/release-group/recording | SUPPORTED | User and sitewide | Reuse |
 | Listening activity | SUPPORTED | User and sitewide | Reuse |
 | Recording feedback | SUPPORTED | Love/hate/clear and lookup | Reuse |
-| Playlist lists | PARTIALLY_SUPPORTED | User/created-for/collaborator/recommendation listings only | Reuse list calls; add generic endpoints upstream |
+| Playlist lists/search | PARTIALLY_SUPPORTED | User/created-for/collaborator/recommendation listings plus public text search | Reuse list/search calls; add detail/mutation endpoints upstream |
 | LB Radio | PARTIALLY_SUPPORTED | Tags and artist seed only | Re-evaluate against current prompt-generation API |
 | New activity/identity statistics | MISSING | Daily, artist, era, genre, evolution, map, listeners absent | Add in a focused upstream extension |
 | Year in Music | MISSING | Current and legacy endpoints absent | App extension first; upstream candidate |
@@ -37,9 +37,9 @@ Snapshot: 2026-09-16. Server `e83a7ab`; ListenBrainzKit `c06b12f` (2025-02-05).
 
 ## Build result
 
-The development-only SwiftLint plugin was removed from the vendored package target because it prevented clean consumers from building under Command Line Tools. Under Xcode 27, `swift test` builds successfully and runs 50 tests with the token-dependent and opt-in live suites skipped. A separate, explicitly paced `LISTENBRAINZ_PUBLIC_SMOKE=1` run passes against current production recent-listen, count, Playing Now, top-artist, listening-activity, and sitewide Fresh Releases endpoints.
+The development-only SwiftLint plugin was removed from the vendored package target because it prevented clean consumers from building under Command Line Tools. Under Xcode 27, `swift test` builds successfully and runs 54 tests with the token-dependent and opt-in live suites skipped. A separate, explicitly paced `LISTENBRAINZ_PUBLIC_SMOKE=1` run passes against current production recent-listen, count, Playing Now, top-artist, listening-activity, sitewide Fresh Releases, public-playlist search, and canonical user-search endpoints.
 
-The local fork also now verifies path-safe endpoint construction, required User-Agent behavior, omission of empty authorization, explicit authorization before a custom API origin receives a token, rejection of insecure roots and cross-origin authenticated redirects, and conservative interpretation of `Retry-After` / `X-RateLimit-Reset-In`.
+The local fork also now verifies path-safe endpoint construction, endpoint-required trailing slashes, required User-Agent behavior, omission of empty authorization, explicit authorization before a custom API origin receives a token, rejection of insecure roots and cross-origin authenticated redirects, conservative interpretation of `Retry-After` / `X-RateLimit-Reset-In`, and tolerant playlist timestamps.
 
 ## Recommendation
 

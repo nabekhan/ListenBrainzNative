@@ -1,6 +1,6 @@
 # Repository reuse map
 
-Snapshot: 2026-09-16. Build status is evidence-based: repository/source inspection is complete; Xcode builds await completion of the Xcode 27 installation.
+Snapshot: 2026-09-17. Repository/source inspection, Xcode 27 builds, simulator runs, and live public-data checks are complete for the implemented slices.
 
 | Repository | Purpose / state | License | Best reusable value | Modernization / difficulty | Decision |
 |---|---|---|---|---|---|
@@ -33,6 +33,7 @@ Snapshot: 2026-09-16. Build status is evidence-based: repository/source inspecti
 | Artist screen | Volta visual reference + first.fm | Concept only from GPL Volta; MIT structure from first.fm | Independent stretchy artwork/stat/entity implementation |
 | Release/recording detail | Cassette + first.fm | Media layout patterns | ListenBrainz identity/actions/history |
 | Stats/heatmap | Autohop MIT portions + native Swift Charts | Period/history coordinator patterns | Server-stat adapters and music wording |
+| Scoped search | Official Android behavior + first.fm structure + Minidisc limiter concept | One-scope debounce/cache behavior and cancellation-safe pacing concepts; no donor UI copied | Native search sheet, separate LB/MB gates, MBID-aware routing, compact truthful fallbacks |
 | Auth/Keychain | first.fm/Cassette patterns | Small MIT/MPL patterns | Token validation and onboarding copy |
 | Caching | Cassette/Minidisc + URLCache | Actor/service patterns | Small stale-while-revalidate cache boundary |
 | Scrobbling/offline retry | FastScrobbler behavior + Cassette/Minidisc | MPL queue code only if later adopted | Deferred capture module |
@@ -40,4 +41,3 @@ Snapshot: 2026-09-16. Build status is evidence-based: repository/source inspecti
 ## Additional discovery verdict
 
 The strongest newly discovered candidates are Minidisc (current iPhone/iOS 26 polish), Bòcan (cache/robust scrobbling reference), FastScrobbler (Apple Music limitation evidence), and Finale (widgets/share concepts). None displaces first.fm for personality/IA or Cassette/Minidisc for current native media components.
-
