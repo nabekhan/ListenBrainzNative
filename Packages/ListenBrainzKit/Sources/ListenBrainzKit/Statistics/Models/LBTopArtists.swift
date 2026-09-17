@@ -5,17 +5,17 @@
 import Foundation
 
 public struct LBTopArtists: Decodable {
-    let artists: [Artist]
+    public let artists: [Artist]
     /// Total artists listened to beyond what's in .artists. Only populated from user
-    let totalArtistCount: Int?
-    let lastUpdated: Date
-    let from: Date
-    let to: Date
+    public let totalArtistCount: Int?
+    public let lastUpdated: Date
+    public let from: Date
+    public let to: Date
 
-    struct Artist: Decodable {
-        let mbid: UUID?
-        let name: String
-        let listenCount: Int
+    public struct Artist: Decodable {
+        public let mbid: UUID?
+        public let name: String
+        public let listenCount: Int
 
         // swiftlint:disable:next nesting
         enum CodingKeys: String, CodingKey {

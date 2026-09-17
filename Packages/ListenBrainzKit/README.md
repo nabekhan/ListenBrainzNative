@@ -31,7 +31,11 @@ import ListenBrainzKit
 
 let client = LBClient(token: token)
 // or:
-let client = LBClient(token: token, customRoot: URL(string: "https://10.0.0.10:1234")!)
+let client = LBClient(
+    token: token,
+    customRoot: URL(string: "https://listenbrainz.example.com")!,
+    allowsTokenToCustomRoot: true // explicit because this sends the token to that origin
+)
 ```
 
 Submitting listens:

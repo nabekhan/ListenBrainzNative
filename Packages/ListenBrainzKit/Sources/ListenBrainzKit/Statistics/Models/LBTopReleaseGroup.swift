@@ -5,26 +5,26 @@
 import Foundation
 
 public struct LBTopReleaseGroups: Decodable {
-    let releaseGroups: [ReleaseGroup]
+    public let releaseGroups: [ReleaseGroup]
     /// Total release groups listened to beyond what's in .releaseGroups. Only populated from user
-    let totalReleaseGroupCount: Int?
-    let lastUpdated: Date
-    let from: Date
-    let to: Date
+    public let totalReleaseGroupCount: Int?
+    public let lastUpdated: Date
+    public let from: Date
+    public let to: Date
 
-    struct ReleaseGroup: Decodable {
-        let artistMbids: [UUID]?
-        let artistName: String
+    public struct ReleaseGroup: Decodable {
+        public let artistMbids: [UUID]?
+        public let artistName: String
         /// Only populated by user request
-        let artists: [Artist]?
-        let releaseGroupMbid: UUID?
-        let releaseGroupName: String
-        let listenCount: Int
+        public let artists: [Artist]?
+        public let releaseGroupMbid: UUID?
+        public let releaseGroupName: String
+        public let listenCount: Int
     }
 
-    struct Artist: Decodable {
-        let credit: String
-        let mbid: UUID
+    public struct Artist: Decodable {
+        public let credit: String
+        public let mbid: UUID
 
         // swiftlint:disable:next nesting
         enum CodingKeys: String, CodingKey {

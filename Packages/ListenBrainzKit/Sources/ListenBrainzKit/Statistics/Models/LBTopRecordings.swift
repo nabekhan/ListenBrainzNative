@@ -5,21 +5,21 @@
 import Foundation
 
 public struct LBTopRecordings: Decodable {
-    let recordings: [Recording]
+    public let recordings: [Recording]
     /// Total recordings listened to beyond what's in .recordings. Only populated from user
-    let totalRecordingCount: Int?
-    let lastUpdated: Date
-    let from: Date
-    let to: Date
+    public let totalRecordingCount: Int?
+    public let lastUpdated: Date
+    public let from: Date
+    public let to: Date
 
-    struct Recording: Decodable {
-        let artistMbids: [UUID]?
-        let artistName: String
-        let listenCount: Int
-        let recordingMbid: UUID?
-        let releaseMbid: UUID?
-        let releaseName: String
-        let trackName: String
+    public struct Recording: Decodable {
+        public let artistMbids: [UUID]?
+        public let artistName: String
+        public let listenCount: Int
+        public let recordingMbid: UUID?
+        public let releaseMbid: UUID?
+        public let releaseName: String
+        public let trackName: String
     }
 
     enum CodingKeys: String, CodingKey {

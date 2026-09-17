@@ -5,9 +5,9 @@
 import Foundation
 
 public struct LBUserListens: Decodable {
-    let newestListen: Date
-    let oldestListen: Date
-    let listens: [LBListen]
+    public let newestListen: Date
+    public let oldestListen: Date
+    public let listens: [LBListen]
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: OuterKeys.self)
@@ -32,10 +32,10 @@ public struct LBUserListens: Decodable {
 }
 
 public struct LBListen: Decodable {
-    let insertedAt: Date
-    let listenedAt: Date
-    let recordingMsid: UUID
-    let trackMetadata: LBTrackMetadata
+    public let insertedAt: Date
+    public let listenedAt: Date
+    public let recordingMsid: UUID
+    public let trackMetadata: LBTrackMetadata
 }
 
 public struct LBListenSubmission {

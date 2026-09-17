@@ -5,11 +5,11 @@
 import Foundation
 
 public struct LBTrackMetadata: Codable, Equatable {
-    var artist: String
-    var track: String
-    var release: String?
-    var additionalInfo: LBAdditionalInfo?
-    var mbidMapping: MbidMapping?
+    public var artist: String
+    public var track: String
+    public var release: String?
+    public var additionalInfo: LBAdditionalInfo?
+    public var mbidMapping: MbidMapping?
 
     init(artist: String, track: String,
          release: String? = nil, additionalInfo: LBAdditionalInfo? = nil) {
@@ -74,18 +74,20 @@ public struct LBTrackMetadata: Codable, Equatable {
     }
 
     public struct MbidMapping: Codable, Equatable {
-        let artistMbids: [UUID]
-        let artists: [MbidMappingArtist]
-        let recordingMbid: UUID
-        let releaseMbid: UUID
-        let caaId: Int?
-        let caaReleaseMbid: UUID?
+        public let artistMbids: [UUID]?
+        public let artists: [MbidMappingArtist]?
+        public let recordingMbid: UUID?
+        public let releaseMbid: UUID?
+        public let releaseGroupMbid: UUID?
+        public let recordingName: String?
+        public let caaId: Int?
+        public let caaReleaseMbid: UUID?
     }
 
     public struct MbidMappingArtist: Codable, Equatable {
-        let name: String
-        let mbid: UUID
-        let joinPhrase: String
+        public let name: String
+        public let mbid: UUID?
+        public let joinPhrase: String
 
         // swiftlint:disable:next nesting
         enum CodingKeys: String, CodingKey {

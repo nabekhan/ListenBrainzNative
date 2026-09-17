@@ -6,7 +6,10 @@ import Foundation
 @testable import ListenBrainzKit
 import Testing
 
-@Suite(.serialized)
+@Suite(
+    .serialized,
+    .enabled(if: ProcessInfo.processInfo.environment["LISTENBRAINZ_TOKEN"]?.isEmpty == false)
+)
 struct LBRecordingsIntegrationTests {
     let username: String
     let client: LBClient

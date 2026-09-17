@@ -5,25 +5,25 @@
 import Foundation
 
 public struct LBAdditionalInfo: Codable, Equatable {
-    var artistMbids: [UUID]?
-    var releaseGroupMbid: UUID?
-    var releaseMbid: UUID?
-    var recordingMbid: UUID?
-    var trackMbid: UUID?
-    var workMbids: [UUID]?
-    var tracknumber: Int?
-    var isrc: String?
-    var spotifyId: String?
-    var tags: [String]?
-    var mediaPlayer: String?
-    var mediaPlayerVersion: String?
-    var submissionClient: String?
-    var submissionClientVersion: String?
-    var musicService: String?
-    var musicServiceName: String?
-    var originUrl: String?
-    var durationMs: Int?
-    var duration: Int?
+    public var artistMbids: [UUID]?
+    public var releaseGroupMbid: UUID?
+    public var releaseMbid: UUID?
+    public var recordingMbid: UUID?
+    public var trackMbid: UUID?
+    public var workMbids: [UUID]?
+    public var tracknumber: Int?
+    public var isrc: String?
+    public var spotifyId: String?
+    public var tags: [String]?
+    public var mediaPlayer: String?
+    public var mediaPlayerVersion: String?
+    public var submissionClient: String?
+    public var submissionClientVersion: String?
+    public var musicService: String?
+    public var musicServiceName: String?
+    public var originUrl: String?
+    public var durationMs: Int?
+    public var duration: Int?
 
     public init(artistMbids: [UUID]? = nil,
                 releaseGroupMbid: UUID? = nil,

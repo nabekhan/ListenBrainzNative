@@ -7,20 +7,8 @@ import Testing
 
 @testable import ListenBrainzKit
 
-@Suite(.serialized)
+@Suite
 struct LBStatisticsTests {
-    let username: String
-    let client: LBClient
-
-    init() async throws {
-        let token = ProcessInfo.processInfo.environment["LISTENBRAINZ_TOKEN"] ?? ""
-        let client = LBClient(token: token)
-        let validation = try await client.core.isTokenValid()
-
-        self.client = client
-        self.username = validation.userName ?? ""
-    }
-
     @Test("Deserialize user artists")
     func deserializeUserArtists() async throws {
         let res = try JSONDecoder

@@ -5,19 +5,19 @@
 import Foundation
 
 public struct LBListeningActivity: Decodable {
-    let range: String
-    let from: Date
-    let to: Date
-    let lastUpdated: Int
-    let activity: [Chunk]
+    public let range: String
+    public let from: Date
+    public let to: Date
+    public let lastUpdated: Int
+    public let activity: [Chunk]
 
-    struct Chunk: Codable {
+    public struct Chunk: Codable {
         /// Human-readable description of this chunk's range
-        let timeRange: String
-        let from: Date
-        let to: Date
+        public let timeRange: String
+        public let from: Date
+        public let to: Date
 
-        let listenCount: Int
+        public let listenCount: Int
 
         // swiftlint:disable:next nesting
         enum CodingKeys: String, CodingKey {

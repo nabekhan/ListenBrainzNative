@@ -17,15 +17,12 @@ let package = Package(
             targets: ["ListenBrainzKit"]
         ),
     ],
-    dependencies: [
-        .package(url: "https://github.com/SimplyDanny/SwiftLintPlugins", from: "0.57.0"),
-    ],
+    dependencies: [],
     targets: [
         .target(
             name: "ListenBrainzKit",
             dependencies: [],
-            path: "Sources",
-            plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins")]
+            path: "Sources"
         ),
         .testTarget(
             name: "ListenBrainzKitTests",

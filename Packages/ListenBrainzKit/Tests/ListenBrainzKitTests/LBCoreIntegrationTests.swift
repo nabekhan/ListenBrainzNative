@@ -7,7 +7,10 @@ import Testing
 
 @testable import ListenBrainzKit
 
-@Suite(.serialized)
+@Suite(
+    .serialized,
+    .enabled(if: ProcessInfo.processInfo.environment["LISTENBRAINZ_TOKEN"]?.isEmpty == false)
+)
 struct LBCoreIntegrationTests {
     let username: String
     let client: LBClient

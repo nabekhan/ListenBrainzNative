@@ -1,0 +1,127 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+import Foundation
+@testable import ListenBrainzKit
+import Testing
+
+@Suite struct APIClientTests {
+    @Test("Endpoint paths retain path separators")
+    func endpointPath() throws {
+        let client = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+
+        let request = try client.makeURLRequest(
+            UserListensRequest(username: "test-user", latest: nil, earliest: nil, count: 25)
+        )
+
+        #expect(request.url?.path == "/1/user/test-user/listens")
+        #expect(request.url?.absoluteString.contains("%2F1%2F") == false)
+        #expect(request.url?.query?.contains("count=25") == true)
+    }
+
+    @Test("Requests identify the application without sending an empty token")
+    func requiredHeaders() throws {
+        let userAgent = "TestClient/1.0 (+https://example.com)"
+        let client = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: userAgent
+        )
+
+        let request = try client.makeURLRequest(SearchUserRequest("test"))
+
+        #expect(request.value(forHTTPHeaderField: "User-Agent") == userAgent)
+        #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+    }
+
+    @Test("Authenticated requests use ListenBrainz token authentication")
+    func tokenHeader() throws {
+        let client = ListenBrainzAPIClient(
+            token: "secret-placeholder",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+
+        let request = try client.makeURLRequest(ValidateTokenRequest())
+
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Token secret-placeholder")
+    }
+
+    @Test("Tokens are never attached to an insecure custom root")
+    func insecureTokenRoot() throws {
+        let client = ListenBrainzAPIClient(
+            token: "secret-placeholder",
+            root: URL(string: "http://example.com")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+
+        #expect(throws: LBError.invalidParam) {
+            try client.makeURLRequest(ValidateTokenRequest())
+        }
+    }
+
+    @Test("Custom roots require explicit authorization before receiving a token")
+    func customRootTokenPolicy() throws {
+        let root = URL(string: "https://listenbrainz.example.com")!
+        let blocked = ListenBrainzAPIClient(
+            token: "secret-placeholder",
+            root: root,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+        let allowed = ListenBrainzAPIClient(
+            token: "secret-placeholder",
+            root: root,
+            allowsTokenToCustomRoot: true,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+
+        #expect(throws: LBError.invalidParam) {
+            try blocked.makeURLRequest(ValidateTokenRequest())
+        }
+        let request = try allowed.makeURLRequest(ValidateTokenRequest())
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Token secret-placeholder")
+    }
+
+    @Test("Rate limiting honors the longest server delay")
+    func rateLimitHeaders() throws {
+        let client = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+        let response = try #require(
+            HTTPURLResponse(
+                url: URL(string: "https://api.listenbrainz.org/1/validate-token")!,
+                statusCode: 429,
+                httpVersion: nil,
+                headerFields: ["Retry-After": "3", "X-RateLimit-Reset-In": "7"]
+            )
+        )
+
+        #expect(client.rateLimitDelay(from: response) == 7)
+    }
+
+    @Test("Authenticated redirects stay on the original origin")
+    func authenticatedRedirectPolicy() throws {
+        let policy = AuthenticatedRedirectDelegate()
+        let source = try #require(URL(string: "https://api.listenbrainz.org/1/validate-token"))
+
+        #expect(policy.allowsAuthenticatedRedirect(
+            from: source,
+            to: URL(string: "https://api.listenbrainz.org:443/1/validate-token/")!
+        ))
+        #expect(!policy.allowsAuthenticatedRedirect(
+            from: source,
+            to: URL(string: "https://example.com/collect")!
+        ))
+        #expect(!policy.allowsAuthenticatedRedirect(
+            from: source,
+            to: URL(string: "http://api.listenbrainz.org/1/validate-token")!
+        ))
+    }
+}

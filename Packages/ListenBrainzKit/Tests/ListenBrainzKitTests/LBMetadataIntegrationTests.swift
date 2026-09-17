@@ -7,7 +7,10 @@ import Testing
 
 @testable import ListenBrainzKit
 
-@Suite(.serialized)
+@Suite(
+    .serialized,
+    .enabled(if: ProcessInfo.processInfo.environment["LISTENBRAINZ_TOKEN"]?.isEmpty == false)
+)
 struct LBMetadataIntegrationTests {
     let username: String
     let client: LBClient
@@ -128,10 +131,9 @@ struct LBMetadataIntegrationTests {
     @Test func artists() async throws {
         let nonexistant = UUID(uuidString: "0f6bd1e4-fbe1-4f50-aa9b-94c450ec0f11")!
         let existant = UUID(uuidString: "5adcb9d9-5ea2-428d-af46-ef626966e106")!
-        let result = try #require(
-            try await client
-                .metadata
-                .artists(mbids: [nonexistant, existant], includeTags: true))
+        let result = try await client
+            .metadata
+            .artists(mbids: [nonexistant, existant], includeTags: true)
 
         #expect(result[nonexistant] == nil)
         let existantRes = try #require(result[existant])

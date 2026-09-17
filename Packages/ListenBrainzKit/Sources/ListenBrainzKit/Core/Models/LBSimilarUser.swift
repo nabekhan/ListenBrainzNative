@@ -3,6 +3,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 public struct LBSimilarUser: Decodable {
-    var userName: String
-    var similarity: Double
+    public var userName: String
+    public var similarity: Double
 }

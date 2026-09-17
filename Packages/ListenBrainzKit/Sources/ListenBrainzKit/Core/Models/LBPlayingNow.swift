@@ -3,6 +3,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 public struct LBPlayingNow {
-    let playingNow: Bool
-    let trackMetadata: LBTrackMetadata
+    public let playingNow: Bool
+    public let trackMetadata: LBTrackMetadata
 }

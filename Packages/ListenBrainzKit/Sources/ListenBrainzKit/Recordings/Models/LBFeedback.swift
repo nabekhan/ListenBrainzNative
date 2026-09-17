@@ -6,16 +6,16 @@ import Foundation
 
 public struct LBFeedback: Decodable {
     /// When the feedback was given. Not populated by getFeedbackFor()
-    let created: Date?
-    let recordingMbid: UUID
-    let recordingMsid: UUID?
+    public let created: Date?
+    public let recordingMbid: UUID
+    public let recordingMsid: UUID?
     /// Love, Hate, or No Score
-    let score: LBScore
+    public let score: LBScore
     /// If populated, contains basic artist/track/release data and
     /// mbidMapping but not additionalInfo
-    let trackMetadata: LBTrackMetadata?
+    public let trackMetadata: LBTrackMetadata?
     /// Name of user who gave this feedback
-    let user: String
+    public let user: String
 
     enum CodingKeys: String, CodingKey {
         case created
