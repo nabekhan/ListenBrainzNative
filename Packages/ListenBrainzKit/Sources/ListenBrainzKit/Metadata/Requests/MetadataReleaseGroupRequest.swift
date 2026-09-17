@@ -16,9 +16,10 @@ public struct MetadataReleaseGroupRequest: APIRequest {
         query.setQueryItem("release_group_mbids", value: mbids.map(\.uuidString).joined(separator: ","))
         query.setQueryItem("inc", value: inclusions)
 
-        self.data = .init(path: "/1/metadata/release_group",
+        self.data = .init(path: "/1/metadata/release_group/",
                           method: .get,
                           queryItems: query,
-                          statusErrors: [400: .badRequest])
+                          statusErrors: [400: .badRequest],
+                          preservesTrailingSlash: true)
     }
 }

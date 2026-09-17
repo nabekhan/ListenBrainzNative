@@ -11,6 +11,8 @@ public struct LBReleaseGroupMeta: Decodable, Sendable {
     public let caaReleaseMbid: UUID?
 
     public let name: String
+    /// MusicBrainz date text, preserving partial-date precision when present.
+    public let dateString: String?
     public let date: Date?
     public let type: ReleaseType?
     // Note: I can't find examples of releases that have rels populated so I haven't included it here
@@ -23,12 +25,8 @@ public struct LBReleaseGroupMeta: Decodable, Sendable {
         self.name = try container.decode(String.self, forKey: .name)
         self.type = try container.decodeIfPresent(ReleaseType.self, forKey: .type)
 
-        if let dateString = try container.decodeIfPresent(String.self, forKey: .date) {
-            let dateFormatter = ISO8601DateFormatter()
-            dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
-            dateFormatter.formatOptions = []
-            self.date = dateFormatter.date(from: dateString)
-        } else { self.date = nil }
+        self.dateString = try container.decodeIfPresent(String.self, forKey: .date)
+        self.date = Self.parseMusicBrainzDate(dateString)
     }
 
     enum CodingKeys: String, CodingKey {
@@ -45,5 +43,26 @@ public struct LBReleaseGroupMeta: Decodable, Sendable {
         case ep = "EP"
         case broadcast = "Broadcast"
         case other = "Other"
+    }
+
+    private static func parseMusicBrainzDate(_ value: String?) -> Date? {
+        guard let value else { return nil }
+        let parts = value.split(separator: "-", omittingEmptySubsequences: false)
+        guard (1 ... 3).contains(parts.count),
+              let year = Int(parts[0])
+        else { return nil }
+
+        let month = parts.count > 1 ? Int(parts[1]) : 1
+        let day = parts.count > 2 ? Int(parts[2]) : 1
+        guard let month, let day else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar.date(from: DateComponents(
+            timeZone: calendar.timeZone,
+            year: year,
+            month: month,
+            day: day,
+            hour: 12
+        ))
     }
 }

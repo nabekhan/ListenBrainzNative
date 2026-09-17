@@ -7,6 +7,40 @@ import Foundation
 import Testing
 
 @Suite struct LBMetadataTests {
+    @Test("Release-group metadata uses its canonical terminal-slash endpoint")
+    func releaseGroupCanonicalPath() {
+        let mbid = UUID(uuidString: "6e335887-60ba-38f0-95af-fae7774336bf")!
+        let request = MetadataReleaseGroupRequest(
+            mbids: [mbid],
+            including: [.artist, .tag, .release]
+        )
+
+        #expect(request.data.path == "/1/metadata/release_group/")
+        #expect(request.data.preservesTrailingSlash)
+        #expect(request.data.queryItems["release_group_mbids"] == [mbid.uuidString])
+        #expect(request.data.queryItems["inc"] == ["artist tag release"])
+    }
+
+    @Test("Release-group dates retain MusicBrainz precision and decode correctly")
+    func releaseGroupDate() throws {
+        let value = try JSONDecoder.ListenBrainz.decode(
+            LBReleaseGroupMeta.self,
+            from: Data(#"{"caa_id":14926982777,"caa_release_mbid":"1a33443c-3fff-450f-8298-efbc65659d32","name":"In Rainbows","date":"2007-10-10","type":"Album"}"#.utf8)
+        )
+
+        #expect(value.dateString == "2007-10-10")
+        #expect(value.caaId == 14_926_982_777)
+        #expect(value.caaReleaseMbid == UUID(uuidString: "1a33443c-3fff-450f-8298-efbc65659d32"))
+        let date = try #require(value.date)
+        let components = Calendar(identifier: .gregorian).dateComponents(
+            in: TimeZone(secondsFromGMT: 0)!,
+            from: date
+        )
+        #expect(components.year == 2007)
+        #expect(components.month == 10)
+        #expect(components.day == 10)
+    }
+
     @Test("Manual mapping submission")
     func manualMap() async throws {
         let messyId = UUID(uuidString: "12121212-1212-1212-1212-121212121212")!
