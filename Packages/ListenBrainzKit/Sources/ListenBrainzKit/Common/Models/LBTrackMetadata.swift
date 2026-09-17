@@ -4,7 +4,7 @@
 
 import Foundation
 
-public struct LBTrackMetadata: Codable, Equatable {
+public struct LBTrackMetadata: Codable, Equatable, Sendable {
     public var artist: String
     public var track: String
     public var release: String?
@@ -73,7 +73,7 @@ public struct LBTrackMetadata: Codable, Equatable {
         case mbidMapping
     }
 
-    public struct MbidMapping: Codable, Equatable {
+    public struct MbidMapping: Codable, Equatable, Sendable {
         public let artistMbids: [UUID]?
         public let artists: [MbidMappingArtist]?
         public let recordingMbid: UUID?
@@ -84,7 +84,7 @@ public struct LBTrackMetadata: Codable, Equatable {
         public let caaReleaseMbid: UUID?
     }
 
-    public struct MbidMappingArtist: Codable, Equatable {
+    public struct MbidMappingArtist: Codable, Equatable, Sendable {
         public let name: String
         public let mbid: UUID?
         public let joinPhrase: String

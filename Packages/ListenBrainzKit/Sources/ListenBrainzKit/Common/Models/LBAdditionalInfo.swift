@@ -4,11 +4,13 @@
 
 import Foundation
 
-public struct LBAdditionalInfo: Codable, Equatable {
+public struct LBAdditionalInfo: Codable, Equatable, Sendable {
     public var artistMbids: [UUID]?
     public var releaseGroupMbid: UUID?
     public var releaseMbid: UUID?
     public var recordingMbid: UUID?
+    /// The MessyBrainz recording identifier supplied with a listen when available.
+    public var recordingMsid: UUID?
     public var trackMbid: UUID?
     public var workMbids: [UUID]?
     public var tracknumber: Int?
@@ -29,6 +31,7 @@ public struct LBAdditionalInfo: Codable, Equatable {
                 releaseGroupMbid: UUID? = nil,
                 releaseMbid: UUID? = nil,
                 recordingMbid: UUID? = nil,
+                recordingMsid: UUID? = nil,
                 trackMbid: UUID? = nil,
                 workMbids: [UUID]? = nil,
                 tracknumber: Int? = nil,
@@ -48,6 +51,7 @@ public struct LBAdditionalInfo: Codable, Equatable {
         self.releaseGroupMbid = releaseGroupMbid
         self.releaseMbid = releaseMbid
         self.recordingMbid = recordingMbid
+        self.recordingMsid = recordingMsid
         self.trackMbid = trackMbid
         self.workMbids = workMbids
         self.tracknumber = tracknumber
