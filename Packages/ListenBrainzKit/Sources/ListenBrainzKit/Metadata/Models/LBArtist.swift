@@ -1,11 +1,11 @@
 /// Single credit for one or more artists, with metadata for each one
-public struct LBArtist: Decodable {
+public struct LBArtist: Decodable, Sendable {
     /// Name of the credited artist(s) (i.e. Alice & Bob feat. Charlie)
-    let name: String
+    public let name: String
     /// Artist credit ID
     let artistCreditId: Int
     /// Metadata for each artist
-    let artists: [LBArtistMeta]
+    public let artists: [LBArtistMeta]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)

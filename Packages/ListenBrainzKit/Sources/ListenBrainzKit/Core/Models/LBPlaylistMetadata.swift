@@ -5,7 +5,7 @@
 import Foundation
 
 /// Metadata for a ListenBrainz playlist
-public struct LBPlaylistMetadata {
+public struct LBPlaylistMetadata: Sendable {
     /// Title of the playlist
     public let title: String
 
@@ -51,12 +51,12 @@ public struct LBPlaylistMetadata {
         self.lastModifiedAt = parsePlaylistDate(raw.ext.listenbrainz.lastModifiedAt)
         self.createdFor = raw.ext.listenbrainz.createdFor
         self.collaborators = raw.ext.listenbrainz.collaborators
-        self.copiedFrom = raw.ext.listenbrainz.copiedFrom
+        self.copiedFrom = raw.ext.listenbrainz.copiedFromMbid
         self.copiedFromDeleted = raw.ext.listenbrainz.copiedFromDeleted
     }
 }
 
-private func parsePlaylistDate(_ value: String?) -> Date? {
+func parsePlaylistDate(_ value: String?) -> Date? {
     guard let value else { return nil }
     let formatter = ISO8601DateFormatter()
     formatter.timeZone = TimeZone(secondsFromGMT: 0)

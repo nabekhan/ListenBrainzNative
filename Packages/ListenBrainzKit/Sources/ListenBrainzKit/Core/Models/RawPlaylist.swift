@@ -13,6 +13,10 @@ struct RawPlaylistResponse: Decodable {
     }
 }
 
+struct RawSinglePlaylistResponse: Decodable {
+    var playlist: RawPlaylist
+}
+
 struct RawPlaylist: Decodable {
     var annotation: String?
     var creator: String
@@ -65,7 +69,7 @@ struct ListenBrainzPlaylistExt: Decodable {
     var createdFor: String?
     var creator: String?
     var collaborators: [String]?
-    var copiedFrom: String?
+    var copiedFromMbid: String?
     var copiedFromDeleted: Bool?
     var isPublic: Bool
     var lastModifiedAt: String?
@@ -75,7 +79,7 @@ struct ListenBrainzPlaylistExt: Decodable {
         case createdFor
         case creator
         case collaborators
-        case copiedFrom
+        case copiedFromMbid
         case copiedFromDeleted
         case isPublic = "public"
         case lastModifiedAt

@@ -4,10 +4,10 @@
 
 import Foundation
 
-public struct LBTags: Decodable {
+public struct LBTags: Decodable, Sendable {
     let artist: [UUID: [LBTag]]
     let recording: [LBTag]
-    let releaseGroup: [LBTag]
+    public let releaseGroup: [LBTag]
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)

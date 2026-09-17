@@ -4,11 +4,11 @@
 
 import Foundation
 
-public struct LBTag: Decodable {
+public struct LBTag: Decodable, Sendable {
     /// Name of the tag
-    let tag: String
+    public let tag: String
     /// Number of votes on MusicBrainz
-    let voteCount: Int
+    public let voteCount: Int
     let genreMbid: UUID?
 
     enum CodingKeys: String, CodingKey {

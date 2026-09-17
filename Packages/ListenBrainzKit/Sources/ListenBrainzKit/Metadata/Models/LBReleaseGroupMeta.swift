@@ -4,15 +4,15 @@
 
 import Foundation
 
-public struct LBReleaseGroupMeta: Decodable {
+public struct LBReleaseGroupMeta: Decodable, Sendable {
     /// Cover art file ID in the Cover Art Archive
-    let caaId: Int?
+    public let caaId: Int?
     /// Release's MBID on Cover Art Archive
-    let caaReleaseMbid: UUID?
+    public let caaReleaseMbid: UUID?
 
-    let name: String
-    let date: Date?
-    let type: ReleaseType?
+    public let name: String
+    public let date: Date?
+    public let type: ReleaseType?
     // Note: I can't find examples of releases that have rels populated so I haven't included it here
     // let rels: [[String: String]]
 
@@ -39,7 +39,7 @@ public struct LBReleaseGroupMeta: Decodable {
         case type
     }
 
-    enum ReleaseType: String, Decodable {
+    public enum ReleaseType: String, Decodable, Sendable {
         case album = "Album"
         case single = "Single"
         case ep = "EP"

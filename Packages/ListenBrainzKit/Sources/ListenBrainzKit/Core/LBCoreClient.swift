@@ -216,6 +216,16 @@ public struct LBCoreClient: Sendable {
         return result.playlists.map { LBPlaylistMetadata(raw: $0.playlist) }
     }
 
+    /// Fetch a complete ListenBrainz playlist and its JSPF track list.
+    ///
+    /// Passing `fetchMetadata: false` skips the server-side recording metadata
+    /// lookup and may leave track titles, artist credits, and releases absent.
+    public func playlist(mbid: UUID, fetchMetadata: Bool = true) async throws -> LBPlaylist {
+        let request = PlaylistRequest(mbid: mbid, fetchMetadata: fetchMetadata)
+        let result = try await apiClient.execute(request)
+        return LBPlaylist(raw: result.playlist, mbid: mbid)
+    }
+
     /// Get playlists created for the given user
     /// - Parameters:
     ///   - username: User the playlists are created for

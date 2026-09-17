@@ -26,13 +26,13 @@ public struct LBRecordingMeta: Decodable {
     }
 }
 
-public struct LBArtistMeta: Decodable {
+public struct LBArtistMeta: Decodable, Sendable {
     /// This artist's MBID
-    let id: UUID
+    public let id: UUID
     /// The name of the artist
-    let name: String
+    public let name: String
     /// How this artist's credit should be joined with others
-    let joinPhrase: String?
+    public let joinPhrase: String?
     /// When the artist started (birth/formation/creation)
     let beginYear: Int?
     /// When the artist finished (death/dissolution)
@@ -48,7 +48,7 @@ public struct LBArtistMeta: Decodable {
     /// Tags associated with this artist (Only populated from /metadata/artist/)
     let tags: [LBTag]
 
-    enum ArtistType: Equatable, Decodable {
+    enum ArtistType: Equatable, Decodable, Sendable {
         case character
         case choir
         case group
@@ -82,7 +82,7 @@ public struct LBArtistMeta: Decodable {
         }
     }
 
-    enum Gender: Equatable, Decodable {
+    enum Gender: Equatable, Decodable, Sendable {
         case female
         case male
         case other
