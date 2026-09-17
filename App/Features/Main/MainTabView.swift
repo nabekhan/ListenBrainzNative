@@ -4,6 +4,7 @@ struct MainTabView: View {
     private enum Destination: String, Hashable {
         case home
         case history
+        case discover
         case taste
         case profile
     }
@@ -70,6 +71,9 @@ struct MainTabView: View {
             }
             Tab("History", systemImage: "clock.arrow.circlepath", value: .history) {
                 HistoryView(model: model)
+            }
+            Tab("Discover", systemImage: "sparkles", value: .discover) {
+                DiscoverView(account: account)
             }
             Tab("Taste", systemImage: "chart.bar.xaxis", value: .taste) {
                 TasteView(model: model)

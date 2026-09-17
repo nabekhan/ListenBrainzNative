@@ -117,6 +117,22 @@ struct ListenBrainzProvider: ListeningProvider {
         }
     }
 
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] {
+        try await perform {
+            let result: LBFreshReleases?
+            switch scope {
+            case .forYou:
+                result = try await client.freshReleases.personalized(user: username, days: 7)
+            case .all:
+                result = try await client.freshReleases.sitewide(days: 7)
+            }
+            let releases = result?.releases.enumerated().map { index, release in
+                Self.map(release, sourcePosition: index)
+            } ?? []
+            return releases.sorted(by: Self.freshReleaseComesFirst)
+        }
+    }
+
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {
         if let mbid = recording.identity.mbid {
             try await perform {
@@ -172,6 +188,19 @@ struct ListenBrainzProvider: ListeningProvider {
         }
     }
 
+    static func freshReleaseComesFirst(_ lhs: FreshRelease, _ rhs: FreshRelease) -> Bool {
+        switch (lhs.releaseDateValue, rhs.releaseDateValue) {
+        case let (left?, right?) where left != right:
+            return left > right
+        case (_?, nil):
+            return true
+        case (nil, _?):
+            return false
+        default:
+            return lhs.sourcePosition < rhs.sourcePosition
+        }
+    }
+
     private static func map(_ metadata: LBTrackMetadata, msid: UUID?) -> Recording {
         let mapped = metadata.mbidMapping
         let additional = metadata.additionalInfo
@@ -189,6 +218,24 @@ struct ListenBrainzProvider: ListeningProvider {
                 ?? additional?.musicService
                 ?? additional?.submissionClient
                 ?? additional?.mediaPlayer
+        )
+    }
+
+    private static func map(_ release: LBFreshReleases.Release, sourcePosition: Int) -> FreshRelease {
+        FreshRelease(
+            releaseMBID: release.releaseMBID.flatMap(UUID.init(uuidString:)),
+            releaseGroupMBID: release.releaseGroupMBID.flatMap(UUID.init(uuidString:)),
+            title: release.releaseName,
+            artistName: release.artistCreditName,
+            artistMBIDs: release.artistMBIDs.compactMap(UUID.init(uuidString:)),
+            releaseDate: release.releaseDate,
+            primaryType: release.primaryType,
+            secondaryType: release.secondaryType,
+            tags: release.tags,
+            confidence: release.confidence,
+            listenCount: release.listenCount,
+            artworkReleaseMBID: (release.caaReleaseMBID ?? release.releaseMBID).flatMap(UUID.init(uuidString:)),
+            sourcePosition: sourcePosition
         )
     }
 }

@@ -172,3 +172,103 @@ enum ListeningActivityLoadState: Equatable {
     case loaded(ListeningActivity)
     case failed(String)
 }
+
+struct FreshRelease: Identifiable, Hashable, Sendable {
+    let releaseMBID: UUID?
+    let releaseGroupMBID: UUID?
+    let title: String
+    let artistName: String
+    let artistMBIDs: [UUID]
+    let releaseDate: String?
+    let primaryType: String?
+    let secondaryType: String?
+    let tags: [String]
+    let confidence: Double?
+    let listenCount: Int?
+    let artworkReleaseMBID: UUID?
+    let sourcePosition: Int
+
+    var id: String {
+        let identity: String
+        if let releaseMBID {
+            identity = "release:\(releaseMBID.uuidString)"
+        } else if let releaseGroupMBID {
+            identity = "release-group:\(releaseGroupMBID.uuidString)"
+        } else {
+            identity = "unmapped-release:\(artistName):\(title):\(releaseDate ?? "")"
+        }
+        return "\(identity):\(sourcePosition)"
+    }
+
+    var artworkURL: URL? {
+        guard let artworkReleaseMBID else { return nil }
+        return URL(string: "https://coverartarchive.org/release/\(artworkReleaseMBID.uuidString)/front-500")
+    }
+
+    var typeDescription: String? {
+        [primaryType, secondaryType].compactMap { $0 }.joined(separator: " · ").nilIfEmpty
+    }
+
+    var releaseDateValue: Date? {
+        releaseDateValue(in: .autoupdatingCurrent)
+    }
+
+    func releaseDateValue(in timeZone: TimeZone) -> Date? {
+        guard let releaseDate else { return nil }
+        let components = releaseDate.split(separator: "-", omittingEmptySubsequences: false)
+        guard components.count == 3,
+              let year = Int(components[0]),
+              let month = Int(components[1]),
+              let day = Int(components[2])
+        else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        var dateComponents = DateComponents()
+        dateComponents.calendar = calendar
+        dateComponents.timeZone = timeZone
+        dateComponents.year = year
+        dateComponents.month = month
+        dateComponents.day = day
+        return dateComponents.date
+    }
+
+    var releaseDateDescription: String? {
+        releaseDateValue?.formatted(.dateTime.month(.abbreviated).day().year()) ?? releaseDate
+    }
+
+    var isUpcoming: Bool {
+        guard let releaseDateValue else { return false }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .autoupdatingCurrent
+        return calendar.compare(releaseDateValue, to: .now, toGranularity: .day) == .orderedDescending
+    }
+
+    var releaseMusicBrainzURL: URL? {
+        guard let releaseMBID else { return nil }
+        return URL(string: "https://musicbrainz.org/release/\(releaseMBID.uuidString)")
+    }
+
+    var releaseGroupMusicBrainzURL: URL? {
+        guard let releaseGroupMBID else { return nil }
+        return URL(string: "https://musicbrainz.org/release-group/\(releaseGroupMBID.uuidString)")
+    }
+}
+
+enum FreshReleaseScope: String, CaseIterable, Identifiable, Sendable {
+    case forYou
+    case all
+
+    var id: Self { self }
+    var title: String { self == .forYou ? "For You" : "All" }
+}
+
+enum FreshReleasesLoadState: Equatable {
+    case idle
+    case loading
+    case loaded([FreshRelease])
+    case failed(String)
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
+}

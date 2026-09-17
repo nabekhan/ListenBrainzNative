@@ -39,7 +39,7 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 
 ## Staging after the slice
 
-- Phase 3: full history/date jump, stats, search, release pages, users/follows/similarity, feedback, pins, feed, recommendations, Fresh Releases, playlist browsing.
+- Phase 3: full history/date jump, stats, search, release pages, users/follows/similarity, feedback, pins, feed, recommendations, and playlist browsing. Fresh Releases now has an initial native Discover slice.
 - Phase 4: Year in Music, shareable art, LB Radio, playlist editing, playback/content resolution, MusicKit-scoped capture, offline submit queue, inspect/mapping tools.
 
 ## Immediate implementation sequence
@@ -54,8 +54,9 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 
 - Production website interactive inspection was blocked by the unavailable configured browser; current frontend source/routes and public API calls were inspected instead.
 - Xcode 27, the iOS 27 runtime, app build, test bundle, real simulator tests, and live public data have now been exercised. Visual checkpoints cover onboarding plus real-data Home in light/dark mode; smaller-device validation is recorded with the build evidence.
-- The verified checkpoint currently passes 45 vendored-package tests, 14 app tests with no runtime warnings, and the paced opt-in production public API smoke suite.
+- The verified checkpoint currently passes 50 vendored-package tests, 20 app tests with no runtime warnings, and the paced opt-in production public API smoke suite.
 - Phase 3 statistics now includes on-demand server activity for the website's seven primary ranges, per-period request caching, accessible native charts, and explicit empty/retry behavior. Real-data visual checks covered all-time activity on large and small simulators in dark and light modes.
+- Fresh Releases now uses an upstreamable ListenBrainzKit extension. Personalized results are the default and an HTTP 204 becomes an honest empty state; selecting All is the only route that makes a sitewide request. The native slice follows the website's one-week window and newest-first presentation, while distinguishing upcoming releases and concrete release versus release-group identity. The API client preserves the sitewide endpoint's required terminal slash, with regression coverage.
 - Official KMP framework export was attempted and currently fails at the native Room KSP step; it remains a behavior reference rather than an app dependency.
 
 ## Rate-limit behavior decision

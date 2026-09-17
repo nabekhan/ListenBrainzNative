@@ -169,6 +169,155 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(requestCount, 2)
     }
 
+    func testFreshReleasesKeepPersonalizedAndSitewideRequestsSeparate() async {
+        let provider = FixtureProvider()
+        let model = FreshReleasesModel(
+            account: Account(username: "fixture-\(UUID().uuidString)", token: ""),
+            provider: provider
+        )
+
+        await model.load(scope: .forYou)
+        guard case let .loaded(personalized) = model.state(for: .forYou) else {
+            return XCTFail("Expected personalized releases")
+        }
+        XCTAssertTrue(personalized.isEmpty)
+        let personalizedRequests = await provider.freshReleaseRequestCount(for: .forYou)
+        let sitewideRequestsBeforeSelection = await provider.freshReleaseRequestCount(for: .all)
+        XCTAssertEqual(personalizedRequests, 1)
+        XCTAssertEqual(sitewideRequestsBeforeSelection, 0)
+
+        await model.load(scope: .all)
+        guard case let .loaded(sitewide) = model.state(for: .all) else {
+            return XCTFail("Expected sitewide releases")
+        }
+        XCTAssertEqual(sitewide.count, 1)
+        let sitewideRequests = await provider.freshReleaseRequestCount(for: .all)
+        XCTAssertEqual(sitewideRequests, 1)
+    }
+
+    func testReplacementFreshReleaseLoadSurvivesOlderCancellation() async throws {
+        let provider = FixtureProvider(freshReleaseDelay: .milliseconds(80))
+        let model = FreshReleasesModel(
+            account: Account(username: "fixture-\(UUID().uuidString)", token: ""),
+            provider: provider
+        )
+        let first = Task { await model.load(scope: .forYou) }
+        let clock = ContinuousClock()
+        while await provider.freshReleaseRequestCount(for: .forYou) < 1 {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+
+        let replacement = Task { await model.load(scope: .forYou) }
+        while await provider.freshReleaseRequestCount(for: .forYou) < 2 {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+        first.cancel()
+
+        await first.value
+        await replacement.value
+
+        guard case .loaded = model.state(for: .forYou) else {
+            return XCTFail("Expected the replacement Fresh Releases request to remain loaded")
+        }
+    }
+
+    func testFreshReleaseRefreshCoalescesWhileLoading() async throws {
+        let provider = FixtureProvider(freshReleaseDelay: .milliseconds(80))
+        let model = FreshReleasesModel(
+            account: Account(username: "fixture-\(UUID().uuidString)", token: ""),
+            provider: provider
+        )
+        let load = Task { await model.load(scope: .all) }
+        let clock = ContinuousClock()
+        while await provider.freshReleaseRequestCount(for: .all) < 1 {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+
+        await model.refresh(scope: .all)
+
+        let requestCount = await provider.freshReleaseRequestCount(for: .all)
+        XCTAssertEqual(requestCount, 1)
+        await load.value
+    }
+
+    func testFreshReleaseDateKeepsCalendarDayWestOfUTC() throws {
+        let timeZone = try XCTUnwrap(TimeZone(identifier: "America/Edmonton"))
+        let release = FreshRelease(
+            releaseMBID: FixtureProvider.releaseMBID,
+            releaseGroupMBID: nil,
+            title: "Dated Fixture",
+            artistName: "Fixture Artist",
+            artistMBIDs: [FixtureProvider.artistMBID],
+            releaseDate: "2026-9-7",
+            primaryType: "Album",
+            secondaryType: nil,
+            tags: [],
+            confidence: nil,
+            listenCount: nil,
+            artworkReleaseMBID: FixtureProvider.releaseMBID,
+            sourcePosition: 0
+        )
+
+        let date = try XCTUnwrap(release.releaseDateValue(in: timeZone))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        XCTAssertEqual(components.year, 2026)
+        XCTAssertEqual(components.month, 9)
+        XCTAssertEqual(components.day, 7)
+    }
+
+    func testFreshReleaseIdentityDistinguishesDuplicateUnmappedRows() {
+        func release(at sourcePosition: Int) -> FreshRelease {
+            FreshRelease(
+                releaseMBID: nil,
+                releaseGroupMBID: nil,
+                title: "Same title",
+                artistName: "Same artist",
+                artistMBIDs: [],
+                releaseDate: "2026-9-7",
+                primaryType: nil,
+                secondaryType: nil,
+                tags: [],
+                confidence: nil,
+                listenCount: nil,
+                artworkReleaseMBID: nil,
+                sourcePosition: sourcePosition
+            )
+        }
+
+        XCTAssertNotEqual(release(at: 0).id, release(at: 1).id)
+    }
+
+    func testFreshReleasesArePresentedNewestFirst() {
+        func release(date: String?, sourcePosition: Int) -> FreshRelease {
+            FreshRelease(
+                releaseMBID: nil,
+                releaseGroupMBID: nil,
+                title: date ?? "Unknown date",
+                artistName: "Fixture Artist",
+                artistMBIDs: [],
+                releaseDate: date,
+                primaryType: nil,
+                secondaryType: nil,
+                tags: [],
+                confidence: nil,
+                listenCount: nil,
+                artworkReleaseMBID: nil,
+                sourcePosition: sourcePosition
+            )
+        }
+        let releases = [
+            release(date: "2026-09-10", sourcePosition: 0),
+            release(date: nil, sourcePosition: 1),
+            release(date: "2026-09-20", sourcePosition: 2),
+        ]
+
+        let sorted = releases.sorted(by: ListenBrainzProvider.freshReleaseComesFirst)
+
+        XCTAssertEqual(sorted.map(\.releaseDate), ["2026-09-20", "2026-09-10", nil])
+    }
+
     nonisolated func testRequestGateSpacesActualOperationStarts() async throws {
         let gate = RequestGate(minimumInterval: .milliseconds(40))
         let clock = ContinuousClock()
@@ -342,10 +491,13 @@ private actor FixtureProvider: ListeningProvider {
     static let releaseMBID = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
     static let recordingMBID = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
     private let activityDelay: Duration?
+    private let freshReleaseDelay: Duration?
     private var activityRequests: [ListeningActivityPeriod: Int] = [:]
+    private var freshReleaseRequests: [FreshReleaseScope: Int] = [:]
 
-    init(activityDelay: Duration? = nil) {
+    init(activityDelay: Duration? = nil, freshReleaseDelay: Duration? = nil) {
         self.activityDelay = activityDelay
+        self.freshReleaseDelay = freshReleaseDelay
     }
 
     func validateToken() async throws -> String { "fixture-user" }
@@ -420,10 +572,39 @@ private actor FixtureProvider: ListeningProvider {
         )
     }
 
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] {
+        freshReleaseRequests[scope, default: 0] += 1
+        if let freshReleaseDelay {
+            try await ContinuousClock().sleep(for: freshReleaseDelay)
+        }
+        guard scope == .all else { return [] }
+        return [
+            FreshRelease(
+                releaseMBID: Self.releaseMBID,
+                releaseGroupMBID: nil,
+                title: "Fresh Fixture",
+                artistName: "Fixture Artist",
+                artistMBIDs: [Self.artistMBID],
+                releaseDate: "2026-9-7",
+                primaryType: "Album",
+                secondaryType: nil,
+                tags: ["fixture"],
+                confidence: nil,
+                listenCount: 1,
+                artworkReleaseMBID: Self.releaseMBID,
+                sourcePosition: 0
+            ),
+        ]
+    }
+
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
 
     func activityRequestCount(for period: ListeningActivityPeriod) -> Int {
         activityRequests[period, default: 0]
+    }
+
+    func freshReleaseRequestCount(for scope: FreshReleaseScope) -> Int {
+        freshReleaseRequests[scope, default: 0]
     }
 
     private func listen(title: String, timestamp: TimeInterval, isPlayingNow: Bool = false) -> Listen {
@@ -482,6 +663,7 @@ private actor BoundaryProvider: ListeningProvider {
             buckets: []
         )
     }
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
 
     func requestedBefore() -> Date? { lastBefore }
