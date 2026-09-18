@@ -131,6 +131,88 @@ struct LBStatisticsTests {
         #expect(activity == nil)
     }
 
+    @Test("Artist evolution decodes string and numeric buckets with missing artist identifiers")
+    func deserializeArtistEvolutionActivity() throws {
+        let response = try JSONDecoder.ListenBrainz.decode(
+            StatsArtistEvolutionActivityRequest.Result.self,
+            from: Data("""
+            {
+              "payload": {
+                "user_id": "listener",
+                "artist_evolution_activity": [
+                  {
+                    "time_unit": "January",
+                    "artist_mbid": "11111111-1111-1111-1111-111111111111",
+                    "artist_name": "First Artist",
+                    "listen_count": 12
+                  },
+                  {
+                    "time_unit": 2,
+                    "artist_mbid": null,
+                    "artist_name": "Second Artist",
+                    "listen_count": 8
+                  },
+                  {
+                    "time_unit": 2024,
+                    "artist_name": "Unmapped Artist",
+                    "listen_count": 3
+                  }
+                ],
+                "range": "this_year",
+                "from_ts": 1735689600,
+                "to_ts": 1767225600,
+                "last_updated": 1767312000
+              }
+            }
+            """.utf8)
+        )
+
+        let activity = response.payload
+        #expect(activity.userID == "listener")
+        #expect(activity.range == "this_year")
+        #expect(activity.from == Date(timeIntervalSince1970: 1735689600))
+        #expect(activity.to == Date(timeIntervalSince1970: 1767225600))
+        #expect(activity.lastUpdated == 1767312000)
+        #expect(activity.artistEvolutionActivity.map(\.timeUnit) == ["January", "2", "2024"])
+        #expect(activity.artistEvolutionActivity.map(\.artistName) == ["First Artist", "Second Artist", "Unmapped Artist"])
+        #expect(activity.artistEvolutionActivity.map(\.artistMBID) == [
+            "11111111-1111-1111-1111-111111111111",
+            nil,
+            nil,
+        ])
+        #expect(activity.artistEvolutionActivity.map(\.listenCount) == [12, 8, 3])
+    }
+
+    @Test("Artist evolution request uses the user endpoint, range query, and escaped URL path")
+    func artistEvolutionActivityRequestSemantics() throws {
+        let request = StatsArtistEvolutionActivityRequest(user: "test user", range: .quarter)
+        #expect(request.data.path == "/1/stats/user/test user/artist-evolution-activity")
+        #expect(request.data.queryItems == ["range": ["quarter"]])
+        #expect(request.data.statusErrors[204] == .noContent)
+
+        let defaultRange = StatsArtistEvolutionActivityRequest(user: "listener", range: nil)
+        #expect(defaultRange.data.queryItems.isEmpty)
+
+        let apiClient = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+        let urlRequest = try apiClient.makeURLRequest(request)
+        #expect(urlRequest.url?.path == "/1/stats/user/test user/artist-evolution-activity")
+        #expect(urlRequest.url?.absoluteString.contains("test%20user") == true)
+        #expect(urlRequest.url?.query == "range=quarter")
+    }
+
+    @Test("Artist evolution maps no-content to nil")
+    func artistEvolutionActivityNoContentIsNil() async throws {
+        let client = LBStatisticsClient(MockAPIClient(result: .failure(.noContent)))
+
+        let activity = try await client.artistEvolutionActivity(user: "listener", range: .thisYear)
+
+        #expect(activity == nil)
+    }
+
     @Test("Deserialize user artists")
     func deserializeUserArtists() async throws {
         let res = try JSONDecoder
