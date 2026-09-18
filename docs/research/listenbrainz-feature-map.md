@@ -28,7 +28,7 @@ Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or
 | Artist activity | Y | Y | Y | P | — | P | P1 | Explain listening mix |
 | Genre activity | Y | Y | Y | P | — | P | P1 | Show only with adequate mapped metadata |
 | Era activity | Y | Y | Y | P | Y | P | P1 | Native cached Music by Decade chart with server-derived years and decade-to-year drill-down |
-| Artist evolution activity | Y | Y | Y | P | — | P | P1 | Taste-over-time view |
+| Artist evolution activity | Y | Y | — | — | Y | — | P1 | Native on-demand top-artist timeline with touch inspection; one server request per selected range |
 | Artist map | Y | Y | Y | Y | — | P | P2 | Map only when data is meaningful |
 | Sitewide statistics/context | Y | Y | P | ? | P | P | P2 | Use sparingly for context |
 | Entity popularity/listener counts | Y | Y | Y | ? | — | P | P1 | Artist/release/track context |

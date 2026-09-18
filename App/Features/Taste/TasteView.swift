@@ -33,6 +33,7 @@ struct TasteView: View {
                         periodControls
                         dailyListeningHours
                         musicByDecade
+                        artistEvolution
                         listeningActivity
                         if !isTasteVisualQA {
                             rankings
@@ -43,6 +44,7 @@ struct TasteView: View {
                     periodControls
                     dailyListeningHours
                     musicByDecade
+                    artistEvolution
                     listeningActivity
                     rankings
                     #endif
@@ -511,6 +513,46 @@ struct TasteView: View {
                     eraActivityCard(activity)
                 }
             }
+        }
+    }
+
+    private var artistEvolution: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Artist evolution",
+                subtitle: "How your leading artists move through time"
+            )
+
+            NavigationLink {
+                ArtistEvolutionView(model: model, period: $activityPeriod)
+            } label: {
+                HStack(spacing: 16) {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(AppTheme.accent)
+                        .frame(width: 52, height: 52)
+                        .background(AppTheme.accent.opacity(0.13), in: .circle)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Follow your top artists")
+                            .font(.headline)
+                        Text("Compare their listening patterns across \(activityPeriod.title.lowercased()).")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 4)
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(16)
+                .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Loads one ListenBrainz artist evolution report for the selected period")
         }
     }
 

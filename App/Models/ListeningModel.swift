@@ -17,6 +17,7 @@ final class ListeningModel {
     private let cache: SnapshotCache
     private let dailyActivityCache: EntityDetailCache<DailyActivityCacheKey, DailyActivity>
     private let eraActivityCache: EntityDetailCache<EraActivityCacheKey, EraActivity>
+    private let artistEvolutionActivityCache: EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity>
 
     private(set) var snapshot = ListeningSnapshot.empty
     private(set) var phase: Phase = .idle
@@ -36,6 +37,9 @@ final class ListeningModel {
     private(set) var eraActivity: [ListeningActivityPeriod: EraActivityLoadState] = [:]
     private(set) var eraActivityRefreshMessages: [ListeningActivityPeriod: String] = [:]
     private var eraActivityRequestIDs: [ListeningActivityPeriod: UUID] = [:]
+    private(set) var artistEvolutionActivity: [ListeningActivityPeriod: ArtistEvolutionLoadState] = [:]
+    private(set) var artistEvolutionRefreshMessages: [ListeningActivityPeriod: String] = [:]
+    private var artistEvolutionRequestIDs: [ListeningActivityPeriod: UUID] = [:]
     var feedback: [String: RecordingFeedback] = [:]
     var actionError: String?
     private var didLoad = false
@@ -47,13 +51,15 @@ final class ListeningModel {
         provider: (any ListeningProvider)? = nil,
         cache: SnapshotCache = .shared,
         dailyActivityCache: EntityDetailCache<DailyActivityCacheKey, DailyActivity> = EntityDetailCaches.dailyActivity,
-        eraActivityCache: EntityDetailCache<EraActivityCacheKey, EraActivity> = EntityDetailCaches.eraActivity
+        eraActivityCache: EntityDetailCache<EraActivityCacheKey, EraActivity> = EntityDetailCaches.eraActivity,
+        artistEvolutionActivityCache: EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity> = EntityDetailCaches.artistEvolutionActivity
     ) {
         self.account = account
         self.provider = provider ?? ListenBrainzProvider(token: account.token)
         self.cache = cache
         self.dailyActivityCache = dailyActivityCache
         self.eraActivityCache = eraActivityCache
+        self.artistEvolutionActivityCache = artistEvolutionActivityCache
     }
 
     func load() async {
@@ -396,6 +402,75 @@ final class ListeningModel {
                 eraActivityRefreshMessages[period] = error.localizedDescription
             } else {
                 eraActivity[period] = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    func artistEvolutionState(for period: ListeningActivityPeriod) -> ArtistEvolutionLoadState {
+        artistEvolutionActivity[period] ?? .idle
+    }
+
+    func artistEvolutionRefreshMessage(for period: ListeningActivityPeriod) -> String? {
+        artistEvolutionRefreshMessages[period]
+    }
+
+    /// Loads a single server-calculated range only after the dedicated detail
+    /// screen is opened. Stale chart data remains visible during revalidation.
+    func loadArtistEvolution(for period: ListeningActivityPeriod, retrying: Bool = false) async {
+        let key = ArtistEvolutionActivityCacheKey(username: account.username, period: period)
+        if !retrying, artistEvolutionRequestIDs[period] != nil {
+            return
+        }
+
+        if let cached = await artistEvolutionActivityCache.value(for: key) {
+            artistEvolutionActivity[period] = .loaded(cached.value)
+            if cached.isFresh, !retrying {
+                return
+            }
+        } else {
+            if !retrying {
+                switch artistEvolutionState(for: period) {
+                case .loaded, .unavailable, .loading:
+                    return
+                case .idle, .failed:
+                    break
+                }
+            }
+            artistEvolutionActivity[period] = .loading
+        }
+
+        artistEvolutionRefreshMessages[period] = nil
+        let requestID = UUID()
+        artistEvolutionRequestIDs[period] = requestID
+
+        do {
+            let result = try await provider.artistEvolutionActivity(
+                username: account.username,
+                period: period
+            )
+            try Task.checkCancellation()
+            guard artistEvolutionRequestIDs[period] == requestID else { return }
+            guard let result else {
+                artistEvolutionActivity[period] = .unavailable
+                artistEvolutionRequestIDs[period] = nil
+                return
+            }
+            artistEvolutionActivity[period] = .loaded(result)
+            artistEvolutionRequestIDs[period] = nil
+            await artistEvolutionActivityCache.save(result, for: key)
+        } catch is CancellationError {
+            guard artistEvolutionRequestIDs[period] == requestID else { return }
+            artistEvolutionRequestIDs[period] = nil
+            if case .loading = artistEvolutionState(for: period) {
+                artistEvolutionActivity[period] = .idle
+            }
+        } catch {
+            guard artistEvolutionRequestIDs[period] == requestID else { return }
+            artistEvolutionRequestIDs[period] = nil
+            if case .loaded = artistEvolutionState(for: period) {
+                artistEvolutionRefreshMessages[period] = error.localizedDescription
+            } else {
+                artistEvolutionActivity[period] = .failed(error.localizedDescription)
             }
         }
     }

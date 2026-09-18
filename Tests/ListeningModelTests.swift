@@ -668,6 +668,217 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(model.eraActivityState(for: .thisYear), .idle)
     }
 
+    func testArtistEvolutionNormalizesSparseUnorderedRowsByStableArtistIdentity() {
+        let artistMBID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+        let activity = ArtistEvolutionActivity(
+            period: .thisWeek,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            rows: [
+                .init(timeUnit: "Tuesday", artistMBID: nil, artistName: "Second Artist", listenCount: 4),
+                .init(timeUnit: "monday", artistMBID: artistMBID, artistName: "First Artist", listenCount: 3),
+                .init(timeUnit: " Monday ", artistMBID: nil, artistName: "First Artist", listenCount: 5),
+                .init(timeUnit: "Tuesday", artistMBID: artistMBID, artistName: "First Artist", listenCount: -9),
+                .init(timeUnit: "Monday", artistMBID: artistMBID, artistName: "First Artist", listenCount: Int.max),
+                .init(timeUnit: "not-a-day", artistMBID: nil, artistName: "Ignored", listenCount: 100),
+            ]
+        )
+
+        XCTAssertEqual(activity.timeUnits, ListeningWeekday.allCases.map(\.rawValue))
+        XCTAssertEqual(activity.artists.map(\.name), ["First Artist", "Second Artist"])
+        XCTAssertEqual(activity.artists.first?.mbid, artistMBID)
+        XCTAssertEqual(activity.artists.first?.listenCount, Int.max)
+        XCTAssertEqual(activity.artists.first?.listenCount(at: "Tuesday"), 0)
+        XCTAssertEqual(activity.artists.last?.listenCount(at: "Monday"), 0)
+        XCTAssertEqual(activity.artists.last?.listenCount(at: "Tuesday"), 4)
+        XCTAssertEqual(activity.totalListens, Int.max)
+    }
+
+    func testArtistEvolutionBoundsAllTimeYearsAndSparseGapFilling() {
+        let activity = ArtistEvolutionActivity(
+            period: .allTime,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            rows: [
+                .init(timeUnit: String(Int.min), artistMBID: nil, artistName: "Artist", listenCount: 1),
+                .init(timeUnit: "0", artistMBID: nil, artistName: "Artist", listenCount: 2),
+                .init(timeUnit: "1000", artistMBID: nil, artistName: "Artist", listenCount: 3),
+                .init(timeUnit: "2024", artistMBID: nil, artistName: "Artist", listenCount: 4),
+                .init(timeUnit: "9999", artistMBID: nil, artistName: "Artist", listenCount: 5),
+                .init(timeUnit: String(Int.max), artistMBID: nil, artistName: "Artist", listenCount: 6),
+            ]
+        )
+
+        XCTAssertEqual(activity.timeUnits, ["1000", "2024", "9999"])
+        XCTAssertEqual(activity.artists.first?.points.map(\.listenCount), [3, 4, 5])
+        XCTAssertEqual(activity.totalListens, 12)
+    }
+
+    func testArtistEvolutionUsesListenBrainzEnglishMonthProtocolValues() {
+        let activity = ArtistEvolutionActivity(
+            period: .thisYear,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            rows: [
+                .init(timeUnit: "january", artistMBID: nil, artistName: "Artist", listenCount: 3),
+                .init(timeUnit: " December ", artistMBID: nil, artistName: "Artist", listenCount: 7),
+                .init(timeUnit: "M01", artistMBID: nil, artistName: "Ignored", listenCount: 99),
+            ]
+        )
+
+        XCTAssertEqual(activity.timeUnits, ArtistEvolutionActivity.monthNames)
+        XCTAssertEqual(activity.artists.first?.listenCount(at: "January"), 3)
+        XCTAssertEqual(activity.artists.first?.listenCount(at: "December"), 7)
+        XCTAssertEqual(activity.totalListens, 10)
+    }
+
+    func testArtistEvolutionKeepsSameNameArtistsWithDistinctMBIDsSeparate() {
+        let firstMBID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+        let secondMBID = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
+        let activity = ArtistEvolutionActivity(
+            period: .thisWeek,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            rows: [
+                .init(timeUnit: "Monday", artistMBID: firstMBID, artistName: "Shared Name", listenCount: 3),
+                .init(timeUnit: "Tuesday", artistMBID: secondMBID, artistName: "Shared Name", listenCount: 7),
+            ]
+        )
+
+        XCTAssertEqual(activity.artists.count, 2)
+        XCTAssertEqual(Set(activity.artists.map(\.id)).count, 2)
+        XCTAssertEqual(Set(activity.artists.compactMap(\.mbid)), Set([firstMBID, secondMBID]))
+        XCTAssertEqual(activity.artists.map(\.listenCount), [7, 3])
+    }
+
+    func testArtistEvolutionCachesOneFreshRequestPerNormalizedUserAndPeriod() async {
+        let cache = EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity>()
+        let provider = ArtistEvolutionProvider(result: .activity(listenCount: 4))
+        let first = ListeningModel(
+            account: Account(username: " Listener ", token: ""),
+            provider: provider,
+            artistEvolutionActivityCache: cache
+        )
+
+        await first.loadArtistEvolution(for: .thisYear)
+        await first.loadArtistEvolution(for: .thisYear)
+        let firstRequestCount = await provider.requestCount()
+        XCTAssertEqual(firstRequestCount, 1)
+
+        let sameUser = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: provider,
+            artistEvolutionActivityCache: cache
+        )
+        await sameUser.loadArtistEvolution(for: .thisYear)
+        let sameUserRequestCount = await provider.requestCount()
+        XCTAssertEqual(sameUserRequestCount, 1)
+
+        let otherUser = ListeningModel(
+            account: Account(username: "someone-else", token: ""),
+            provider: provider,
+            artistEvolutionActivityCache: cache
+        )
+        await otherUser.loadArtistEvolution(for: .thisYear)
+        await otherUser.loadArtistEvolution(for: .allTime)
+        let isolatedRequestCount = await provider.requestCount()
+        XCTAssertEqual(isolatedRequestCount, 3)
+    }
+
+    func testStaleArtistEvolutionStaysVisibleDuringRefreshAndOnFailure() async throws {
+        let cache = EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity>(timeToLive: -1)
+        let stale = ArtistEvolutionActivity.fixture(period: .thisYear, listenCount: 3)
+        await cache.save(stale, for: .init(username: "listener", period: .thisYear))
+        let provider = ArtistEvolutionProvider(result: .failure, delay: .seconds(1))
+        let model = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: provider,
+            artistEvolutionActivityCache: cache
+        )
+
+        let task = Task { await model.loadArtistEvolution(for: .thisYear) }
+        while await provider.requestCount() == 0 {
+            try await ContinuousClock().sleep(for: .milliseconds(1))
+        }
+        guard case let .loaded(visible) = model.artistEvolutionState(for: .thisYear) else {
+            return XCTFail("Stale artist evolution should remain visible while refreshing")
+        }
+        XCTAssertEqual(visible.totalListens, stale.totalListens)
+
+        await task.value
+        guard case let .loaded(retained) = model.artistEvolutionState(for: .thisYear) else {
+            return XCTFail("A refresh failure must not discard stale artist evolution")
+        }
+        XCTAssertEqual(retained.totalListens, stale.totalListens)
+        XCTAssertNotNil(model.artistEvolutionRefreshMessage(for: .thisYear))
+    }
+
+    func testArtistEvolutionReplacementCannotBeOverwrittenByOlderRequest() async throws {
+        let provider = ArtistEvolutionProvider(
+            results: [.activity(listenCount: 1), .activity(listenCount: 9)],
+            delays: [.milliseconds(80), .zero],
+            ignoresCancellation: true
+        )
+        let model = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: provider,
+            artistEvolutionActivityCache: EntityDetailCache()
+        )
+
+        let first = Task { await model.loadArtistEvolution(for: .thisWeek) }
+        while await provider.requestCount() == 0 {
+            try await ContinuousClock().sleep(for: .milliseconds(1))
+        }
+        let replacement = Task { await model.loadArtistEvolution(for: .thisWeek, retrying: true) }
+        await replacement.value
+        first.cancel()
+        await first.value
+
+        guard case let .loaded(activity) = model.artistEvolutionState(for: .thisWeek) else {
+            return XCTFail("Expected the replacement artist evolution response")
+        }
+        XCTAssertEqual(activity.totalListens, 9)
+    }
+
+    func testArtistEvolutionNilEmptyAndCancellationStatesAreHonest() async throws {
+        let unavailableModel = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: ArtistEvolutionProvider(result: .noContent),
+            artistEvolutionActivityCache: EntityDetailCache()
+        )
+        await unavailableModel.loadArtistEvolution(for: .thisMonth)
+        XCTAssertEqual(unavailableModel.artistEvolutionState(for: .thisMonth), .unavailable)
+
+        let emptyModel = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: ArtistEvolutionProvider(result: .activity(listenCount: 0)),
+            artistEvolutionActivityCache: EntityDetailCache()
+        )
+        await emptyModel.loadArtistEvolution(for: .thisMonth)
+        guard case let .loaded(empty) = emptyModel.artistEvolutionState(for: .thisMonth) else {
+            return XCTFail("Expected a loaded zero-count artist evolution response")
+        }
+        XCTAssertTrue(empty.isEmpty)
+
+        let delayedProvider = ArtistEvolutionProvider(result: .activity(listenCount: 3), delay: .seconds(1))
+        let cancelledModel = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: delayedProvider,
+            artistEvolutionActivityCache: EntityDetailCache()
+        )
+        let task = Task { await cancelledModel.loadArtistEvolution(for: .thisWeek) }
+        while await delayedProvider.requestCount() == 0 {
+            try await ContinuousClock().sleep(for: .milliseconds(1))
+        }
+        task.cancel()
+        await task.value
+        XCTAssertEqual(cancelledModel.artistEvolutionState(for: .thisWeek), .idle)
+    }
+
     func testFreshReleasesKeepPersonalizedAndSitewideRequestsSeparate() async {
         let provider = FixtureProvider()
         let model = FreshReleasesModel(
@@ -1299,6 +1510,103 @@ private actor EraActivityProvider: ListeningProvider {
         switch result {
         case let .activity(year, listenCount):
             return .fixture(period: period, year: year, listenCount: listenCount)
+        case .noContent:
+            return nil
+        case .failure:
+            throw URLError(.cannotConnectToHost)
+        }
+    }
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+    func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+    func requestCount() -> Int { requests }
+}
+
+private extension ArtistEvolutionActivity {
+    static func fixture(
+        period: ListeningActivityPeriod,
+        listenCount: Int
+    ) -> ArtistEvolutionActivity {
+        let timeUnit: String
+        switch period {
+        case .thisWeek, .lastWeek:
+            timeUnit = "Monday"
+        case .thisMonth, .lastMonth:
+            timeUnit = "1"
+        case .thisYear, .lastYear:
+            timeUnit = "January"
+        case .allTime:
+            timeUnit = "2024"
+        }
+        return ArtistEvolutionActivity(
+            period: period,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            rows: [
+                .init(
+                    timeUnit: timeUnit,
+                    artistMBID: UUID(uuidString: "11111111-1111-1111-1111-111111111111"),
+                    artistName: "Fixture Artist",
+                    listenCount: listenCount
+                ),
+            ]
+        )
+    }
+}
+
+private actor ArtistEvolutionProvider: ListeningProvider {
+    enum Result: Sendable {
+        case activity(listenCount: Int)
+        case noContent
+        case failure
+    }
+
+    private var results: [Result]
+    private var delays: [Duration]
+    private let ignoresCancellation: Bool
+    private var requests = 0
+
+    init(result: Result, delay: Duration = .zero, ignoresCancellation: Bool = false) {
+        self.results = [result]
+        self.delays = [delay]
+        self.ignoresCancellation = ignoresCancellation
+    }
+
+    init(results: [Result], delays: [Duration], ignoresCancellation: Bool) {
+        self.results = results
+        self.delays = delays
+        self.ignoresCancellation = ignoresCancellation
+    }
+
+    func validateToken() async throws -> String { "fixture" }
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] { [] }
+    func playingNow(username: String) async throws -> Listen? { nil }
+    func listenCount(username: String) async throws -> Int { 0 }
+    func topArtists(username: String, count: Int) async throws -> [RankedArtist] { [] }
+    func topReleases(username: String, count: Int) async throws -> [RankedRelease] { [] }
+    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] { [] }
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        .init(period: period, from: .distantPast, to: .distantPast, lastUpdated: .distantPast, buckets: [])
+    }
+    func artistEvolutionActivity(
+        username: String,
+        period: ListeningActivityPeriod
+    ) async throws -> ArtistEvolutionActivity? {
+        let index = requests
+        requests += 1
+        let delay = delays[min(index, delays.count - 1)]
+        if delay > .zero {
+            do {
+                try await ContinuousClock().sleep(for: delay)
+            } catch where !ignoresCancellation {
+                throw CancellationError()
+            } catch {
+                // Deliberately return late to exercise request-ID protection.
+            }
+        }
+        switch results[min(index, results.count - 1)] {
+        case let .activity(listenCount):
+            return .fixture(period: period, listenCount: listenCount)
         case .noContent:
             return nil
         case .failure:

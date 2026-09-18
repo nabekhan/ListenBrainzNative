@@ -11,6 +11,7 @@ protocol ListeningProvider: Sendable {
     func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity
     func dailyActivity(username: String, period: ListeningActivityPeriod) async throws -> DailyActivity?
     func eraActivity(username: String, period: ListeningActivityPeriod) async throws -> EraActivity?
+    func artistEvolutionActivity(username: String, period: ListeningActivityPeriod) async throws -> ArtistEvolutionActivity?
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease]
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws
 }
@@ -25,6 +26,13 @@ extension ListeningProvider {
     }
 
     func eraActivity(username: String, period: ListeningActivityPeriod) async throws -> EraActivity? {
+        nil
+    }
+
+    func artistEvolutionActivity(
+        username: String,
+        period: ListeningActivityPeriod
+    ) async throws -> ArtistEvolutionActivity? {
         nil
     }
 }

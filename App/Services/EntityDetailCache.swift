@@ -65,4 +65,8 @@ enum EntityDetailCaches {
         timeToLive: 10 * 60,
         maximumEntryCount: 28
     )
+    static let artistEvolutionActivity = EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity>(
+        timeToLive: 10 * 60,
+        maximumEntryCount: 28
+    )
 }

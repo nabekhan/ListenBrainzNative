@@ -25,6 +25,11 @@ final class SessionModel {
             state = .active(Account(username: "visual-listener", token: "visual-token"))
             return
         }
+        if arguments.contains("-brainz-artist-evolution-demo")
+            || arguments.contains("-brainz-artist-evolution-all-time-demo") {
+            state = .active(Account(username: "visual-taste", token: "visual-taste"))
+            return
+        }
         if arguments.contains("-brainz-taste-demo")
             || arguments.contains("-brainz-taste-heatmap-demo")
             || arguments.contains("-brainz-taste-era-demo")

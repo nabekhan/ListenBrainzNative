@@ -495,6 +495,242 @@ struct EraActivityCacheKey: Hashable, Sendable {
     }
 }
 
+/// ListenBrainz's server-calculated top artists across the buckets of a
+/// selected statistics range. The initializer makes the sparse, unordered API
+/// rows safe and deterministic for native charts.
+struct ArtistEvolutionActivity: Hashable, Sendable {
+    /// The ListenBrainz API emits English month names independent of the
+    /// device locale, so these are protocol values rather than display text.
+    static let monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
+    ]
+    private static let supportedYears = 1000 ... 9999
+    private static let maximumFilledYearCount = 100
+
+    struct Row: Hashable, Sendable {
+        let timeUnit: String
+        let artistMBID: UUID?
+        let artistName: String
+        let listenCount: Int
+    }
+
+    struct Point: Identifiable, Hashable, Sendable {
+        let timeUnit: String
+        let listenCount: Int
+
+        var id: String { timeUnit }
+    }
+
+    struct Artist: Identifiable, Hashable, Sendable {
+        let mbid: UUID?
+        let name: String
+        let listenCount: Int
+        let points: [Point]
+
+        var id: String { mbid?.uuidString ?? "artist:\(name.lowercased())" }
+
+        func listenCount(at timeUnit: String) -> Int {
+            points.first { $0.timeUnit == timeUnit }?.listenCount ?? 0
+        }
+
+        var rankedArtist: RankedArtist {
+            RankedArtist(mbid: mbid, name: name, listenCount: listenCount)
+        }
+    }
+
+    let period: ListeningActivityPeriod
+    let from: Date
+    let to: Date
+    let lastUpdated: Date
+    let timeUnits: [String]
+    let artists: [Artist]
+
+    init(
+        period: ListeningActivityPeriod,
+        from: Date,
+        to: Date,
+        lastUpdated: Date,
+        rows: [Row]
+    ) {
+        self.period = period
+        self.from = from
+        self.to = to
+        self.lastUpdated = lastUpdated
+
+        let preparedRows = rows.compactMap { row -> PreparedRow? in
+            let name = row.artistName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty,
+                  let timeUnit = Self.canonicalTimeUnit(row.timeUnit, for: period)
+            else { return nil }
+            return PreparedRow(
+                timeUnit: timeUnit,
+                artistMBID: row.artistMBID,
+                artistName: name,
+                normalizedName: name.folding(
+                    options: [.caseInsensitive, .diacriticInsensitive],
+                    locale: Locale(identifier: "en_US_POSIX")
+                ).lowercased(),
+                listenCount: max(0, row.listenCount)
+            )
+        }
+
+        // If otherwise-identical rows occasionally omit an MBID, attach them
+        // to it only when the normalized name maps to one unambiguous ID.
+        var identifiersByName: [String: Set<UUID>] = [:]
+        for row in preparedRows {
+            if let mbid = row.artistMBID {
+                identifiersByName[row.normalizedName, default: []].insert(mbid)
+            }
+        }
+
+        var grouped: [ArtistKey: ArtistAccumulator] = [:]
+        for row in preparedRows {
+            let inferredMBID: UUID?
+            if let mbid = row.artistMBID {
+                inferredMBID = mbid
+            } else if identifiersByName[row.normalizedName]?.count == 1 {
+                inferredMBID = identifiersByName[row.normalizedName]?.first
+            } else {
+                inferredMBID = nil
+            }
+            let key = inferredMBID.map(ArtistKey.mbid) ?? .name(row.normalizedName)
+            var accumulator = grouped[key, default: ArtistAccumulator(mbid: inferredMBID)]
+            accumulator.nameCounts[row.artistName] = Self.saturatedSum(
+                accumulator.nameCounts[row.artistName, default: 0],
+                row.listenCount
+            )
+            accumulator.pointCounts[row.timeUnit] = Self.saturatedSum(
+                accumulator.pointCounts[row.timeUnit, default: 0],
+                row.listenCount
+            )
+            grouped[key] = accumulator
+        }
+
+        let observedTimeUnits = Set(preparedRows.map(\.timeUnit))
+        let orderedTimeUnits = Self.orderedTimeUnits(observedTimeUnits, for: period)
+        self.timeUnits = orderedTimeUnits
+        self.artists = grouped.values.map { accumulator in
+            let name = accumulator.nameCounts.keys.sorted { lhs, rhs in
+                let leftCount = accumulator.nameCounts[lhs, default: 0]
+                let rightCount = accumulator.nameCounts[rhs, default: 0]
+                if leftCount == rightCount {
+                    return lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+                }
+                return leftCount > rightCount
+            }.first ?? "Unknown artist"
+            let points = orderedTimeUnits.map {
+                Point(timeUnit: $0, listenCount: accumulator.pointCounts[$0, default: 0])
+            }
+            let total = points.reduce(0) { Self.saturatedSum($0, $1.listenCount) }
+            return Artist(mbid: accumulator.mbid, name: name, listenCount: total, points: points)
+        }.sorted { lhs, rhs in
+            if lhs.listenCount == rhs.listenCount {
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+            return lhs.listenCount > rhs.listenCount
+        }
+    }
+
+    var totalListens: Int {
+        artists.reduce(0) { Self.saturatedSum($0, $1.listenCount) }
+    }
+
+    var leadingArtist: Artist? { artists.first }
+    var isEmpty: Bool { totalListens == 0 || timeUnits.isEmpty }
+
+    func artists(limit: Int) -> [Artist] {
+        Array(artists.prefix(max(0, limit)))
+    }
+
+    private static func canonicalTimeUnit(
+        _ rawValue: String,
+        for period: ListeningActivityPeriod
+    ) -> String? {
+        let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch period {
+        case .thisWeek, .lastWeek:
+            return ListeningWeekday.allCases.first {
+                $0.rawValue.caseInsensitiveCompare(value) == .orderedSame
+            }?.rawValue
+        case .thisMonth, .lastMonth:
+            guard let day = Int(value), (1 ... 31).contains(day) else { return nil }
+            return String(day)
+        case .thisYear, .lastYear:
+            return monthNames.first {
+                $0.caseInsensitiveCompare(value) == .orderedSame
+            }
+        case .allTime:
+            guard let year = Int(value), supportedYears.contains(year) else { return nil }
+            return String(year)
+        }
+    }
+
+    private static func orderedTimeUnits(
+        _ observed: Set<String>,
+        for period: ListeningActivityPeriod
+    ) -> [String] {
+        switch period {
+        case .thisWeek, .lastWeek:
+            return ListeningWeekday.allCases.map(\.rawValue)
+        case .thisMonth, .lastMonth:
+            return (1 ... 31).map(String.init)
+        case .thisYear, .lastYear:
+            return monthNames
+        case .allTime:
+            let years = observed.compactMap(Int.init).sorted()
+            guard let first = years.first, let last = years.last else { return [] }
+            let span = (last - first) + 1
+            if span > maximumFilledYearCount {
+                return years.map(String.init)
+            }
+            return (first ... last).map(String.init)
+        }
+    }
+
+    private static func saturatedSum(_ lhs: Int, _ rhs: Int) -> Int {
+        let result = lhs.addingReportingOverflow(rhs)
+        return result.overflow ? Int.max : result.partialValue
+    }
+
+    private struct PreparedRow {
+        let timeUnit: String
+        let artistMBID: UUID?
+        let artistName: String
+        let normalizedName: String
+        let listenCount: Int
+    }
+
+    private enum ArtistKey: Hashable {
+        case mbid(UUID)
+        case name(String)
+    }
+
+    private struct ArtistAccumulator {
+        let mbid: UUID?
+        var nameCounts: [String: Int] = [:]
+        var pointCounts: [String: Int] = [:]
+    }
+}
+
+enum ArtistEvolutionLoadState: Equatable {
+    case idle
+    case loading
+    case loaded(ArtistEvolutionActivity)
+    case unavailable
+    case failed(String)
+}
+
+struct ArtistEvolutionActivityCacheKey: Hashable, Sendable {
+    let username: String
+    let period: ListeningActivityPeriod
+
+    init(username: String, period: ListeningActivityPeriod) {
+        self.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        self.period = period
+    }
+}
+
 struct FreshRelease: Identifiable, Hashable, Sendable {
     let releaseMBID: UUID?
     let releaseGroupMBID: UUID?

@@ -152,6 +152,34 @@ struct ListenBrainzProvider: ListeningProvider {
         }
     }
 
+    func artistEvolutionActivity(
+        username: String,
+        period: ListeningActivityPeriod
+    ) async throws -> ArtistEvolutionActivity? {
+        try await perform {
+            guard let result = try await client.stats.artistEvolutionActivity(
+                user: username,
+                range: Self.range(for: period)
+            ) else {
+                return nil
+            }
+            return ArtistEvolutionActivity(
+                period: period,
+                from: result.from,
+                to: result.to,
+                lastUpdated: Date(timeIntervalSince1970: TimeInterval(result.lastUpdated)),
+                rows: result.artistEvolutionActivity.map {
+                    .init(
+                        timeUnit: $0.timeUnit,
+                        artistMBID: $0.artistMBID.flatMap(UUID.init(uuidString:)),
+                        artistName: $0.artistName,
+                        listenCount: $0.listenCount
+                    )
+                }
+            )
+        }
+    }
+
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] {
         try await perform {
             let result: LBFreshReleases?

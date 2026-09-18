@@ -33,6 +33,19 @@ struct MainTabView: View {
             ))
             return
         }
+        if ProcessInfo.processInfo.arguments.contains("-brainz-artist-evolution-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-artist-evolution-all-time-demo") {
+            let visualAccount = Account(username: "visual-taste", token: "visual-taste")
+            _model = State(initialValue: ListeningModel(
+                account: visualAccount,
+                provider: VisualQATasteProvider()
+            ))
+            _pins = State(initialValue: PinsModel(
+                account: visualAccount,
+                provider: VisualQAPinProvider()
+            ))
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("-brainz-history-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo") {
             let visualAccount = Account(username: "visual-history", token: "visual-history")
@@ -93,6 +106,20 @@ struct MainTabView: View {
             TasteView(model: model)
                 .task { await model.load() }
                 .environment(pins)
+        } else if ProcessInfo.processInfo.arguments.contains("-brainz-artist-evolution-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-artist-evolution-all-time-demo") {
+            NavigationStack {
+                ArtistEvolutionView(
+                    model: model,
+                    period: .constant(
+                        ProcessInfo.processInfo.arguments.contains("-brainz-artist-evolution-all-time-demo")
+                            ? .allTime
+                            : .thisYear
+                    )
+                )
+                    .mediaDestinations(model: model)
+            }
+            .environment(pins)
         } else if ProcessInfo.processInfo.arguments.contains("-brainz-release-detail-demo") {
             NavigationStack {
                 ReleaseDetailView(
@@ -480,6 +507,57 @@ private struct VisualQATasteProvider: ListeningProvider {
                 .init(year: 2024, listenCount: 231),
                 .init(year: 2025, listenCount: 204),
             ]
+        )
+    }
+    func artistEvolutionActivity(
+        username: String,
+        period: ListeningActivityPeriod
+    ) async throws -> ArtistEvolutionActivity? {
+        let artistNames = ["Alvvays", "Japanese Breakfast", "The Marías", "Mitski", "Men I Trust"]
+        let timeUnits: [String]
+        switch period {
+        case .thisWeek, .lastWeek:
+            timeUnits = ListeningWeekday.allCases.map(\.rawValue)
+        case .thisMonth, .lastMonth:
+            timeUnits = (1 ... 31).map(String.init)
+        case .thisYear, .lastYear:
+            timeUnits = ArtistEvolutionActivity.monthNames
+        case .allTime:
+            timeUnits = (2011 ... 2026).map(String.init)
+        }
+        let yearCounts = [
+            [34, 46, 39, 61, 72, 58, 84, 91, 75, 67, 88, 102],
+            [21, 30, 42, 37, 55, 69, 63, 76, 82, 70, 61, 79],
+            [18, 26, 19, 34, 41, 53, 49, 57, 46, 64, 72, 68],
+            [28, 22, 31, 40, 36, 29, 45, 51, 59, 48, 43, 55],
+            [12, 17, 24, 20, 29, 38, 35, 42, 50, 47, 58, 62],
+        ]
+        let rows = artistNames.enumerated().flatMap { artistIndex, name in
+            timeUnits.enumerated().map { unitIndex, timeUnit in
+                let listenCount: Int
+                if period == .thisYear || period == .lastYear {
+                    listenCount = yearCounts[artistIndex][unitIndex]
+                } else {
+                    listenCount = 10
+                        + ((unitIndex * (artistIndex + 2) * 7 + artistIndex * 11) % 48)
+                        + unitIndex * 2
+                }
+                return ArtistEvolutionActivity.Row(
+                    timeUnit: timeUnit,
+                    artistMBID: artistIndex < Self.artistMBIDs.count ? Self.artistMBIDs[artistIndex] : nil,
+                    artistName: name,
+                    listenCount: listenCount
+                )
+            }
+        }
+        return ArtistEvolutionActivity(
+            period: period,
+            from: period == .allTime
+                ? Calendar(identifier: .gregorian).date(from: DateComponents(year: 2011, month: 1, day: 1))!
+                : .now.addingTimeInterval(-365 * 86_400),
+            to: .now,
+            lastUpdated: .now,
+            rows: rows
         )
     }
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
