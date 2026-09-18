@@ -8,6 +8,7 @@ struct ArtistDetailView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
                 hero
+                popularity
                 topRecordings
                 recentListens
             }
@@ -34,6 +35,13 @@ struct ArtistDetailView: View {
                     .accessibilityLabel("Open artist in MusicBrainz")
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var popularity: some View {
+        if let mbid = artist.mbid {
+            PopularitySummaryView(entity: PopularityEntity(kind: .artist, mbid: mbid))
         }
     }
 

@@ -28,6 +28,7 @@ struct ReleaseDetailView: View {
                     loadNotice
                     facts
                     listenBrainzContext
+                    popularity
                     trackList.id("release-track-list")
                 }
                 .padding(.horizontal, 20)
@@ -168,6 +169,10 @@ struct ReleaseDetailView: View {
                 ReleaseDiscoveryContextContent(context: context)
             }
         }
+    }
+
+    private var popularity: some View {
+        PopularitySummaryView(entity: PopularityEntity(kind: .release, mbid: release.mbid))
     }
 
     @ViewBuilder

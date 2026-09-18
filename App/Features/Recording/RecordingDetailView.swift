@@ -35,6 +35,7 @@ struct RecordingDetailView: View {
                 feedbackControls
                 pinControls
                 metadata
+                popularity
                 relatedListens
             }
             .padding(.horizontal, 20)
@@ -282,6 +283,13 @@ struct RecordingDetailView: View {
         }
         .padding(18)
         .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var popularity: some View {
+        if let mbid = recording.identity.mbid {
+            PopularitySummaryView(entity: PopularityEntity(kind: .recording, mbid: mbid))
+        }
     }
 
     @ViewBuilder

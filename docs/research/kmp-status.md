@@ -1,11 +1,11 @@
 # Official Kotlin Multiplatform status
 
-Snapshot: 2026-09-16, Android checkout `3a0e4ef`.
+Snapshot: 2026-09-18, Android checkout `3a0e4ef`.
 
 ## What is shared now
 
 - `shared/src/commonMain` is substantial (278 files): Ktor/Ktorfit networking, serialization, repositories, models, resources/errors, Koin DI, Room/SQLite, DataStore, sockets, paging, metadata, listens, users, social/feed, playlists, recommendations, stats, pins, and some Compose code.
-- Service coverage includes recent/Playing Now/submit/delete, listen count and similarity, pins and feedback, user/sitewide activity, Created For You, followers/following, recommendations/reviews, full playlist mutation, feed actions, MusicBrainz search, CritiqueBrainz, and Cover Art Archive.
+- Service coverage includes recent/Playing Now/submit/delete, listen count and similarity, pins and feedback, user/sitewide activity, Created For You, followers/following, recommendations/reviews, full playlist mutation, feed actions, MusicBrainz search, CritiqueBrainz, Cover Art Archive, and larger artist/album payloads carrying popularity context.
 - `androidMain` (14 files) and `iosMain` (12 files) supply platform clients, persistence factories, file/image/log utilities, preferences, listen repository details, and remote-playback adapters.
 
 ## iOS target and export reality

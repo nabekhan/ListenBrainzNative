@@ -23,6 +23,7 @@ struct ReleaseGroupDetailView: View {
                 artists
                 tags
                 listenBrainzContext
+                popularity
                 facts
             }
             .padding(.horizontal, 20)
@@ -171,6 +172,10 @@ struct ReleaseGroupDetailView: View {
                 ReleaseDiscoveryContextContent(context: discoveryContext)
             }
         }
+    }
+
+    private var popularity: some View {
+        PopularitySummaryView(entity: PopularityEntity(kind: .releaseGroup, mbid: group.mbid))
     }
 
     private var facts: some View {

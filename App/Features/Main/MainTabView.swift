@@ -47,6 +47,18 @@ struct MainTabView: View {
             ))
             return
         }
+        if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo") {
+            let visualAccount = Account(username: "visual-popularity", token: "visual-popularity")
+            _model = State(initialValue: ListeningModel(
+                account: visualAccount,
+                provider: VisualQAPopularityListeningProvider()
+            ))
+            _pins = State(initialValue: PinsModel(
+                account: visualAccount,
+                provider: VisualQAPinProvider()
+            ))
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo") {
             let visualAccount = Account(username: "visual-taste", token: "visual-taste")
             _model = State(initialValue: ListeningModel(
@@ -140,6 +152,13 @@ struct MainTabView: View {
                 GenreActivityView(model: model, period: .constant(.thisMonth))
             }
             .environment(pins)
+        } else if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo") {
+            NavigationStack {
+                ArtistDetailView(artist: Self.popularityPreviewArtist, model: model)
+            }
+            .task { await model.load() }
+            .environment(pins)
+            .environment(\.popularityProvider, VisualQAPopularityProvider())
         } else if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo") {
             NavigationStack {
                 YearInMusicView(
@@ -310,6 +329,12 @@ struct MainTabView: View {
             listenCount: 4_312
         )
     )
+
+    private static let popularityPreviewArtist = RankedArtist(
+        mbid: UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab"),
+        name: "Alvvays",
+        listenCount: 1_283
+    )
     #endif
 }
 
@@ -381,6 +406,49 @@ private struct VisualQAPinProvider: PinProviding {
     func unpin() async throws {}
     func updatePinBlurb(rowID: Int, blurb: String) async throws {}
     func deletePin(rowID: Int) async throws {}
+}
+
+private struct VisualQAPopularityProvider: PopularityProviding {
+    func popularity(for entity: PopularityEntity) async throws -> GlobalPopularity {
+        await Task.yield()
+        return GlobalPopularity(
+            entity: entity,
+            totalListenCount: 2_418_731,
+            totalUserCount: 148_206
+        )
+    }
+}
+
+private struct VisualQAPopularityListeningProvider: ListeningProvider {
+    private static let artistMBID = UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab")!
+    private static let recordingMBID = UUID(uuidString: "39ad19e5-c0b0-454a-985b-201fb92898a0")!
+
+    func validateToken() async throws -> String { "visual-popularity" }
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] { [] }
+    func playingNow(username: String) async throws -> Listen? { nil }
+    func listenCount(username: String) async throws -> Int { 48_271 }
+    func topArtists(username: String, count: Int) async throws -> [RankedArtist] {
+        [.init(mbid: Self.artistMBID, name: "Alvvays", listenCount: 1_283)]
+    }
+    func topReleases(username: String, count: Int) async throws -> [RankedRelease] { [] }
+    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] {
+        [
+            .init(
+                mbid: Self.recordingMBID,
+                releaseMBID: nil,
+                title: "After the Earthquake",
+                artistName: "Alvvays",
+                artistMBIDs: [Self.artistMBID],
+                releaseTitle: "Blue Rev",
+                listenCount: 96
+            ),
+        ]
+    }
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        .init(period: period, from: .distantPast, to: .distantPast, lastUpdated: .now, buckets: [])
+    }
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+    func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
 }
 
 private struct VisualQAHistoryProvider: ListeningProvider {

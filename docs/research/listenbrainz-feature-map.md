@@ -31,7 +31,7 @@ Snapshot: 2026-09-18. `Y` means source/API evidence exists; `P` means partial or
 | Artist evolution activity | Y | Y | — | — | Y | — | P1 | Native on-demand top-artist timeline with touch inspection; one server request per selected range |
 | Artist map | Y | Y | Y | Y | — | P | P2 | Map only when data is meaningful |
 | Sitewide statistics/context | Y | Y | P | ? | P | P | P2 | Use sparingly for context |
-| Entity popularity/listener counts | Y | Y | Y | ? | — | P | P1 | Artist/release/track context |
+| Entity popularity/listener counts | Y | Y | Y | ? | Y | P | P1 | Native global listens/listeners context landed on canonical artist, recording, release, and release-group details; daily cache and no row hydration |
 | Year in Music (2021–2025) | Y | Y | Y | Y | Y | P | P1 | Native current-schema 2025 story landed; legacy years and generated art remain staged |
 | Similar users and compatibility | Y | Y | Y | Y | Y | Y | P1 | Native Social destination landed without row hydration |
 | Followers/following | Y | Y | Y | Y | Y | Y | P1 | Complete native lists; typed Kit extension |
