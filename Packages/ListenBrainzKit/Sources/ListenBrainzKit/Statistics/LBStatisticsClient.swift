@@ -140,6 +140,18 @@ public struct LBStatisticsClient: Sendable {
         return try await (execNoContent(request))?.payload
     }
 
+    /// Get a user's listening counts for every UTC weekday and hour.
+    /// - Parameters:
+    ///   - user: The user to get daily activity from.
+    ///   - range: Timeframe to get stats from. Defaults to all time.
+    /// - Returns: The daily activity for the given user. nil means LB hasn't calculated statistics yet.
+    public func dailyActivity(user: String,
+                              range: LBStatRange? = nil) async throws -> LBDailyActivity? {
+        let request = StatsDailyActivityRequest(user: user, range: range)
+
+        return try await (execNoContent(request))?.payload
+    }
+
     // Get a result which might get a 204: No Content response and treat it as a nil result
     private func execNoContent<T: APIRequest>(_ request: T) async throws -> T.Result? {
         do {

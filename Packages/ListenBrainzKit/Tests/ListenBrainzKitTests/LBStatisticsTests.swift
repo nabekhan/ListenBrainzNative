@@ -9,6 +9,69 @@ import Testing
 
 @Suite
 struct LBStatisticsTests {
+    @Test("Daily activity decodes weekday hour buckets")
+    func deserializeDailyActivity() throws {
+        let response = try JSONDecoder.ListenBrainz.decode(
+            StatsDailyActivityRequest.Result.self,
+            from: Data("""
+            {
+              "payload": {
+                "user_id": "listener",
+                "daily_activity": {
+                  "Monday": [
+                    { "hour": 0, "listen_count": 4 },
+                    { "hour": 23, "listen_count": 1 }
+                  ],
+                  "Sunday": [
+                    { "hour": 12, "listen_count": 7 }
+                  ]
+                },
+                "range": "this_month",
+                "from_ts": 1735689600,
+                "to_ts": 1738368000,
+                "last_updated": 1738454400
+              }
+            }
+            """.utf8)
+        )
+
+        let activity = response.payload
+        #expect(activity.userID == "listener")
+        #expect(activity.range == "this_month")
+        #expect(activity.from == Date(timeIntervalSince1970: 1735689600))
+        #expect(activity.to == Date(timeIntervalSince1970: 1738368000))
+        #expect(activity.lastUpdated == 1738454400)
+        #expect(activity.dailyActivity["Monday"]?.map(\.listenCount) == [4, 1])
+        #expect(activity.dailyActivity["Sunday"]?.first?.hour == 12)
+    }
+
+    @Test("Daily activity request uses the user endpoint, range query, and escaped URL path")
+    func dailyActivityRequestSemantics() throws {
+        let request = StatsDailyActivityRequest(user: "test user", range: .halfYearly)
+        #expect(request.data.path == "/1/stats/user/test user/daily-activity")
+        #expect(request.data.queryItems == ["range": ["half_yearly"]])
+        #expect(request.data.statusErrors[204] == .noContent)
+
+        let apiClient = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+        let urlRequest = try apiClient.makeURLRequest(request)
+        #expect(urlRequest.url?.path == "/1/stats/user/test user/daily-activity")
+        #expect(urlRequest.url?.absoluteString.contains("test%20user") == true)
+        #expect(urlRequest.url?.query == "range=half_yearly")
+    }
+
+    @Test("Daily activity maps no-content to nil")
+    func dailyActivityNoContentIsNil() async throws {
+        let client = LBStatisticsClient(MockAPIClient(result: .failure(.noContent)))
+
+        let activity = try await client.dailyActivity(user: "listener", range: .thisWeek)
+
+        #expect(activity == nil)
+    }
+
     @Test("Deserialize user artists")
     func deserializeUserArtists() async throws {
         let res = try JSONDecoder
