@@ -190,11 +190,20 @@ public struct LBCoreClient: Sendable {
         username: String,
         count: Int? = nil, offset: Int? = nil
     ) async throws -> [LBPlaylistMetadata] {
+        try await userPlaylistsPage(username: username, count: count, offset: offset).playlists
+    }
+
+    /// Get one paginated page of a user's playlists.
+    ///
+    /// The response contains metadata only; fetch ``playlist(mbid:fetchMetadata:)``
+    /// to retrieve a playlist's tracks.
+    public func userPlaylistsPage(
+        username: String,
+        count: Int? = nil, offset: Int? = nil
+    ) async throws -> LBPlaylistPage {
         let request = UserPlaylistsRequest(username: username, count: count, offset: offset)
         let result = try await apiClient.execute(request)
-        return result.playlists.map {
-            LBPlaylistMetadata(raw: $0.playlist)
-        }
+        return LBPlaylistPage(raw: result)
     }
 
     /// Search public ListenBrainz playlists. The API requires at least three
@@ -236,13 +245,19 @@ public struct LBCoreClient: Sendable {
         username: String,
         count: Int? = nil, offset: Int? = nil
     ) async throws -> [LBPlaylistMetadata] {
+        try await userPlaylistsCreatedForPage(username: username, count: count, offset: offset).playlists
+    }
+
+    /// Get one paginated page of playlists created for the given user.
+    public func userPlaylistsCreatedForPage(
+        username: String,
+        count: Int? = nil, offset: Int? = nil
+    ) async throws -> LBPlaylistPage {
         let request = UserPlaylistsCreatedForRequest(
             username: username, count: count, offset: offset
         )
         let result = try await apiClient.execute(request)
-        return result.playlists.map {
-            LBPlaylistMetadata(raw: $0.playlist)
-        }
+        return LBPlaylistPage(raw: result)
     }
 
     /// Get playlists where the given user is a collaborator
@@ -255,13 +270,19 @@ public struct LBCoreClient: Sendable {
         username: String,
         count: Int? = nil, offset: Int? = nil
     ) async throws -> [LBPlaylistMetadata] {
+        try await userPlaylistsCollaboratorPage(username: username, count: count, offset: offset).playlists
+    }
+
+    /// Get one paginated page of playlists where the given user is a collaborator.
+    public func userPlaylistsCollaboratorPage(
+        username: String,
+        count: Int? = nil, offset: Int? = nil
+    ) async throws -> LBPlaylistPage {
         let request = UserPlaylistsCollaboratorRequest(
             username: username, count: count, offset: offset
         )
         let result = try await apiClient.execute(request)
-        return result.playlists.map {
-            LBPlaylistMetadata(raw: $0.playlist)
-        }
+        return LBPlaylistPage(raw: result)
     }
 
     /// Get recommended playlists for the given user

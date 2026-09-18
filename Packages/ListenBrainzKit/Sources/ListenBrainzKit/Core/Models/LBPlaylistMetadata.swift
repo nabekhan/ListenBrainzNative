@@ -5,7 +5,7 @@
 import Foundation
 
 /// Metadata for a ListenBrainz playlist
-public struct LBPlaylistMetadata: Sendable {
+public struct LBPlaylistMetadata: Equatable, Sendable {
     /// Title of the playlist
     public let title: String
 
@@ -61,6 +61,51 @@ public struct LBPlaylistMetadata: Sendable {
         self.copiedFromDeleted = raw.ext.listenbrainz.copiedFromDeleted
         self.recommendationType = raw.ext.listenbrainz.additionalMetadata?.algorithmMetadata?.sourcePatch
         self.expiresAt = parsePlaylistDate(raw.ext.listenbrainz.additionalMetadata?.expiresAt)
+    }
+}
+
+/// One metadata-only page returned by a ListenBrainz user-playlist endpoint.
+///
+/// The list endpoints report pagination using `count`, `offset`, and
+/// `playlist_count`. `count` is the requested page size rather than the number
+/// of returned playlists, so it is exposed as ``requestedCount``. These values
+/// intentionally remain optional because the server may omit them on older or
+/// empty responses.
+public struct LBPlaylistPage: Equatable, Sendable {
+    /// Playlists returned in this page. Track lists are not included.
+    public let playlists: [LBPlaylistMetadata]
+
+    /// The page size requested from the server (`count` in the API response).
+    ///
+    /// This is not necessarily equal to `playlists.count`; use the latter for
+    /// the number of rows actually returned.
+    public let requestedCount: Int?
+
+    /// The server-reported offset of this page.
+    public let offset: Int?
+
+    /// Total playlists available from the endpoint.
+    public let playlistCount: Int?
+
+    public init(
+        playlists: [LBPlaylistMetadata],
+        requestedCount: Int?,
+        offset: Int?,
+        playlistCount: Int?
+    ) {
+        self.playlists = playlists
+        self.requestedCount = requestedCount
+        self.offset = offset
+        self.playlistCount = playlistCount
+    }
+
+    init(raw: RawPlaylistResponse) {
+        self.init(
+            playlists: raw.playlists.map { LBPlaylistMetadata(raw: $0.playlist) },
+            requestedCount: raw.count,
+            offset: raw.offset,
+            playlistCount: raw.playlistCount
+        )
     }
 }
 

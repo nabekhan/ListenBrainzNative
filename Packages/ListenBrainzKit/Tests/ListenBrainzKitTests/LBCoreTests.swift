@@ -47,6 +47,84 @@ import Testing
         #expect(mock.request == nil)
     }
 
+    @Test("User playlist page retains pagination metadata and legacy list API")
+    func userPlaylistsPage() async throws {
+        let mock = MockAPIClient(result: .success(try playlistPageResponse(requestedCount: 10)))
+        let client = LBCoreClient(mock)
+
+        let page = try await client.userPlaylistsPage(username: "listener", count: 10, offset: 20)
+
+        #expect(page.requestedCount == 10)
+        #expect(page.offset == 20)
+        #expect(page.playlistCount == 42)
+        #expect(page.playlists.count == 1)
+        #expect(page.playlists.map(\.title) == ["Quiet records"])
+        let request = try #require(mock.request as? UserPlaylistsRequest)
+        #expect(request.data.path == "/1/user/listener/playlists")
+        #expect(request.data.queryItems["count"] == ["10"])
+        #expect(request.data.queryItems["offset"] == ["20"])
+        #expect(request.data.statusErrors[404] == .notFound)
+
+        let legacyMock = MockAPIClient(result: .success(try playlistPageResponse(requestedCount: 10)))
+        let legacy = try await LBCoreClient(legacyMock).userPlaylists(
+            username: "listener", count: 10, offset: 20
+        )
+        #expect(legacy.map(\.title) == page.playlists.map(\.title))
+    }
+
+    @Test("User playlist page tolerates absent pagination and omits default query items")
+    func userPlaylistsPageWithoutPaginationMetadata() async throws {
+        let response = try JSONDecoder.ListenBrainz.decode(
+            RawPlaylistResponse.self,
+            from: Data(#"{"playlists": []}"#.utf8)
+        )
+        let mock = MockAPIClient(result: .success(response))
+
+        let page = try await LBCoreClient(mock).userPlaylistsPage(username: "listener")
+
+        #expect(page.playlists.isEmpty)
+        #expect(page.requestedCount == nil)
+        #expect(page.offset == nil)
+        #expect(page.playlistCount == nil)
+        let request = try #require(mock.request as? UserPlaylistsRequest)
+        #expect(request.data.queryItems["count"] == nil)
+        #expect(request.data.queryItems["offset"] == nil)
+    }
+
+    @Test("Created-for playlist page preserves endpoint pagination")
+    func userPlaylistsCreatedForPage() async throws {
+        let mock = MockAPIClient(result: .success(try playlistPageResponse(requestedCount: 5)))
+        let page = try await LBCoreClient(mock).userPlaylistsCreatedForPage(
+            username: "listener", count: 5, offset: 15
+        )
+
+        #expect(page.requestedCount == 5)
+        #expect(page.offset == 20)
+        #expect(page.playlistCount == 42)
+        let request = try #require(mock.request as? UserPlaylistsCreatedForRequest)
+        #expect(request.data.path == "/1/user/listener/playlists/createdfor")
+        #expect(request.data.queryItems["count"] == ["5"])
+        #expect(request.data.queryItems["offset"] == ["15"])
+        #expect(request.data.statusErrors[404] == .notFound)
+    }
+
+    @Test("Collaborator playlist page preserves endpoint pagination")
+    func userPlaylistsCollaboratorPage() async throws {
+        let mock = MockAPIClient(result: .success(try playlistPageResponse(requestedCount: 25)))
+        let page = try await LBCoreClient(mock).userPlaylistsCollaboratorPage(
+            username: "listener", count: 25, offset: 40
+        )
+
+        #expect(page.requestedCount == 25)
+        #expect(page.offset == 20)
+        #expect(page.playlistCount == 42)
+        let request = try #require(mock.request as? UserPlaylistsCollaboratorRequest)
+        #expect(request.data.path == "/1/user/listener/playlists/collaborator")
+        #expect(request.data.queryItems["count"] == ["25"])
+        #expect(request.data.queryItems["offset"] == ["40"])
+        #expect(request.data.statusErrors[404] == .notFound)
+    }
+
     @Test("Playlist search metadata tolerates an absent last-modified timestamp")
     func playlistMetadataWithoutLastModifiedAt() throws {
         let data = Data(#"""
@@ -130,6 +208,28 @@ import Testing
         #expect(metadata.createdFor == "listener")
         #expect(metadata.recommendationType == "weekly-jams")
         #expect(metadata.expiresAt != nil)
+    }
+
+    private func playlistPageResponse(requestedCount: Int) throws -> RawPlaylistResponse {
+        try JSONDecoder.ListenBrainz.decode(
+            RawPlaylistResponse.self,
+            from: Data(#"""
+            {
+              "count": \#(requestedCount),
+              "offset": 20,
+              "playlist_count": 42,
+              "playlists": [{"playlist": {
+                "creator": "listener",
+                "title": "Quiet records",
+                "identifier": "https://listenbrainz.org/playlist/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "extension": {
+                  "https://musicbrainz.org/doc/jspf#playlist": {"public": true}
+                },
+                "track": []
+              }}]
+            }
+            """#.utf8)
+        )
     }
 
     @Test("Submit multiple listens")
