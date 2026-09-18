@@ -23,7 +23,7 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 
 ## Planned tracked reuse
 
-- `Packages/ListenBrainzKit/`: upstream MPL-2.0 source at `c06b12f`, with reliability fixes and typed recommendation-read/feedback, social/feed-read/feed-mutation, detail, era/activity/evolution, Year in Music/report-art, and popularity extensions isolated into reviewable commits.
+- `Packages/ListenBrainzKit/`: upstream MPL-2.0 source at `c06b12f`, with reliability fixes and typed recommendation-read/feedback, social/feed-read/feed-mutation, detail, era/activity/evolution, Year in Music/report-art, popularity, and generated-radio extensions isolated into reviewable commits.
 - The personal-recommendation sheet adapts Cassette's general MPL-2.0 selection-sheet interaction (searchable full-row multi-select and toolbar commit state) using independently written app types and source; no Cassette file was copied.
 - The concrete release page independently implements the inspected Minidisc/Cassette album hierarchy and ordered-row behavior with app-owned types and components; no donor file was copied or adapted.
 - The listening-hours heatmap independently implements the inspected ListenBrainz behavior and Autohop-style period/heatmap interaction with app-owned SwiftUI; no donor file was copied or adapted.
@@ -34,5 +34,6 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 - `App/Features/Taste/YearInMusicView.swift` is an MPL-covered adaptation of Cassette's Wrapped hero/ranking composition, mesh gradient implementation, and 2025 palette at commit `49da821`. Its file header preserves Cassette's copyright and MPL notice; ListenBrainz's GPL website supplied behavior only and no frontend code was copied.
 - `App/Features/Taste/YearInMusicArtworkSheet.swift` and its provider/model are independently written. The GPL website and Android client supplied behavior only; no source was copied. Rendering and export use Apple WebKit/CoreTransferable APIs.
 - The Profile playlist tabs independently implement API and official-client behavior with app-owned models and SwiftUI; no GPL official-client or donor UI source was copied.
+- The LB Radio screen/provider independently implement the inspected server and website behavior with app-owned SwiftUI/domain types while reusing MPL ListenBrainzKit JSPF models and existing app playlist components. No GPL server, web, Android, or iOS source was copied.
 - App UI is original code informed by donor behavior except for the explicitly tracked Year in Music adaptation. Any future copied/adapted Cassette, Minidisc, first.fm, Autohop, Beans, Bòcan, or Finale file must be entered in `THIRD_PARTY.md` before merge.
 - GPL and unlicensed projects remain reference-only.

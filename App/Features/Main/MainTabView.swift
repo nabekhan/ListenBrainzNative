@@ -71,6 +71,18 @@ struct MainTabView: View {
             ))
             return
         }
+        if ProcessInfo.processInfo.arguments.contains("-brainz-radio-demo") {
+            let visualAccount = Account(username: "visual-radio", token: "visual-radio")
+            _model = State(initialValue: ListeningModel(
+                account: visualAccount,
+                provider: VisualQATasteProvider()
+            ))
+            _pins = State(initialValue: PinsModel(
+                account: visualAccount,
+                provider: VisualQAPinProvider()
+            ))
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("-brainz-history-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo") {
             let visualAccount = Account(username: "visual-history", token: "visual-history")
@@ -177,6 +189,15 @@ struct MainTabView: View {
                         cache: EntityDetailCache()
                     )
                 }
+            }
+            .environment(pins)
+        } else if ProcessInfo.processInfo.arguments.contains("-brainz-radio-demo") {
+            NavigationStack {
+                RadioView(
+                    account: model.account,
+                    listeningModel: model,
+                    provider: VisualQARadioProvider()
+                )
             }
             .environment(pins)
         } else if ProcessInfo.processInfo.arguments.contains("-brainz-release-detail-demo") {
@@ -416,6 +437,56 @@ private struct VisualQAPinProvider: PinProviding {
     func unpin() async throws {}
     func updatePinBlurb(rowID: Int, blurb: String) async throws {}
     func deletePin(rowID: Int) async throws {}
+}
+
+private struct VisualQARadioProvider: RadioProviding {
+    private static let artworkReleaseMBID = UUID(uuidString: "1390f1b7-7851-48ae-983d-eb8a48f78048")!
+    private static let secondArtworkReleaseMBID = UUID(uuidString: "5fbea312-0b73-4e2d-9e42-e25f972f6041")!
+
+    func generate(options: RadioGenerationOptions) async throws -> RadioMix {
+        try await ContinuousClock().sleep(for: .milliseconds(180))
+        let rows: [(String, String, String?, UUID?, UUID?)] = [
+            ("After the Earthquake", "Alvvays", "Blue Rev", UUID(uuidString: "39ad19e5-c0b0-454a-985b-201fb92898a0"), Self.artworkReleaseMBID),
+            ("Be Sweet", "Japanese Breakfast", "Jubilee", UUID(uuidString: "42d36a20-621a-4c34-b2fe-01c85447f9e8"), Self.secondArtworkReleaseMBID),
+            ("Only in My Dreams", "The Marías", "Superclean, Vol. I", UUID(uuidString: "9b84f25f-c7a4-4b60-8c59-0d5774f5d568"), Self.artworkReleaseMBID),
+            ("Andromeda", "Weyes Blood", "Titanic Rising", UUID(uuidString: "173fc72a-efb8-4e58-a15e-86eecf7ac58d"), Self.secondArtworkReleaseMBID),
+            ("Show Me How", "Men I Trust", "Oncle Jazz", UUID(uuidString: "5a7d9f53-44d0-492c-9c63-dce87d467424"), Self.artworkReleaseMBID),
+            ("A very long recording title that still belongs in a calm late-night mix", "An Artist With a Longer Credit", nil, nil, nil),
+            ("Your Best American Girl", "Mitski", "Puberty 2", UUID(uuidString: "8348bd91-4b34-4bfc-bfaa-e9d958e5fc2f"), Self.secondArtworkReleaseMBID),
+            ("Space Song", "Beach House", "Depression Cherry", UUID(uuidString: "25a575ec-570f-4a27-9bd6-634026add2a7"), Self.artworkReleaseMBID),
+        ]
+        let tracks = rows.enumerated().map { index, row in
+            PlaylistTrack(
+                position: index + 1,
+                recording: Recording(
+                    identity: .init(mbid: row.3, msid: nil),
+                    title: row.0,
+                    artistName: row.1,
+                    artistMBIDs: [],
+                    releaseTitle: row.2,
+                    releaseMBID: row.4,
+                    releaseGroupMBID: nil,
+                    artworkReleaseMBID: row.4,
+                    durationMilliseconds: index.isMultiple(of: 2) ? 198_000 + index * 3_000 : nil,
+                    source: "LB Radio"
+                ),
+                addedAt: nil,
+                addedBy: nil
+            )
+        }
+        return RadioMix(
+            options: options,
+            title: "Familiar corners, new turns",
+            annotation: "A late-night mix drawn from your listening history and nearby artists.",
+            feedback: [
+                "Using all-time statistics for visual-radio.",
+                "Easy mode favors the most relevant recordings in the source.",
+            ],
+            tracks: tracks,
+            metadataEnrichmentFailed: false,
+            generatedAt: .now
+        )
+    }
 }
 
 private struct VisualQAPopularityProvider: PopularityProviding {

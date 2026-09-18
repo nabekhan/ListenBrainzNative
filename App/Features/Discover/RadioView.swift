@@ -1,0 +1,647 @@
+import SwiftUI
+import ListenBrainzKit
+
+struct RadioView: View {
+    let account: Account
+    @Bindable var listeningModel: ListeningModel
+    @State private var model: RadioModel
+    @State private var source: RadioPromptSource = .listening
+    @State private var mode: LBRadioMode = .easy
+    @State private var artistInput = ""
+    @State private var tagInput = ""
+    @State private var advancedInput = ""
+    @State private var generationTask: Task<Void, Never>?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    init(
+        account: Account,
+        listeningModel: ListeningModel,
+        provider: (any RadioProviding)? = nil
+    ) {
+        self.account = account
+        _listeningModel = Bindable(wrappedValue: listeningModel)
+        _model = State(initialValue: RadioModel(
+            provider: provider ?? ListenBrainzRadioProvider(token: account.token)
+        ))
+    }
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 22) {
+                    hero
+                    if account.isAuthenticated {
+                        recipeBuilder
+                        if let errorMessage = model.errorMessage {
+                            failureBanner(errorMessage)
+                        }
+                        if model.isGenerating, model.mix == nil {
+                            generatingState
+                        }
+                        if let mix = model.mix {
+                            mixSection(mix)
+                                .id("radio-mix")
+                        } else if !model.isGenerating {
+                            beforeGeneration
+                        }
+                    } else {
+                        authenticationRequired
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 48)
+            }
+            .onChange(of: model.mix?.generatedAt) { _, generatedAt in
+                #if DEBUG
+                if generatedAt != nil,
+                   ProcessInfo.processInfo.arguments.contains("-brainz-radio-results-demo") {
+                    withAnimation(.snappy) { proxy.scrollTo("radio-mix", anchor: .top) }
+                }
+                #endif
+            }
+        }
+        .navigationTitle("LB Radio")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { shareToolbar }
+        .mediaDestinations(model: listeningModel)
+        .task {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-brainz-radio-demo"),
+               model.mix == nil,
+               let options = resolvedOptions {
+                await model.generate(options: options)
+            }
+            #endif
+        }
+        .onDisappear {
+            generationTask?.cancel()
+            model.cancel()
+        }
+    }
+
+    private var hero: some View {
+        HStack(spacing: 18) {
+            heroCopy
+            Spacer(minLength: 0)
+            if !dynamicTypeSize.isAccessibilitySize {
+                Image(systemName: "waveform.circle.fill")
+                    .font(.system(size: 72, weight: .regular))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.white)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(22)
+        .background(AppTheme.artworkGradient(seed: "listenbrainz-radio"))
+        .clipShape(.rect(cornerRadius: 26, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var heroCopy: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("LB Radio", systemImage: "dot.radiowaves.left.and.right")
+                    .font(.title2.bold())
+                    .foregroundStyle(.white)
+                Text("Choose a source, then tap Generate. Nothing starts on its own.")
+                    .font(.body)
+                    .foregroundStyle(.white.opacity(0.82))
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("LISTENBRAINZ RADIO", systemImage: "dot.radiowaves.left.and.right")
+                    .font(.caption.weight(.bold))
+                    .tracking(0.8)
+                    .foregroundStyle(.white.opacity(0.85))
+                Text("Build a mix from your musical world")
+                    .font(.title2.bold())
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Choose a source and how far ListenBrainz should wander. Nothing is generated until you ask.")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.82))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var recipeBuilder: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Start with")
+                    .font(.title3.bold())
+                Text(dynamicTypeSize.isAccessibilitySize
+                    ? "One source makes one LB Radio recipe."
+                    : "Each source becomes one server-side LB Radio recipe.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            LazyVGrid(columns: sourceColumns, spacing: 10) {
+                ForEach(RadioPromptSource.allCases) { item in
+                    RadioSourceCard(source: item, isSelected: source == item) {
+                        withAnimation(.snappy(duration: 0.22)) { source = item }
+                    }
+                }
+            }
+
+            sourceInput
+
+            VStack(alignment: .leading, spacing: 9) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Listening distance")
+                        .font(.headline)
+                    Spacer()
+                    Text(mode.shortExplanation)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                modePicker
+                Text(mode.longExplanation)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let prompt = resolvedPrompt {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Recipe")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(prompt)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.primary)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.quaternary.opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
+            } else if source.requiresInput {
+                Text(inputGuidance)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Button(action: generate) {
+                HStack(spacing: 9) {
+                    if model.isGenerating {
+                        ProgressView().tint(.white)
+                    } else {
+                        Image(systemName: "sparkles")
+                    }
+                    Text(model.isGenerating
+                        ? "Generating mix…"
+                        : model.mix == nil ? "Generate mix" : "Generate a new mix")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(AppTheme.accent)
+            .disabled(resolvedOptions == nil || model.isGenerating)
+            .accessibilityHint("Makes one authenticated ListenBrainz Radio request, then one batched metadata request when mapped recordings are present")
+        }
+        .padding(18)
+        .background(.thinMaterial, in: .rect(cornerRadius: 22, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var sourceInput: some View {
+        switch source {
+        case .listening:
+            sourceExplanation(
+                icon: "chart.bar.fill",
+                title: "Your all-time listening",
+                text: "Pulls from your ListenBrainz statistics. Familiarity still changes which part of that ranked history is sampled."
+            )
+        case .recommendations:
+            sourceExplanation(
+                icon: "sparkles",
+                title: "Unheard recommendations",
+                text: "Starts with collaborative-filter recommendations that ListenBrainz has not seen you play."
+            )
+        case .artist:
+            TextField("Exact artist name or MusicBrainz ID", text: $artistInput)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .padding(13)
+                .background(.quaternary.opacity(0.6), in: .rect(cornerRadius: 13, style: .continuous))
+                .accessibilityHint("MusicBrainz identifiers are the most precise artist seeds")
+        case .tag:
+            TextField("Tag or mood, for example dream pop", text: $tagInput)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .padding(13)
+                .background(.quaternary.opacity(0.6), in: .rect(cornerRadius: 13, style: .continuous))
+        case .advanced:
+            TextField(
+                "For example: artist:(Björk):2 tag:(art pop):1::or",
+                text: $advancedInput,
+                axis: .vertical
+            )
+            .lineLimit(3 ... 6)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .font(.body.monospaced())
+            .padding(13)
+            .background(.quaternary.opacity(0.6), in: .rect(cornerRadius: 13, style: .continuous))
+            Link("Open the LB Radio prompt reference", destination: URL(string: "https://troi.readthedocs.io/en/latest/lb_radio.html")!)
+                .font(.caption)
+        }
+    }
+
+    private func sourceExplanation(icon: String, title: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 11) {
+            Image(systemName: icon)
+                .foregroundStyle(AppTheme.accent)
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.subheadline.weight(.semibold))
+                Text(text)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func mixSection(_ mix: RadioMix) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 18) {
+                    mixArtwork(mix, side: 142)
+                    mixMetadata(mix)
+                }
+                VStack(alignment: .leading, spacing: 15) {
+                    mixArtwork(mix, side: dynamicTypeSize.isAccessibilitySize ? 210 : 220)
+                    mixMetadata(mix)
+                }
+            }
+
+            if !mix.feedback.isEmpty {
+                feedbackCard(mix.feedback)
+            }
+            if mix.metadataEnrichmentFailed {
+                Label(
+                    "The mix was generated, but optional artwork and detail enrichment did not finish. The original radio tracks are still shown.",
+                    systemImage: "photo.badge.exclamationmark"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.orange.opacity(0.12), in: .rect(cornerRadius: 13, style: .continuous))
+            }
+
+            if mix.tracks.isEmpty {
+                ContentUnavailableView(
+                    "No mix this time",
+                    systemImage: "radio",
+                    description: Text("ListenBrainz returned no recordings. Try another source, tag, or listening distance.")
+                )
+                .frame(maxWidth: .infinity, minHeight: 220)
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        Text("Up next").font(.title3.bold())
+                        Spacer()
+                        Text("\(mix.tracks.count.formatted()) tracks")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.bottom, 6)
+
+                    ForEach(mix.tracks) { track in
+                        Group {
+                            if track.recording.identity.mbid != nil {
+                                NavigationLink(value: track.recording) {
+                                    PlaylistTrackRow(track: track)
+                                }
+                                .buttonStyle(.plain)
+                            } else {
+                                PlaylistTrackRow(track: track)
+                            }
+                        }
+                        if track.id != mix.tracks.last?.id {
+                            Divider().padding(.leading, 84)
+                        }
+                    }
+                }
+            }
+
+            Label(
+                "LB Radio generates a playlist. Playback will appear only when a connected service can resolve a track legally and reliably.",
+                systemImage: "info.circle"
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+        .background(.thinMaterial, in: .rect(cornerRadius: 22, style: .continuous))
+    }
+
+    private func mixArtwork(_ mix: RadioMix, side: CGFloat) -> some View {
+        PlaylistArtworkMosaic(tracks: mix.tracks, title: mix.title)
+            .frame(width: side, height: side)
+            .shadow(color: .black.opacity(0.14), radius: 12, y: 6)
+    }
+
+    private func mixMetadata(_ mix: RadioMix) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("YOUR GENERATED MIX")
+                .font(.caption2.weight(.bold))
+                .tracking(0.8)
+                .foregroundStyle(AppTheme.accent)
+            Text(mix.title)
+                .font(.title2.bold())
+                .fixedSize(horizontal: false, vertical: true)
+            if let annotation = mix.annotation {
+                Text(annotation)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Label(modeLabel(for: mix.options.mode), systemImage: "dial.medium")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text("Generated \(mix.generatedAt.formatted(date: .omitted, time: .shortened))")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func feedbackCard(_ feedback: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("How ListenBrainz built it", systemImage: "quote.bubble")
+                .font(.subheadline.weight(.semibold))
+            ForEach(Array(feedback.enumerated()), id: \.offset) { _, item in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Circle()
+                        .fill(AppTheme.accent)
+                        .frame(width: 5, height: 5)
+                    Text(item)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(13)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppTheme.accent.opacity(0.08), in: .rect(cornerRadius: 14, style: .continuous))
+    }
+
+    private var beforeGeneration: some View {
+        Label(
+            "A generation is explicit and may take a moment. Changing the controls does not make a network request.",
+            systemImage: "hand.tap"
+        )
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: .rect(cornerRadius: 18, style: .continuous))
+    }
+
+    private var generatingState: some View {
+        VStack(spacing: 13) {
+            ProgressView()
+            Text("ListenBrainz is arranging your mix…")
+                .font(.subheadline.weight(.semibold))
+            Text("Generation runs on ListenBrainz and is paced with every other app request.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, minHeight: 190)
+        .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var authenticationRequired: some View {
+        ContentUnavailableView {
+            Label("Sign in to tune LB Radio", systemImage: "lock.fill")
+        } description: {
+            Text("ListenBrainz protects this expensive generator with an account token. Connect one from Profile, then come back to build a mix.")
+        }
+        .frame(maxWidth: .infinity, minHeight: 300)
+        .background(.thinMaterial, in: .rect(cornerRadius: 22, style: .continuous))
+    }
+
+    private func failureBanner(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Mix not updated").font(.headline)
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Button("Dismiss") { model.clearError() }
+                .font(.caption.weight(.semibold))
+        }
+        .padding(15)
+        .background(.orange.opacity(0.12), in: .rect(cornerRadius: 16, style: .continuous))
+    }
+
+    @ToolbarContentBuilder
+    private var shareToolbar: some ToolbarContent {
+        if let mix = model.mix, let url = mix.options.listenBrainzURL {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Link(destination: url) {
+                        Label("Open on ListenBrainz", systemImage: "safari")
+                    }
+                    ShareLink(
+                        item: url,
+                        subject: Text(mix.title),
+                        message: Text("Try this ListenBrainz Radio recipe: \(mix.options.prompt)")
+                    ) {
+                        Label("Share recipe link", systemImage: "square.and.arrow.up")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel("Radio mix options")
+            }
+        }
+    }
+
+    private var sourceColumns: [GridItem] {
+        dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible(), spacing: 10)]
+            : [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
+    }
+
+    @ViewBuilder
+    private var modePicker: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            Picker("Listening distance", selection: $mode) {
+                ForEach(LBRadioMode.allCases, id: \.self) { item in
+                    Text("\(item.displayTitle) · \(item.shortExplanation)").tag(item)
+                }
+            }
+            .pickerStyle(.menu)
+        } else {
+            Picker("Listening distance", selection: $mode) {
+                ForEach(LBRadioMode.allCases, id: \.self) { item in
+                    Text(item.displayTitle).tag(item)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    private var selectedInput: String {
+        switch source {
+        case .artist: artistInput
+        case .tag: tagInput
+        case .advanced: advancedInput
+        case .listening, .recommendations: ""
+        }
+    }
+
+    private var resolvedPrompt: String? {
+        source.prompt(username: account.username, input: selectedInput)
+    }
+
+    private var resolvedOptions: RadioGenerationOptions? {
+        resolvedPrompt.flatMap { RadioGenerationOptions(prompt: $0, mode: mode) }
+    }
+
+    private var inputGuidance: String {
+        switch source {
+        case .artist:
+            "Use an exact MusicBrainz artist name or MBID. Parentheses belong in Advanced."
+        case .tag:
+            "Enter at least two characters. Use Advanced for combined tags or options."
+        case .advanced:
+            "Enter a Troi prompt of at least four characters."
+        case .listening, .recommendations:
+            ""
+        }
+    }
+
+    private func generate() {
+        guard let options = resolvedOptions else { return }
+        generationTask?.cancel()
+        generationTask = Task { await model.generate(options: options) }
+    }
+
+    private func modeLabel(for mode: LBRadioMode) -> String {
+        "\(mode.displayTitle) distance"
+    }
+}
+
+private struct RadioSourceCard: View {
+    let source: RadioPromptSource
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 11) {
+                Image(systemName: source.icon)
+                    .font(.headline)
+                    .foregroundStyle(isSelected ? .white : AppTheme.accent)
+                    .frame(width: 34, height: 34)
+                    .background(
+                        isSelected ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(AppTheme.accent.opacity(0.1)),
+                        in: Circle()
+                    )
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(source.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(source.subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(11)
+            .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+            .background(
+                isSelected ? AppTheme.accent.opacity(0.1) : Color.secondary.opacity(0.06),
+                in: .rect(cornerRadius: 15, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .stroke(isSelected ? AppTheme.accent.opacity(0.7) : .clear, lineWidth: 1.5)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+private extension RadioPromptSource {
+    var title: String {
+        switch self {
+        case .listening: "My listening"
+        case .recommendations: "New for me"
+        case .artist: "Artist"
+        case .tag: "Tag or mood"
+        case .advanced: "Advanced"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .listening: "All-time stats"
+        case .recommendations: "Unheard picks"
+        case .artist: "Name or MBID"
+        case .tag: "One native seed"
+        case .advanced: "Full Troi recipe"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .listening: "chart.bar.fill"
+        case .recommendations: "sparkles"
+        case .artist: "music.mic"
+        case .tag: "number"
+        case .advanced: "slider.horizontal.3"
+        }
+    }
+}
+
+private extension LBRadioMode {
+    var displayTitle: String {
+        switch self {
+        case .easy: "Familiar"
+        case .medium: "Balanced"
+        case .hard: "Explore"
+        }
+    }
+
+    var shortExplanation: String {
+        switch self {
+        case .easy: "Easy"
+        case .medium: "Medium"
+        case .hard: "Hard"
+        }
+    }
+
+    var longExplanation: String {
+        switch self {
+        case .easy:
+            "Leans toward the most relevant and recognizable recordings."
+        case .medium:
+            "Moves into the middle of ListenBrainz's ranked source lists."
+        case .hard:
+            "Searches deeper in the tail for a more adventurous mix."
+        }
+    }
+}

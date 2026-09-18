@@ -31,6 +31,32 @@ public struct LBPlaylistTrack: Sendable {
     public let addedAt: Date?
     public let addedBy: String?
 
+    public init(
+        title: String?,
+        artistCreditName: String?,
+        releaseName: String?,
+        durationMilliseconds: Int?,
+        recordingMBID: UUID?,
+        releaseMBID: UUID?,
+        artistMBIDs: [UUID],
+        caaReleaseMBID: UUID?,
+        caaID: Int?,
+        addedAt: Date? = nil,
+        addedBy: String? = nil
+    ) {
+        self.title = title
+        self.artistCreditName = artistCreditName
+        self.releaseName = releaseName
+        self.durationMilliseconds = durationMilliseconds
+        self.recordingMBID = recordingMBID
+        self.releaseMBID = releaseMBID
+        self.artistMBIDs = artistMBIDs
+        self.caaReleaseMBID = caaReleaseMBID
+        self.caaID = caaID
+        self.addedAt = addedAt
+        self.addedBy = addedBy
+    }
+
     init(raw: RawPlaylistTrack) {
         let listenBrainz = raw.ext?.listenbrainz
         self.title = raw.title

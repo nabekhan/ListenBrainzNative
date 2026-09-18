@@ -21,6 +21,7 @@ struct DiscoverView: View {
                 LazyVStack(alignment: .leading, spacing: 22) {
                     header
                     recommendationsLink
+                    radioLink
                     feedLink
                     scopePicker
                     content
@@ -148,6 +149,47 @@ struct DiscoverView: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("Open ListenBrainz recommendations")
+    }
+
+    private var radioLink: some View {
+        NavigationLink {
+            RadioView(account: account, listeningModel: listeningModel)
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(AppTheme.artworkGradient(seed: "lb-radio"))
+                    Image(systemName: "dot.radiowaves.left.and.right")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 72, height: 72)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Tune LB Radio")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text(account.isAuthenticated
+                        ? "Generate a mix from your taste, recommendations, artists, or tags"
+                        : "Connect your token to use ListenBrainz's playlist generator")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: account.isAuthenticated ? "chevron.right" : "lock.fill")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(14)
+            .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(account.isAuthenticated
+            ? "Open the native ListenBrainz Radio playlist generator"
+            : "Explains why ListenBrainz Radio requires sign-in")
     }
 
     private var header: some View {

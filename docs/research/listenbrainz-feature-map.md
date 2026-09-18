@@ -49,7 +49,7 @@ Snapshot: 2026-09-18. `Y` means source/API evidence exists; `P` means partial or
 | Playlist detail/create/edit/delete | Y | Y | Y | P | P | Y | P2 | Native one-request detail landed; mutations remain staged |
 | Playlist add/remove/reorder/copy | Y | Y | Y | ? | — | Y | P2 | Stage after playlist detail |
 | Playlist import/export/service sync | Y | Y | P | ? | — | P | P3 | Advanced feature |
-| LB Radio tags/artist radio | Y | Y | ? | — | P | ? | P2 | Native prompt/generation only when stable |
+| LB Radio generation/tags/artist radio | Y | Y | P | — | Y | — | P2 | Native explicit recipe generation and playlist browsing landed; playback/content resolution remains separate |
 | BrainzPlayer queue/content resolution | Y | Y | Y | P | — | P | P2 | Keep modular; viewing is not blocked |
 | Apple/Spotify/YouTube/etc. external play | Y/P | Y | P | P | — | P | P2 | Resolve/open externally before full player |
 | Linked music services | Y | Y | Y | ? | Y | Y | P2 | Settings visibility/connection handoff |
@@ -70,6 +70,7 @@ Snapshot: 2026-09-18. `Y` means source/API evidence exists; `P` means partial or
 - The iOS product should start with high-value read paths, then add mutations to the same entity screens. Android-only notification-listener scrobbling and foreground playback services have no direct public-iOS equivalent.
 - Public API calls were checked against real ListenBrainz data and include messy but useful identity fields: recording MSID, mapped MBIDs, multi-artist credits, Cover Art Archive IDs, service/source metadata, and external URL relations.
 - The current Year in Music endpoint is one aggregate request whose 2025 payload can contain totals, UTC day activity, rankings, discovery data, similar users, and full JSPF playlists. The native first slice deliberately maps the highest-value identity-safe subset and does not fan out into row requests.
+- LB Radio is an authenticated server-side JSPF generator with a separate five-per-five-second quota. The native slice generates only on an explicit tap, sends every operation through the stricter shared one-request-per-second gate, performs at most one batch metadata enrichment, and does not imply that an MBID is playable audio.
 
 ## Evidence
 

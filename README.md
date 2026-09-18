@@ -13,6 +13,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Server-calculated listening-activity charts, a selectable 7×24 UTC listening heatmap, local-daypart Genre Activity, Music by Decade with year drill-down, and on-demand Artist Evolution across seven ListenBrainz periods
 - A native 2025 Year in Music story with totals, annual listening calendar, artist/album/track rankings, entity navigation, canonical report sharing, and explicit official-artwork PNG preview/sharing
 - Fresh Releases discovery with deliberate personalized and sitewide scopes
+- Native LB Radio recipe generation from listening history, unheard recommendations, artists, tags, or advanced Troi prompts, with one batched metadata enrichment and honest browse-only playback state
 - For You recording recommendations with native feedback, plus Daily/Weekly generated playlists
 - Music-first My Feed, Following, and Similar listening feeds with cached pagination, thanks, hide/unhide, and owner deletion
 - Native user search, visited-user profiles, followers/following, similar listeners, and compatibility
@@ -55,6 +56,7 @@ This repository follows an inspect-first, reuse-first workflow. Start with:
 - `docs/research/implementation-plan.md`
 - `docs/research/listenbrainz-feature-map.md`
 - `docs/research/listenbrainzkit-gap-analysis.md`
+- `docs/research/lb-radio.md`
 - `docs/research/kmp-status.md`
 - `docs/research/repo-reuse-map.md`
 - `docs/research/license-map.md`
