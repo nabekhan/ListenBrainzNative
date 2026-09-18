@@ -669,7 +669,15 @@ struct SearchPlaylist: Identifiable, Hashable, Sendable {
     let annotation: String?
     let identifier: String
     let isPublic: Bool
+    /// The playlist's ListenBrainz creation date, when the server provides it.
+    let createdAt: Date?
+    /// Duration reported by ListenBrainz in milliseconds, when known.
+    let durationMilliseconds: Int?
     let lastModifiedAt: Date?
+    /// The user this generated playlist was made for, if applicable.
+    let createdFor: String?
+    /// Usernames that can collaborate on this playlist.
+    let collaborators: [String]
     let recommendationType: String?
     let expiresAt: Date?
 
@@ -680,6 +688,10 @@ struct SearchPlaylist: Identifiable, Hashable, Sendable {
         identifier: String,
         isPublic: Bool,
         lastModifiedAt: Date?,
+        createdAt: Date? = nil,
+        durationMilliseconds: Int? = nil,
+        createdFor: String? = nil,
+        collaborators: [String] = [],
         recommendationType: String? = nil,
         expiresAt: Date? = nil
     ) {
@@ -688,7 +700,11 @@ struct SearchPlaylist: Identifiable, Hashable, Sendable {
         self.annotation = annotation
         self.identifier = identifier
         self.isPublic = isPublic
+        self.createdAt = createdAt
+        self.durationMilliseconds = durationMilliseconds
         self.lastModifiedAt = lastModifiedAt
+        self.createdFor = createdFor
+        self.collaborators = collaborators
         self.recommendationType = recommendationType
         self.expiresAt = expiresAt
     }

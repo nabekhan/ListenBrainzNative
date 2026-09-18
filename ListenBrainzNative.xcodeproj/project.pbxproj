@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00EB87532AFE4F986F506964 /* ProfilePlaylistsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE57C410D01822F08E5275BE /* ProfilePlaylistsModel.swift */; };
 		00F360B24EE493E67ED1DF89 /* ReleaseGroupDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F59664EC128A645E3830385 /* ReleaseGroupDetailView.swift */; };
 		03D19877F8BDD6E321146321 /* SessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44F89EA5D5E0E0647DB6755B /* SessionModel.swift */; };
 		0915988C2802793F801AB873 /* EntityDetailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACFF4BBDD28BEEFEF51B89F5 /* EntityDetailCache.swift */; };
@@ -18,6 +19,7 @@
 		11BF089AC5E362515600DAD4 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 808DA361DE2E6686DF18007A /* MainTabView.swift */; };
 		1457D061D907D9EACE4D1561 /* SearchProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A20F25A3B1ADE141FC4FD7 /* SearchProvider.swift */; };
 		145D15276FBD99C26B84D139 /* FeedModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40281433B1E545409C40ED2B /* FeedModelTests.swift */; };
+		2A8E1BB1202E6CB8253E5221 /* ProfilePlaylistsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66F0C5093821A3A87343832 /* ProfilePlaylistsProvider.swift */; };
 		2D6DAEBF12542FE63EBD75F0 /* FeedModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72EA4638A7EB62DF693C0B15 /* FeedModel.swift */; };
 		3107631690C9193020632AD8 /* UserSocialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE22423B6C01A46B7FB43FDF /* UserSocialView.swift */; };
 		36B693EB322ACEAEB30CEA68 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40BD89E69FC6509633EC0D0 /* SearchView.swift */; };
@@ -37,6 +39,7 @@
 		67C5A4D2ABD99F1C75D75FC1 /* ArtistDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F447B1074B9BC765705A259A /* ArtistDetailView.swift */; };
 		69F66A2E519942F1C4C282D6 /* RecordingShareProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD23DF6E81EDB687A2D2FCB0 /* RecordingShareProvider.swift */; };
 		6D27D69B7A9910C603E276AE /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0C23C3B8F20193233AFF2A /* DiscoverView.swift */; };
+		733DAB1366CE8D6DC4E8EB27 /* ProfilePlaylistsModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F94E3AB6B744C5E5A525DDA /* ProfilePlaylistsModelTests.swift */; };
 		74BF4E55D5D9D193BE6D02D1 /* UserAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2268C1C5B08274C79AF9F4EE /* UserAvatar.swift */; };
 		750A075E1C5ED48133A7E503 /* UserSocialModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5C21376EC70F3FDD95B368B /* UserSocialModelTests.swift */; };
 		77FAF578E20FF1259BCDFBAA /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12D4A1A234653FF49859C86C /* Models.swift */; };
@@ -123,14 +126,17 @@
 		8F59664EC128A645E3830385 /* ReleaseGroupDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseGroupDetailView.swift; sourceTree = "<group>"; };
 		99D83A99C401A23A4A21536E /* RecommendationsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecommendationsProvider.swift; sourceTree = "<group>"; };
 		99DD4D81FE060960A6C14DB8 /* ListenBrainzNativeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenBrainzNativeApp.swift; sourceTree = "<group>"; };
+		9F94E3AB6B744C5E5A525DDA /* ProfilePlaylistsModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePlaylistsModelTests.swift; sourceTree = "<group>"; };
 		A067F094D30B732D2D42AC2F /* UserDetailModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDetailModel.swift; sourceTree = "<group>"; };
 		A5C21376EC70F3FDD95B368B /* UserSocialModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSocialModelTests.swift; sourceTree = "<group>"; };
+		A66F0C5093821A3A87343832 /* ProfilePlaylistsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePlaylistsProvider.swift; sourceTree = "<group>"; };
 		A6FADAC33A92401BD743DB7D /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		A791F11C1E6675E415DEA3A4 /* UserDetailModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDetailModelTests.swift; sourceTree = "<group>"; };
 		ACFF4BBDD28BEEFEF51B89F5 /* EntityDetailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityDetailCache.swift; sourceTree = "<group>"; };
 		B48D23748275974C9D39083A /* SectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionHeader.swift; sourceTree = "<group>"; };
 		B7291BDDD18309E5D402D1B3 /* PersonalRecommendationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecommendationSheet.swift; sourceTree = "<group>"; };
 		B9D08F5AA1A3CCD512DF2CF6 /* PinsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinsViews.swift; sourceTree = "<group>"; };
+		BE57C410D01822F08E5275BE /* ProfilePlaylistsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePlaylistsModel.swift; sourceTree = "<group>"; };
 		BFA5781A5723D50654D8F20F /* FeedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedModels.swift; sourceTree = "<group>"; };
 		C93089B0F4FF96EC2558216C /* ListenBrainzProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenBrainzProvider.swift; sourceTree = "<group>"; };
 		CD23DF6E81EDB687A2D2FCB0 /* RecordingShareProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingShareProvider.swift; sourceTree = "<group>"; };
@@ -215,6 +221,7 @@
 				E87B6C6201EDD6C8CD9E5953 /* ListeningProvider.swift */,
 				279EF0995049BDBEF7989E01 /* MediaDetailProvider.swift */,
 				CDAB9FE7EC87E552920D8F89 /* PinProvider.swift */,
+				A66F0C5093821A3A87343832 /* ProfilePlaylistsProvider.swift */,
 				99D83A99C401A23A4A21536E /* RecommendationsProvider.swift */,
 				CD23DF6E81EDB687A2D2FCB0 /* RecordingShareProvider.swift */,
 				89A20F25A3B1ADE141FC4FD7 /* SearchProvider.swift */,
@@ -329,6 +336,7 @@
 				37C43C08CFE953B3F3A8BC47 /* ListeningModel.swift */,
 				EBB6785753BE67940C5494C6 /* MediaDetailModels.swift */,
 				D7C75546902949AB29B54897 /* PinsModel.swift */,
+				BE57C410D01822F08E5275BE /* ProfilePlaylistsModel.swift */,
 				84A50C052C7C44B6F2F50630 /* RecommendationsModel.swift */,
 				D789482FE354C4697F76282D /* RecordingShareModel.swift */,
 				406BFC379388B9725ABBBF3E /* SearchModel.swift */,
@@ -397,6 +405,7 @@
 				04BCABBDB540BFFC39527300 /* ListeningModelTests.swift */,
 				FB292AE014CE0F99033BA579 /* MediaDetailModelTests.swift */,
 				8A0BC2D8A5C1E29B85ED588A /* PinsModelTests.swift */,
+				9F94E3AB6B744C5E5A525DDA /* ProfilePlaylistsModelTests.swift */,
 				4DED1FB8C784A67302E19766 /* RecommendationsModelTests.swift */,
 				F8616DDC96C453211ADD8E3A /* RecordingShareModelTests.swift */,
 				A791F11C1E6675E415DEA3A4 /* UserDetailModelTests.swift */,
@@ -517,6 +526,7 @@
 				A686BC80CE777828101F3C11 /* ListeningModelTests.swift in Sources */,
 				F462DD49582CE885E41AD221 /* MediaDetailModelTests.swift in Sources */,
 				3C4AAFFFC4488E59E3B1541E /* PinsModelTests.swift in Sources */,
+				733DAB1366CE8D6DC4E8EB27 /* ProfilePlaylistsModelTests.swift in Sources */,
 				B6B1B936F8EFACB938D394F6 /* RecommendationsModelTests.swift in Sources */,
 				58B8D5799A32C727126489AC /* RecordingShareModelTests.swift in Sources */,
 				7D988596787032037BEB62C6 /* UserDetailModelTests.swift in Sources */,
@@ -558,6 +568,8 @@
 				3E772DC80D8B037D186F434B /* PinsModel.swift in Sources */,
 				48CE2F69DAAE1854F4D85F64 /* PinsViews.swift in Sources */,
 				41E4FA65905F8C4E12E92C3E /* PlaylistDetailView.swift in Sources */,
+				00EB87532AFE4F986F506964 /* ProfilePlaylistsModel.swift in Sources */,
+				2A8E1BB1202E6CB8253E5221 /* ProfilePlaylistsProvider.swift in Sources */,
 				3D7D932F671E62C342A18632 /* ProfileView.swift in Sources */,
 				DDAFF3F1116B34C7248D68F1 /* RecommendationsModel.swift in Sources */,
 				8278A61C78DFA08894349F45 /* RecommendationsProvider.swift in Sources */,
