@@ -19,7 +19,8 @@ App-owned provider boundaries
   ├─ FeedProviding → ListenBrainzKit typed feed reads
   ├─ RecordingShareProviding → typed follower/public/personal recommendation calls
   ├─ RecommendationsProviding → typed CF + generated-playlist reads
-  ├─ ReleaseDetailProviding/PlaylistDetailProviding → typed metadata/JSPF reads
+  ├─ ReleaseDetailProviding/PlaylistDetailProviding → typed LB metadata/JSPF reads
+  ├─ ConcreteReleaseDetailProviding → gated MusicBrainz edition/media lookup
   └─ Feature models → staged reads + bounded section/entity caches
               ↓
   ├─ fixed ListenBrainzKit core/metadata/stats/feedback
@@ -52,14 +53,14 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 
 ## Next implementation sequence
 
-1. Add concrete release track listings and broader playlist/profile entry points without introducing metadata waterfalls.
-2. Expand History navigation and filtering using only server-efficient queries.
+1. Expand History navigation and filtering using only server-efficient queries.
+2. Add broader playlist/profile entry points without metadata waterfalls.
 
 ## Constraints recorded
 
 - Production website interactive inspection was blocked by the unavailable configured browser; current frontend source/routes and public API calls were inspected instead.
 - Xcode 27, the iOS 27 runtime, app build, test bundle, real simulator tests, and live public data have now been exercised. Visual checkpoints cover onboarding plus real-data Home in light/dark mode; smaller-device validation is recorded with the build evidence.
-- The verified checkpoint currently passes 81 vendored-package tests and 97 app tests, plus the deliberately paced opt-in production public API smoke suite.
+- The verified checkpoint currently passes 81 vendored-package tests and 101 app tests, plus the deliberately paced opt-in production public API smoke suite.
 - Phase 3 statistics now includes on-demand server activity for the website's seven primary ranges, per-period request caching, accessible native charts, and explicit empty/retry behavior. Real-data visual checks covered all-time activity on large and small simulators in dark and light modes.
 - Fresh Releases now uses an upstreamable ListenBrainzKit extension. Personalized results are the default and an HTTP 204 becomes an honest empty state; selecting All is the only route that makes a sitewide request. The native slice follows the website's one-week window and newest-first presentation, while distinguishing upcoming releases and concrete release versus release-group identity. The API client preserves the sitewide endpoint's required terminal slash, with regression coverage.
 - Search now exposes Users, Artists, Albums (release groups), Tracks, and public Playlists in one native sheet. It sends only the selected scope after a 500 ms debounce, caches per normalized query, cancels abandoned/stale work, preserves release-group identity, and reuses the native artist/recording destinations. ListenBrainz and MusicBrainz have independent process-shared gates; canonical paths avoid hidden redirect requests. Real MusicBrainz results were visually checked in dark/light mode and XXL Dynamic Type.
@@ -72,7 +73,8 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 - Recommendation feedback is kept distinct from recording Love/Hate. An authenticated For You page performs one batched feedback lookup for its MBIDs after the recommendation and metadata reads, with every request entering the process-wide gate. Hate, Dislike, Like, and Love mirror the current website; the server's extra `bad_recommendation` value remains typed in ListenBrainzKit but is intentionally not surfaced. Mutations optimistically update, disable that row while pending, tap again to clear, and roll back with a user-facing error. No authenticated production mutation was exercised without a disposable QA account.
 - Recording detail now offers public follower recommendations and a native multi-select personal-recommendation sheet. Eligible recipients come from one cached followers request, local search causes no additional calls, notes are limited to 280 characters, duplicate submissions serialize, failures preserve the user's selection, and successful sends invalidate feed caches without forcing a refresh. The selection interaction follows Cassette's MPL-compatible sheet pattern but was independently implemented with app-owned types; official clients supplied behavior only.
 - My Feed now exposes only the mutations accepted by the current server: thanks for another listener's recommendation/pin, hide/unhide for supported foreign events and owned notifications, generic deletion for owned recommendation/notification events, and the dedicated Pins deletion route for owned pins. Hidden cards intentionally reveal neither actor nor event type. Mutations use stable server row IDs, optimistic hide/delete with rollback, per-event serialization, shared-gate transport, and cache invalidation without an automatic follow-up request. No authenticated production mutation was exercised.
-- Simulator QA covered recording sharing in light/dark mode and accessibility-extra-large text plus the hidden-feed privacy state. It also exposed and fixed a missing `PinsModel` environment value when recording detail is presented from the bottom accessory.
+- Concrete release pages now use one independently gated MusicBrainz lookup with `artist-credits+recordings+media+release-groups+labels`, then render position-normalized discs and tracks without row hydration. A concrete release MBID is the canonical navigation identity from Fresh Releases, Home, Taste, Profile, and Recording Detail; release groups remain a separate native destination. Fresh Releases tags/listen context survives the shared navigation path, stale cached editions survive refresh failures, and unmapped tracks remain visible but non-navigable.
+- Simulator QA covers recording sharing in light/dark mode and accessibility-extra-large text, the hidden-feed privacy state, and concrete editions at both the artwork/facts and ordered-track positions. Edition QA exposed and fixed a two-column accessibility-facts squeeze and moved durations below titles at accessibility sizes. An earlier checkpoint also exposed and fixed a missing `PinsModel` environment value when recording detail is presented from the bottom accessory.
 - Runtime QA exposed three transport/metadata defects that source-only tests had missed: release-group and recording-metadata routes require terminal slashes to avoid hidden redirects, encoded JSON bodies need an explicit content type, and Cover Art Archive rejects uppercase UUID paths. Canonical request/header tests and centralized lowercase artwork URL tests now guard the fixes.
 - Official KMP framework export was attempted and currently fails at the native Room KSP step; it remains a behavior reference rather than an app dependency.
 

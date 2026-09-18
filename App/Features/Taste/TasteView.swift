@@ -289,7 +289,14 @@ struct TasteView: View {
                 }
             case .releases:
                 ForEach(Array(model.snapshot.topReleases.prefix(20).enumerated()), id: \.element.id) { index, release in
-                    rankedReleaseRow(index: index, release: release)
+                    if let seed = release.releaseSeed {
+                        NavigationLink(value: seed) {
+                            rankedReleaseRow(index: index, release: release)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        rankedReleaseRow(index: index, release: release)
+                    }
                 }
             case .recordings:
                 ForEach(Array(model.snapshot.topRecordings.prefix(20).enumerated()), id: \.element.id) { index, recording in

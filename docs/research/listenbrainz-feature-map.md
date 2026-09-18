@@ -14,7 +14,7 @@ Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or
 | Artist/release/recording search | Y* | Y | Y | — | — | Y | P1 | Native MusicBrainz scopes landed; `*` adjacent MB APIs |
 | Playlist search | Y | Y | Y | — | Y | Y | P1 | Public search added to LBKit and native scoped search |
 | Recording/release-group/artist metadata | Y | Y | Y | P | Y | Y | P0 | MBIDs are canonical identities |
-| Release/release-group detail and track listing | Y/P | Y | Y | P | P | Y | P0 | Native release-group enrichment landed; full concrete-release track listing remains |
+| Release/release-group detail and track listing | Y/P | Y | Y | P | P | Y | P0 | Native group pages plus one-request MusicBrainz edition pages with ordered media/tracks; identities stay distinct |
 | Inspect raw listen/mapping state | Y | Y | P | ? | P | P | P2 | Advanced detail sheet |
 | Manual metadata mapping | Y | Y | ? | ? | Y | ? | P3 | Advanced workflow only |
 | Recording love/hate/clear feedback | Y | Y | P | P | Y | P | P1 | Optimistic action with rollback |

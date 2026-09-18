@@ -35,6 +35,24 @@ struct MainTabView: View {
     }
 
     var body: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-brainz-release-detail-demo") {
+            NavigationStack {
+                ReleaseDetailView(
+                    release: Self.releasePreviewSeed,
+                    provider: VisualQAReleaseDetailProvider(),
+                    cache: EntityDetailCache()
+                )
+            }
+        } else {
+            mainContent
+        }
+        #else
+        mainContent
+        #endif
+    }
+
+    private var mainContent: some View {
         accessoryTabs
             .task {
                 #if DEBUG
@@ -149,10 +167,85 @@ struct MainTabView: View {
         insertedAt: .now,
         isPlayingNow: false
     )
+
+    private static let releasePreviewSeed = ReleaseSeed(
+        mbid: UUID(uuidString: "1390f1b7-7851-48ae-983d-eb8a48f78048")!,
+        title: "Four You",
+        artistName: "Karan Aujla, Ikky",
+        artistMBIDs: [
+            UUID(uuidString: "4a779683-5404-4b90-a0d7-242495158265")!,
+            UUID(uuidString: "3ea12c3c-8596-4d70-b327-208b0a459a97")!,
+        ],
+        releaseGroupMBID: UUID(uuidString: "eb8734c9-127d-495e-b908-9194cdbac45d"),
+        releaseDate: "2023-02-04",
+        primaryType: "EP",
+        artworkReleaseMBID: UUID(uuidString: "1390f1b7-7851-48ae-983d-eb8a48f78048"),
+        discoveryContext: ReleaseDiscoveryContext(
+            tags: ["punjabi pop", "hip hop", "desi"],
+            confidence: 2,
+            listenCount: 4_312
+        )
+    )
     #endif
 }
 
 #if DEBUG
+private struct VisualQAReleaseDetailProvider: ConcreteReleaseDetailProviding {
+    func release(seed: ReleaseSeed) async throws -> ReleaseDetail {
+        ReleaseDetail(
+            mbid: seed.mbid,
+            title: seed.title,
+            artistCreditName: seed.artistName,
+            releaseDate: seed.releaseDate,
+            country: "IN",
+            status: "Official",
+            barcode: "859770181552",
+            packaging: "None",
+            labels: ["Rehaan Records"],
+            releaseGroupMBID: seed.releaseGroupMBID,
+            releaseGroupPrimaryType: "EP",
+            media: [
+                ReleaseMedium(
+                    position: 1,
+                    format: "Digital Media",
+                    title: nil,
+                    tracks: [
+                        track(seed: seed, position: 1, title: "52 Bars", duration: 214_024, mapped: true),
+                        track(seed: seed, position: 2, title: "Take It Easy", duration: 210_361, mapped: true),
+                        track(seed: seed, position: 3, title: "Fallin Apart", duration: 198_000, mapped: false),
+                        track(seed: seed, position: 4, title: "Yeah Naah", duration: 182_375, mapped: true),
+                    ]
+                ),
+            ]
+        )
+    }
+
+    private func track(
+        seed: ReleaseSeed,
+        position: Int,
+        title: String,
+        duration: Int,
+        mapped: Bool
+    ) -> ReleaseTrack {
+        ReleaseTrack(
+            position: position,
+            number: String(position),
+            recording: Recording(
+                identity: .init(mbid: mapped ? UUID() : nil, msid: nil),
+                title: title,
+                artistName: seed.artistName,
+                artistMBIDs: seed.artistMBIDs,
+                releaseTitle: seed.title,
+                releaseMBID: seed.mbid,
+                releaseGroupMBID: seed.releaseGroupMBID,
+                artworkReleaseMBID: seed.artworkReleaseMBID,
+                durationMilliseconds: duration,
+                source: nil
+            )
+        )
+    }
+}
+
 private struct VisualQAPinProvider: PinProviding {
     func currentPin(username: String) async throws -> PinnedRecording? { nil }
     func pin(_ recording: Recording, blurb: String?) async throws -> PinnedRecording {

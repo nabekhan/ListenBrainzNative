@@ -86,6 +86,20 @@ struct RankedRelease: Identifiable, Hashable, Codable, Sendable {
         guard let mbid else { return nil }
         return CoverArtArchiveURL.release(mbid)
     }
+
+    var releaseSeed: ReleaseSeed? {
+        guard let mbid else { return nil }
+        return ReleaseSeed(
+            mbid: mbid,
+            title: name,
+            artistName: artistName,
+            artistMBIDs: artistMBIDs,
+            releaseGroupMBID: nil,
+            releaseDate: nil,
+            primaryType: nil,
+            artworkReleaseMBID: mbid
+        )
+    }
 }
 
 struct RankedRecording: Identifiable, Hashable, Codable, Sendable {
@@ -260,6 +274,15 @@ struct FreshRelease: Identifiable, Hashable, Sendable {
         [primaryType, secondaryType].compactMap { $0 }.joined(separator: " · ").nilIfEmpty
     }
 
+    var discoveryContext: ReleaseDiscoveryContext? {
+        guard !tags.isEmpty || confidence != nil || listenCount != nil else { return nil }
+        return ReleaseDiscoveryContext(
+            tags: tags,
+            confidence: confidence,
+            listenCount: listenCount
+        )
+    }
+
     var releaseDateValue: Date? {
         releaseDateValue(in: .autoupdatingCurrent)
     }
@@ -303,6 +326,136 @@ struct FreshRelease: Identifiable, Hashable, Sendable {
         guard let releaseGroupMBID else { return nil }
         return URL(string: "https://musicbrainz.org/release-group/\(releaseGroupMBID.uuidString)")
     }
+}
+
+/// A concrete MusicBrainz release (edition), deliberately distinct from a
+/// release group. It is the canonical navigation identity for ordered tracks.
+struct ReleaseSeed: Identifiable, Hashable, Sendable {
+    let mbid: UUID
+    let title: String
+    let artistName: String
+    let artistMBIDs: [UUID]
+    let releaseGroupMBID: UUID?
+    let releaseDate: String?
+    let primaryType: String?
+    let artworkReleaseMBID: UUID?
+    let discoveryContext: ReleaseDiscoveryContext?
+
+    var id: UUID { mbid }
+    var artworkURL: URL? { CoverArtArchiveURL.release(artworkReleaseMBID ?? mbid) }
+    var musicBrainzURL: URL { URL(string: "https://musicbrainz.org/release/\(mbid.uuidString)")! }
+
+    init(
+        mbid: UUID,
+        title: String,
+        artistName: String,
+        artistMBIDs: [UUID],
+        releaseGroupMBID: UUID?,
+        releaseDate: String?,
+        primaryType: String?,
+        artworkReleaseMBID: UUID?,
+        discoveryContext: ReleaseDiscoveryContext? = nil
+    ) {
+        self.mbid = mbid
+        self.title = title
+        self.artistName = artistName
+        self.artistMBIDs = artistMBIDs
+        self.releaseGroupMBID = releaseGroupMBID
+        self.releaseDate = releaseDate
+        self.primaryType = primaryType
+        self.artworkReleaseMBID = artworkReleaseMBID
+        self.discoveryContext = discoveryContext
+    }
+
+    init?(recording: Recording) {
+        guard let mbid = recording.releaseMBID else { return nil }
+        self.init(
+            mbid: mbid,
+            title: recording.releaseTitle ?? "Unknown release",
+            artistName: recording.artistName,
+            artistMBIDs: recording.artistMBIDs,
+            releaseGroupMBID: recording.releaseGroupMBID,
+            releaseDate: nil,
+            primaryType: nil,
+            artworkReleaseMBID: recording.artworkReleaseMBID ?? mbid,
+            discoveryContext: nil
+        )
+    }
+
+    init?(freshRelease: FreshRelease) {
+        guard let mbid = freshRelease.releaseMBID else { return nil }
+        self.init(
+            mbid: mbid,
+            title: freshRelease.title,
+            artistName: freshRelease.artistName,
+            artistMBIDs: freshRelease.artistMBIDs,
+            releaseGroupMBID: freshRelease.releaseGroupMBID,
+            releaseDate: freshRelease.releaseDate,
+            primaryType: freshRelease.typeDescription,
+            artworkReleaseMBID: freshRelease.artworkReleaseMBID ?? mbid,
+            discoveryContext: freshRelease.discoveryContext
+        )
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.mbid == rhs.mbid
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(mbid)
+    }
+}
+
+/// ListenBrainz-specific discovery metadata carried alongside a canonical
+/// MusicBrainz identity. It enriches presentation but never changes identity.
+struct ReleaseDiscoveryContext: Hashable, Sendable {
+    let tags: [String]
+    let confidence: Double?
+    let listenCount: Int?
+
+    var hasVisibleContent: Bool {
+        listenCount != nil || confidence != nil || !tags.isEmpty
+    }
+}
+
+struct ReleaseDetail: Hashable, Sendable {
+    let mbid: UUID
+    let title: String
+    let artistCreditName: String
+    let releaseDate: String?
+    let country: String?
+    let status: String?
+    let barcode: String?
+    let packaging: String?
+    let labels: [String]
+    let releaseGroupMBID: UUID?
+    let releaseGroupPrimaryType: String?
+    let media: [ReleaseMedium]
+
+    var artworkURL: URL? { CoverArtArchiveURL.release(mbid) }
+    var trackCount: Int { media.reduce(0) { $0 + $1.tracks.count } }
+    var totalDurationMilliseconds: Int? {
+        let values = media.flatMap(\.tracks).compactMap(\.recording.durationMilliseconds)
+        guard !values.isEmpty else { return nil }
+        return values.reduce(0, +)
+    }
+}
+
+struct ReleaseMedium: Identifiable, Hashable, Sendable {
+    let position: Int
+    let format: String?
+    let title: String?
+    let tracks: [ReleaseTrack]
+
+    var id: String { "\(position):\(format ?? ""): \(title ?? "")" }
+}
+
+struct ReleaseTrack: Identifiable, Hashable, Sendable {
+    let position: Int
+    let number: String?
+    let recording: Recording
+
+    var id: String { "\(position):\(recording.id)" }
 }
 
 enum FreshReleaseScope: String, CaseIterable, Identifiable, Sendable {

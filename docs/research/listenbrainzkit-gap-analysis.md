@@ -11,6 +11,7 @@ Snapshot: 2026-09-17. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-
 | Followers/following/follow/unfollow | SUPPORTED | Typed social client with endpoint-specific status handling | Reuse native Social slice; upstream candidate |
 | Connected services/latest import | SUPPORTED | Core client methods | Reuse later |
 | Metadata lookup/manual mapping | SUPPORTED | Recording, release group, artist, bulk/fuzzy mapping | Reuse behind metadata resolver |
+| Concrete release/ordered track lookup | MISSING | Kit `releaseGroup` metadata does not model a MusicBrainz edition or its media/tracks | Use one separately gated MusicBrainz release lookup; do not mislabel group metadata or hydrate tracks individually |
 | Top artist/release/release-group/recording | SUPPORTED | User and sitewide | Reuse |
 | Listening activity | SUPPORTED | User and sitewide | Reuse |
 | Recording feedback | SUPPORTED | Love/hate/clear and lookup | Reuse |

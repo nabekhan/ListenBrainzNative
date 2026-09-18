@@ -55,5 +55,6 @@ actor EntityDetailCache<Key: Hashable & Sendable, Value: Sendable> {
 
 enum EntityDetailCaches {
     static let releaseGroups = EntityDetailCache<UUID, ReleaseGroupDetail>()
+    static let releases = EntityDetailCache<UUID, ReleaseDetail>()
     static let playlists = EntityDetailCache<UUID, PlaylistDetail>()
 }

@@ -12,6 +12,79 @@ enum EntityDetailPhase: Equatable {
 
 @MainActor
 @Observable
+final class ReleaseDetailModel {
+    let seed: ReleaseSeed
+    private let provider: any ConcreteReleaseDetailProviding
+    private let cache: EntityDetailCache<UUID, ReleaseDetail>
+
+    private(set) var detail: ReleaseDetail?
+    private(set) var phase: EntityDetailPhase = .idle
+    private(set) var refreshMessage: String?
+    private var didLoad = false
+    private var requestID = UUID()
+
+    init(
+        seed: ReleaseSeed,
+        provider: (any ConcreteReleaseDetailProviding)? = nil,
+        cache: EntityDetailCache<UUID, ReleaseDetail> = EntityDetailCaches.releases
+    ) {
+        self.seed = seed
+        self.provider = provider ?? MusicBrainzReleaseDetailProvider()
+        self.cache = cache
+    }
+
+    func load() async {
+        guard !didLoad else { return }
+        didLoad = true
+        if let cached = await cache.value(for: seed.mbid) {
+            detail = cached.value
+            if cached.isFresh {
+                phase = .ready
+                return
+            }
+            phase = .refreshing
+        } else {
+            phase = .loading
+        }
+        await fetch()
+    }
+
+    func refresh() async {
+        requestID = UUID()
+        refreshMessage = nil
+        phase = detail == nil ? .loading : .refreshing
+        await fetch()
+    }
+
+    private func fetch() async {
+        let id = UUID()
+        requestID = id
+        do {
+            let value = try await provider.release(seed: seed)
+            try Task.checkCancellation()
+            guard requestID == id else { return }
+            detail = value
+            refreshMessage = nil
+            phase = .ready
+            await cache.save(value, for: seed.mbid)
+        } catch is CancellationError {
+            guard requestID == id else { return }
+            didLoad = false
+            phase = detail == nil ? .idle : .ready
+        } catch {
+            guard requestID == id else { return }
+            if detail == nil {
+                phase = .failed(error.localizedDescription)
+            } else {
+                refreshMessage = error.localizedDescription
+                phase = .ready
+            }
+        }
+    }
+}
+
+@MainActor
+@Observable
 final class ReleaseGroupDetailModel {
     let seed: SearchReleaseGroup
     private let provider: any ReleaseDetailProviding

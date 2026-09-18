@@ -231,12 +231,31 @@ struct DiscoverView: View {
             spacing: 22
         ) {
             ForEach(releases) { release in
-                NavigationLink {
-                    FreshReleaseDetailView(release: release)
-                } label: {
+                if let seed = ReleaseSeed(freshRelease: release) {
+                    NavigationLink(value: seed) {
+                        FreshReleaseCard(release: release)
+                    }
+                    .buttonStyle(.plain)
+                } else if let groupMBID = release.releaseGroupMBID {
+                    NavigationLink {
+                        ReleaseGroupDetailView(
+                            group: SearchReleaseGroup(
+                                mbid: groupMBID,
+                                title: release.title,
+                                artistName: release.artistName,
+                                primaryType: release.primaryType,
+                                firstReleaseDate: release.releaseDate
+                            ),
+                            token: account.token,
+                            discoveryContext: release.discoveryContext
+                        )
+                    } label: {
+                        FreshReleaseCard(release: release)
+                    }
+                    .buttonStyle(.plain)
+                } else {
                     FreshReleaseCard(release: release)
                 }
-                .buttonStyle(.plain)
             }
         }
     }
@@ -282,86 +301,5 @@ private struct FreshReleaseCard: View {
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
         }
-    }
-}
-
-private struct FreshReleaseDetailView: View {
-    let release: FreshRelease
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                ArtworkView(url: release.artworkURL, title: release.title, cornerRadius: 24, showsPlaceholderSymbol: false)
-                    .frame(maxWidth: 430)
-                    .aspectRatio(1, contentMode: .fit)
-                    .frame(maxWidth: .infinity)
-
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(release.title)
-                        .font(.title.bold())
-                    Text(release.artistName)
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                    if let date = release.releaseDateDescription {
-                        Label(date, systemImage: release.isUpcoming ? "hourglass" : "calendar")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                if let type = release.typeDescription {
-                    detailSection("Release type") { Text(type) }
-                }
-                if let count = release.listenCount {
-                    detailSection("ListenBrainz context") { Text("\(count.formatted()) listener \(count == 1 ? "listen" : "listens")") }
-                }
-                if !release.tags.isEmpty {
-                    detailSection("Tags") {
-                        FlowTags(tags: release.tags.prefix(8).map { $0 })
-                    }
-                }
-                if release.releaseMusicBrainzURL != nil || release.releaseGroupMusicBrainzURL != nil {
-                    detailSection("MusicBrainz identity") {
-                        VStack(alignment: .leading, spacing: 12) {
-                            if let releaseURL = release.releaseMusicBrainzURL {
-                                Link(destination: releaseURL) {
-                                    Label("Open release", systemImage: "arrow.up.right.square")
-                                }
-                            }
-                            if let releaseGroupURL = release.releaseGroupMusicBrainzURL {
-                                Link(destination: releaseGroupURL) {
-                                    Label("Open release group", systemImage: "square.stack.3d.up")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            .padding(18)
-            .padding(.bottom, 32)
-        }
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
-    private func detailSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased())
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
-            content()
-                .font(.body)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(15)
-        .background(.thinMaterial, in: .rect(cornerRadius: 18, style: .continuous))
-    }
-}
-
-private struct FlowTags: View {
-    let tags: [String]
-
-    var body: some View {
-        Text(tags.joined(separator: " · "))
-            .foregroundStyle(.primary)
     }
 }

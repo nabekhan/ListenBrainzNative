@@ -91,6 +91,109 @@ final class MediaDetailModelTests: XCTestCase {
         XCTAssertNotNil(model.refreshMessage)
     }
 
+    func testConcreteReleaseLoadsOrderedTracksWithOneProviderCall() async {
+        let mbid = UUID()
+        let detail = concreteReleaseDetail(mbid: mbid, trackTitles: ["Opening", "Second", "Finale"])
+        let provider = MediaDetailFixtureProvider(concreteRelease: detail)
+        let model = ReleaseDetailModel(
+            seed: concreteReleaseSeed(mbid: mbid),
+            provider: provider,
+            cache: EntityDetailCache()
+        )
+
+        await model.load()
+        await model.load()
+
+        XCTAssertEqual(model.phase, .ready)
+        XCTAssertEqual(model.detail?.media.flatMap(\.tracks).map(\.recording.title), ["Opening", "Second", "Finale"])
+        let calls = await provider.concreteReleaseCalls
+        XCTAssertEqual(calls, [mbid])
+    }
+
+    func testConcreteReleaseRequestUsesSingleOrderedMediaLookup() throws {
+        let releaseID = UUID(uuidString: "1a33443c-3fff-450f-8298-efbc65659d32")!
+        let groupID = UUID(uuidString: "2a33443c-3fff-450f-8298-efbc65659d32")!
+        let recordingID = UUID(uuidString: "3a33443c-3fff-450f-8298-efbc65659d32")!
+        let request = try MusicBrainzSearchClient.makeReleaseRequest(mbid: releaseID, userAgent: "Tests")
+        let query = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)?.queryItems
+        XCTAssertEqual(request.url?.path, "/ws/2/release/1a33443c-3fff-450f-8298-efbc65659d32")
+        XCTAssertEqual(query?.first(where: { $0.name == "inc" })?.value, "artist-credits+recordings+media+release-groups+labels")
+
+        let json = """
+        {
+          "title": "Edition", "artist-credit": [{"name": "Artist"}],
+          "release-group": {"id": "\(groupID.uuidString)", "primary-type": "EP"},
+          "media": [
+            {"position": 2, "format": "CD", "tracks": [
+              {"position": 8, "number": "8", "title": "Source first", "length": 123000, "recording": {"id": "\(recordingID.uuidString)", "title": "Source first"}},
+              {"position": 1, "number": "1", "title": "Source second", "length": 234000}
+            ]},
+            {"position": 1, "format": "CD", "tracks": [
+              {"position": 1, "number": "1", "title": "Prelude", "length": 42000}
+            ]}
+          ]
+        }
+        """
+        let detail = try MusicBrainzSearchClient.decodeRelease(
+            data: Data(json.utf8),
+            mbid: releaseID,
+            context: concreteReleaseSeed(mbid: releaseID)
+        )
+
+        XCTAssertEqual(detail.releaseGroupMBID, groupID)
+        XCTAssertEqual(detail.releaseGroupPrimaryType, "EP")
+        XCTAssertEqual(detail.media.map(\.position), [1, 2])
+        XCTAssertEqual(detail.media.flatMap(\.tracks).map(\.recording.title), ["Prelude", "Source second", "Source first"])
+        XCTAssertNil(detail.media.flatMap(\.tracks).first?.recording.identity.mbid)
+        XCTAssertEqual(detail.media.flatMap(\.tracks).last?.recording.identity.mbid, recordingID)
+    }
+
+    func testConcreteReleaseIdentityIgnoresSourcePresentationContext() throws {
+        let mbid = UUID()
+        let rankedSeed = concreteReleaseSeed(mbid: mbid)
+        let freshRelease = FreshRelease(
+            releaseMBID: mbid,
+            releaseGroupMBID: UUID(),
+            title: "A newer title",
+            artistName: "Another credit",
+            artistMBIDs: [UUID()],
+            releaseDate: "2026-09-17",
+            primaryType: "EP",
+            secondaryType: "Live",
+            tags: ["dream pop", "indie"],
+            confidence: 3,
+            listenCount: 24,
+            artworkReleaseMBID: UUID(),
+            sourcePosition: 7
+        )
+        let freshSeed = try XCTUnwrap(ReleaseSeed(freshRelease: freshRelease))
+
+        XCTAssertEqual(rankedSeed, freshSeed)
+        XCTAssertEqual(Set([rankedSeed, freshSeed]).count, 1)
+        XCTAssertEqual(freshSeed.discoveryContext?.tags, ["dream pop", "indie"])
+        XCTAssertEqual(freshSeed.discoveryContext?.confidence, 3)
+        XCTAssertEqual(freshSeed.discoveryContext?.listenCount, 24)
+        XCTAssertTrue(ReleaseDiscoveryContext(tags: [], confidence: 1, listenCount: nil).hasVisibleContent)
+    }
+
+    func testStaleConcreteReleaseSurvivesRefreshFailure() async {
+        let mbid = UUID()
+        let cache = EntityDetailCache<UUID, ReleaseDetail>(timeToLive: -1)
+        await cache.save(concreteReleaseDetail(mbid: mbid, trackTitles: ["Cached"]), for: mbid)
+        let provider = MediaDetailFixtureProvider(error: MediaDetailFixtureError.failed)
+        let model = ReleaseDetailModel(
+            seed: concreteReleaseSeed(mbid: mbid),
+            provider: provider,
+            cache: cache
+        )
+
+        await model.load()
+
+        XCTAssertEqual(model.phase, .ready)
+        XCTAssertEqual(model.detail?.media.flatMap(\.tracks).map(\.recording.title), ["Cached"])
+        XCTAssertNotNil(model.refreshMessage)
+    }
+
     func testInvalidPlaylistIdentifierNeverCallsProvider() async {
         let seed = SearchPlaylist(
             title: "Invalid",
@@ -253,6 +356,58 @@ final class MediaDetailModelTests: XCTestCase {
         )
     }
 
+    private func concreteReleaseSeed(mbid: UUID) -> ReleaseSeed {
+        ReleaseSeed(
+            mbid: mbid,
+            title: "Fixture edition",
+            artistName: "Fixture artist",
+            artistMBIDs: [],
+            releaseGroupMBID: UUID(),
+            releaseDate: "2024-01-01",
+            primaryType: "Album",
+            artworkReleaseMBID: mbid
+        )
+    }
+
+    private func concreteReleaseDetail(mbid: UUID, trackTitles: [String]) -> ReleaseDetail {
+        ReleaseDetail(
+            mbid: mbid,
+            title: "Fixture edition",
+            artistCreditName: "Fixture artist",
+            releaseDate: "2024-01-01",
+            country: "CA",
+            status: "Official",
+            barcode: nil,
+            packaging: nil,
+            labels: [],
+            releaseGroupMBID: UUID(),
+            releaseGroupPrimaryType: "Album",
+            media: [ReleaseMedium(
+                position: 1,
+                format: "Digital Media",
+                title: nil,
+                tracks: trackTitles.enumerated().map { index, title in
+                    ReleaseTrack(
+                        position: index + 1,
+                        number: String(index + 1),
+                        recording: Recording(
+                            identity: .init(mbid: UUID(), msid: nil),
+                            title: title,
+                            artistName: "Fixture artist",
+                            artistMBIDs: [],
+                            releaseTitle: "Fixture edition",
+                            releaseMBID: mbid,
+                            releaseGroupMBID: nil,
+                            artworkReleaseMBID: mbid,
+                            durationMilliseconds: 180_000,
+                            source: nil
+                        )
+                    )
+                }
+            )]
+        )
+    }
+
     private func playlistDetail(
         mbid: UUID,
         title: String = "Fixture playlist",
@@ -274,19 +429,23 @@ final class MediaDetailModelTests: XCTestCase {
     }
 }
 
-private actor MediaDetailFixtureProvider: ReleaseDetailProviding, PlaylistDetailProviding {
+private actor MediaDetailFixtureProvider: ReleaseDetailProviding, ConcreteReleaseDetailProviding, PlaylistDetailProviding {
     private(set) var releaseCalls: [UUID] = []
+    private(set) var concreteReleaseCalls: [UUID] = []
     private(set) var playlistCalls: [UUID] = []
     private let releaseValue: ReleaseGroupDetail?
+    private let concreteReleaseValue: ReleaseDetail?
     private let playlistValue: PlaylistDetail?
     private let error: (any Error & Sendable)?
 
     init(
         release: ReleaseGroupDetail? = nil,
+        concreteRelease: ReleaseDetail? = nil,
         playlist: PlaylistDetail? = nil,
         error: (any Error & Sendable)? = nil
     ) {
         self.releaseValue = release
+        self.concreteReleaseValue = concreteRelease
         self.playlistValue = playlist
         self.error = error
     }
@@ -295,6 +454,13 @@ private actor MediaDetailFixtureProvider: ReleaseDetailProviding, PlaylistDetail
         releaseCalls.append(mbid)
         if let error { throw error }
         return releaseValue
+    }
+
+    func release(seed: ReleaseSeed) async throws -> ReleaseDetail {
+        concreteReleaseCalls.append(seed.mbid)
+        if let error { throw error }
+        guard let concreteReleaseValue else { throw MediaDetailFixtureError.missingFixture }
+        return concreteReleaseValue
     }
 
     func playlist(mbid: UUID) async throws -> PlaylistDetail {

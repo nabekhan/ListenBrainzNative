@@ -137,9 +137,19 @@ struct RecordingDetailView: View {
                     .foregroundStyle(AppTheme.accent)
                     .multilineTextAlignment(.center)
                 if let release = recording.releaseTitle {
-                    Text(release)
-                        .font(.subheadline)
+                    if let seed = ReleaseSeed(recording: recording) {
+                        NavigationLink(value: seed) {
+                            Label(release, systemImage: "square.stack")
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
+                        .accessibilityHint("Open release details")
+                    } else {
+                        Text(release)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }

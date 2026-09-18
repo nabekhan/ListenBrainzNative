@@ -151,18 +151,14 @@ struct HomeView: View {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 16) {
                     ForEach(model.snapshot.topReleases.prefix(12)) { release in
-                        VStack(alignment: .leading, spacing: 7) {
-                            ArtworkView(url: release.artworkURL, title: release.name, cornerRadius: 13)
-                                .frame(width: 152, height: 152)
-                            Text(release.name)
-                                .font(.subheadline.weight(.semibold))
-                                .lineLimit(1)
-                            Text(release.artistName)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                        if let seed = release.releaseSeed {
+                            NavigationLink(value: seed) {
+                                releaseCard(release)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            releaseCard(release)
                         }
-                        .frame(width: 152, alignment: .leading)
                     }
                 }
                 .scrollTargetLayout()
@@ -170,6 +166,21 @@ struct HomeView: View {
             .scrollTargetBehavior(.viewAligned)
             .scrollIndicators(.hidden)
         }
+    }
+
+    private func releaseCard(_ release: RankedRelease) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            ArtworkView(url: release.artworkURL, title: release.name, cornerRadius: 13)
+                .frame(width: 152, height: 152)
+            Text(release.name)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+            Text(release.artistName)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(width: 152, alignment: .leading)
     }
 
     private var greeting: String {

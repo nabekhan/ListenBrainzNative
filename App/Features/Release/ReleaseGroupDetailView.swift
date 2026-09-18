@@ -2,10 +2,16 @@ import SwiftUI
 
 struct ReleaseGroupDetailView: View {
     let group: SearchReleaseGroup
+    let discoveryContext: ReleaseDiscoveryContext?
     @State private var model: ReleaseGroupDetailModel
 
-    init(group: SearchReleaseGroup, token: String) {
+    init(
+        group: SearchReleaseGroup,
+        token: String,
+        discoveryContext: ReleaseDiscoveryContext? = nil
+    ) {
         self.group = group
+        self.discoveryContext = discoveryContext
         _model = State(initialValue: ReleaseGroupDetailModel(seed: group, token: token))
     }
 
@@ -16,6 +22,7 @@ struct ReleaseGroupDetailView: View {
                 loadNotice
                 artists
                 tags
+                listenBrainzContext
                 facts
             }
             .padding(.horizontal, 20)
@@ -153,6 +160,15 @@ struct ReleaseGroupDetailView: View {
                 Text(tags.prefix(12).joined(separator: " · "))
                     .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var listenBrainzContext: some View {
+        if let discoveryContext, discoveryContext.hasVisibleContent {
+            detailSection("ListenBrainz context") {
+                ReleaseDiscoveryContextContent(context: discoveryContext)
             }
         }
     }

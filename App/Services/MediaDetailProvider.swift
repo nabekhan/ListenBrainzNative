@@ -5,6 +5,10 @@ protocol ReleaseDetailProviding: Sendable {
     func releaseGroup(mbid: UUID) async throws -> ReleaseGroupDetail?
 }
 
+protocol ConcreteReleaseDetailProviding: Sendable {
+    func release(seed: ReleaseSeed) async throws -> ReleaseDetail
+}
+
 protocol PlaylistDetailProviding: Sendable {
     func playlist(mbid: UUID) async throws -> PlaylistDetail
 }
@@ -119,6 +123,18 @@ struct ListenBrainzMediaDetailProvider: ReleaseDetailProviding, PlaylistDetailPr
         guard let value else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+struct MusicBrainzReleaseDetailProvider: ConcreteReleaseDetailProviding {
+    private let client: MusicBrainzSearchClient
+
+    init(client: MusicBrainzSearchClient = .init()) {
+        self.client = client
+    }
+
+    func release(seed: ReleaseSeed) async throws -> ReleaseDetail {
+        try await client.release(mbid: seed.mbid, context: seed)
     }
 }
 

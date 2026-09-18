@@ -109,19 +109,30 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 14) {
             SectionHeader(title: "Most played albums")
             ForEach(model.snapshot.topReleases.prefix(6)) { release in
-                HStack(spacing: 13) {
-                    ArtworkView(url: release.artworkURL, title: release.name, cornerRadius: 9)
-                        .frame(width: 60, height: 60)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(release.name).font(.body.weight(.semibold)).lineLimit(1)
-                        Text(release.artistName).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                if let seed = release.releaseSeed {
+                    NavigationLink(value: seed) {
+                        releaseRow(release)
                     }
-                    Spacer()
-                    Text(release.listenCount.formatted())
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                    .buttonStyle(.plain)
+                } else {
+                    releaseRow(release)
                 }
             }
+        }
+    }
+
+    private func releaseRow(_ release: RankedRelease) -> some View {
+        HStack(spacing: 13) {
+            ArtworkView(url: release.artworkURL, title: release.name, cornerRadius: 9)
+                .frame(width: 60, height: 60)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(release.name).font(.body.weight(.semibold)).lineLimit(1)
+                Text(release.artistName).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer()
+            Text(release.listenCount.formatted())
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
         }
     }
 

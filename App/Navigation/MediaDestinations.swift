@@ -11,6 +11,12 @@ private struct MediaDestinations: ViewModifier {
             .navigationDestination(for: RankedArtist.self) { artist in
                 ArtistDetailView(artist: artist, model: model)
             }
+            .navigationDestination(for: ReleaseSeed.self) { release in
+                ReleaseDetailView(release: release)
+            }
+            .navigationDestination(for: SearchReleaseGroup.self) { group in
+                ReleaseGroupDetailView(group: group, token: model.account.token)
+            }
     }
 }
 extension View {

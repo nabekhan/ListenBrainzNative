@@ -123,6 +123,30 @@ struct MusicBrainzSearchClient: Sendable {
         }
     }
 
+    /// Loads one concrete MusicBrainz release and its complete ordered media
+    /// list. This is intentionally a single request; callers must never look
+    /// up individual tracks to render a release page.
+    func release(mbid: UUID, context: ReleaseSeed) async throws -> ReleaseDetail {
+        try await gate.perform {
+            let request = try Self.makeReleaseRequest(mbid: mbid, userAgent: userAgent)
+            let (data, response) = try await Self.session.data(for: request)
+            guard let response = response as? HTTPURLResponse else { throw MusicBrainzSearchError.invalidResponse }
+            switch response.statusCode {
+            case 200 ... 299: break
+            case 429: throw MusicBrainzSearchError.rateLimited(retryAfter: Self.retryAfter(response))
+            case 503: throw MusicBrainzSearchError.unavailable(retryAfter: Self.retryAfter(response))
+            default: throw MusicBrainzSearchError.invalidResponse
+            }
+            return try Self.decodeRelease(data: data, mbid: mbid, context: context)
+        } deferralForError: { error in
+            switch error {
+            case let .rateLimited(seconds) as MusicBrainzSearchError: .seconds(max(seconds, 1))
+            case let .unavailable(seconds) as MusicBrainzSearchError: .seconds(max(seconds, 1))
+            default: nil
+            }
+        }
+    }
+
     static func makeRequest(query: String, scope: SearchScope, limit: Int, userAgent: String) throws -> URLRequest {
         let path: String = switch scope {
         case .artists: "artist"
@@ -137,6 +161,19 @@ struct MusicBrainzSearchClient: Sendable {
             .init(name: "fmt", value: "json"),
             .init(name: "limit", value: String(min(max(limit, 1), 25))),
             .init(name: "offset", value: "0"),
+        ]
+        guard let url = components.url else { throw MusicBrainzSearchError.invalidResponse }
+        var request = URLRequest(url: url)
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        return request
+    }
+
+    static func makeReleaseRequest(mbid: UUID, userAgent: String) throws -> URLRequest {
+        var components = URLComponents(url: root.appending(path: "release/\(mbid.uuidString.lowercased())"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            .init(name: "inc", value: "artist-credits+recordings+media+release-groups+labels"),
+            .init(name: "fmt", value: "json"),
         ]
         guard let url = components.url else { throw MusicBrainzSearchError.invalidResponse }
         var request = URLRequest(url: url)
@@ -206,6 +243,77 @@ struct MusicBrainzSearchClient: Sendable {
         }
     }
 
+    static func decodeRelease(data: Data, mbid: UUID, context: ReleaseSeed) throws -> ReleaseDetail {
+        let value = try JSONDecoder().decode(ReleaseLookup.self, from: data)
+        let creditedArtistName = creditName(value.artistCredit ?? [])
+        let artistName = creditedArtistName.isEmpty ? context.artistName : creditedArtistName
+        let releaseGroupMBID = value.releaseGroup?.id.flatMap(UUID.init(uuidString:)) ?? context.releaseGroupMBID
+        let sourceMedia: [Medium] = value.media ?? []
+        let orderedMedia = sourceMedia.enumerated().sorted { lhs, rhs in
+            let leftPosition = lhs.element.position ?? lhs.offset + 1
+            let rightPosition = rhs.element.position ?? rhs.offset + 1
+            return leftPosition == rightPosition
+                ? lhs.offset < rhs.offset
+                : leftPosition < rightPosition
+        }
+        let media = orderedMedia.map { mediumIndex, medium in
+            let sourceTracks: [Track] = medium.tracks ?? []
+            let orderedTracks = sourceTracks.enumerated().sorted { lhs, rhs in
+                let leftPosition = lhs.element.position ?? lhs.offset + 1
+                let rightPosition = rhs.element.position ?? rhs.offset + 1
+                return leftPosition == rightPosition
+                    ? lhs.offset < rhs.offset
+                    : leftPosition < rightPosition
+            }
+            let tracks = orderedTracks.map { trackIndex, track in
+                let credits = track.artistCredit ?? value.artistCredit ?? []
+                let creditedTrackArtist = creditName(credits)
+                let trackArtist = creditedTrackArtist.isEmpty ? artistName : creditedTrackArtist
+                let recordingID = track.recording?.id.flatMap(UUID.init(uuidString:))
+                let recording = Recording(
+                    identity: .init(mbid: recordingID, msid: nil),
+                    title: track.recording?.title ?? track.title,
+                    artistName: trackArtist,
+                    artistMBIDs: credits.compactMap { credit in
+                        guard let id = credit.artist?.id else { return nil }
+                        return UUID(uuidString: id)
+                    },
+                    releaseTitle: value.title,
+                    releaseMBID: mbid,
+                    releaseGroupMBID: releaseGroupMBID,
+                    artworkReleaseMBID: mbid,
+                    durationMilliseconds: track.length ?? track.recording?.length,
+                    source: nil
+                )
+                return ReleaseTrack(
+                    position: track.position ?? trackIndex + 1,
+                    number: track.number,
+                    recording: recording
+                )
+            }
+            return ReleaseMedium(
+                position: medium.position ?? mediumIndex + 1,
+                format: medium.format,
+                title: medium.title,
+                tracks: tracks
+            )
+        }
+        return ReleaseDetail(
+            mbid: mbid,
+            title: value.title,
+            artistCreditName: artistName,
+            releaseDate: value.date ?? context.releaseDate,
+            country: value.country,
+            status: value.status,
+            barcode: value.barcode,
+            packaging: value.packaging,
+            labels: (value.labelInfo ?? []).compactMap { $0.label?.name }.uniquePreservingOrder(),
+            releaseGroupMBID: releaseGroupMBID,
+            releaseGroupPrimaryType: value.releaseGroup?.primaryType ?? context.primaryType,
+            media: media
+        )
+    }
+
     private static func creditName(_ credits: [Credit]) -> String {
         credits.map { $0.name + ($0.joinPhrase ?? "") }.joined()
     }
@@ -236,4 +344,58 @@ struct MusicBrainzSearchClient: Sendable {
         enum CodingKeys: String, CodingKey { case id, title, releaseGroup = "release-group" }
     }
     private struct MBReleaseGroup: Decodable { let id: String? }
+    private struct ReleaseLookup: Decodable {
+        let title: String
+        let artistCredit: [Credit]?
+        let date: String?
+        let country: String?
+        let status: String?
+        let barcode: String?
+        let packaging: String?
+        let labelInfo: [LabelInfo]?
+        let releaseGroup: LookupReleaseGroup?
+        let media: [Medium]?
+        enum CodingKeys: String, CodingKey {
+            case title, date, country, status, barcode, packaging, media
+            case artistCredit = "artist-credit"
+            case labelInfo = "label-info"
+            case releaseGroup = "release-group"
+        }
+    }
+    private struct LabelInfo: Decodable { let label: Label? }
+    private struct Label: Decodable { let name: String? }
+    private struct LookupReleaseGroup: Decodable {
+        let id: String?
+        let primaryType: String?
+        enum CodingKeys: String, CodingKey {
+            case id
+            case primaryType = "primary-type"
+        }
+    }
+    private struct Medium: Decodable {
+        let position: Int?
+        let format: String?
+        let title: String?
+        let tracks: [Track]?
+    }
+    private struct Track: Decodable {
+        let position: Int?
+        let number: String?
+        let title: String
+        let length: Int?
+        let artistCredit: [Credit]?
+        let recording: LookupRecording?
+        enum CodingKeys: String, CodingKey {
+            case position, number, title, length, recording
+            case artistCredit = "artist-credit"
+        }
+    }
+    private struct LookupRecording: Decodable { let id: String?; let title: String?; let length: Int? }
+}
+
+private extension Array where Element == String {
+    func uniquePreservingOrder() -> [String] {
+        var seen = Set<String>()
+        return filter { seen.insert($0.lowercased()).inserted }
+    }
 }
