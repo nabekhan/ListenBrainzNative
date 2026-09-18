@@ -152,6 +152,18 @@ public struct LBStatisticsClient: Sendable {
         return try await (execNoContent(request))?.payload
     }
 
+    /// Get a user's listens grouped by each recording's original release year.
+    /// - Parameters:
+    ///   - user: The user to get release-year activity from.
+    ///   - range: Timeframe to get stats from. Defaults to all time.
+    /// - Returns: The release-year activity for the user. nil means LB hasn't calculated statistics yet.
+    public func eraActivity(user: String,
+                            range: LBStatRange? = nil) async throws -> LBEraActivity? {
+        let request = StatsEraActivityRequest(user: user, range: range)
+
+        return try await (execNoContent(request))?.payload
+    }
+
     // Get a result which might get a 204: No Content response and treat it as a nil result
     private func execNoContent<T: APIRequest>(_ request: T) async throws -> T.Result? {
         do {

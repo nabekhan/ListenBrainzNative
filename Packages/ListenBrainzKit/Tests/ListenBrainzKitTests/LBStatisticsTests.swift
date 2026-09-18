@@ -72,6 +72,65 @@ struct LBStatisticsTests {
         #expect(activity == nil)
     }
 
+    @Test("Era activity decodes original release years")
+    func deserializeEraActivity() throws {
+        let response = try JSONDecoder.ListenBrainz.decode(
+            StatsEraActivityRequest.Result.self,
+            from: Data("""
+            {
+              "payload": {
+                "user_id": "listener",
+                "era_activity": [
+                  { "year": 1971, "listen_count": 3 },
+                  { "year": 1997, "listen_count": 9 },
+                  { "year": 2024, "listen_count": 1 }
+                ],
+                "range": "this_year",
+                "from_ts": 1735689600,
+                "to_ts": 1767225600,
+                "last_updated": 1767312000
+              }
+            }
+            """.utf8)
+        )
+
+        let activity = response.payload
+        #expect(activity.userID == "listener")
+        #expect(activity.range == "this_year")
+        #expect(activity.from == Date(timeIntervalSince1970: 1735689600))
+        #expect(activity.to == Date(timeIntervalSince1970: 1767225600))
+        #expect(activity.lastUpdated == 1767312000)
+        #expect(activity.eraActivity.map(\.year) == [1971, 1997, 2024])
+        #expect(activity.eraActivity.map(\.listenCount) == [3, 9, 1])
+    }
+
+    @Test("Era activity request uses the user endpoint, range query, and escaped URL path")
+    func eraActivityRequestSemantics() throws {
+        let request = StatsEraActivityRequest(user: "test user", range: .thisYear)
+        #expect(request.data.path == "/1/stats/user/test user/era-activity")
+        #expect(request.data.queryItems == ["range": ["this_year"]])
+        #expect(request.data.statusErrors[204] == .noContent)
+
+        let apiClient = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+        let urlRequest = try apiClient.makeURLRequest(request)
+        #expect(urlRequest.url?.path == "/1/stats/user/test user/era-activity")
+        #expect(urlRequest.url?.absoluteString.contains("test%20user") == true)
+        #expect(urlRequest.url?.query == "range=this_year")
+    }
+
+    @Test("Era activity maps no-content to nil")
+    func eraActivityNoContentIsNil() async throws {
+        let client = LBStatisticsClient(MockAPIClient(result: .failure(.noContent)))
+
+        let activity = try await client.eraActivity(user: "listener", range: .thisYear)
+
+        #expect(activity == nil)
+    }
+
     @Test("Deserialize user artists")
     func deserializeUserArtists() async throws {
         let res = try JSONDecoder
