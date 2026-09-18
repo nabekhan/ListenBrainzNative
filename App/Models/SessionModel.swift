@@ -20,6 +20,11 @@ final class SessionModel {
         didRestore = true
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-brainz-profile-playlists-demo")
+            || arguments.contains("-brainz-profile-playlists-collab-demo") {
+            state = .active(Account(username: "visual-listener", token: "visual-token"))
+            return
+        }
         if arguments.contains("-brainz-taste-demo")
             || arguments.contains("-brainz-taste-heatmap-demo") {
             state = .active(Account(username: "visual-taste", token: "visual-taste"))

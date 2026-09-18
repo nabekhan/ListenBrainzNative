@@ -4,6 +4,25 @@ struct ProfileView: View {
     @Bindable var model: ListeningModel
     @Bindable var session: SessionModel
     @Environment(PinsModel.self) private var pins
+    @State private var playlistModel: ProfilePlaylistsModel
+    @State private var selectedPlaylistCategory: ProfilePlaylistCategory
+
+    init(
+        model: ListeningModel,
+        session: SessionModel,
+        playlistProvider: (any ProfilePlaylistsProviding)? = nil,
+        playlistCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage> = ProfilePlaylistCaches.pages,
+        initialPlaylistCategory: ProfilePlaylistCategory = .owned
+    ) {
+        _model = Bindable(wrappedValue: model)
+        _session = Bindable(wrappedValue: session)
+        _playlistModel = State(initialValue: ProfilePlaylistsModel(
+            account: model.account,
+            provider: playlistProvider,
+            cache: playlistCache
+        ))
+        _selectedPlaylistCategory = State(initialValue: initialPlaylistCategory)
+    }
 
     var body: some View {
         NavigationStack {
@@ -13,6 +32,11 @@ struct ProfileView: View {
                     CurrentPinSection(isOwner: model.account.isAuthenticated)
                     if !model.snapshot.topArtists.isEmpty { favoriteArtists }
                     if !model.snapshot.topReleases.isEmpty { favoriteReleases }
+                    ProfilePlaylistSection(
+                        model: playlistModel,
+                        selection: $selectedPlaylistCategory,
+                        viewer: model.account
+                    )
                     accountSection
                 }
                 .padding(.horizontal, 18)
@@ -21,6 +45,9 @@ struct ProfileView: View {
             .refreshable {
                 await model.refresh()
                 await pins.refresh()
+                if playlistModel.state(for: selectedPlaylistCategory).phase != .idle {
+                    await playlistModel.refresh(category: selectedPlaylistCategory)
+                }
             }
             .task { await pins.load() }
             .navigationTitle("Profile")

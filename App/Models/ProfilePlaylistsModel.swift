@@ -51,6 +51,9 @@ final class ProfilePlaylistsModel {
     private let pageSize: Int
     private var requestIDs: [ProfilePlaylistCategory: UUID] = [:]
     private var requestedOffsets: [ProfilePlaylistCategory: Set<Int>] = [:]
+    private var loadWaiters: [
+        ProfilePlaylistCategory: [UUID: CheckedContinuation<Void, Never>]
+    ] = [:]
 
     private(set) var states: [ProfilePlaylistCategory: ProfilePlaylistCategoryState] = Dictionary(
         uniqueKeysWithValues: ProfilePlaylistCategory.allCases.map { ($0, .init()) }
@@ -75,6 +78,14 @@ final class ProfilePlaylistsModel {
     /// Categories intentionally load independently so visiting a profile does
     /// not make an extra request for a tab that the user never opens.
     func load(category: ProfilePlaylistCategory) async {
+        if state(for: category).phase == .loading {
+            await waitForLoadToSettle(category: category)
+            guard !Task.isCancelled else { return }
+            if state(for: category).phase == .idle {
+                await load(category: category)
+            }
+            return
+        }
         guard state(for: category).phase == .idle else { return }
         var current = state(for: category)
         current.phase = .loading
@@ -141,6 +152,7 @@ final class ProfilePlaylistsModel {
                 ready.loadMoreError = nil
                 ready.loadMoreRetryOffset = nil
                 states[category] = ready
+                if !appending { resumeLoadWaiters(category: category) }
                 return
             }
             // A stale first page is useful immediately while it revalidates.
@@ -179,6 +191,7 @@ final class ProfilePlaylistsModel {
             completed.loadMoreError = nil
             completed.loadMoreRetryOffset = nil
             states[category] = completed
+            if !appending { resumeLoadWaiters(category: category) }
             await cache.save(page, for: key)
         } catch is CancellationError {
             guard requestIDs[category] == requestID else { return }
@@ -187,6 +200,7 @@ final class ProfilePlaylistsModel {
             cancelled.phase = cancelled.playlists.isEmpty ? .idle : .ready
             if appending { cancelled.loadMoreRetryOffset = offset }
             states[category] = cancelled
+            if !appending { resumeLoadWaiters(category: category) }
         } catch {
             guard requestIDs[category] == requestID else { return }
             // A transient failure must not turn a valid next page into a
@@ -204,6 +218,7 @@ final class ProfilePlaylistsModel {
                 failed.phase = .ready
             }
             states[category] = failed
+            if !appending { resumeLoadWaiters(category: category) }
         }
     }
 
@@ -251,5 +266,35 @@ final class ProfilePlaylistsModel {
     private var accessScope: ProfilePlaylistAccessScope {
         guard account.isAuthenticated else { return .publicOnly }
         return .authenticatedViewer(Self.normalized(account.username))
+    }
+
+    private func waitForLoadToSettle(category: ProfilePlaylistCategory) async {
+        let waiterID = UUID()
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                guard !Task.isCancelled else {
+                    continuation.resume()
+                    return
+                }
+                loadWaiters[category, default: [:]][waiterID] = continuation
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.cancelLoadWaiter(waiterID, category: category)
+            }
+        }
+    }
+
+    private func resumeLoadWaiters(category: ProfilePlaylistCategory) {
+        guard let waiters = loadWaiters.removeValue(forKey: category) else { return }
+        waiters.values.forEach { $0.resume() }
+    }
+
+    private func cancelLoadWaiter(_ waiterID: UUID, category: ProfilePlaylistCategory) {
+        guard let continuation = loadWaiters[category]?.removeValue(forKey: waiterID) else { return }
+        if loadWaiters[category]?.isEmpty == true {
+            loadWaiters.removeValue(forKey: category)
+        }
+        continuation.resume()
     }
 }

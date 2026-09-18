@@ -20,6 +20,19 @@ struct MainTabView: View {
         self.account = account
         _session = Bindable(wrappedValue: session)
         #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo") {
+            let visualAccount = Account(username: "visual-listener", token: "visual-token")
+            _model = State(initialValue: ListeningModel(
+                account: visualAccount,
+                provider: VisualQATasteProvider()
+            ))
+            _pins = State(initialValue: PinsModel(
+                account: visualAccount,
+                provider: VisualQAPinProvider()
+            ))
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("-brainz-history-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo") {
             let visualAccount = Account(username: "visual-history", token: "visual-history")
@@ -62,7 +75,14 @@ struct MainTabView: View {
 
     var body: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
+        if ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo") {
+            ProfilePlaylistVisualQAScreen(
+                selection: ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo")
+                    ? .collaborating
+                    : .owned
+            )
+        } else if ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo") {
             TasteView(model: model)
                 .task { await model.load() }

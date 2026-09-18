@@ -173,11 +173,56 @@ final class ProfilePlaylistsModelTests: XCTestCase {
 
         let first = Task { await model.load(category: .owned) }
         await provider.waitForRequest()
-        await model.load(category: .owned)
+        let second = Task { await model.load(category: .owned) }
+        await Task.yield()
         let requestCount = await provider.requestCount
         XCTAssertEqual(requestCount, 1)
         await provider.release()
         await first.value
+        await second.value
+    }
+
+    func testCancelledLoadRestartsWhenCategoryIsImmediatelyReselected() async {
+        let provider = CancellationRetryPlaylistProvider()
+        let model = makeModel(provider: provider)
+
+        let first = Task { await model.load(category: .owned) }
+        await provider.waitForFirstRequest()
+        first.cancel()
+        let reselected = Task { await model.load(category: .owned) }
+        await Task.yield()
+        await provider.releaseFirstRequest()
+        await first.value
+        await reselected.value
+
+        XCTAssertEqual(model.state(for: .owned).phase, .ready)
+        XCTAssertEqual(model.state(for: .owned).playlists.map(\.title), ["reselected"])
+        let requestCount = await provider.requestCount
+        XCTAssertEqual(requestCount, 2)
+    }
+
+    func testCancelledReselectionStopsWaitingBeforeOriginalLoadSettles() async {
+        let provider = BlockingPlaylistProvider()
+        let model = makeModel(provider: provider)
+        let waiterFinished = expectation(description: "cancelled waiter finishes")
+
+        let first = Task { await model.load(category: .owned) }
+        await provider.waitForRequest()
+        let waiting = Task {
+            await model.load(category: .owned)
+            waiterFinished.fulfill()
+        }
+        await Task.yield()
+        waiting.cancel()
+
+        await fulfillment(of: [waiterFinished], timeout: 0.5)
+        let requestCount = await provider.requestCount
+        XCTAssertEqual(requestCount, 1)
+
+        await provider.release()
+        await first.value
+        await waiting.value
+        XCTAssertEqual(model.state(for: .owned).phase, .ready)
     }
 
     func testConcurrentRefreshesCoalesce() async {
@@ -345,6 +390,23 @@ private actor BlockingPlaylistProvider: ProfilePlaylistsProviding {
 
     func waitForRequest() async { while !requested { await Task.yield() } }
     func release() { continuation?.resume(); continuation = nil }
+}
+
+private actor CancellationRetryPlaylistProvider: ProfilePlaylistsProviding {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private(set) var requestCount = 0
+
+    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws -> ProfilePlaylistPage {
+        requestCount += 1
+        if requestCount == 1 {
+            await withCheckedContinuation { continuation = $0 }
+            try Task.checkCancellation()
+        }
+        return makePage(category: category, offset: offset, total: 1, rows: [playlist("reselected")])
+    }
+
+    func waitForFirstRequest() async { while requestCount < 1 { await Task.yield() } }
+    func releaseFirstRequest() { continuation?.resume(); continuation = nil }
 }
 
 private actor RetryingPlaylistProvider: ProfilePlaylistsProviding {

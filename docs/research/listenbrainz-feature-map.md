@@ -45,7 +45,7 @@ Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or
 | Recommendation feedback | Y | Y | P | P | Y | P | P1 | Native Hate/Dislike/Like/Love control with batched state reads, tap-again clear, optimistic rollback, and pending-action serialization |
 | Fresh Releases | Y | Y | P | P | Y | — | P1 | Native Discover grid; personalized default and explicit sitewide scope |
 | Created For You/recommended playlists | Y | Y | Y | Y | Y | Y | P1 | Lazy native For You list uses server generator/expiry metadata and the shared playlist detail |
-| User/collaborator playlists | Y | Y | Y | Y | P | Y | P1 | Browse before edit |
+| User/collaborator playlists | Y | Y | Y | Y | Y | Y | P1 | Native owned/collaborating Profile tabs landed with lazy server pagination, public browsing, and no row hydration |
 | Playlist detail/create/edit/delete | Y | Y | Y | P | P | Y | P2 | Native one-request detail landed; mutations remain staged |
 | Playlist add/remove/reorder/copy | Y | Y | Y | ? | — | Y | P2 | Stage after playlist detail |
 | Playlist import/export/service sync | Y | Y | P | ? | — | P | P3 | Advanced feature |

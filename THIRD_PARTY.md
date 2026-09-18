@@ -13,6 +13,7 @@ No UI source from the design-reference repositories has been copied into the app
 - ListenBrainz server, official Android client, and official iOS client: authoritative product/API behavior; no code copied.
 - first.fm: information architecture and listening-history personality; MIT. The current History screen remains independently implemented.
 - Cassette and Minidisc: current native media interaction patterns; MPL-2.0. Their album hierarchy and ordered-row behavior informed the independently written release screen, and Cassette's searchable multi-selection pattern informed the independently written personal-recommendation sheet.
+- Official ListenBrainz Android/iOS clients and current website: playlist grouping and paging behavior informed the independently written Profile playlist section; no GPL source was copied.
 - Volta: artist-page visual reference only; GPL-3.0 code is not copied.
 - AppleMusicBottombarSwiftUI and FastScrobbler: behavior reference only; no license found, so code is not copied.
 - Autohop: statistics/history interaction reference; MIT overall with named MPL-2.0 exceptions.
