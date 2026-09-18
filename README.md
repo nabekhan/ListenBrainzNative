@@ -10,6 +10,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Recording and artist detail views
 - Listen count and top artist, album, and recording rankings
 - Server-calculated listening-activity charts, a selectable 7×24 UTC listening heatmap, Music by Decade with year drill-down, and on-demand Artist Evolution across seven ListenBrainz periods
+- A native 2025 Year in Music story with totals, annual listening calendar, artist/album/track rankings, entity navigation, and canonical report sharing
 - Fresh Releases discovery with deliberate personalized and sitewide scopes
 - For You recording recommendations with native feedback, plus Daily/Weekly generated playlists
 - Music-first My Feed, Following, and Similar listening feeds with cached pagination, thanks, hide/unhide, and owner deletion

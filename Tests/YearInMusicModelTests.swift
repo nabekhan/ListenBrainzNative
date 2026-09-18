@@ -181,6 +181,45 @@ final class YearInMusicModelTests: XCTestCase {
         XCTAssertNil(cancellable.report)
     }
 
+    func testCalendarLayoutUsesMondayFirstUTCLeapYearGrid() throws {
+        let leapDay = try XCTUnwrap(utcDate(year: 2024, month: 2, day: 29))
+        let layout = YearInMusicCalendarLayout(
+            year: 2024,
+            listeningDays: [
+                .init(day: leapDay, listenCount: 8, sourceTimeRange: nil),
+            ]
+        )
+
+        XCTAssertEqual(layout.leadingDayCount, 0) // 1 January 2024 was Monday.
+        XCTAssertEqual(layout.days.count, 366)
+        XCTAssertEqual(layout.weekCount, 53)
+        XCTAssertEqual(layout.activeDayCount, 1)
+        XCTAssertEqual(layout.busiestDay?.date, leapDay)
+        XCTAssertEqual(layout.day(week: 0, weekday: 0)?.date, utcDate(year: 2024, month: 1, day: 1))
+        XCTAssertEqual(layout.intensity(for: 8), 1)
+        XCTAssertTrue(layout.shortDayLabel(leapDay).contains("29"))
+        XCTAssertFalse(layout.shortDayLabel(leapDay).contains("28"))
+    }
+
+    func testCalendarLayoutFillsMissingDaysAndUsesSquareRootIntensity() throws {
+        let januaryFirst = try XCTUnwrap(utcDate(year: 2025, month: 1, day: 1))
+        let januarySecond = try XCTUnwrap(utcDate(year: 2025, month: 1, day: 2))
+        let layout = YearInMusicCalendarLayout(
+            year: 2025,
+            listeningDays: [
+                .init(day: januaryFirst, listenCount: 9, sourceTimeRange: nil),
+                .init(day: januarySecond, listenCount: 1, sourceTimeRange: nil),
+            ]
+        )
+
+        XCTAssertEqual(layout.leadingDayCount, 2) // Wednesday in a Monday-first grid.
+        XCTAssertNil(layout.day(week: 0, weekday: 0))
+        XCTAssertEqual(layout.day(week: 0, weekday: 2)?.date, januaryFirst)
+        XCTAssertEqual(layout.days[2].listenCount, 0)
+        XCTAssertEqual(layout.intensity(for: 1), 1.0 / 3.0, accuracy: 0.000_001)
+        XCTAssertTrue(layout.accessibilitySummary.contains("2 active days"))
+    }
+
     private func mappedReport(listens: Int) throws -> YearInMusicReport {
         try XCTUnwrap(YearInMusicReport(source: yearInMusic("{ \"user_name\": \"listener\", \"year\": 2025, \"data\": { \"total_listen_count\": \(listens) } }"), requestedYear: 2025))
     }
@@ -197,6 +236,12 @@ final class YearInMusicModelTests: XCTestCase {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         return calendar.dateComponents([.year, .month, .day], from: date)
+    }
+
+    private func utcDate(year: Int, month: Int, day: Int) -> Date? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar.date(from: DateComponents(year: year, month: month, day: day))
     }
 }
 

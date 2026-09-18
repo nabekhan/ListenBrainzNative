@@ -1,6 +1,6 @@
 # ListenBrainz capability map
 
-Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence comes from the current production frontend source because the production site requires JavaScript and the configured interactive browser was unavailable.
+Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
 
 | User capability | API | Web | Android | iOS | LBKit | KMP | Priority | Product decision |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
@@ -32,7 +32,7 @@ Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or
 | Artist map | Y | Y | Y | Y | — | P | P2 | Map only when data is meaningful |
 | Sitewide statistics/context | Y | Y | P | ? | P | P | P2 | Use sparingly for context |
 | Entity popularity/listener counts | Y | Y | Y | ? | — | P | P1 | Artist/release/track context |
-| Year in Music (2021–2025) | Y | Y | Y | Y | — | P | P1 | First-class native story; 2025 is current |
+| Year in Music (2021–2025) | Y | Y | Y | Y | Y | P | P1 | Native current-schema 2025 story landed; legacy years and generated art remain staged |
 | Similar users and compatibility | Y | Y | Y | Y | Y | Y | P1 | Native Social destination landed without row hydration |
 | Followers/following | Y | Y | Y | Y | Y | Y | P1 | Complete native lists; typed Kit extension |
 | Follow/unfollow | Y | Y | Y | ? | Y | Y | P1 | Optimistic serialized mutation with rollback |
@@ -69,6 +69,7 @@ Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or
 - The aggregate social feed currently excludes ordinary listens. Following and Similar are separate listen-only recent feeds, so the native UI keeps those modes distinct instead of implying one unified event stream.
 - The iOS product should start with high-value read paths, then add mutations to the same entity screens. Android-only notification-listener scrobbling and foreground playback services have no direct public-iOS equivalent.
 - Public API calls were checked against real ListenBrainz data and include messy but useful identity fields: recording MSID, mapped MBIDs, multi-artist credits, Cover Art Archive IDs, service/source metadata, and external URL relations.
+- The current Year in Music endpoint is one aggregate request whose 2025 payload can contain totals, UTC day activity, rankings, discovery data, similar users, and full JSPF playlists. The native first slice deliberately maps the highest-value identity-safe subset and does not fan out into row requests.
 
 ## Evidence
 

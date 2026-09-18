@@ -21,7 +21,9 @@ struct TasteView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 28) {
                     #if DEBUG
-                    if isHeatmapVisualQA {
+                    if isYearInMusicTeaserVisualQA {
+                        yearInMusic
+                    } else if isHeatmapVisualQA {
                         dailyListeningHours
                     } else if isEraCardVisualQA {
                         musicByDecade
@@ -30,6 +32,7 @@ struct TasteView: View {
                         musicByDecade
                     } else {
                         overview
+                        yearInMusic
                         periodControls
                         dailyListeningHours
                         musicByDecade
@@ -41,6 +44,7 @@ struct TasteView: View {
                     }
                     #else
                     overview
+                    yearInMusic
                     periodControls
                     dailyListeningHours
                     musicByDecade
@@ -96,6 +100,7 @@ struct TasteView: View {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
             || isHeatmapVisualQA
+            || isYearInMusicTeaserVisualQA
             || isEraVisualQA
         #else
         false
@@ -105,6 +110,14 @@ struct TasteView: View {
     private var isHeatmapVisualQA: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo")
+        #else
+        false
+        #endif
+    }
+
+    private var isYearInMusicTeaserVisualQA: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-teaser-demo")
         #else
         false
         #endif
@@ -137,7 +150,7 @@ struct TasteView: View {
     }
 
     private var isFocusedVisualQA: Bool {
-        isHeatmapVisualQA || isEraVisualQA
+        isYearInMusicTeaserVisualQA || isHeatmapVisualQA || isEraVisualQA
     }
 
     private var overview: some View {
@@ -218,6 +231,40 @@ struct TasteView: View {
                 activityFailure(message)
             }
         }
+    }
+
+    private var yearInMusic: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Your year",
+                subtitle: "The listening story only ListenBrainz can tell"
+            )
+
+            NavigationLink {
+                yearInMusicDestination
+            } label: {
+                YearInMusicTeaserCard(year: YearInMusicView.latestSupportedYear)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder
+    private var yearInMusicDestination: some View {
+        #if DEBUG
+        if isTasteVisualQA {
+            YearInMusicView(
+                account: model.account,
+                listeningModel: model,
+                provider: VisualQAYearInMusicProvider(),
+                cache: EntityDetailCache()
+            )
+        } else {
+            YearInMusicView(account: model.account, listeningModel: model)
+        }
+        #else
+        YearInMusicView(account: model.account, listeningModel: model)
+        #endif
     }
 
     private var periodControls: some View {

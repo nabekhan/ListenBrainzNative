@@ -30,8 +30,13 @@ final class SessionModel {
             state = .active(Account(username: "visual-taste", token: "visual-taste"))
             return
         }
+        if arguments.contains("-brainz-year-in-music-demo") {
+            state = .active(Account(username: "visual-taste", token: "visual-taste"))
+            return
+        }
         if arguments.contains("-brainz-taste-demo")
             || arguments.contains("-brainz-taste-heatmap-demo")
+            || arguments.contains("-brainz-year-in-music-teaser-demo")
             || arguments.contains("-brainz-taste-era-demo")
             || arguments.contains("-brainz-taste-era-zoom-demo")
             || arguments.contains("-brainz-taste-era-card-demo") {

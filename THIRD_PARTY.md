@@ -4,9 +4,10 @@ This project is intended to be licensed under MPL-2.0. This file is updated when
 
 ## Included source
 
-- ListenBrainzKit, commit `c06b12f8c35bfee8fcf11dc973b5d78e23719cdf`, is vendored at `Packages/ListenBrainzKit/` and locally patched for transport correctness, public model access, tolerant identifier decoding, and typed social, social feed-read/feed-mutation, Pins, detail, Fresh Releases, recommendation-read, recommendation-feedback, era-activity, and artist-evolution APIs. It is licensed under MPL-2.0; its original license and per-file notices are preserved.
+- ListenBrainzKit, commit `c06b12f8c35bfee8fcf11dc973b5d78e23719cdf`, is vendored at `Packages/ListenBrainzKit/` and locally patched for transport correctness, public model access, tolerant identifier decoding, and typed social, social feed-read/feed-mutation, Pins, detail, Fresh Releases, recommendation-read, recommendation-feedback, era-activity, artist-evolution, and current Year in Music APIs. It is licensed under MPL-2.0; its original license and per-file notices are preserved.
+- `App/Features/Taste/YearInMusicView.swift` adapts the composition and selected implementation patterns from Cassette's `WrappedStatHero.swift`, `WrappedTopArtistsSection.swift`, `WrappedTopAlbumsSection.swift`, `WrappedTopTracksSection.swift`, `MeshGradientBackground.swift`, and `WrappedYearPalette.swift` at commit `49da821`. Cassette is MPL-2.0, copyright Mathieu Dubart; the covered app file retains the MPL notice and attribution.
 
-No UI source from the design-reference repositories has been copied into the application. Their inspected behavior and visual ideas informed an independent native SwiftUI implementation.
+All other application UI remains independently implemented from inspected behavior and visual references unless this file states otherwise.
 
 ## Design and behavior references
 

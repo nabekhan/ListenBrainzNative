@@ -46,6 +46,18 @@ struct MainTabView: View {
             ))
             return
         }
+        if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo") {
+            let visualAccount = Account(username: "visual-taste", token: "visual-taste")
+            _model = State(initialValue: ListeningModel(
+                account: visualAccount,
+                provider: VisualQATasteProvider()
+            ))
+            _pins = State(initialValue: PinsModel(
+                account: visualAccount,
+                provider: VisualQAPinProvider()
+            ))
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("-brainz-history-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo") {
             let visualAccount = Account(username: "visual-history", token: "visual-history")
@@ -61,6 +73,7 @@ struct MainTabView: View {
         }
         if ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-teaser-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-zoom-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-card-demo") {
@@ -100,6 +113,7 @@ struct MainTabView: View {
             )
         } else if ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-teaser-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-zoom-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-card-demo") {
@@ -118,6 +132,16 @@ struct MainTabView: View {
                     )
                 )
                     .mediaDestinations(model: model)
+            }
+            .environment(pins)
+        } else if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo") {
+            NavigationStack {
+                YearInMusicView(
+                    account: account,
+                    listeningModel: model,
+                    provider: VisualQAYearInMusicProvider(),
+                    cache: EntityDetailCache()
+                )
             }
             .environment(pins)
         } else if ProcessInfo.processInfo.arguments.contains("-brainz-release-detail-demo") {

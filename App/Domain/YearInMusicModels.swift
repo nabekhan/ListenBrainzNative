@@ -84,6 +84,26 @@ struct YearInMusicReport: Hashable, Sendable {
         var artworkURL: URL? { recording.artworkURL }
     }
 
+    /// Internal construction path for deterministic previews and tests. Live
+    /// reports continue to enter through the schema-normalizing initializer.
+    init(
+        username: String?,
+        year: Int,
+        totals: Totals,
+        listeningDays: [ListeningDay],
+        topArtists: [RankedArtist],
+        topReleaseGroups: [ReleaseGroup],
+        topRecordings: [TopRecording]
+    ) {
+        self.username = username
+        self.year = year
+        self.totals = totals
+        self.listeningDays = listeningDays
+        self.topArtists = topArtists
+        self.topReleaseGroups = topReleaseGroups
+        self.topRecordings = topRecordings
+    }
+
     /// Maps only a report the API says exists.  `nil` is intentionally
     /// distinct from a legitimate report containing zero listens.
     init?(source: LBYearInMusic, requestedYear: Int) {
