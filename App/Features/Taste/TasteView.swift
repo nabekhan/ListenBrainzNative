@@ -13,6 +13,7 @@ struct TasteView: View {
     @State private var ranking: Ranking = .artists
     @AppStorage("taste.activityPeriod") private var activityPeriod: ListeningActivityPeriod = .thisWeek
     @State private var selectedDailyCellID: DailyActivity.Cell.ID?
+    @State private var selectedEraDecade: Int?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -22,9 +23,16 @@ struct TasteView: View {
                     #if DEBUG
                     if isHeatmapVisualQA {
                         dailyListeningHours
+                    } else if isEraCardVisualQA {
+                        musicByDecade
+                    } else if isEraVisualQA {
+                        periodControls
+                        musicByDecade
                     } else {
                         overview
+                        periodControls
                         dailyListeningHours
+                        musicByDecade
                         listeningActivity
                         if !isTasteVisualQA {
                             rankings
@@ -32,7 +40,9 @@ struct TasteView: View {
                     }
                     #else
                     overview
+                    periodControls
                     dailyListeningHours
+                    musicByDecade
                     listeningActivity
                     rankings
                     #endif
@@ -41,19 +51,42 @@ struct TasteView: View {
                 .padding(.bottom, 40)
             }
             .refreshable {
-                await model.refresh()
-                await model.loadListeningActivity(for: activityPeriod, retrying: true)
-                await model.loadDailyActivity(for: activityPeriod, retrying: true)
+                if isEraVisualQA {
+                    await model.loadEraActivity(for: activityPeriod, retrying: true)
+                } else if isHeatmapVisualQA {
+                    await model.loadDailyActivity(for: activityPeriod, retrying: true)
+                } else {
+                    await model.refresh()
+                    await model.loadDailyActivity(for: activityPeriod, retrying: true)
+                    await model.loadEraActivity(for: activityPeriod, retrying: true)
+                    await model.loadListeningActivity(for: activityPeriod, retrying: true)
+                }
             }
             .navigationTitle("Taste")
-            .navigationBarTitleDisplayMode(isHeatmapVisualQA ? .inline : .large)
+            .navigationBarTitleDisplayMode(isFocusedVisualQA ? .inline : .large)
             .mediaDestinations(model: model)
             .task(id: activityPeriod) {
-                if !isHeatmapVisualQA {
+                if isEraVisualQA {
+                    await model.loadEraActivity(for: activityPeriod)
+                } else if isHeatmapVisualQA {
+                    await model.loadDailyActivity(for: activityPeriod)
+                } else {
+                    await model.loadDailyActivity(for: activityPeriod)
+                    await model.loadEraActivity(for: activityPeriod)
                     await model.loadListeningActivity(for: activityPeriod)
                 }
-                await model.loadDailyActivity(for: activityPeriod)
             }
+            .onChange(of: activityPeriod) { _, _ in
+                selectedDailyCellID = nil
+                selectedEraDecade = nil
+            }
+            #if DEBUG
+            .onAppear {
+                if isEraZoomVisualQA {
+                    selectedEraDecade = 2020
+                }
+            }
+            #endif
         }
     }
 
@@ -61,6 +94,7 @@ struct TasteView: View {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
             || isHeatmapVisualQA
+            || isEraVisualQA
         #else
         false
         #endif
@@ -72,6 +106,36 @@ struct TasteView: View {
         #else
         false
         #endif
+    }
+
+    private var isEraVisualQA: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-demo")
+            || isEraZoomVisualQA
+            || isEraCardVisualQA
+        #else
+        false
+        #endif
+    }
+
+    private var isEraZoomVisualQA: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-zoom-demo")
+        #else
+        false
+        #endif
+    }
+
+    private var isEraCardVisualQA: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-card-demo")
+        #else
+        false
+        #endif
+    }
+
+    private var isFocusedVisualQA: Bool {
+        isHeatmapVisualQA || isEraVisualQA
     }
 
     private var overview: some View {
@@ -139,8 +203,6 @@ struct TasteView: View {
                 title: "Listening activity",
                 subtitle: "Calculated by ListenBrainz"
             )
-            activityPeriodPicker
-
             switch model.activityState(for: activityPeriod) {
             case .idle, .loading:
                 activityLoading
@@ -153,6 +215,16 @@ struct TasteView: View {
             case let .failed(message):
                 activityFailure(message)
             }
+        }
+    }
+
+    private var periodControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(
+                title: "Explore a period",
+                subtitle: "One range shapes every server-calculated view below"
+            )
+            activityPeriodPicker
         }
     }
 
@@ -186,7 +258,7 @@ struct TasteView: View {
                 withAnimation(.snappy) { proxy.scrollTo(period, anchor: .center) }
             }
         }
-        .accessibilityLabel("Activity period")
+        .accessibilityLabel("Statistics period")
     }
 
     private var dailyListeningHours: some View {
@@ -416,6 +488,342 @@ struct TasteView: View {
             return "Listening hours heatmap in UTC"
         }
         return "\(activity.period.title) listening hours in UTC. \(activity.totalListens) listens. Peak: \(peak.weekday.rawValue) at \(hourLabel(peak.hour)), \(peak.listenCount) listens."
+    }
+
+    private var musicByDecade: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Music by decade",
+                subtitle: "Original release years calculated by ListenBrainz"
+            )
+
+            switch model.eraActivityState(for: activityPeriod) {
+            case .idle, .loading:
+                eraActivityLoading
+            case .unavailable:
+                eraActivityUnavailable
+            case let .failed(message):
+                eraActivityFailure(message)
+            case let .loaded(activity):
+                if activity.isEmpty {
+                    eraActivityEmpty
+                } else {
+                    eraActivityCard(activity)
+                }
+            }
+        }
+    }
+
+    private var eraActivityLoading: some View {
+        HStack(spacing: 12) {
+            ProgressView()
+            Text("Loading release years…")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, minHeight: 210)
+        .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var eraActivityUnavailable: some View {
+        ContentUnavailableView(
+            "Release years are not ready yet",
+            systemImage: "calendar.badge.clock",
+            description: Text("ListenBrainz has not calculated music-by-decade statistics for \(activityPeriod.title.lowercased()) yet.")
+        )
+        .frame(maxWidth: .infinity, minHeight: 220)
+        .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+    }
+
+    private var eraActivityEmpty: some View {
+        ContentUnavailableView(
+            "No release-year data",
+            systemImage: "chart.bar.xaxis",
+            description: Text("No listens with original release-year metadata were available for \(activityPeriod.title.lowercased()).")
+        )
+        .frame(maxWidth: .infinity, minHeight: 220)
+        .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+    }
+
+    private func eraActivityFailure(_ message: String) -> some View {
+        ContentUnavailableView {
+            Label("Release years unavailable", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text(message)
+        } actions: {
+            Button("Try Again") {
+                Task { await model.loadEraActivity(for: activityPeriod, retrying: true) }
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 220)
+        .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+    }
+
+    private func eraActivityCard(_ activity: EraActivity) -> some View {
+        let points = eraChartPoints(activity)
+        return VStack(alignment: .leading, spacing: 16) {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 12) {
+                    eraActivityContext(activity)
+                    eraNavigationControl(activity)
+                }
+            } else {
+                HStack(alignment: .top, spacing: 12) {
+                    eraActivityContext(activity)
+                    Spacer(minLength: 8)
+                    eraNavigationControl(activity)
+                }
+            }
+
+            eraSummaryRow(activity)
+            eraChart(points, activity: activity)
+
+            Text(eraActivityFootnote)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let message = model.eraActivityRefreshMessage(for: activityPeriod) {
+                Label("Showing saved release years. \(message)", systemImage: "arrow.clockwise.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+        .sensoryFeedback(.selection, trigger: selectedEraDecade)
+    }
+
+    private func eraActivityContext(_ activity: EraActivity) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            if let selectedEraDecade {
+                Text(verbatim: "\(selectedEraDecade)s")
+                    .font(.headline)
+                Text("\(activity.listenCount(in: selectedEraDecade).formatted()) listens across individual years")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text(activityPeriod.title)
+                    .font(.headline)
+                Text("Tap a decade to see its individual years")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private func eraNavigationControl(_ activity: EraActivity) -> some View {
+        if selectedEraDecade != nil {
+            Button {
+                withAnimation(.snappy) { selectedEraDecade = nil }
+            } label: {
+                Label("All decades", systemImage: "arrow.up.left")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        } else {
+            Menu {
+                ForEach(activity.decades.filter { $0.listenCount > 0 }) { decade in
+                    Button("\(decade.title) · \(decade.listenCount.formatted()) listens") {
+                        withAnimation(.snappy) { selectedEraDecade = decade.year }
+                    }
+                }
+            } label: {
+                Label("Explore", systemImage: "magnifyingglass")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .accessibilityHint("Choose a decade to inspect individual release years")
+        }
+    }
+
+    @ViewBuilder
+    private func eraSummaryRow(_ activity: EraActivity) -> some View {
+        let selectedYears = selectedEraDecade.map { activity.years(in: $0) }
+        let peakYear = selectedYears?.max {
+            if $0.listenCount == $1.listenCount { return $0.year < $1.year }
+            return $0.listenCount < $1.listenCount
+        }
+
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: 12) {
+                eraSummaryPrimary(activity)
+                if selectedEraDecade != nil, let peakYear {
+                    activitySummary(
+                        peakYear.listenCount.formatted(),
+                        label: "Peak year · \(peakYear.year)",
+                        symbol: "calendar"
+                    )
+                } else if let leading = activity.leadingDecade {
+                    activitySummary(
+                        leading.listenCount.formatted(),
+                        label: "Leading · \(leading.title)",
+                        symbol: "sparkles"
+                    )
+                }
+            }
+        } else {
+            HStack(spacing: 12) {
+                eraSummaryPrimary(activity)
+                if selectedEraDecade != nil, let peakYear {
+                    activitySummary(
+                        peakYear.listenCount.formatted(),
+                        label: "Peak year · \(peakYear.year)",
+                        symbol: "calendar"
+                    )
+                } else if let leading = activity.leadingDecade {
+                    activitySummary(
+                        leading.listenCount.formatted(),
+                        label: "Leading · \(leading.title)",
+                        symbol: "sparkles"
+                    )
+                }
+            }
+        }
+    }
+
+    private func eraSummaryPrimary(_ activity: EraActivity) -> some View {
+        let count = selectedEraDecade.map { activity.listenCount(in: $0) } ?? activity.totalListens
+        return activitySummary(
+            count.formatted(),
+            label: selectedEraDecade == nil ? "Dated listens" : "Decade listens",
+            symbol: "opticaldisc"
+        )
+    }
+
+    private func eraChart(_ points: [EraChartPoint], activity: EraActivity) -> some View {
+        GeometryReader { geometry in
+            ScrollView(.horizontal, showsIndicators: dynamicTypeSize.isAccessibilitySize || points.count > 7) {
+                Chart(points) { point in
+                    BarMark(
+                        x: .value(selectedEraDecade == nil ? "Decade" : "Year", point.label),
+                        y: .value("Listens", point.listenCount)
+                    )
+                    .foregroundStyle(AppTheme.accent.gradient)
+                    .cornerRadius(5)
+                    .accessibilityLabel("\(point.label): \(point.listenCount) listens")
+                }
+                .chartXAxis {
+                    AxisMarks(values: points.map(\.label)) { value in
+                        AxisTick(stroke: StrokeStyle(lineWidth: 0.5))
+                        AxisValueLabel {
+                            if let label = value.as(String.self) {
+                                Text(label)
+                                    .font(.caption2)
+                            }
+                        }
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                            .foregroundStyle(.tertiary)
+                        AxisValueLabel {
+                            if let count = value.as(Int.self) {
+                                Text(count.formatted(.number.notation(.compactName)))
+                                    .font(.caption2)
+                            }
+                        }
+                    }
+                }
+                .chartXScale(
+                    range: .plotDimension(
+                        startPadding: 18,
+                        endPadding: dynamicTypeSize.isAccessibilitySize ? 42 : 30
+                    )
+                )
+                .chartYScale(
+                    range: .plotDimension(
+                        startPadding: 4,
+                        endPadding: dynamicTypeSize.isAccessibilitySize ? 24 : 10
+                    )
+                )
+                .chartOverlay { proxy in
+                    if selectedEraDecade == nil {
+                        GeometryReader { chartGeometry in
+                            Rectangle()
+                                .fill(.clear)
+                                .contentShape(.rect)
+                                .gesture(
+                                    SpatialTapGesture().onEnded { event in
+                                        selectEraBar(
+                                            at: event.location,
+                                            proxy: proxy,
+                                            geometry: chartGeometry,
+                                            points: points
+                                        )
+                                    }
+                                )
+                        }
+                    }
+                }
+                .frame(
+                    width: max(geometry.size.width, CGFloat(points.count) * eraChartColumnWidth),
+                    height: eraChartHeight
+                )
+                .accessibilityChartDescriptor(
+                    EraActivityDescriptor(
+                        points: points,
+                        period: activity.period,
+                        selectedDecade: selectedEraDecade
+                    )
+                )
+            }
+        }
+        .frame(height: eraChartHeight)
+    }
+
+    private func selectEraBar(
+        at location: CGPoint,
+        proxy: ChartProxy,
+        geometry: GeometryProxy,
+        points: [EraChartPoint]
+    ) {
+        guard let plotFrame = proxy.plotFrame else { return }
+        let frame = geometry[plotFrame]
+        guard frame.contains(location),
+              let chartLabel: String = proxy.value(atX: location.x - frame.origin.x),
+              let selected = points.first(where: { $0.label == chartLabel }),
+              selected.listenCount > 0
+        else { return }
+        withAnimation(.snappy) { selectedEraDecade = selected.value }
+    }
+
+    private func eraChartPoints(_ activity: EraActivity) -> [EraChartPoint] {
+        if let selectedEraDecade {
+            return activity.years(in: selectedEraDecade).map {
+                EraChartPoint(value: $0.year, listenCount: $0.listenCount, label: String($0.year))
+            }
+        }
+        return activity.decades.map {
+            EraChartPoint(value: $0.year, listenCount: $0.listenCount, label: $0.title)
+        }
+    }
+
+    private var eraChartColumnWidth: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 70 : 52
+    }
+
+    private var eraChartHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 280 : 220
+    }
+
+    private var eraActivityFootnote: String {
+        if let selectedEraDecade {
+            return "Showing every year in the \(selectedEraDecade)s, including years with no matched listens."
+        }
+        return "Counts include listens whose recordings have original release-year metadata. Empty decades are kept within ordinary release-year spans."
+    }
+
+    fileprivate struct EraChartPoint: Identifiable, Hashable {
+        let value: Int
+        let listenCount: Int
+        let label: String
+
+        var id: Int { value }
     }
 
     static func dailyActivityDateRange(
@@ -690,5 +1098,52 @@ private struct ListeningActivityDescriptor: AXChartDescriptorRepresentable {
             additionalAxes: [],
             series: [AXDataSeriesDescriptor(name: "Listens", isContinuous: false, dataPoints: points)]
         )
+    }
+}
+
+private struct EraActivityDescriptor: AXChartDescriptorRepresentable {
+    let points: [Point]
+    let period: ListeningActivityPeriod
+    let selectedDecade: Int?
+
+    init(
+        points: [TasteView.EraChartPoint],
+        period: ListeningActivityPeriod,
+        selectedDecade: Int?
+    ) {
+        self.points = points.map { Point(label: $0.label, listenCount: $0.listenCount) }
+        self.period = period
+        self.selectedDecade = selectedDecade
+    }
+
+    func makeChartDescriptor() -> AXChartDescriptor {
+        let axisTitle = selectedDecade == nil ? "Decade" : "Year"
+        let xAxis = AXCategoricalDataAxisDescriptor(
+            title: axisTitle,
+            categoryOrder: points.map(\.label)
+        )
+        let maximum = Double(max(points.map(\.listenCount).max() ?? 0, 1))
+        let yAxis = AXNumericDataAxisDescriptor(
+            title: "Listens",
+            range: 0 ... maximum,
+            gridlinePositions: []
+        ) { $0.formatted() }
+        let dataPoints = points.map {
+            AXDataPoint(x: $0.label, y: Double($0.listenCount))
+        }
+        let scope = selectedDecade.map { "\($0)s release years" } ?? "music by decade"
+        return AXChartDescriptor(
+            title: "\(period.title) \(scope)",
+            summary: "Listen counts grouped by original release year",
+            xAxis: xAxis,
+            yAxis: yAxis,
+            additionalAxes: [],
+            series: [AXDataSeriesDescriptor(name: "Listens", isContinuous: false, dataPoints: dataPoints)]
+        )
+    }
+
+    struct Point {
+        let label: String
+        let listenCount: Int
     }
 }

@@ -513,6 +513,161 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertTrue(activity.isEmpty)
     }
 
+    func testEraActivityNormalizesYearsAndBuildsCompleteDecades() {
+        let activity = EraActivity(
+            period: .thisYear,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            years: [
+                .init(year: 1997, listenCount: 4),
+                .init(year: 1997, listenCount: 5),
+                .init(year: 2011, listenCount: 7),
+                .init(year: 2024, listenCount: 3),
+                .init(year: 2025, listenCount: -8),
+                .init(year: -1, listenCount: 99),
+            ]
+        )
+
+        XCTAssertEqual(activity.years.map(\.year), [1997, 2011, 2024, 2025])
+        XCTAssertEqual(activity.years.map(\.listenCount), [9, 7, 3, 0])
+        XCTAssertEqual(activity.decades.map(\.year), [1990, 2000, 2010, 2020])
+        XCTAssertEqual(activity.decades.map(\.listenCount), [9, 0, 7, 3])
+        XCTAssertEqual(activity.leadingDecade?.year, 1990)
+        XCTAssertEqual(activity.years(in: 1990).map(\.year), Array(1990 ... 1999))
+        XCTAssertEqual(activity.years(in: 1990).first(where: { $0.year == 1997 })?.listenCount, 9)
+        XCTAssertEqual(activity.totalListens, 19)
+    }
+
+    func testEraActivityRejectsUnboundedYearsAndBoundsSparseGapFilling() {
+        let activity = EraActivity(
+            period: .allTime,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            years: [
+                .init(year: Int.min, listenCount: 1),
+                .init(year: 0, listenCount: 2),
+                .init(year: 1000, listenCount: 3),
+                .init(year: 2024, listenCount: 4),
+                .init(year: 9999, listenCount: 5),
+                .init(year: Int.max, listenCount: 6),
+            ]
+        )
+
+        XCTAssertEqual(activity.years.map(\.year), [1000, 2024, 9999])
+        XCTAssertEqual(activity.decades.map(\.year), [1000, 2020, 9990])
+        XCTAssertEqual(activity.decades.map(\.listenCount), [3, 4, 5])
+        XCTAssertTrue(activity.years(in: Int.min).isEmpty)
+        XCTAssertTrue(activity.years(in: Int.max).isEmpty)
+    }
+
+    func testEraActivityCachesOneFreshRequestPerNormalizedUserAndPeriod() async {
+        let cache = EntityDetailCache<EraActivityCacheKey, EraActivity>()
+        let provider = EraActivityProvider(result: .activity(year: 1997, listenCount: 4))
+        let first = ListeningModel(
+            account: Account(username: " Listener ", token: ""),
+            provider: provider,
+            eraActivityCache: cache
+        )
+
+        await first.loadEraActivity(for: .thisYear)
+        await first.loadEraActivity(for: .thisYear)
+        let firstRequestCount = await provider.requestCount()
+        XCTAssertEqual(firstRequestCount, 1)
+
+        let sameUser = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: provider,
+            eraActivityCache: cache
+        )
+        await sameUser.loadEraActivity(for: .thisYear)
+        let sameUserRequestCount = await provider.requestCount()
+        XCTAssertEqual(sameUserRequestCount, 1)
+
+        let otherUser = ListeningModel(
+            account: Account(username: "someone-else", token: ""),
+            provider: provider,
+            eraActivityCache: cache
+        )
+        await otherUser.loadEraActivity(for: .thisYear)
+        await otherUser.loadEraActivity(for: .allTime)
+        let isolatedRequestCount = await provider.requestCount()
+        XCTAssertEqual(isolatedRequestCount, 3)
+    }
+
+    func testStaleEraActivityStaysVisibleDuringRefreshAndOnFailure() async throws {
+        let cache = EntityDetailCache<EraActivityCacheKey, EraActivity>(timeToLive: -1)
+        let stale = EraActivity.fixture(period: .thisYear, year: 1997, listenCount: 3)
+        await cache.save(stale, for: .init(username: "listener", period: .thisYear))
+        let provider = EraActivityProvider(result: .failure, delay: .seconds(1))
+        let model = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: provider,
+            eraActivityCache: cache
+        )
+
+        let task = Task { await model.loadEraActivity(for: .thisYear) }
+        while await provider.requestCount() == 0 {
+            try await ContinuousClock().sleep(for: .milliseconds(1))
+        }
+        guard case let .loaded(visible) = model.eraActivityState(for: .thisYear) else {
+            return XCTFail("Stale era data should remain visible while refreshing")
+        }
+        XCTAssertEqual(visible.totalListens, stale.totalListens)
+
+        await task.value
+        guard case let .loaded(retained) = model.eraActivityState(for: .thisYear) else {
+            return XCTFail("A refresh failure must not discard stale era data")
+        }
+        XCTAssertEqual(retained.totalListens, stale.totalListens)
+        XCTAssertNotNil(model.eraActivityRefreshMessage(for: .thisYear))
+    }
+
+    func testEraActivityNilAndEmptyResponsesAreHonest() async {
+        let unavailableProvider = EraActivityProvider(result: .noContent)
+        let unavailableModel = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: unavailableProvider,
+            eraActivityCache: EntityDetailCache()
+        )
+        await unavailableModel.loadEraActivity(for: .thisYear)
+        XCTAssertEqual(unavailableModel.eraActivityState(for: .thisYear), .unavailable)
+
+        let emptyProvider = EraActivityProvider(result: .activity(year: 2025, listenCount: 0))
+        let emptyModel = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: emptyProvider,
+            eraActivityCache: EntityDetailCache()
+        )
+        await emptyModel.loadEraActivity(for: .thisYear)
+        guard case let .loaded(activity) = emptyModel.eraActivityState(for: .thisYear) else {
+            return XCTFail("Expected a loaded zero-count release year")
+        }
+        XCTAssertTrue(activity.isEmpty)
+    }
+
+    func testCancellingEraActivityLoadReturnsToIdle() async throws {
+        let provider = EraActivityProvider(
+            result: .activity(year: 2024, listenCount: 3),
+            delay: .seconds(1)
+        )
+        let model = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: provider,
+            eraActivityCache: EntityDetailCache()
+        )
+
+        let task = Task { await model.loadEraActivity(for: .thisYear) }
+        while await provider.requestCount() == 0 {
+            try await ContinuousClock().sleep(for: .milliseconds(1))
+        }
+        task.cancel()
+        await task.value
+
+        XCTAssertEqual(model.eraActivityState(for: .thisYear), .idle)
+    }
+
     func testFreshReleasesKeepPersonalizedAndSitewideRequestsSeparate() async {
         let provider = FixtureProvider()
         let model = FreshReleasesModel(
@@ -1083,6 +1238,67 @@ private actor DailyActivityProvider: ListeningProvider {
         switch results[min(index, results.count - 1)] {
         case let .activity(listenCount):
             return .fixture(period: period, listenCount: listenCount)
+        case .noContent:
+            return nil
+        case .failure:
+            throw URLError(.cannotConnectToHost)
+        }
+    }
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+    func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+    func requestCount() -> Int { requests }
+}
+
+private extension EraActivity {
+    static func fixture(
+        period: ListeningActivityPeriod,
+        year: Int,
+        listenCount: Int
+    ) -> EraActivity {
+        EraActivity(
+            period: period,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            years: [.init(year: year, listenCount: listenCount)]
+        )
+    }
+}
+
+private actor EraActivityProvider: ListeningProvider {
+    enum Result: Sendable {
+        case activity(year: Int, listenCount: Int)
+        case noContent
+        case failure
+    }
+
+    private let result: Result
+    private let delay: Duration
+    private var requests = 0
+
+    init(result: Result, delay: Duration = .zero) {
+        self.result = result
+        self.delay = delay
+    }
+
+    func validateToken() async throws -> String { "fixture" }
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] { [] }
+    func playingNow(username: String) async throws -> Listen? { nil }
+    func listenCount(username: String) async throws -> Int { 0 }
+    func topArtists(username: String, count: Int) async throws -> [RankedArtist] { [] }
+    func topReleases(username: String, count: Int) async throws -> [RankedRelease] { [] }
+    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] { [] }
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        .init(period: period, from: .distantPast, to: .distantPast, lastUpdated: .distantPast, buckets: [])
+    }
+    func eraActivity(username: String, period: ListeningActivityPeriod) async throws -> EraActivity? {
+        requests += 1
+        if delay > .zero {
+            try await ContinuousClock().sleep(for: delay)
+        }
+        switch result {
+        case let .activity(year, listenCount):
+            return .fixture(period: period, year: year, listenCount: listenCount)
         case .noContent:
             return nil
         case .failure:

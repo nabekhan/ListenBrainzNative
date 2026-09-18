@@ -367,6 +367,134 @@ struct DailyActivityCacheKey: Hashable, Sendable {
     }
 }
 
+/// ListenBrainz's server-calculated distribution of listens by each
+/// recording's original release year.
+struct EraActivity: Hashable, Sendable {
+    /// MusicBrainz partial dates use ordinary four-digit Common Era years.
+    /// Keeping this boundary in the domain model prevents corrupt upstream
+    /// metadata from creating an effectively unbounded chart.
+    private static let supportedReleaseYears = 1000 ... 9999
+    private static let maximumFilledDecadeCount = 100
+
+    struct Year: Identifiable, Hashable, Sendable {
+        let year: Int
+        let listenCount: Int
+
+        var id: Int { year }
+    }
+
+    struct Decade: Identifiable, Hashable, Sendable {
+        let year: Int
+        let listenCount: Int
+
+        var id: Int { year }
+        var title: String { "\(year)s" }
+    }
+
+    let period: ListeningActivityPeriod
+    let from: Date
+    let to: Date
+    let lastUpdated: Date
+    let years: [Year]
+
+    init(
+        period: ListeningActivityPeriod,
+        from: Date,
+        to: Date,
+        lastUpdated: Date,
+        years: [Year]
+    ) {
+        self.period = period
+        self.from = from
+        self.to = to
+        self.lastUpdated = lastUpdated
+
+        var normalized: [Int: Int] = [:]
+        for value in years where Self.supportedReleaseYears.contains(value.year) {
+            normalized[value.year] = Self.saturatedSum(
+                normalized[value.year, default: 0],
+                max(value.listenCount, 0)
+            )
+        }
+        self.years = normalized
+            .map { Year(year: $0.key, listenCount: $0.value) }
+            .sorted { $0.year < $1.year }
+    }
+
+    var totalListens: Int {
+        years.reduce(0) { Self.saturatedSum($0, $1.listenCount) }
+    }
+
+    var decades: [Decade] {
+        guard let firstYear = years.first?.year, let lastYear = years.last?.year else { return [] }
+        let firstDecade = Self.decade(containing: firstYear)
+        let lastDecade = Self.decade(containing: lastYear)
+        var totals: [Int: Int] = [:]
+        for value in years {
+            let decade = Self.decade(containing: value.year)
+            totals[decade] = Self.saturatedSum(totals[decade, default: 0], value.listenCount)
+        }
+        let decadeCount = ((lastDecade - firstDecade) / 10) + 1
+        if decadeCount > Self.maximumFilledDecadeCount {
+            return totals.keys.sorted().map {
+                Decade(year: $0, listenCount: totals[$0, default: 0])
+            }
+        }
+        return stride(from: firstDecade, through: lastDecade, by: 10).map {
+            Decade(year: $0, listenCount: totals[$0, default: 0])
+        }
+    }
+
+    var leadingDecade: Decade? {
+        decades.max {
+            if $0.listenCount == $1.listenCount { return $0.year < $1.year }
+            return $0.listenCount < $1.listenCount
+        }
+    }
+
+    var isEmpty: Bool { totalListens == 0 }
+
+    func years(in decade: Int) -> [Year] {
+        let start = Self.decade(containing: decade)
+        guard Self.supportedReleaseYears.contains(start),
+              Self.supportedReleaseYears.contains(start + 9)
+        else { return [] }
+        let counts = Dictionary(uniqueKeysWithValues: years.map { ($0.year, $0.listenCount) })
+        return (start ... start + 9).map { Year(year: $0, listenCount: counts[$0, default: 0]) }
+    }
+
+    func listenCount(in decade: Int) -> Int {
+        years(in: decade).reduce(0) { Self.saturatedSum($0, $1.listenCount) }
+    }
+
+    private static func decade(containing year: Int) -> Int {
+        (year / 10) * 10
+    }
+
+    private static func saturatedSum(_ lhs: Int, _ rhs: Int) -> Int {
+        let result = lhs.addingReportingOverflow(rhs)
+        return result.overflow ? Int.max : result.partialValue
+    }
+}
+
+enum EraActivityLoadState: Equatable {
+    case idle
+    case loading
+    case loaded(EraActivity)
+    case unavailable
+    case failed(String)
+}
+
+struct EraActivityCacheKey: Hashable, Sendable {
+    let username: String
+    let period: ListeningActivityPeriod
+
+    init(username: String, period: ListeningActivityPeriod) {
+        self.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        self.period = period
+    }
+}
+
 struct FreshRelease: Identifiable, Hashable, Sendable {
     let releaseMBID: UUID?
     let releaseGroupMBID: UUID?

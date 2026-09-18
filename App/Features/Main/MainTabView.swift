@@ -47,7 +47,10 @@ struct MainTabView: View {
             return
         }
         if ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
-            || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo") {
+            || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-zoom-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-card-demo") {
             let visualAccount = Account(username: "visual-taste", token: "visual-taste")
             _model = State(initialValue: ListeningModel(
                 account: visualAccount,
@@ -83,7 +86,10 @@ struct MainTabView: View {
                     : .owned
             )
         } else if ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
-            || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo") {
+            || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-zoom-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-card-demo") {
             TasteView(model: model)
                 .task { await model.load() }
                 .environment(pins)
@@ -450,6 +456,31 @@ private struct VisualQATasteProvider: ListeningProvider {
             })
         })
         return DailyActivity(period: period, from: .now.addingTimeInterval(-7 * 86_400), to: .now, lastUpdated: .now, dailyActivity: values)
+    }
+    func eraActivity(username: String, period: ListeningActivityPeriod) async throws -> EraActivity? {
+        EraActivity(
+            period: period,
+            from: .now.addingTimeInterval(-365 * 86_400),
+            to: .now,
+            lastUpdated: .now,
+            years: [
+                .init(year: 1967, listenCount: 12),
+                .init(year: 1971, listenCount: 41),
+                .init(year: 1977, listenCount: 67),
+                .init(year: 1983, listenCount: 54),
+                .init(year: 1989, listenCount: 88),
+                .init(year: 1994, listenCount: 132),
+                .init(year: 1997, listenCount: 176),
+                .init(year: 2001, listenCount: 119),
+                .init(year: 2007, listenCount: 143),
+                .init(year: 2011, listenCount: 157),
+                .init(year: 2018, listenCount: 214),
+                .init(year: 2020, listenCount: 189),
+                .init(year: 2022, listenCount: 268),
+                .init(year: 2024, listenCount: 231),
+                .init(year: 2025, listenCount: 204),
+            ]
+        )
     }
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}

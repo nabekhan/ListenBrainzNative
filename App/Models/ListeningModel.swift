@@ -16,6 +16,7 @@ final class ListeningModel {
     private let provider: any ListeningProvider
     private let cache: SnapshotCache
     private let dailyActivityCache: EntityDetailCache<DailyActivityCacheKey, DailyActivity>
+    private let eraActivityCache: EntityDetailCache<EraActivityCacheKey, EraActivity>
 
     private(set) var snapshot = ListeningSnapshot.empty
     private(set) var phase: Phase = .idle
@@ -32,6 +33,9 @@ final class ListeningModel {
     private(set) var dailyActivity: [ListeningActivityPeriod: DailyActivityLoadState] = [:]
     private(set) var dailyActivityRefreshMessages: [ListeningActivityPeriod: String] = [:]
     private var dailyActivityRequestIDs: [ListeningActivityPeriod: UUID] = [:]
+    private(set) var eraActivity: [ListeningActivityPeriod: EraActivityLoadState] = [:]
+    private(set) var eraActivityRefreshMessages: [ListeningActivityPeriod: String] = [:]
+    private var eraActivityRequestIDs: [ListeningActivityPeriod: UUID] = [:]
     var feedback: [String: RecordingFeedback] = [:]
     var actionError: String?
     private var didLoad = false
@@ -42,12 +46,14 @@ final class ListeningModel {
         account: Account,
         provider: (any ListeningProvider)? = nil,
         cache: SnapshotCache = .shared,
-        dailyActivityCache: EntityDetailCache<DailyActivityCacheKey, DailyActivity> = EntityDetailCaches.dailyActivity
+        dailyActivityCache: EntityDetailCache<DailyActivityCacheKey, DailyActivity> = EntityDetailCaches.dailyActivity,
+        eraActivityCache: EntityDetailCache<EraActivityCacheKey, EraActivity> = EntityDetailCaches.eraActivity
     ) {
         self.account = account
         self.provider = provider ?? ListenBrainzProvider(token: account.token)
         self.cache = cache
         self.dailyActivityCache = dailyActivityCache
+        self.eraActivityCache = eraActivityCache
     }
 
     func load() async {
@@ -324,6 +330,72 @@ final class ListeningModel {
                 dailyActivityRefreshMessages[period] = error.localizedDescription
             } else {
                 dailyActivity[period] = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    func eraActivityState(for period: ListeningActivityPeriod) -> EraActivityLoadState {
+        eraActivity[period] ?? .idle
+    }
+
+    func eraActivityRefreshMessage(for period: ListeningActivityPeriod) -> String? {
+        eraActivityRefreshMessages[period]
+    }
+
+    /// Loads one server-calculated release-year distribution for the selected
+    /// range. Stale data remains usable while ListenBrainz is revalidating it.
+    func loadEraActivity(for period: ListeningActivityPeriod, retrying: Bool = false) async {
+        let key = EraActivityCacheKey(username: account.username, period: period)
+        if !retrying, eraActivityRequestIDs[period] != nil {
+            return
+        }
+
+        if let cached = await eraActivityCache.value(for: key) {
+            eraActivity[period] = .loaded(cached.value)
+            if cached.isFresh, !retrying {
+                return
+            }
+        } else {
+            if !retrying {
+                switch eraActivityState(for: period) {
+                case .loaded, .unavailable, .loading:
+                    return
+                case .idle, .failed:
+                    break
+                }
+            }
+            eraActivity[period] = .loading
+        }
+
+        eraActivityRefreshMessages[period] = nil
+        let requestID = UUID()
+        eraActivityRequestIDs[period] = requestID
+
+        do {
+            let result = try await provider.eraActivity(username: account.username, period: period)
+            try Task.checkCancellation()
+            guard eraActivityRequestIDs[period] == requestID else { return }
+            guard let result else {
+                eraActivity[period] = .unavailable
+                eraActivityRequestIDs[period] = nil
+                return
+            }
+            eraActivity[period] = .loaded(result)
+            eraActivityRequestIDs[period] = nil
+            await eraActivityCache.save(result, for: key)
+        } catch is CancellationError {
+            guard eraActivityRequestIDs[period] == requestID else { return }
+            eraActivityRequestIDs[period] = nil
+            if case .loading = eraActivityState(for: period) {
+                eraActivity[period] = .idle
+            }
+        } catch {
+            guard eraActivityRequestIDs[period] == requestID else { return }
+            eraActivityRequestIDs[period] = nil
+            if case .loaded = eraActivityState(for: period) {
+                eraActivityRefreshMessages[period] = error.localizedDescription
+            } else {
+                eraActivity[period] = .failed(error.localizedDescription)
             }
         }
     }

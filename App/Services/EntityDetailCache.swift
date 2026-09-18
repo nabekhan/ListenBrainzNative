@@ -61,4 +61,8 @@ enum EntityDetailCaches {
         timeToLive: 10 * 60,
         maximumEntryCount: 28
     )
+    static let eraActivity = EntityDetailCache<EraActivityCacheKey, EraActivity>(
+        timeToLive: 10 * 60,
+        maximumEntryCount: 28
+    )
 }

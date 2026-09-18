@@ -135,6 +135,23 @@ struct ListenBrainzProvider: ListeningProvider {
         }
     }
 
+    func eraActivity(username: String, period: ListeningActivityPeriod) async throws -> EraActivity? {
+        try await perform {
+            guard let result = try await client.stats.eraActivity(user: username, range: Self.range(for: period)) else {
+                return nil
+            }
+            return EraActivity(
+                period: period,
+                from: result.from,
+                to: result.to,
+                lastUpdated: Date(timeIntervalSince1970: TimeInterval(result.lastUpdated)),
+                years: result.eraActivity.map {
+                    .init(year: $0.year, listenCount: $0.listenCount)
+                }
+            )
+        }
+    }
+
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] {
         try await perform {
             let result: LBFreshReleases?
