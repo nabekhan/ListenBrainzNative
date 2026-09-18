@@ -239,6 +239,9 @@ final class PlaylistDetailModel {
             throw CancellationError()
         } catch {
             guard requestID == id else { throw CancellationError() }
+            if await discardAccessSensitiveStateIfNeeded(error) {
+                throw error
+            }
             if detail == nil {
                 phase = .failed(error.localizedDescription)
             } else {
@@ -312,6 +315,7 @@ final class PlaylistDetailModel {
             phase = detail == nil ? .idle : .ready
         } catch {
             guard requestID == id else { return }
+            if await discardAccessSensitiveStateIfNeeded(error) { return }
             if detail == nil {
                 phase = .failed(error.localizedDescription)
             } else {
@@ -332,6 +336,15 @@ final class PlaylistDetailModel {
             mbid: value.mbid,
             accessScope: .publicOnly
         ))
+    }
+
+    private func discardAccessSensitiveStateIfNeeded(_ error: any Error) async -> Bool {
+        guard PlaylistAccessFailurePolicy.requiresPurge(error) else { return false }
+        detail = nil
+        refreshMessage = nil
+        phase = .failed(error.localizedDescription)
+        await cache.removeAll()
+        return true
     }
 }
 

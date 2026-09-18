@@ -281,6 +281,194 @@ final class PlaylistMutationTests: XCTestCase {
         XCTAssertFalse(didStart)
     }
 
+    func testConfirmedAppendUsesOneCallAndInvalidatesEveryPlaylistCacheScope() async throws {
+        let playlistMBID = UUID()
+        let recordingMBID = UUID()
+        let detailCache = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
+        let pageCache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
+        let publicKey = PlaylistDetailCacheKey(mbid: playlistMBID, accessScope: .publicOnly)
+        let authenticatedKey = PlaylistDetailCacheKey(
+            mbid: playlistMBID,
+            accessScope: .authenticatedViewer("listener")
+        )
+        let pageKey = ProfilePlaylistPageKey(
+            username: "listener",
+            accessScope: .authenticatedViewer("listener"),
+            category: .collaborating,
+            offset: 0,
+            count: 20
+        )
+        let cachedDetail = playlistDetail(mbid: playlistMBID)
+        await detailCache.save(cachedDetail, for: publicKey)
+        await detailCache.save(cachedDetail, for: authenticatedKey)
+        await pageCache.save(
+            .init(
+                username: "listener",
+                category: .collaborating,
+                playlists: [],
+                requestedCount: 20,
+                offset: 0,
+                totalCount: 0
+            ),
+            for: pageKey
+        )
+        let transport = PlaylistAppendTransportSpy()
+        let provider = ListenBrainzPlaylistAppendProvider(
+            transport: transport,
+            gate: RequestGate(minimumInterval: .zero),
+            detailCache: detailCache,
+            profilePageCache: pageCache
+        )
+
+        try await provider.append(recordingMBID: recordingMBID, to: playlistMBID)
+
+        let calls = await transport.recordedCalls()
+        let publicValue = await detailCache.value(for: publicKey)
+        let authenticatedValue = await detailCache.value(for: authenticatedKey)
+        let pageValue = await pageCache.value(for: pageKey)
+        XCTAssertEqual(calls, [.init(playlistMBID: playlistMBID, recordingMBIDs: [recordingMBID])])
+        XCTAssertNil(publicValue)
+        XCTAssertNil(authenticatedValue)
+        XCTAssertNil(pageValue)
+    }
+
+    func testAppendMapsRateLimitWithoutRetrying() async {
+        let transport = PlaylistAppendTransportSpy(error: LBError.rateLimited(resetIn: 7))
+        let provider = ListenBrainzPlaylistAppendProvider(
+            transport: transport,
+            gate: RequestGate(minimumInterval: .zero),
+            detailCache: EntityDetailCache(),
+            profilePageCache: EntityDetailCache()
+        )
+
+        do {
+            try await provider.append(recordingMBID: UUID(), to: UUID())
+            XCTFail("Expected rate limiting")
+        } catch let ProviderError.rateLimited(seconds) {
+            XCTAssertEqual(seconds, 7)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        let calls = await transport.recordedCalls()
+        XCTAssertEqual(calls.count, 1)
+    }
+
+    func testAppendAccessFailuresPurgePrivateDetailAndDestinationCaches() async {
+        for sourceError in [LBError.invalidAuth, LBError.forbidden, LBError.notFound] {
+            let playlistMBID = UUID()
+            let detailCache = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
+            let pageCache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
+            let detailKey = PlaylistDetailCacheKey(
+                mbid: playlistMBID,
+                accessScope: .authenticatedViewer("listener")
+            )
+            let pageKey = ProfilePlaylistPageKey(
+                username: "listener",
+                accessScope: .authenticatedViewer("listener"),
+                category: .collaborating,
+                offset: 0,
+                count: 20
+            )
+            await detailCache.save(playlistDetail(mbid: playlistMBID, isPublic: false), for: detailKey)
+            await pageCache.save(
+                .init(
+                    username: "listener",
+                    category: .collaborating,
+                    playlists: [],
+                    requestedCount: 20,
+                    offset: 0,
+                    totalCount: 0
+                ),
+                for: pageKey
+            )
+            let transport = PlaylistAppendTransportSpy(error: sourceError)
+            let provider = ListenBrainzPlaylistAppendProvider(
+                transport: transport,
+                gate: RequestGate(minimumInterval: .zero),
+                detailCache: detailCache,
+                profilePageCache: pageCache
+            )
+
+            do {
+                try await provider.append(recordingMBID: UUID(), to: playlistMBID)
+                XCTFail("Expected access failure")
+            } catch {
+                // The exact user-facing mapping is covered elsewhere; this
+                // assertion protects the privacy-sensitive cache boundary.
+            }
+
+            let cachedDetail = await detailCache.value(for: detailKey)
+            let cachedPage = await pageCache.value(for: pageKey)
+            XCTAssertNil(cachedDetail)
+            XCTAssertNil(cachedPage)
+            let calls = await transport.recordedCalls()
+            XCTAssertEqual(calls.count, 1)
+        }
+    }
+
+    func testAppendCancellationAfterTransportStartsIsIndeterminateAndClearsCaches() async {
+        let playlistMBID = UUID()
+        let detailCache = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
+        let key = PlaylistDetailCacheKey(mbid: playlistMBID, accessScope: .publicOnly)
+        await detailCache.save(playlistDetail(mbid: playlistMBID), for: key)
+        let transport = CancellationAppendTransport()
+        let provider = ListenBrainzPlaylistAppendProvider(
+            transport: transport,
+            gate: RequestGate(minimumInterval: .zero),
+            detailCache: detailCache,
+            profilePageCache: EntityDetailCache()
+        )
+        let task = Task {
+            try await provider.append(recordingMBID: UUID(), to: playlistMBID)
+        }
+        while !(await transport.hasStarted) { await Task.yield() }
+
+        task.cancel()
+        do {
+            try await task.value
+            XCTFail("Expected an indeterminate append result")
+        } catch let error as PlaylistMutationProviderError {
+            XCTAssertEqual(
+                error.localizedDescription,
+                PlaylistMutationProviderError.indeterminateAppend.localizedDescription
+            )
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        let cached = await detailCache.value(for: key)
+        XCTAssertNil(cached)
+    }
+
+    func testAppendCancellationBeforeTransportAdmissionDoesNotDispatch() async throws {
+        let gate = RequestGate(minimumInterval: .seconds(5))
+        _ = try await gate.perform { true }
+        let transport = CancellationAppendTransport()
+        let provider = ListenBrainzPlaylistAppendProvider(
+            transport: transport,
+            gate: gate,
+            detailCache: EntityDetailCache(),
+            profilePageCache: EntityDetailCache()
+        )
+        let task = Task {
+            try await provider.append(recordingMBID: UUID(), to: UUID())
+        }
+        await Task.yield()
+
+        task.cancel()
+        do {
+            try await task.value
+            XCTFail("Expected cancellation before transport")
+        } catch is CancellationError {
+            // Expected: no POST was admitted to transport.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        let didStart = await transport.hasStarted
+        XCTAssertFalse(didStart)
+    }
+
     func testEditorSerializesDuplicateCreateTaps() async {
         let createdID = UUID(uuidString: "cccccccc-cccc-4ccc-8ccc-cccccccccccc")!
         let provider = PlaylistMutationFixtureProvider(createdID: createdID, delay: .milliseconds(60))
@@ -502,6 +690,36 @@ private actor CancellationMutationTransport: PlaylistMutationTransport {
     }
 
     func edit(mbid: UUID, metadata: LBPlaylistMutationMetadata) async throws {
+        hasStarted = true
+        try await Task.sleep(for: .seconds(60))
+    }
+}
+
+private actor PlaylistAppendTransportSpy: PlaylistAppendTransport {
+    struct Call: Equatable, Sendable {
+        let playlistMBID: UUID
+        let recordingMBIDs: [UUID]
+    }
+
+    private let error: (any Error & Sendable)?
+    private var calls: [Call] = []
+
+    init(error: (any Error & Sendable)? = nil) {
+        self.error = error
+    }
+
+    func append(recordingMBIDs: [UUID], to playlistMBID: UUID) async throws {
+        calls.append(.init(playlistMBID: playlistMBID, recordingMBIDs: recordingMBIDs))
+        if let error { throw error }
+    }
+
+    func recordedCalls() -> [Call] { calls }
+}
+
+private actor CancellationAppendTransport: PlaylistAppendTransport {
+    private(set) var hasStarted = false
+
+    func append(recordingMBIDs: [UUID], to playlistMBID: UUID) async throws {
         hasStarted = true
         try await Task.sleep(for: .seconds(60))
     }

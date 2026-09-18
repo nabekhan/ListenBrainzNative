@@ -11,6 +11,14 @@ protocol PlaylistMutationTransport: Sendable {
     func edit(mbid: UUID, metadata: LBPlaylistMutationMetadata) async throws
 }
 
+protocol PlaylistAppendProviding: Sendable {
+    func append(recordingMBID: UUID, to playlistMBID: UUID) async throws
+}
+
+protocol PlaylistAppendTransport: Sendable {
+    func append(recordingMBIDs: [UUID], to playlistMBID: UUID) async throws
+}
+
 private struct LivePlaylistMutationTransport: PlaylistMutationTransport {
     let client: LBClient
 
@@ -20,6 +28,103 @@ private struct LivePlaylistMutationTransport: PlaylistMutationTransport {
 
     func edit(mbid: UUID, metadata: LBPlaylistMutationMetadata) async throws {
         try await client.core.editPlaylist(mbid: mbid, metadata: metadata)
+    }
+}
+
+private struct LivePlaylistAppendTransport: PlaylistAppendTransport {
+    let client: LBClient
+
+    func append(recordingMBIDs: [UUID], to playlistMBID: UUID) async throws {
+        try await client.core.addPlaylistItems(mbid: playlistMBID, recordingMBIDs: recordingMBIDs)
+    }
+}
+
+/// A non-retrying append boundary. The server permits duplicates and does not
+/// provide an idempotency key, so callers reconcile the canonical detail after
+/// any ambiguous result instead of replaying the POST.
+struct ListenBrainzPlaylistAppendProvider: PlaylistAppendProviding {
+    private let transport: any PlaylistAppendTransport
+    private let gate: RequestGate
+    private let detailCache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>
+    private let profilePageCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>
+
+    init(
+        token: String,
+        gate: RequestGate = .shared,
+        detailCache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail> = EntityDetailCaches.playlists,
+        profilePageCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage> = ProfilePlaylistCaches.pages
+    ) {
+        transport = LivePlaylistAppendTransport(client: LBClient(
+            token: token,
+            userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"
+        ))
+        self.gate = gate
+        self.detailCache = detailCache
+        self.profilePageCache = profilePageCache
+    }
+
+    init(
+        transport: some PlaylistAppendTransport,
+        gate: RequestGate,
+        detailCache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail> = EntityDetailCaches.playlists,
+        profilePageCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage> = ProfilePlaylistCaches.pages
+    ) {
+        self.transport = transport
+        self.gate = gate
+        self.detailCache = detailCache
+        self.profilePageCache = profilePageCache
+    }
+
+    func append(recordingMBID: UUID, to playlistMBID: UUID) async throws {
+        let attempt = MutationAttemptState()
+        do {
+            try await gate.perform({
+                await attempt.markTransportStarted()
+                try await transport.append(recordingMBIDs: [recordingMBID], to: playlistMBID)
+            }) { error in
+                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
+            await invalidateCaches()
+        } catch let LBError.rateLimited(resetIn) {
+            throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
+        } catch LBError.invalidAuth, LBError.noToken {
+            await invalidateCaches()
+            throw PlaylistMutationProviderError.invalidAuthentication
+        } catch LBError.forbidden {
+            await invalidateCaches()
+            throw PlaylistMutationProviderError.notCollaborator
+        } catch LBError.notFound {
+            await invalidateCaches()
+            throw PlaylistMutationProviderError.playlistUnavailable
+        } catch LBError.invalidJSON, LBError.badRequest, LBError.invalidParam {
+            throw PlaylistMutationProviderError.rejected
+        } catch LBError.invalidResponse, LBError.noContent, LBError.unknownError {
+            await invalidateCaches()
+            throw PlaylistMutationProviderError.indeterminateAppend
+        } catch is CancellationError {
+            if await attempt.didStartTransport {
+                await invalidateCaches()
+                throw PlaylistMutationProviderError.indeterminateAppend
+            }
+            throw CancellationError()
+        } catch {
+            await invalidateCaches()
+            throw PlaylistMutationProviderError.indeterminateAppend
+        }
+    }
+
+    private func invalidateCaches() async {
+        await detailCache.removeAll()
+        await profilePageCache.removeAll()
+    }
+
+    private actor MutationAttemptState {
+        private(set) var didStartTransport = false
+
+        func markTransportStarted() {
+            didStartTransport = true
+        }
     }
 }
 
@@ -184,14 +289,16 @@ struct ListenBrainzPlaylistMutationProvider: PlaylistMutationProviding {
 enum PlaylistMutationProviderError: LocalizedError, Sendable {
     case invalidAuthentication
     case notOwner
+    case notCollaborator
     case playlistUnavailable
     case rejected
     case indeterminateCreation
     case indeterminateEdit
+    case indeterminateAppend
 
     var isIndeterminate: Bool {
         switch self {
-        case .indeterminateCreation, .indeterminateEdit: true
+        case .indeterminateCreation, .indeterminateEdit, .indeterminateAppend: true
         default: false
         }
     }
@@ -202,6 +309,8 @@ enum PlaylistMutationProviderError: LocalizedError, Sendable {
             "Your ListenBrainz token no longer authorizes playlist changes."
         case .notOwner:
             "Only the playlist owner can change its name, description, or privacy."
+        case .notCollaborator:
+            "Only a playlist owner or collaborator can add recordings."
         case .playlistUnavailable:
             "This playlist was removed or is no longer available to your account."
         case .rejected:
@@ -210,6 +319,8 @@ enum PlaylistMutationProviderError: LocalizedError, Sendable {
             "ListenBrainz may have created this playlist, but the response was lost. Check Owned Playlists before trying again so you don’t create a duplicate."
         case .indeterminateEdit:
             "ListenBrainz may have saved this edit, but the response was lost. Close this editor and reload the playlist before trying again."
+        case .indeterminateAppend:
+            "ListenBrainz may have added this recording, but the response was lost. Inspect the playlist before trying again so you don’t add a duplicate."
         }
     }
 }

@@ -19,6 +19,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Native user search, visited-user profiles, followers/following, similar listeners, and compatibility
 - Pin history and owner pin actions; public playlist search and complete playlist detail
 - Lazy owned and collaborating Profile playlists with privacy-aware caching, server pagination, authenticated empty-playlist creation, owner metadata/privacy editing, and direct detail navigation
+- Safe append from Recording Detail to owned or collaborating playlists, with canonical-MBID gating, duplicate confirmation, and no automatic mutation replay
 - Canonical MusicBrainz edition pages with release-group links and ordered, multi-disc track lists
 - Recording feedback for authenticated users
 - Public and multi-recipient personal recording recommendations, with follower-only selection and optional 280-character notes

@@ -22,7 +22,8 @@ final class SessionModel {
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-brainz-profile-playlists-demo")
             || arguments.contains("-brainz-profile-playlists-collab-demo")
-            || arguments.contains("-brainz-playlist-edit-demo") {
+            || arguments.contains("-brainz-playlist-edit-demo")
+            || arguments.contains("-brainz-playlist-add-demo") {
             state = .active(Account(username: "visual-listener", token: "visual-token"))
             return
         }

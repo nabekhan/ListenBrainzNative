@@ -65,6 +65,7 @@
 		750A075E1C5ED48133A7E503 /* UserSocialModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5C21376EC70F3FDD95B368B /* UserSocialModelTests.swift */; };
 		7799DAF70CC7B4681490D24C /* PopularityModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA5104B1FB7A1241957E75FA /* PopularityModels.swift */; };
 		77FAF578E20FF1259BCDFBAA /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12D4A1A234653FF49859C86C /* Models.swift */; };
+		789E14ED16D3BC56781B8FC5 /* PlaylistAddSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68ADA01513294244794E1EDD /* PlaylistAddSheet.swift */; };
 		7C20A83DB44D540F8348E048 /* UserDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343500F68ED04F5BB999B208 /* UserDetailView.swift */; };
 		7D4E35AD4998321B2955C36C /* FeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F84B9B265FFDBC7E09392F18 /* FeedView.swift */; };
 		7D988596787032037BEB62C6 /* UserDetailModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A791F11C1E6675E415DEA3A4 /* UserDetailModelTests.swift */; };
@@ -75,6 +76,7 @@
 		87F6993AB8FCC5A87744AF75 /* RadioProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54E68B4CE90FAE05D067A92C /* RadioProvider.swift */; };
 		8CC211BC670EB9B4DF390ADF /* ListenBrainzProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93089B0F4FF96EC2558216C /* ListenBrainzProvider.swift */; };
 		8F16CB7E1FE040E5D24D2591 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F268D31AB8CD90FD6B664A12 /* HistoryView.swift */; };
+		9890FD433FAA48ADA158E87D /* PlaylistAddSheetModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65596B1CF40A3F700EFA1D76 /* PlaylistAddSheetModelTests.swift */; };
 		9C9F22A49ADFC566D6C9DC86 /* MediaDestinations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3275CB36181C30A7FC7D3EB9 /* MediaDestinations.swift */; };
 		A02AD3A3077720C31BDCF976 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DB8462E05A0F9121989410D /* AppTheme.swift */; };
 		A64B06F3FB44546CE5962F6A /* YearInMusicModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C5EBAB053981A555C2F9A58 /* YearInMusicModel.swift */; };
@@ -159,7 +161,9 @@
 		54E68B4CE90FAE05D067A92C /* RadioProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioProvider.swift; sourceTree = "<group>"; };
 		61A453DC671E0AE48DE5FD6D /* ListenBrainzNativeTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ListenBrainzNativeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		63322AC38BB841A99005C1BF /* PlaylistMutationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistMutationModels.swift; sourceTree = "<group>"; };
+		65596B1CF40A3F700EFA1D76 /* PlaylistAddSheetModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistAddSheetModelTests.swift; sourceTree = "<group>"; };
 		659F6BF93F2ADE29B73AC2E5 /* SnapshotCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotCache.swift; sourceTree = "<group>"; };
+		68ADA01513294244794E1EDD /* PlaylistAddSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistAddSheet.swift; sourceTree = "<group>"; };
 		72EA4638A7EB62DF693C0B15 /* FeedModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedModel.swift; sourceTree = "<group>"; };
 		76720D266F51B04F8F25C767 /* UserSocialModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSocialModel.swift; sourceTree = "<group>"; };
 		795175D65DC7780F3B5D7249 /* YearInMusicView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearInMusicView.swift; sourceTree = "<group>"; };
@@ -277,6 +281,7 @@
 		3091C6282F980D4207389160 /* Playlist */ = {
 			isa = PBXGroup;
 			children = (
+				68ADA01513294244794E1EDD /* PlaylistAddSheet.swift */,
 				2EA074F8AA02345A7E2BF670 /* PlaylistDetailView.swift */,
 				AA1C5A040A20E4AC83EA8139 /* PlaylistMetadataEditorSheet.swift */,
 			);
@@ -497,6 +502,7 @@
 				04BCABBDB540BFFC39527300 /* ListeningModelTests.swift */,
 				FB292AE014CE0F99033BA579 /* MediaDetailModelTests.swift */,
 				8A0BC2D8A5C1E29B85ED588A /* PinsModelTests.swift */,
+				65596B1CF40A3F700EFA1D76 /* PlaylistAddSheetModelTests.swift */,
 				445829BC50154244B5591728 /* PlaylistMutationTests.swift */,
 				D3C329C8B2BF423D0F69C4E0 /* PopularityProviderTests.swift */,
 				D963F9BDBFB4D08557D9CABE /* PopularitySummaryModelTests.swift */,
@@ -629,6 +635,7 @@
 				A686BC80CE777828101F3C11 /* ListeningModelTests.swift in Sources */,
 				F462DD49582CE885E41AD221 /* MediaDetailModelTests.swift in Sources */,
 				3C4AAFFFC4488E59E3B1541E /* PinsModelTests.swift in Sources */,
+				9890FD433FAA48ADA158E87D /* PlaylistAddSheetModelTests.swift in Sources */,
 				256C40B6DC2B996C16D40756 /* PlaylistMutationTests.swift in Sources */,
 				01AB414CFDFAE764C451F01E /* PopularityProviderTests.swift in Sources */,
 				47285C2DE1205B0C181E8E23 /* PopularitySummaryModelTests.swift in Sources */,
@@ -681,6 +688,7 @@
 				4FFBB0053750B0C9879C7949 /* PinProvider.swift in Sources */,
 				3E772DC80D8B037D186F434B /* PinsModel.swift in Sources */,
 				48CE2F69DAAE1854F4D85F64 /* PinsViews.swift in Sources */,
+				789E14ED16D3BC56781B8FC5 /* PlaylistAddSheet.swift in Sources */,
 				41E4FA65905F8C4E12E92C3E /* PlaylistDetailView.swift in Sources */,
 				53E6AA7D06171A8DF74BF24C /* PlaylistMediaComponents.swift in Sources */,
 				AA4425E317371E65013FAE54 /* PlaylistMetadataEditorModel.swift in Sources */,

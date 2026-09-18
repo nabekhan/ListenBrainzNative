@@ -99,9 +99,9 @@ struct ListenBrainzMediaDetailProvider: ReleaseDetailProviding, PlaylistDetailPr
                     tracks: tracks
                 )
             }
-        } catch LBError.notFound {
+        } catch LBError.notFound, LBError.forbidden {
             throw MediaDetailError.playlistUnavailable
-        } catch LBError.invalidAuth {
+        } catch LBError.invalidAuth, LBError.noToken {
             throw ProviderError.invalidToken
         }
     }
@@ -149,5 +149,33 @@ enum MediaDetailError: LocalizedError, Sendable {
         case .playlistUnavailable:
             "This playlist is private, was removed, or is no longer available."
         }
+    }
+}
+
+/// Access failures must not preserve previously cached private playlist data.
+/// Transport/offline/rate-limit failures remain eligible for stale display.
+enum PlaylistAccessFailurePolicy {
+    static func requiresPurge(_ error: any Error) -> Bool {
+        if let error = error as? MediaDetailError {
+            if case .playlistUnavailable = error { return true }
+        }
+        if let error = error as? ProviderError {
+            if case .invalidToken = error { return true }
+        }
+        if let error = error as? ProfilePlaylistsProviderError {
+            switch error {
+            case .invalidAuthentication, .profileUnavailable:
+                return true
+            }
+        }
+        if let error = error as? PlaylistMutationProviderError {
+            switch error {
+            case .invalidAuthentication, .notCollaborator, .playlistUnavailable:
+                return true
+            default:
+                return false
+            }
+        }
+        return false
     }
 }

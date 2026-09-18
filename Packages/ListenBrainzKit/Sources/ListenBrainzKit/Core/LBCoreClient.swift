@@ -272,6 +272,19 @@ public struct LBCoreClient: Sendable {
         guard response.status == "ok" else { throw LBError.invalidResponse }
     }
 
+    /// Append one to one hundred canonical MusicBrainz recordings to a
+    /// playlist. ListenBrainz intentionally permits duplicate occurrences;
+    /// callers should inspect the playlist first when that matters to UX.
+    public func addPlaylistItems(mbid: UUID, recordingMBIDs: [UUID]) async throws {
+        guard (1 ... 100).contains(recordingMBIDs.count) else {
+            throw LBError.invalidParam
+        }
+        let response = try await apiClient.execute(
+            AddPlaylistItemsRequest(mbid: mbid, recordingMBIDs: recordingMBIDs)
+        )
+        guard response.status == "ok" else { throw LBError.invalidResponse }
+    }
+
     /// Get playlists created for the given user
     /// - Parameters:
     ///   - username: User the playlists are created for

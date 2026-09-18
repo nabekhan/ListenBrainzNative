@@ -114,6 +114,51 @@ import Testing
         #expect(mock.request == nil)
     }
 
+    @Test("Playlist append uses its exact JSPF endpoint and validates item limits")
+    func appendRequestBody() async throws {
+        let mock = MockAPIClient(result: .success(PlaylistMutationResponse(status: "ok")))
+        try await LBCoreClient(mock).addPlaylistItems(
+            mbid: playlistMBID,
+            recordingMBIDs: [firstRecordingMBID, secondRecordingMBID]
+        )
+        let request = try #require(mock.request as? AddPlaylistItemsRequest)
+        #expect(request.data.path == "/1/playlist/\(playlistMBID.uuidString)/item/add")
+        #expect(request.data.method == .post)
+        #expect(request.data.statusErrors == addStatusErrors)
+        let body = try #require(request.data.body)
+        let data = try JSONEncoder.ListenBrainz.encode(body)
+        let root = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let playlist = try #require(root["playlist"] as? [String: Any])
+        let tracks = try #require(playlist["track"] as? [[String: [String]]])
+        #expect(tracks.map { $0["identifier"] } == [
+            ["https://musicbrainz.org/recording/\(firstRecordingMBID.uuidString)"],
+            ["https://musicbrainz.org/recording/\(secondRecordingMBID.uuidString)"],
+        ])
+
+        let invalid = MockAPIClient(result: .failure(.unknownError))
+        await #expect(throws: LBError.invalidParam) {
+            try await LBCoreClient(invalid).addPlaylistItems(mbid: playlistMBID, recordingMBIDs: [])
+        }
+        #expect(invalid.request == nil)
+        await #expect(throws: LBError.invalidParam) {
+            try await LBCoreClient(invalid).addPlaylistItems(
+                mbid: playlistMBID,
+                recordingMBIDs: Array(repeating: firstRecordingMBID, count: 101)
+            )
+        }
+        #expect(invalid.request == nil)
+
+        let unexpectedStatus = MockAPIClient(result: .success(
+            PlaylistMutationResponse(status: "queued")
+        ))
+        await #expect(throws: LBError.invalidResponse) {
+            try await LBCoreClient(unexpectedStatus).addPlaylistItems(
+                mbid: playlistMBID,
+                recordingMBIDs: [firstRecordingMBID]
+            )
+        }
+    }
+
     private func playlistJSON(_ body: PlaylistMutationBody?) throws -> [String: Any] {
         let body = try #require(body)
         let data = try JSONEncoder.ListenBrainz.encode(body)
@@ -132,6 +177,12 @@ import Testing
         403: .forbidden,
     ]
     private let editStatusErrors: [Int: LBError] = [
+        400: .invalidJSON,
+        401: .invalidAuth,
+        403: .forbidden,
+        404: .notFound,
+    ]
+    private let addStatusErrors: [Int: LBError] = [
         400: .invalidJSON,
         401: .invalidAuth,
         403: .forbidden,

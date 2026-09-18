@@ -120,6 +120,35 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         XCTAssertEqual(stale.state(for: .owned).refreshMessage, FixtureError.offline.localizedDescription)
     }
 
+    func testRevokedAuthenticationPurgesExpiredPrivatePlaylistPages() async {
+        let cache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>(timeToLive: -1)
+        let key = ProfilePlaylistPageKey(
+            username: "listener",
+            accessScope: .authenticatedViewer("listener"),
+            category: .owned,
+            offset: 0,
+            count: 20
+        )
+        await cache.save(
+            makePage(category: .owned, offset: 0, total: 1, rows: [playlist("private")]),
+            for: key
+        )
+        let model = ProfilePlaylistsModel(
+            account: .init(username: "listener", token: "revoked-token"),
+            provider: AccessDeniedProfilePlaylistsProvider(),
+            cache: cache
+        )
+
+        await model.load(category: .owned)
+
+        XCTAssertTrue(model.state(for: .owned).playlists.isEmpty)
+        guard case .failed = model.state(for: .owned).phase else {
+            return XCTFail("Expected revoked authentication to clear stale destinations")
+        }
+        let cached = await cache.value(for: key)
+        XCTAssertNil(cached)
+    }
+
     func testFailedLoadMoreCanBeRetriedAtTheSameOffset() async {
         let provider = RetryingPlaylistProvider()
         let model = makeModel(provider: provider, pageSize: 2)
@@ -430,6 +459,17 @@ private actor PlaylistFixtureProvider: ProfilePlaylistsProviding {
         if shouldFail { throw FixtureError.offline }
         return pages[.init(category: category, offset: offset)]
             ?? ProfilePlaylistPage(username: username, category: category, playlists: [], requestedCount: count, offset: offset, totalCount: 0)
+    }
+}
+
+private struct AccessDeniedProfilePlaylistsProvider: ProfilePlaylistsProviding {
+    func page(
+        username: String,
+        category: ProfilePlaylistCategory,
+        offset: Int,
+        count: Int
+    ) async throws -> ProfilePlaylistPage {
+        throw ProfilePlaylistsProviderError.invalidAuthentication
     }
 }
 

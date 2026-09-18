@@ -23,7 +23,7 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 
 ## Planned tracked reuse
 
-- `Packages/ListenBrainzKit/`: upstream MPL-2.0 source at `c06b12f`, with reliability fixes and typed recommendation-read/feedback, social/feed-read/feed-mutation, detail, era/activity/evolution, Year in Music/report-art, popularity, and generated-radio extensions isolated into reviewable commits.
+- `Packages/ListenBrainzKit/`: upstream MPL-2.0 source at `c06b12f`, with reliability fixes and typed recommendation-read/feedback, social/feed-read/feed-mutation, detail, era/activity/evolution, Year in Music/report-art, popularity, generated-radio, and playlist-mutation extensions isolated into reviewable commits.
 - The personal-recommendation sheet adapts Cassette's general MPL-2.0 selection-sheet interaction (searchable full-row multi-select and toolbar commit state) using independently written app types and source; no Cassette file was copied.
 - The concrete release page independently implements the inspected Minidisc/Cassette album hierarchy and ordered-row behavior with app-owned types and components; no donor file was copied or adapted.
 - The listening-hours heatmap independently implements the inspected ListenBrainz behavior and Autohop-style period/heatmap interaction with app-owned SwiftUI; no donor file was copied or adapted.
@@ -35,6 +35,7 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 - `App/Features/Taste/YearInMusicArtworkSheet.swift` and its provider/model are independently written. The GPL website and Android client supplied behavior only; no source was copied. Rendering and export use Apple WebKit/CoreTransferable APIs.
 - The Profile playlist tabs independently implement API and official-client behavior with app-owned models and SwiftUI; no GPL official-client or donor UI source was copied.
 - Playlist creation/editing UI, state, caching, and provider code are independently written from current server/API and official-client behavior. The exact JSPF transport is a local MPL-2.0 ListenBrainzKit extension; no GPL server, Android, iOS, or web source was copied.
+- `App/Features/Playlist/PlaylistAddSheet.swift` is an MPL-covered adaptation of Minidisc's destination sheet and explicit duplicate-decision interaction from `AddToPlaylistSheet.swift`, `AddToPlaylistViewModel.swift`, and `PlaylistAppendIntent.swift` at commit `2072435702909a8ac313d7871ed7cf114a8e1012`. Its file header and `THIRD_PARTY.md` preserve the license/provenance; ListenBrainz-specific provider and reconciliation behavior is app-owned.
 - The LB Radio screen/provider independently implement the inspected server and website behavior with app-owned SwiftUI/domain types while reusing MPL ListenBrainzKit JSPF models and existing app playlist components. No GPL server, web, Android, or iOS source was copied.
-- App UI is original code informed by donor behavior except for the explicitly tracked Year in Music adaptation. Any future copied/adapted Cassette, Minidisc, first.fm, Autohop, Beans, Bòcan, or Finale file must be entered in `THIRD_PARTY.md` before merge.
+- App UI is original code informed by donor behavior except for the explicitly tracked Year in Music and playlist-add adaptations. Any future copied/adapted Cassette, Minidisc, first.fm, Autohop, Beans, Bòcan, or Finale file must be entered in `THIRD_PARTY.md` before merge.
 - GPL and unlicensed projects remain reference-only.

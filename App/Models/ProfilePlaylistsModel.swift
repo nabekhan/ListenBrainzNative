@@ -75,6 +75,21 @@ final class ProfilePlaylistsModel {
         states[category] ?? .init()
     }
 
+    /// Revoked authentication or playlist visibility must remove both cached
+    /// and currently rendered private destinations. Ordinary network failures
+    /// intentionally retain stale values instead.
+    func discardAccessSensitiveState(message: String) async {
+        requestIDs.removeAll()
+        requestedOffsets.removeAll()
+        for category in ProfilePlaylistCategory.allCases {
+            var cleared = ProfilePlaylistCategoryState()
+            cleared.phase = .failed(message)
+            states[category] = cleared
+            resumeLoadWaiters(category: category)
+        }
+        await cache.removeAll()
+    }
+
     /// Categories intentionally load independently so visiting a profile does
     /// not make an extra request for a tab that the user never opens.
     func load(category: ProfilePlaylistCategory) async {
@@ -245,6 +260,10 @@ final class ProfilePlaylistsModel {
             if !appending { resumeLoadWaiters(category: category) }
         } catch {
             guard requestIDs[category] == requestID else { return }
+            if PlaylistAccessFailurePolicy.requiresPurge(error) {
+                await discardAccessSensitiveState(message: error.localizedDescription)
+                return
+            }
             // A transient failure must not turn a valid next page into a
             // permanently visited offset; the UI can safely offer Retry.
             requestedOffsets[category, default: []].remove(offset)

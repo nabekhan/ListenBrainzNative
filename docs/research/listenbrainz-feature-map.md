@@ -47,7 +47,8 @@ Snapshot: 2026-09-18. `Y` means source/API evidence exists; `P` means partial or
 | Created For You/recommended playlists | Y | Y | Y | Y | Y | Y | P1 | Lazy native For You list uses server generator/expiry metadata and the shared playlist detail |
 | User/collaborator playlists | Y | Y | Y | Y | Y | Y | P1 | Native owned/collaborating Profile tabs landed with lazy server pagination, public browsing, and no row hydration |
 | Playlist detail/create/edit/delete | Y | Y | Y | P | P | Y | P2 | Native one-request detail, authenticated empty creation, and owner metadata/privacy editing landed; deletion remains staged |
-| Playlist add/remove/reorder/copy | Y | Y | Y | ? | — | Y | P2 | Stage after playlist detail |
+| Add recording to playlist | Y | Y | Y | ? | Y | Y | P2 | Native append-only mapped-recording flow landed for owned/collaborating destinations, with best-effort duplicate preflight and no mutation replay |
+| Playlist remove/reorder/copy | Y | Y | Y | ? | — | Y | P2 | Stage until position/concurrency and non-atomic move risks have a safe recovery design |
 | Playlist import/export/service sync | Y | Y | P | ? | — | P | P3 | Advanced feature |
 | LB Radio generation/tags/artist radio | Y | Y | P | — | Y | — | P2 | Native explicit recipe generation and playlist browsing landed; playback/content resolution remains separate |
 | BrainzPlayer queue/content resolution | Y | Y | Y | P | — | P | P2 | Keep modular; viewing is not blocked |

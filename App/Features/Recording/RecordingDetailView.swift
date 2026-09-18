@@ -9,6 +9,7 @@ struct RecordingDetailView: View {
     @State private var isPersonalRecommendationPresented = false
     @State private var didPresentRecommendationPreview = false
     @State private var pinBlurb = ""
+    @State private var isPlaylistAddPresented = false
 
     init(recording: Recording, model: ListeningModel) {
         self.recording = recording
@@ -66,6 +67,11 @@ struct RecordingDetailView: View {
         .sheet(isPresented: $isPersonalRecommendationPresented) {
             PersonalRecommendationSheet(model: shareModel)
         }
+        .sheet(isPresented: $isPlaylistAddPresented) {
+            if let mbid = recording.identity.mbid {
+                PlaylistAddSheet(account: model.account, recordingMBID: mbid)
+            }
+        }
         .alert(
             shareModel.notice?.kind == .confirmation ? "Recommendation Shared" : "Couldn’t Share Recommendation",
             isPresented: Binding(
@@ -95,6 +101,13 @@ struct RecordingDetailView: View {
     private var recommendationMenu: some View {
         Menu {
             Button {
+                isPlaylistAddPresented = true
+            } label: {
+                Label("Add to playlist", systemImage: "text.badge.plus")
+            }
+            .disabled(!canAddToPlaylist)
+
+            Button {
                 Task { await shareModel.recommendToFollowers() }
             } label: {
                 Label("Recommend to followers", systemImage: "paperplane.fill")
@@ -115,10 +128,12 @@ struct RecordingDetailView: View {
                 Image(systemName: "paperplane.circle")
             }
         }
-        .accessibilityLabel("Recommend recording")
-        .accessibilityHint(shareModel.canRecommend
-            ? "Share this recording through ListenBrainz"
-            : "Requires sign-in and a stable recording identifier")
+        .accessibilityLabel("Recording actions")
+        .accessibilityHint(
+            canAddToPlaylist || shareModel.canRecommend
+                ? "Add this recording to a playlist or share it through ListenBrainz"
+                : "Requires sign-in and a stable MusicBrainz recording identifier"
+        )
     }
 
     private var hero: some View {
@@ -154,6 +169,13 @@ struct RecordingDetailView: View {
                 }
             }
         }
+    }
+
+    private var canAddToPlaylist: Bool {
+        PlaylistAddSheetModel.canPresent(
+            account: model.account,
+            recordingMBID: recording.identity.mbid
+        )
     }
 
     private var feedbackControls: some View {

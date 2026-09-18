@@ -334,6 +334,32 @@ final class MediaDetailModelTests: XCTestCase {
         XCTAssertEqual(calls, [mbid])
     }
 
+    func testRevokedPlaylistAccessPurgesExpiredPrivateDetail() async {
+        let mbid = UUID()
+        let account = Account(username: "listener", token: "private-token")
+        let cache = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>(timeToLive: -1)
+        let key = PlaylistDetailCacheKey(mbid: mbid, accessScope: .init(account: account))
+        await cache.save(
+            playlistDetail(mbid: mbid, title: "Private cached title", isPublic: false),
+            for: key
+        )
+        let model = PlaylistDetailModel(
+            seed: playlistSeed(mbid: mbid),
+            account: account,
+            provider: MediaDetailFixtureProvider(error: MediaDetailError.playlistUnavailable),
+            cache: cache
+        )
+
+        await model.load()
+
+        XCTAssertNil(model.detail)
+        guard case .failed = model.phase else {
+            return XCTFail("Expected revoked access to remove stale private detail")
+        }
+        let cached = await cache.value(for: key)
+        XCTAssertNil(cached)
+    }
+
     func testConfirmedPrivateEditEvictsFormerPublicDetailBeforeTokenlessLoad() async {
         let mbid = UUID()
         let cache = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
