@@ -19,9 +19,10 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 | FastScrobbler | No license found | Do not copy | Behavior reference only |
 | Finale | BSD-3-Clause | Permitted selectively | Preserve BSD notice |
 | Discrobble | MIT | Permitted | Documentation/ADR reference only so far |
+| Spotify playback experiment | TBD pending exact repository identification | No code copied or dependency added | Separate branch only; audit license, Spotify Developer Terms, authentication, App Store eligibility, and maintenance before implementation |
 
 ## Planned tracked reuse
 
-- `Packages/ListenBrainzKit/`: upstream MPL-2.0 source at `c06b12f`, with reliability fixes and typed recommendation/social/detail extensions isolated into reviewable commits.
+- `Packages/ListenBrainzKit/`: upstream MPL-2.0 source at `c06b12f`, with reliability fixes and typed recommendation/social/feed-read/detail extensions isolated into reviewable commits.
 - App UI begins as original code informed by donor behavior. Any future copied/adapted Cassette, Minidisc, first.fm, Autohop, Beans, Bòcan, or Finale file must be entered in `THIRD_PARTY.md` before merge.
 - GPL and unlicensed projects remain reference-only.

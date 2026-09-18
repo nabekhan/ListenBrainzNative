@@ -12,6 +12,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Server-calculated listening-activity charts across seven ListenBrainz periods
 - Fresh Releases discovery with deliberate personalized and sitewide scopes
 - For You recording recommendations plus Daily/Weekly generated playlists
+- Music-first My Feed, Following, and Similar listening feeds with cached pagination
 - Native user search, visited-user profiles, followers/following, similar listeners, and compatibility
 - Pin history and owner pin actions; public playlist search and complete playlist detail
 - Recording feedback for authenticated users
@@ -55,6 +56,8 @@ This repository follows an inspect-first, reuse-first workflow. Start with:
 - `THIRD_PARTY.md`
 
 Temporary clones, installed tooling, and cleanup instructions are recorded in `docs/research/environment-changes.md`.
+
+Spotify-linked in-app playback through a libspot/librespot-family implementation is deliberately deferred until the core read experience is complete. If pursued, it will begin only on a separate branch after the exact project, license, Spotify policy, authentication, maintenance, and App Store implications are audited.
 
 ## License
 

@@ -28,7 +28,8 @@ struct MainTabView: View {
             .task { await model.load() }
             .onAppear {
                 #if DEBUG
-                if ProcessInfo.processInfo.arguments.contains("-brainz-open-recommendations") {
+                if ProcessInfo.processInfo.arguments.contains("-brainz-open-recommendations")
+                    || ProcessInfo.processInfo.arguments.contains("-brainz-open-feed") {
                     selectedTab = .discover
                 }
                 #endif

@@ -201,7 +201,7 @@ struct ListenBrainzProvider: ListeningProvider {
         }
     }
 
-    private static func map(_ metadata: LBTrackMetadata, msid: UUID?) -> Recording {
+    static func map(_ metadata: LBTrackMetadata, msid: UUID?) -> Recording {
         let mapped = metadata.mbidMapping
         let additional = metadata.additionalInfo
         return Recording(

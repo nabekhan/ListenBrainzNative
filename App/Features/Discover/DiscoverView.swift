@@ -4,6 +4,7 @@ struct DiscoverView: View {
     @State private var model: FreshReleasesModel
     @State private var isSearchPresented = false
     @State private var isRecommendationsPresented = false
+    @State private var isFeedPresented = false
     @Bindable var listeningModel: ListeningModel
     private let account: Account
     @AppStorage("discover.freshReleaseScope") private var scope: FreshReleaseScope = .forYou
@@ -20,6 +21,7 @@ struct DiscoverView: View {
                 LazyVStack(alignment: .leading, spacing: 22) {
                     header
                     recommendationsLink
+                    feedLink
                     scopePicker
                     content
                 }
@@ -52,6 +54,9 @@ struct DiscoverView: View {
                 if ProcessInfo.processInfo.arguments.contains("-brainz-open-recommendations") {
                     isRecommendationsPresented = true
                 }
+                if ProcessInfo.processInfo.arguments.contains("-brainz-open-feed") {
+                    isFeedPresented = true
+                }
                 #endif
             }
             .sheet(isPresented: $isSearchPresented) {
@@ -60,8 +65,52 @@ struct DiscoverView: View {
             .navigationDestination(isPresented: $isRecommendationsPresented) {
                 RecommendationsView(account: account, listeningModel: listeningModel)
             }
+            .navigationDestination(isPresented: $isFeedPresented) {
+                FeedView(account: account, listeningModel: listeningModel)
+            }
             .mediaDestinations(model: listeningModel)
         }
+    }
+
+    private var feedLink: some View {
+        NavigationLink {
+            FeedView(account: account, listeningModel: listeningModel)
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(AppTheme.artworkGradient(seed: "listening-network"))
+                    Image(systemName: "person.2.wave.2.fill")
+                        .font(.system(size: 27, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 72, height: 72)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Listening network")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text(account.isAuthenticated
+                        ? "Pins, recommendations, and recent plays from your music circle"
+                        : "Connect your token to open your private ListenBrainz feed")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: account.isAuthenticated ? "chevron.right" : "lock.fill")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(14)
+            .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(account.isAuthenticated
+            ? "Open your ListenBrainz activity and recent network listens"
+            : "Explains how to sign in for private feed access")
     }
 
     private var recommendationsLink: some View {

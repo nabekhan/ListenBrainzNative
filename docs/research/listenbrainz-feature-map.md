@@ -36,11 +36,11 @@ Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or
 | Similar users and compatibility | Y | Y | Y | Y | Y | Y | P1 | Native Social destination landed without row hydration |
 | Followers/following | Y | Y | Y | Y | Y | Y | P1 | Complete native lists; typed Kit extension |
 | Follow/unfollow | Y | Y | Y | ? | Y | Y | P1 | Optimistic serialized mutation with rollback |
-| Social feed/timeline | Y | Y | Y | Y | — | Y | P1 | Music/artwork-first feed |
-| Following/similar-user listen feeds | Y | Y | Y | Y | — | Y | P1 | Feed modes |
-| Recommend recording/personal blurb | Y | Y | Y | Y | — | Y | P1 | Contextual action |
+| Social feed/timeline | Y | Y | Y | Y | Y | Y | P1 | Native My Feed read surface; unknown event types survive and malformed nested metadata is tolerated |
+| Following/similar-user listen feeds | Y | Y | Y | Y | Y | Y | P1 | Separate modes; exact-oldest cursor, stable dedupe, and stable seven-day recent-window semantics |
+| Recommend recording/personal blurb | Y | Y | Y | Y | — | Y | P1 | Read/event presentation landed; action remains staged |
 | Reviews/CritiqueBrainz events | Y | Y | Y | Y | — | Y | P2 | Link/write where useful |
-| Thanks/hide/unhide/delete feed event | Y | Y | Y | P | — | Y | P2 | Secondary feed actions |
+| Thanks/hide/unhide/delete feed event | Y | Y | Y | P | — | Y | P2 | Read-only event presentation landed; mutations remain staged |
 | Collaborative-filter recommendations | Y | Y | Y | P | Y | P | P1 | Native For You tracks landed with paginated batch hydration; feedback remains staged |
 | Recommendation feedback | Y | Y | P | P | — | P | P1 | Train server recommendations |
 | Fresh Releases | Y | Y | P | P | Y | — | P1 | Native Discover grid; personalized default and explicit sitewide scope |
@@ -66,6 +66,7 @@ Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or
 
 - The website treats **Feed**, **Dashboard**, and **Explore** as its three main areas. User pages add Stats, Taste, Playlists, Recommendations, and Year in Music.
 - The server has grown well beyond basic top lists: artist/genre/era/evolution activity, current and legacy Year in Music, social thanks, art generation, playlist import/export, Fresh Releases, Music Neighborhood, and AI Brainz are current surfaces.
+- The aggregate social feed currently excludes ordinary listens. Following and Similar are separate listen-only recent feeds, so the native UI keeps those modes distinct instead of implying one unified event stream.
 - The iOS product should start with high-value read paths, then add mutations to the same entity screens. Android-only notification-listener scrobbling and foreground playback services have no direct public-iOS equivalent.
 - Public API calls were checked against real ListenBrainz data and include messy but useful identity fields: recording MSID, mapped MBIDs, multi-artist credits, Cover Art Archive IDs, service/source metadata, and external URL relations.
 
