@@ -178,6 +178,20 @@ public struct LBStatisticsClient: Sendable {
         return try await (execNoContent(request))?.payload
     }
 
+    /// Get a user's ListenBrainz Year in Music report.
+    /// - Parameters:
+    ///   - user: The user to get the report for.
+    ///   - year: The report year. Omit it to request ListenBrainz's current report.
+    /// - Returns: The report, or nil when ListenBrainz has not calculated it yet.
+    ///            Check ``LBYearInMusic/isAvailable`` because a successful response
+    ///            can contain an empty report.
+    /// - Throws: ``LBError/notFound`` when the user or requested year has no report.
+    public func yearInMusic(user: String, year: Int? = nil) async throws -> LBYearInMusic? {
+        let request = StatsYearInMusicRequest(user: user, year: year)
+
+        return try await (execNoContent(request))?.payload
+    }
+
     // Get a result which might get a 204: No Content response and treat it as a nil result
     private func execNoContent<T: APIRequest>(_ request: T) async throws -> T.Result? {
         do {

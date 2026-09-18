@@ -213,6 +213,138 @@ struct LBStatisticsTests {
         #expect(activity == nil)
     }
 
+    @Test("Year in Music decodes the current report with incomplete identifiers")
+    func deserializeYearInMusic() throws {
+        let response = try JSONDecoder.ListenBrainz.decode(
+            StatsYearInMusicRequest.Result.self,
+            from: Data("""
+            {
+              "payload": {
+                "user_name": "listener",
+                "year": 2025,
+                "data": {
+                  "day_of_week": "Monday",
+                  "total_listen_count": 20989,
+                  "total_listening_time": 4154743.722,
+                  "total_artists_count": 2059,
+                  "total_new_artists_discovered": 1227,
+                  "total_recordings_count": 12716,
+                  "total_release_groups_count": 1861,
+                  "listens_per_day": [
+                    { "from_ts": 1735689600, "to_ts": 1735775999, "time_range": "01 January 2025", "listen_count": 0 }
+                  ],
+                  "top_artists": [
+                    { "artist_mbid": null, "artist_name": "Unmapped Artist", "listen_count": 507 }
+                  ],
+                  "top_release_groups": [
+                    { "release_group_name": "A Release", "release_group_mbid": null, "artist_name": "Artist", "artist_mbids": [], "listen_count": 210, "caa_id": null }
+                  ],
+                  "top_recordings": [
+                    { "track_name": "A Track", "artist_name": "Artist", "listen_count": 55, "recording_mbid": null, "release_name": "A Release", "release_mbid": null, "caa_id": null, "artists": [] }
+                  ],
+                  "artist_evolution_activity": [
+                    { "artist_name": "Artist", "time_unit": 9, "listen_count": 7 }
+                  ],
+                  "genre_activity": [
+                    { "genre": "alternative pop", "hour": 21, "listen_count": 13 }
+                  ],
+                  "top_genres": [
+                    { "genre": "rock", "genre_count": 13483, "genre_count_percent": 6.02 }
+                  ],
+                  "similar_users": { "friend": 0.05 },
+                  "most_listened_year": { "1957": 2 },
+                  "artist_map": [
+                    { "country": "USA", "artist_count": 3, "listen_count": 920, "artists": [] }
+                  ],
+                  "new_releases_of_top_artists": [
+                    { "title": "New Release", "release_group_mbid": "not-a-uuid", "caa_id": 42, "artist_credit_mbids": ["also-not-a-uuid"] }
+                  ],
+                  "playlist-top-discoveries-for-year": {
+                    "title": "Top Discoveries", "creator": "listenbrainz", "date": "2025-01-01T00:00:00+00:00", "track": [
+                      { "title": "Discovery", "creator": "Artist", "duration": 180000, "identifier": ["https://musicbrainz.org/recording/example"] }
+                    ]
+                  }
+                }
+              }
+            }
+            """.utf8)
+        )
+
+        let report = response.payload
+        #expect(report.userName == "listener")
+        #expect(report.year == 2025)
+        #expect(report.isAvailable)
+        #expect(report.data.totalListenCount == 20989)
+        #expect(report.data.totalListeningTime == 4154743.722)
+        #expect(report.data.listensPerDay.first?.from == Date(timeIntervalSince1970: 1735689600))
+        #expect(report.data.topArtists.first?.mbid == nil)
+        #expect(report.data.topArtists.first?.name == "Unmapped Artist")
+        #expect(report.data.topReleaseGroups.first?.mbid == nil)
+        #expect(report.data.topRecordings.first?.recordingMBID == nil)
+        #expect(report.data.artistEvolutionActivity.first?.timeUnit == "9")
+        #expect(report.data.topGenres.first?.countPercent == 6.02)
+        #expect(report.data.similarUsers["friend"] == 0.05)
+        #expect(report.data.topDiscoveriesPlaylist?.date == "2025-01-01T00:00:00+00:00")
+        #expect(report.data.topDiscoveriesPlaylist?.tracks.first?.identifiers?.count == 1)
+    }
+
+    @Test("Year in Music accepts a partial or empty data object")
+    func deserializePartialAndEmptyYearInMusic() throws {
+        let partial = try JSONDecoder.ListenBrainz.decode(
+            StatsYearInMusicRequest.Result.self,
+            from: Data("""
+            { "payload": { "user_name": "listener", "year": 2025, "data": { "total_listen_count": 1 } } }
+            """.utf8)
+        ).payload
+        #expect(partial.isAvailable)
+        #expect(partial.data.totalListenCount == 1)
+        #expect(partial.data.topArtists.isEmpty)
+        #expect(partial.data.topRecordings.isEmpty)
+
+        let empty = try JSONDecoder.ListenBrainz.decode(
+            StatsYearInMusicRequest.Result.self,
+            from: Data("""
+            { "payload": { "user_name": "listener", "year": 2025, "data": {} } }
+            """.utf8)
+        ).payload
+        #expect(!empty.isAvailable)
+        #expect(empty.data.listensPerDay.isEmpty)
+        #expect(empty.data.topReleaseGroups.isEmpty)
+    }
+
+    @Test("Year in Music request uses optional year path and escaped user path")
+    func yearInMusicRequestSemantics() throws {
+        let current = StatsYearInMusicRequest(user: "test user", year: nil)
+        #expect(current.data.path == "/1/stats/user/test user/year-in-music")
+        #expect(current.data.queryItems.isEmpty)
+        #expect(current.data.statusErrors[204] == .noContent)
+        #expect(current.data.statusErrors[404] == .notFound)
+
+        let historical = StatsYearInMusicRequest(user: "listener", year: 2025)
+        #expect(historical.data.path == "/1/stats/user/listener/year-in-music/2025")
+
+        let apiClient = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+        let urlRequest = try apiClient.makeURLRequest(current)
+        #expect(urlRequest.url?.path == "/1/stats/user/test user/year-in-music")
+        #expect(urlRequest.url?.absoluteString.contains("test%20user") == true)
+    }
+
+    @Test("Year in Music maps no content to nil and preserves not found")
+    func yearInMusicErrors() async throws {
+        let noContentClient = LBStatisticsClient(MockAPIClient(result: .failure(.noContent)))
+        let report = try await noContentClient.yearInMusic(user: "listener", year: 2025)
+        #expect(report == nil)
+
+        let missingClient = LBStatisticsClient(MockAPIClient(result: .failure(.notFound)))
+        await #expect(throws: LBError.notFound) {
+            _ = try await missingClient.yearInMusic(user: "listener", year: 2025)
+        }
+    }
+
     @Test("Deserialize user artists")
     func deserializeUserArtists() async throws {
         let res = try JSONDecoder
