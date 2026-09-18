@@ -19,18 +19,42 @@ struct MainTabView: View {
     init(account: Account, session: SessionModel) {
         self.account = account
         _session = Bindable(wrappedValue: session)
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo") {
+            let visualAccount = Account(username: "visual-qa", token: "visual-qa")
+            _model = State(initialValue: ListeningModel(account: visualAccount))
+            _pins = State(initialValue: PinsModel(
+                account: visualAccount,
+                provider: VisualQAPinProvider()
+            ))
+            return
+        }
+        #endif
         _model = State(initialValue: ListeningModel(account: account))
         _pins = State(initialValue: PinsModel(account: account))
     }
 
     var body: some View {
         accessoryTabs
-            .task { await model.load() }
+            .task {
+                #if DEBUG
+                let arguments = ProcessInfo.processInfo.arguments
+                guard !arguments.contains("-brainz-recording-share-demo"),
+                      !arguments.contains("-brainz-feed-demo"),
+                      !arguments.contains("-brainz-recommendations-demo")
+                else { return }
+                #endif
+                await model.load()
+            }
             .onAppear {
                 #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("-brainz-open-recommendations")
                     || ProcessInfo.processInfo.arguments.contains("-brainz-open-feed") {
                     selectedTab = .discover
+                }
+                if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo"),
+                   presentedListen == nil {
+                    presentedListen = Self.recommendationPreviewListen
                 }
                 #endif
             }
@@ -39,6 +63,7 @@ struct MainTabView: View {
                 NavigationStack {
                     RecordingDetailView(recording: listen.recording, model: model)
                 }
+                .environment(pins)
             }
             .alert(
                 "ListenBrainz",
@@ -102,7 +127,45 @@ struct MainTabView: View {
             }
         }
     }
+
+    #if DEBUG
+    private static let recommendationPreviewListen = Listen(
+        recording: Recording(
+            identity: RecordingIdentity(
+                mbid: UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab"),
+                msid: nil
+            ),
+            title: "Dreams Tonite",
+            artistName: "Alvvays",
+            artistMBIDs: [],
+            releaseTitle: "Antisocialites",
+            releaseMBID: nil,
+            releaseGroupMBID: nil,
+            artworkReleaseMBID: nil,
+            durationMilliseconds: 196_000,
+            source: "ListenBrainz"
+        ),
+        listenedAt: .now,
+        insertedAt: .now,
+        isPlayingNow: false
+    )
+    #endif
 }
+
+#if DEBUG
+private struct VisualQAPinProvider: PinProviding {
+    func currentPin(username: String) async throws -> PinnedRecording? { nil }
+    func pin(_ recording: Recording, blurb: String?) async throws -> PinnedRecording {
+        throw PinProviderError.pinNeedsIdentifier
+    }
+    func pinHistory(username: String, count: Int, offset: Int) async throws -> (pins: [PinnedRecording], totalCount: Int) {
+        ([], 0)
+    }
+    func unpin() async throws {}
+    func updatePinBlurb(rowID: Int, blurb: String) async throws {}
+    func deletePin(rowID: Int) async throws {}
+}
+#endif
 
 private struct MiniListenBar: View {
     let listen: Listen

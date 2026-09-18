@@ -47,7 +47,7 @@ struct UserSocialView: View {
                 if dynamicTypeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 14) {
-                            ListenerMonogram(username: model.target.username, size: 58)
+                            UserAvatar(username: model.target.username, size: 58)
                             Text(model.target.username)
                                 .font(.title3.bold())
                                 .lineLimit(2)
@@ -59,7 +59,7 @@ struct UserSocialView: View {
                     }
                 } else {
                     HStack(spacing: 14) {
-                        ListenerMonogram(username: model.target.username, size: 58)
+                        UserAvatar(username: model.target.username, size: 58)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(model.target.username)
                                 .font(.title3.bold())
@@ -267,7 +267,7 @@ private struct ListenerRow: View {
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 12) {
-                        ListenerMonogram(username: user.username, size: 42)
+                        UserAvatar(username: user.username, size: 42)
                         Text(user.username)
                             .font(.body.weight(.semibold))
                             .lineLimit(2)
@@ -277,7 +277,7 @@ private struct ListenerRow: View {
                 }
             } else {
                 HStack(spacing: 12) {
-                    ListenerMonogram(username: user.username, size: 42)
+                    UserAvatar(username: user.username, size: 42)
                     Text(user.username)
                         .font(.body.weight(.semibold))
                         .lineLimit(1)
@@ -297,21 +297,5 @@ private struct ListenerRow: View {
                 .foregroundStyle(.secondary)
                 .accessibilityLabel("\(similarity.formatted(.percent)) similar")
         }
-    }
-}
-
-private struct ListenerMonogram: View {
-    let username: String
-    let size: CGFloat
-
-    var body: some View {
-        ZStack {
-            Circle().fill(AppTheme.artworkGradient(seed: username))
-            Text(username.prefix(1).uppercased())
-                .font(.system(size: size * 0.38, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-        }
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
     }
 }

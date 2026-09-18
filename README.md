@@ -12,10 +12,11 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Server-calculated listening-activity charts across seven ListenBrainz periods
 - Fresh Releases discovery with deliberate personalized and sitewide scopes
 - For You recording recommendations with native feedback, plus Daily/Weekly generated playlists
-- Music-first My Feed, Following, and Similar listening feeds with cached pagination
+- Music-first My Feed, Following, and Similar listening feeds with cached pagination, thanks, hide/unhide, and owner deletion
 - Native user search, visited-user profiles, followers/following, similar listeners, and compatibility
 - Pin history and owner pin actions; public playlist search and complete playlist detail
 - Recording feedback for authenticated users
+- Public and multi-recipient personal recording recommendations, with follower-only selection and optional 280-character notes
 - Cached snapshots for useful cold starts and degraded-network behavior
 - Native iPhone/iPad navigation, Dynamic Type, dark mode, VoiceOver labels, and an iOS 26 bottom accessory with an iOS 18 fallback
 

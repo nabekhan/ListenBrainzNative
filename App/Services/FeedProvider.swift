@@ -9,6 +9,28 @@ protocol FeedProviding: Sendable {
         minimumTimestamp: Date?,
         count: Int
     ) async throws -> FeedPage
+    func thank(username: String, eventType: String, eventID: Int, blurb: String?) async throws
+    func setHidden(username: String, eventType: String, eventID: Int, hidden: Bool) async throws
+    func deleteEvent(username: String, eventType: String, eventID: Int) async throws
+    func deletePin(rowID: Int) async throws
+}
+
+extension FeedProviding {
+    func thank(username: String, eventType: String, eventID: Int, blurb: String?) async throws {
+        throw FeedProviderError.actionUnavailable
+    }
+
+    func setHidden(username: String, eventType: String, eventID: Int, hidden: Bool) async throws {
+        throw FeedProviderError.actionUnavailable
+    }
+
+    func deleteEvent(username: String, eventType: String, eventID: Int) async throws {
+        throw FeedProviderError.actionUnavailable
+    }
+
+    func deletePin(rowID: Int) async throws {
+        throw FeedProviderError.actionUnavailable
+    }
 }
 
 protocol FeedTransport: Sendable {
@@ -19,6 +41,28 @@ protocol FeedTransport: Sendable {
         minimumTimestamp: Date?,
         count: Int
     ) async throws -> LBFeedPage
+    func thank(username: String, eventType: String, eventID: Int, blurb: String?) async throws
+    func setHidden(username: String, eventType: String, eventID: Int, hidden: Bool) async throws
+    func deleteEvent(username: String, eventType: String, eventID: Int) async throws
+    func deletePin(rowID: Int) async throws
+}
+
+extension FeedTransport {
+    func thank(username: String, eventType: String, eventID: Int, blurb: String?) async throws {
+        throw FeedProviderError.actionUnavailable
+    }
+
+    func setHidden(username: String, eventType: String, eventID: Int, hidden: Bool) async throws {
+        throw FeedProviderError.actionUnavailable
+    }
+
+    func deleteEvent(username: String, eventType: String, eventID: Int) async throws {
+        throw FeedProviderError.actionUnavailable
+    }
+
+    func deletePin(rowID: Int) async throws {
+        throw FeedProviderError.actionUnavailable
+    }
 }
 
 private struct LiveFeedTransport: FeedTransport {
@@ -54,6 +98,31 @@ private struct LiveFeedTransport: FeedTransport {
                 minTimestamp: minimumTimestamp
             )
         }
+    }
+
+    func thank(username: String, eventType: String, eventID: Int, blurb: String?) async throws {
+        _ = try await client.feed.thank(
+            username: username,
+            originalEventType: eventType,
+            originalEventID: eventID,
+            blurbContent: blurb
+        )
+    }
+
+    func setHidden(username: String, eventType: String, eventID: Int, hidden: Bool) async throws {
+        if hidden {
+            _ = try await client.feed.hideEvent(username: username, eventType: eventType, eventID: eventID)
+        } else {
+            _ = try await client.feed.unhideEvent(username: username, eventType: eventType, eventID: eventID)
+        }
+    }
+
+    func deleteEvent(username: String, eventType: String, eventID: Int) async throws {
+        _ = try await client.feed.deleteEvent(username: username, eventType: eventType, eventID: eventID)
+    }
+
+    func deletePin(rowID: Int) async throws {
+        _ = try await client.pins.delete(rowID: rowID)
     }
 }
 
@@ -96,6 +165,24 @@ struct ListenBrainzFeedProvider: FeedProviding {
         }
     }
 
+    func thank(username: String, eventType: String, eventID: Int, blurb: String?) async throws {
+        let note = blurb?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard note?.count ?? 0 <= 280 else { throw FeedProviderError.blurbTooLong }
+        try await performAction { try await transport.thank(username: username, eventType: eventType, eventID: eventID, blurb: note?.isEmpty == true ? nil : note) }
+    }
+
+    func setHidden(username: String, eventType: String, eventID: Int, hidden: Bool) async throws {
+        try await performAction { try await transport.setHidden(username: username, eventType: eventType, eventID: eventID, hidden: hidden) }
+    }
+
+    func deleteEvent(username: String, eventType: String, eventID: Int) async throws {
+        try await performAction { try await transport.deleteEvent(username: username, eventType: eventType, eventID: eventID) }
+    }
+
+    func deletePin(rowID: Int) async throws {
+        try await performAction { try await transport.deletePin(rowID: rowID) }
+    }
+
     private func perform<Result: Sendable>(
         _ operation: @escaping @Sendable () async throws -> Result
     ) async throws -> Result {
@@ -112,6 +199,26 @@ struct ListenBrainzFeedProvider: FeedProviding {
             throw FeedProviderError.invalidAuthentication
         } catch LBError.noToken {
             throw FeedProviderError.invalidAuthentication
+        }
+    }
+
+    private func performAction<Result: Sendable>(
+        _ operation: @escaping @Sendable () async throws -> Result
+    ) async throws -> Result {
+        do {
+            return try await gate.perform(operation) { error in
+                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
+        } catch let LBError.rateLimited(resetIn) {
+            throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
+        } catch LBError.invalidAuth {
+            throw FeedProviderError.invalidAuthentication
+        } catch LBError.noToken {
+            throw FeedProviderError.invalidAuthentication
+        } catch LBError.forbidden, LBError.badRequest, LBError.invalidParam,
+                LBError.notFound, LBError.invalidJSON {
+            throw FeedProviderError.actionRejected
         }
     }
 
@@ -156,8 +263,20 @@ struct ListenBrainzFeedProvider: FeedProviding {
 
 enum FeedProviderError: LocalizedError {
     case invalidAuthentication
+    case actionUnavailable
+    case actionRejected
+    case blurbTooLong
 
     var errorDescription: String? {
-        "Your ListenBrainz sign-in is no longer valid. Reconnect your token to open this private feed."
+        switch self {
+        case .invalidAuthentication:
+            "Your ListenBrainz sign-in is no longer valid. Reconnect your token to open this private feed."
+        case .actionUnavailable:
+            "This feed action is unavailable right now."
+        case .actionRejected:
+            "ListenBrainz couldn’t apply this action. It may no longer be available or permitted."
+        case .blurbTooLong:
+            "A thank-you note can be up to 280 characters."
+        }
     }
 }

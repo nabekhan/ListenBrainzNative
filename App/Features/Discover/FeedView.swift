@@ -16,7 +16,9 @@ struct FeedView: View {
         if arguments.contains("-brainz-feed-demo") {
             _model = State(initialValue: FeedModel(
                 account: Account(username: account.username, token: "visual-qa"),
-                provider: FeedPreviewProvider(),
+                provider: FeedPreviewProvider(
+                    prioritizesHiddenEvent: arguments.contains("-brainz-feed-hidden")
+                ),
                 cache: EntityDetailCache()
             ))
         } else {
@@ -53,6 +55,17 @@ struct FeedView: View {
         .refreshable { await model.refresh(mode: mode) }
         .task(id: mode) { await model.load(mode: mode) }
         .mediaDestinations(model: listeningModel)
+        .alert(
+            model.actionAlert?.kind == .confirmation ? "Thank you" : "Couldn’t update feed",
+            isPresented: Binding(
+                get: { model.actionAlert != nil },
+                set: { if !$0 { model.actionAlert = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { model.actionAlert = nil }
+        } message: {
+            Text(model.actionAlert?.message ?? "")
+        }
     }
 
     private var hero: some View {
@@ -174,7 +187,7 @@ struct FeedView: View {
                     .padding(.top, 4)
 
                 ForEach(group.events) { event in
-                    FeedEventCard(event: event, viewer: account)
+                    FeedEventCard(event: event, viewer: account, model: model, mode: mode)
                         .task {
                             guard event.id == state.events.last?.id else { return }
                             await model.loadMore(mode: mode)
@@ -290,7 +303,11 @@ private struct FeedDayGroup: Identifiable {
 private struct FeedEventCard: View {
     let event: FeedEvent
     let viewer: Account
+    let model: FeedModel
+    let mode: FeedMode
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var showsThanksEditor = false
+    @State private var pendingConfirmation: FeedCardConfirmation?
 
     var body: some View {
         Group {
@@ -307,13 +324,49 @@ private struct FeedEventCard: View {
         .padding(15)
         .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
         .accessibilityElement(children: .contain)
+        .sheet(isPresented: $showsThanksEditor) {
+            FeedThanksEditor(event: event, isSubmitting: model.isPending(event, in: mode)) { blurb in
+                Task {
+                    if await model.thank(event, in: mode, blurb: blurb) {
+                        showsThanksEditor = false
+                    }
+                }
+            }
+        }
+        .confirmationDialog(
+            pendingConfirmation?.title ?? "",
+            isPresented: Binding(
+                get: { pendingConfirmation != nil },
+                set: { if !$0 { pendingConfirmation = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let confirmation = pendingConfirmation {
+                Button(confirmation.buttonTitle, role: confirmation.isDestructive ? .destructive : nil) {
+                    Task {
+                        switch confirmation {
+                        case .hide: await model.setHidden(event, in: mode, hidden: true)
+                        case .unhide: await model.setHidden(event, in: mode, hidden: false)
+                        case .delete: await model.delete(event, in: mode)
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+        } message: {
+            Text(pendingConfirmation?.message ?? "")
+        }
     }
 
     @ViewBuilder
     private var header: some View {
         if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: 9) {
-                actorLink
+                HStack(alignment: .top, spacing: 8) {
+                    actorLink
+                    Spacer(minLength: 6)
+                    eventActions
+                }
                 timestamp
             }
         } else {
@@ -321,7 +374,52 @@ private struct FeedEventCard: View {
                 actorLink
                 Spacer(minLength: 8)
                 timestamp
+                eventActions
             }
+        }
+    }
+
+    @ViewBuilder
+    private var eventActions: some View {
+        if model.canThank(event, in: mode) || model.canHide(event, in: mode) || model.canDelete(event, in: mode) {
+            Menu {
+                if model.canThank(event, in: mode) {
+                    Button {
+                        showsThanksEditor = true
+                    } label: {
+                        Label(model.hasThanked(event, in: mode) ? "Thank sent" : "Say thanks", systemImage: "hands.sparkles.fill")
+                    }
+                    .disabled(model.hasThanked(event, in: mode) || model.isPending(event, in: mode))
+                }
+                if model.canHide(event, in: mode) {
+                    Button {
+                        pendingConfirmation = event.hidden ? .unhide : .hide
+                    } label: {
+                        Label(event.hidden ? "Unhide activity" : "Hide activity", systemImage: event.hidden ? "eye.fill" : "eye.slash.fill")
+                    }
+                    .disabled(model.isPending(event, in: mode))
+                }
+                if model.canDelete(event, in: mode) {
+                    Button(role: .destructive) {
+                        pendingConfirmation = .delete
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    .disabled(model.isPending(event, in: mode))
+                }
+            } label: {
+                Group {
+                    if model.isPending(event, in: mode) {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+                .frame(minWidth: 44, minHeight: 44)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(event.hidden ? "Actions for hidden activity" : "Actions for \(event.userName)’s activity")
+            .accessibilityHint("Say thanks, hide, or delete when available")
         }
     }
 
@@ -382,16 +480,20 @@ private struct FeedEventCard: View {
     }
 
     private var hiddenContent: some View {
-        Label {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Hidden activity").font(.subheadline.weight(.semibold))
-                Text("This event stays private because it was hidden on ListenBrainz.")
-                    .font(.caption)
+        HStack(alignment: .center, spacing: 12) {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Hidden activity").font(.subheadline.weight(.semibold))
+                    Text("This event stays private because it was hidden on ListenBrainz.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } icon: {
+                Image(systemName: "eye.slash.fill")
                     .foregroundStyle(.secondary)
             }
-        } icon: {
-            Image(systemName: "eye.slash.fill")
-                .foregroundStyle(.secondary)
+            Spacer(minLength: 4)
+            eventActions
         }
     }
 
@@ -596,8 +698,88 @@ private struct FeedEventCard: View {
     }
 }
 
+private enum FeedCardConfirmation: Identifiable, Equatable {
+    case hide
+    case unhide
+    case delete
+
+    var id: String { title }
+    var title: String {
+        switch self {
+        case .hide: "Hide this activity?"
+        case .unhide: "Show this activity again?"
+        case .delete: "Delete this activity?"
+        }
+    }
+    var message: String {
+        switch self {
+        case .hide: "This hides the activity from your ListenBrainz feed. You can restore it here later."
+        case .unhide: "This makes the activity visible in your ListenBrainz feed again."
+        case .delete: "This permanently removes your activity from ListenBrainz."
+        }
+    }
+    var buttonTitle: String {
+        switch self {
+        case .hide: "Hide Activity"
+        case .unhide: "Unhide Activity"
+        case .delete: "Delete"
+        }
+    }
+    var isDestructive: Bool { self == .hide || self == .delete }
+}
+
+private struct FeedThanksEditor: View {
+    let event: FeedEvent
+    let isSubmitting: Bool
+    let submit: (String?) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var blurb = ""
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Label("Thank \(event.userName)", systemImage: "hands.sparkles.fill")
+                    .font(.title3.weight(.bold))
+                Text("Send a small note about this \(subjectName).")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                TextEditor(text: $blurb)
+                    .frame(minHeight: 140)
+                    .padding(8)
+                    .background(.quaternary, in: .rect(cornerRadius: 12, style: .continuous))
+                    .accessibilityLabel("Thank-you note")
+                Text("\(blurb.count)/280")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(blurb.count > 280 ? .red : .secondary)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                Spacer()
+            }
+            .padding(20)
+            .navigationTitle("Say Thanks")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .disabled(isSubmitting)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Send") { submit(blurb.trimmingCharacters(in: .whitespacesAndNewlines)) }
+                        .disabled(isSubmitting || blurb.count > 280)
+                }
+            }
+        }
+        .interactiveDismissDisabled(isSubmitting)
+    }
+
+    private var subjectName: String {
+        event.kind == .recordingPin ? "pin" : "recommendation"
+    }
+}
+
 #if DEBUG
 private struct FeedPreviewProvider: FeedProviding {
+    let prioritizesHiddenEvent: Bool
+
     func page(
         username: String,
         mode: FeedMode,
@@ -660,7 +842,7 @@ private struct FeedPreviewProvider: FeedProviding {
                     id: 5,
                     kind: .recordingPin,
                     actor: "private-listener",
-                    created: now.addingTimeInterval(-30 * 60 * 60),
+                    created: now.addingTimeInterval(prioritizesHiddenEvent ? -2 * 60 : -30 * 60 * 60),
                     hidden: true
                 ),
             ]
@@ -669,7 +851,26 @@ private struct FeedPreviewProvider: FeedProviding {
         case .similar:
             events = networkListens(now: now, similar: true)
         }
-        return FeedPage(username: username, serverCount: events.count, events: Array(events.prefix(count)))
+        let orderedEvents = prioritizesHiddenEvent
+            ? events.filter(\.hidden) + events.filter { !$0.hidden }
+            : events
+        return FeedPage(username: username, serverCount: orderedEvents.count, events: Array(orderedEvents.prefix(count)))
+    }
+
+    func thank(username: String, eventType: String, eventID: Int, blurb: String?) async throws {
+        try await Task.sleep(for: .milliseconds(180))
+    }
+
+    func setHidden(username: String, eventType: String, eventID: Int, hidden: Bool) async throws {
+        try await Task.sleep(for: .milliseconds(180))
+    }
+
+    func deleteEvent(username: String, eventType: String, eventID: Int) async throws {
+        try await Task.sleep(for: .milliseconds(180))
+    }
+
+    func deletePin(rowID: Int) async throws {
+        try await Task.sleep(for: .milliseconds(180))
     }
 
     private func networkListens(now: Date, similar: Bool) -> [FeedEvent] {

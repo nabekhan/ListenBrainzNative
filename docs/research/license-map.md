@@ -23,6 +23,7 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 
 ## Planned tracked reuse
 
-- `Packages/ListenBrainzKit/`: upstream MPL-2.0 source at `c06b12f`, with reliability fixes and typed recommendation-read/feedback, social/feed-read, and detail extensions isolated into reviewable commits.
+- `Packages/ListenBrainzKit/`: upstream MPL-2.0 source at `c06b12f`, with reliability fixes and typed recommendation-read/feedback, social/feed-read/feed-mutation, and detail extensions isolated into reviewable commits.
+- The personal-recommendation sheet adapts Cassette's general MPL-2.0 selection-sheet interaction (searchable full-row multi-select and toolbar commit state) using independently written app types and source; no Cassette file was copied.
 - App UI begins as original code informed by donor behavior. Any future copied/adapted Cassette, Minidisc, first.fm, Autohop, Beans, Bòcan, or Finale file must be entered in `THIRD_PARTY.md` before merge.
 - GPL and unlicensed projects remain reference-only.

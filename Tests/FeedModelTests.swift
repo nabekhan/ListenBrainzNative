@@ -262,6 +262,146 @@ final class FeedModelTests: XCTestCase {
         XCTAssertNotNil(model.state(for: .activity).refreshMessage)
     }
 
+    func testMyFeedEligibilityIsLimitedToServerSupportedActions() async {
+        let model = FeedModel(account: .init(username: "listener", token: "token"), cache: EntityDetailCache())
+        let foreignRecommendation = FeedEvent.fixture(position: 1, created: 200, kind: .recordingRecommendation, serverID: 4)
+        let ownRecommendation = FeedEvent.fixture(position: 2, created: 200, userName: "Listener", kind: .recordingRecommendation, serverID: 5)
+        let foreignReview = FeedEvent.fixture(position: 3, created: 200, kind: .critiquebrainzReview, serverID: 6)
+        let foreignListen = FeedEvent.fixture(position: 4, created: 200, kind: .listen, serverID: 7)
+        let ownPin = FeedEvent.fixture(position: 5, created: 200, userName: "listener", kind: .recordingPin, serverID: 8)
+        let hiddenRecommendation = FeedEvent.fixture(position: 6, created: 200, kind: .recordingRecommendation, serverID: 9, hidden: true)
+        let ownNotification = FeedEvent.fixture(position: 7, created: 200, userName: "listener", kind: .notification, serverID: 10)
+        let foreignNotification = FeedEvent.fixture(position: 8, created: 200, kind: .notification, serverID: 11)
+
+        XCTAssertTrue(model.canThank(foreignRecommendation, in: .activity))
+        XCTAssertFalse(model.canThank(ownRecommendation, in: .activity))
+        XCTAssertFalse(model.canThank(foreignReview, in: .activity))
+        XCTAssertFalse(model.canThank(hiddenRecommendation, in: .activity))
+        XCTAssertTrue(model.canHide(foreignReview, in: .activity))
+        XCTAssertFalse(model.canHide(foreignListen, in: .activity))
+        XCTAssertTrue(model.canHide(ownNotification, in: .activity))
+        XCTAssertFalse(model.canHide(foreignNotification, in: .activity))
+        XCTAssertTrue(model.canDelete(ownRecommendation, in: .activity))
+        XCTAssertTrue(model.canDelete(ownPin, in: .activity))
+        XCTAssertFalse(model.canDelete(ownPin, in: .following))
+    }
+
+    func testThankMarksExistingCardWithoutRefreshing() async {
+        let event = FeedEvent.fixture(position: 1, created: 200, kind: .recordingRecommendation, serverID: 4)
+        let provider = FeedMutationFixtureProvider(page: .init(username: "listener", serverCount: 1, events: [event]))
+        let model = FeedModel(account: .init(username: "listener", token: "token"), provider: provider, cache: EntityDetailCache(), activityPageSize: 2)
+        await model.load(mode: .activity)
+
+        let succeeded = await model.thank(event, in: .activity, blurb: "Lovely pick")
+
+        XCTAssertTrue(succeeded)
+        XCTAssertEqual(model.state(for: .activity).events.count, 1)
+        XCTAssertTrue(model.hasThanked(event, in: .activity))
+        XCTAssertEqual(model.actionAlert?.kind, .confirmation)
+        let operations = await provider.operations
+        let pageCalls = await provider.pageCalls
+        XCTAssertEqual(operations, [.thank(4, "Lovely pick")])
+        XCTAssertEqual(pageCalls, 1)
+    }
+
+    func testThankFailureReturnsFalseAndDoesNotMarkCard() async {
+        let event = FeedEvent.fixture(position: 1, created: 200, kind: .recordingRecommendation, serverID: 4)
+        let provider = FeedMutationFixtureProvider(
+            page: .init(username: "listener", serverCount: 1, events: [event]),
+            mutationError: FeedFixtureError.failed
+        )
+        let model = FeedModel(account: .init(username: "listener", token: "token"), provider: provider, cache: EntityDetailCache(), activityPageSize: 2)
+        await model.load(mode: .activity)
+
+        let succeeded = await model.thank(event, in: .activity, blurb: nil)
+
+        XCTAssertFalse(succeeded)
+        XCTAssertFalse(model.hasThanked(event, in: .activity))
+        XCTAssertEqual(model.actionAlert?.kind, .error)
+    }
+
+    func testHideFailureRestoresEventByStableIdentity() async {
+        let event = FeedEvent.fixture(position: 1, created: 200, kind: .recordingPin, serverID: 4)
+        let provider = FeedMutationFixtureProvider(page: .init(username: "listener", serverCount: 1, events: [event]), mutationError: FeedFixtureError.failed)
+        let model = FeedModel(account: .init(username: "listener", token: "token"), provider: provider, cache: EntityDetailCache(), activityPageSize: 2)
+        await model.load(mode: .activity)
+
+        await model.setHidden(event, in: .activity, hidden: true)
+
+        XCTAssertEqual(model.state(for: .activity).events.first?.id, event.id)
+        XCTAssertFalse(model.state(for: .activity).events.first?.hidden ?? true)
+        XCTAssertEqual(model.actionAlert?.kind, .error)
+    }
+
+    func testOwnNotificationHideSucceedsAndInvalidatesCachedFeed() async {
+        let event = FeedEvent.fixture(position: 1, created: 200, userName: "listener", kind: .notification, serverID: 4)
+        let page = FeedPage(username: "listener", serverCount: 1, events: [event])
+        let provider = FeedMutationFixtureProvider(page: page)
+        let cache = EntityDetailCache<FeedPageKey, FeedPage>()
+        let model = FeedModel(account: .init(username: "listener", token: "token"), provider: provider, cache: cache, activityPageSize: 2)
+        await model.load(mode: .activity)
+        let cacheKey = FeedPageKey(username: "listener", mode: .activity, beforeTimestamp: nil, count: 2)
+        await cache.save(page, for: cacheKey)
+
+        await model.setHidden(event, in: .activity, hidden: true)
+
+        XCTAssertEqual(model.state(for: .activity).events.first?.hidden, true)
+        let operations = await provider.operations
+        XCTAssertEqual(operations, [.hidden(4, true)])
+        let cached = await cache.value(for: cacheKey)
+        XCTAssertNil(cached)
+    }
+
+    func testOwnPinDeletionUsesDedicatedRouteAndRollsBackOnFailure() async {
+        let event = FeedEvent.fixture(position: 1, created: 200, userName: "listener", kind: .recordingPin, serverID: 12)
+        let provider = FeedMutationFixtureProvider(page: .init(username: "listener", serverCount: 1, events: [event]), mutationError: FeedFixtureError.failed)
+        let model = FeedModel(account: .init(username: "listener", token: "token"), provider: provider, cache: EntityDetailCache(), activityPageSize: 2)
+        await model.load(mode: .activity)
+
+        await model.delete(event, in: .activity)
+
+        XCTAssertEqual(model.state(for: .activity).events.map(\.id), [event.id])
+        let operations = await provider.operations
+        XCTAssertEqual(operations, [.deletePin(12)])
+    }
+
+    func testOwnedRecommendationDeletionSucceedsAndInvalidatesCachedFeed() async {
+        let event = FeedEvent.fixture(position: 1, created: 200, userName: "listener", kind: .recordingRecommendation, serverID: 12)
+        let neighbor = FeedEvent.fixture(position: 2, created: 199, kind: .recordingPin, serverID: 13)
+        let page = FeedPage(username: "listener", serverCount: 2, events: [event, neighbor])
+        let provider = FeedMutationFixtureProvider(page: page)
+        let cache = EntityDetailCache<FeedPageKey, FeedPage>()
+        let model = FeedModel(account: .init(username: "listener", token: "token"), provider: provider, cache: cache, activityPageSize: 2)
+        await model.load(mode: .activity)
+        let cacheKey = FeedPageKey(username: "listener", mode: .activity, beforeTimestamp: nil, count: 2)
+        await cache.save(page, for: cacheKey)
+
+        await model.delete(event, in: .activity)
+
+        XCTAssertEqual(model.state(for: .activity).events.map(\.id), [neighbor.id])
+        let operations = await provider.operations
+        XCTAssertEqual(operations, [.deleteEvent(12)])
+        let cached = await cache.value(for: cacheKey)
+        XCTAssertNil(cached)
+    }
+
+    func testDuplicateActionTapsSerializePerStableEvent() async {
+        let event = FeedEvent.fixture(position: 1, created: 200, kind: .recordingRecommendation, serverID: 4)
+        let provider = FeedMutationFixtureProvider(
+            page: .init(username: "listener", serverCount: 1, events: [event]),
+            delaysMutations: true
+        )
+        let model = FeedModel(account: .init(username: "listener", token: "token"), provider: provider, cache: EntityDetailCache(), activityPageSize: 2)
+        await model.load(mode: .activity)
+
+        async let first: Bool = model.thank(event, in: .activity, blurb: nil)
+        async let second: Bool = model.thank(event, in: .activity, blurb: nil)
+        _ = await (first, second)
+
+        let operations = await provider.operations
+        XCTAssertEqual(operations, [.thank(4, nil)])
+    }
+
     private func page(mode: FeedMode, position: Int, count: Int, created: TimeInterval = 200) -> FeedPage {
         .init(
             username: "listener",
@@ -312,6 +452,53 @@ private actor FeedFixtureProvider: FeedProviding {
     }
 }
 
+private actor FeedMutationFixtureProvider: FeedProviding {
+    enum Operation: Equatable, Sendable {
+        case thank(Int, String?)
+        case hidden(Int, Bool)
+        case deleteEvent(Int)
+        case deletePin(Int)
+    }
+
+    let pageValue: FeedPage
+    let mutationError: Error?
+    let delaysMutations: Bool
+    private(set) var pageCalls = 0
+    private(set) var operations: [Operation] = []
+
+    init(page: FeedPage, mutationError: Error? = nil, delaysMutations: Bool = false) {
+        pageValue = page
+        self.mutationError = mutationError
+        self.delaysMutations = delaysMutations
+    }
+
+    func page(username: String, mode: FeedMode, before: Date?, minimumTimestamp: Date?, count: Int) async throws -> FeedPage {
+        pageCalls += 1
+        return pageValue
+    }
+
+    func thank(username: String, eventType: String, eventID: Int, blurb: String?) async throws {
+        operations.append(.thank(eventID, blurb))
+        if delaysMutations { try await Task.sleep(for: .milliseconds(50)) }
+        if let mutationError { throw mutationError }
+    }
+
+    func setHidden(username: String, eventType: String, eventID: Int, hidden: Bool) async throws {
+        operations.append(.hidden(eventID, hidden))
+        if let mutationError { throw mutationError }
+    }
+
+    func deleteEvent(username: String, eventType: String, eventID: Int) async throws {
+        operations.append(.deleteEvent(eventID))
+        if let mutationError { throw mutationError }
+    }
+
+    func deletePin(rowID: Int) async throws {
+        operations.append(.deletePin(rowID))
+        if let mutationError { throw mutationError }
+    }
+}
+
 private enum FeedFixtureError: LocalizedError { case failed }
 
 private actor FeedTransportSpy: FeedTransport {
@@ -338,7 +525,10 @@ private extension FeedEvent {
     static func fixture(
         position: Int,
         created: TimeInterval,
-        userName: String = "friend"
+        userName: String = "friend",
+        kind: FeedEventKind = .listen,
+        serverID: Int? = nil,
+        hidden: Bool = false
     ) -> FeedEvent {
         let recording = Recording(
             identity: .init(mbid: UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", position + 1)), msid: nil),
@@ -353,11 +543,11 @@ private extension FeedEvent {
             source: nil
         )
         return FeedEvent(
-            serverID: nil,
-            kind: .listen,
+            serverID: serverID,
+            kind: kind,
             userName: userName,
             created: .init(timeIntervalSince1970: created),
-            hidden: false,
+            hidden: hidden,
             similarity: nil,
             recording: recording,
             blurb: nil,

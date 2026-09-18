@@ -26,6 +26,21 @@ struct FeedModeState: Equatable {
     var isLoadingMore = false
     var loadMoreError: String?
     var refreshMessage: String?
+    var pendingEventIDs: Set<String> = []
+    var thankedEventIDs: Set<String> = []
+}
+
+struct FeedActionAlert: Identifiable {
+    enum Kind: Equatable { case confirmation, error }
+    let kind: Kind
+    let message: String
+    let id = UUID()
+}
+
+private struct RemovedFeedEvent {
+    let event: FeedEvent
+    let previousID: String?
+    let nextID: String?
 }
 
 enum FeedCaches {
@@ -52,6 +67,7 @@ final class FeedModel {
 
     private var requestIDs: [FeedMode: UUID] = [:]
     private var minimumTimestamps: [FeedMode: Date] = [:]
+    var actionAlert: FeedActionAlert?
 
     init(
         account: Account,
@@ -116,6 +132,84 @@ final class FeedModel {
             states[mode] = state
         }
         await fetch(mode: mode, before: before, force: false, appending: true)
+    }
+
+    func canThank(_ event: FeedEvent, in mode: FeedMode) -> Bool {
+        mode == .activity && !event.hidden && !isOwner(event) && event.supportsThank
+    }
+
+    func canHide(_ event: FeedEvent, in mode: FeedMode) -> Bool {
+        guard mode == .activity, event.supportsHide else { return false }
+        if event.kind == .notification { return isOwner(event) }
+        return !isOwner(event)
+    }
+
+    func canDelete(_ event: FeedEvent, in mode: FeedMode) -> Bool {
+        mode == .activity && isOwner(event) && (event.supportsGenericDelete || event.supportsPinDelete)
+    }
+
+    func isPending(_ event: FeedEvent, in mode: FeedMode) -> Bool {
+        state(for: mode).pendingEventIDs.contains(event.id)
+    }
+
+    func hasThanked(_ event: FeedEvent, in mode: FeedMode) -> Bool {
+        state(for: mode).thankedEventIDs.contains(event.id)
+    }
+
+    @discardableResult
+    func thank(_ event: FeedEvent, in mode: FeedMode, blurb: String?) async -> Bool {
+        guard canThank(event, in: mode), let serverID = event.serverID,
+              beginAction(event, in: mode)
+        else { return false }
+        defer { endAction(event, in: mode) }
+        do {
+            try await provider.thank(username: account.username, eventType: event.kind.rawValue, eventID: serverID, blurb: blurb)
+            if eventStillExists(event, in: mode) {
+                var state = state(for: mode)
+                state.thankedEventIDs.insert(event.id)
+                states[mode] = state
+            }
+            actionAlert = .init(kind: .confirmation, message: "Thank-you sent.")
+            await cache.removeAll()
+            return true
+        } catch {
+            actionAlert = .init(kind: .error, message: error.localizedDescription)
+            return false
+        }
+    }
+
+    func setHidden(_ event: FeedEvent, in mode: FeedMode, hidden: Bool) async {
+        guard canHide(event, in: mode), let serverID = event.serverID,
+              beginAction(event, in: mode)
+        else { return }
+        setHiddenLocally(event, in: mode, hidden: hidden)
+        defer { endAction(event, in: mode) }
+        do {
+            try await provider.setHidden(username: account.username, eventType: event.kind.rawValue, eventID: serverID, hidden: hidden)
+            await cache.removeAll()
+        } catch {
+            setHiddenLocally(event, in: mode, hidden: !hidden)
+            actionAlert = .init(kind: .error, message: error.localizedDescription)
+        }
+    }
+
+    func delete(_ event: FeedEvent, in mode: FeedMode) async {
+        guard canDelete(event, in: mode), let serverID = event.serverID,
+              beginAction(event, in: mode)
+        else { return }
+        let removed = removeLocally(event, in: mode)
+        defer { endAction(event, in: mode) }
+        do {
+            if event.supportsPinDelete {
+                try await provider.deletePin(rowID: serverID)
+            } else {
+                try await provider.deleteEvent(username: account.username, eventType: event.kind.rawValue, eventID: serverID)
+            }
+            await cache.removeAll()
+        } catch {
+            restore(removed, in: mode)
+            actionAlert = .init(kind: .error, message: error.localizedDescription)
+        }
     }
 
     private func fetch(
@@ -255,6 +349,90 @@ final class FeedModel {
         state.hasMore = false
         state.isLoadingMore = false
         states[mode] = state
+    }
+
+    private func beginAction(_ event: FeedEvent, in mode: FeedMode) -> Bool {
+        var state = state(for: mode)
+        guard !state.pendingEventIDs.contains(event.id) else { return false }
+        state.pendingEventIDs.insert(event.id)
+        states[mode] = state
+        return true
+    }
+
+    private func endAction(_ event: FeedEvent, in mode: FeedMode) {
+        var state = state(for: mode)
+        state.pendingEventIDs.remove(event.id)
+        states[mode] = state
+    }
+
+    private func eventStillExists(_ event: FeedEvent, in mode: FeedMode) -> Bool {
+        state(for: mode).events.contains { $0.id == event.id }
+    }
+
+    private func setHiddenLocally(_ event: FeedEvent, in mode: FeedMode, hidden: Bool) {
+        var state = state(for: mode)
+        guard let index = state.events.firstIndex(where: { $0.id == event.id }) else { return }
+        let current = state.events[index]
+        state.events[index] = FeedEvent(
+            serverID: current.serverID,
+            kind: current.kind,
+            userName: current.userName,
+            created: current.created,
+            hidden: hidden,
+            similarity: current.similarity,
+            recording: current.recording,
+            blurb: current.blurb,
+            users: current.users,
+            userName0: current.userName0,
+            userName1: current.userName1,
+            relationshipType: current.relationshipType,
+            message: current.message,
+            entityName: current.entityName,
+            entityID: current.entityID,
+            entityType: current.entityType,
+            rating: current.rating,
+            text: current.text,
+            reviewMBID: current.reviewMBID,
+            originalEventID: current.originalEventID,
+            originalEventType: current.originalEventType,
+            thankerUsername: current.thankerUsername,
+            thankeeUsername: current.thankeeUsername
+        )
+        states[mode] = state
+    }
+
+    @discardableResult
+    private func removeLocally(_ event: FeedEvent, in mode: FeedMode) -> RemovedFeedEvent? {
+        var state = state(for: mode)
+        guard let index = state.events.firstIndex(where: { $0.id == event.id }) else { return nil }
+        let removed = RemovedFeedEvent(
+            event: state.events[index],
+            previousID: index > 0 ? state.events[index - 1].id : nil,
+            nextID: index + 1 < state.events.count ? state.events[index + 1].id : nil
+        )
+        state.events.remove(at: index)
+        states[mode] = state
+        return removed
+    }
+
+    private func restore(_ removed: RemovedFeedEvent?, in mode: FeedMode) {
+        guard let removed else { return }
+        var state = state(for: mode)
+        guard !state.events.contains(where: { $0.id == removed.event.id }) else { return }
+        if let next = removed.nextID,
+           let nextIndex = state.events.firstIndex(where: { $0.id == next }) {
+            state.events.insert(removed.event, at: nextIndex)
+        } else if let previous = removed.previousID,
+                  let previousIndex = state.events.firstIndex(where: { $0.id == previous }) {
+            state.events.insert(removed.event, at: previousIndex + 1)
+        } else {
+            state.events.append(removed.event)
+        }
+        states[mode] = state
+    }
+
+    private func isOwner(_ event: FeedEvent) -> Bool {
+        Self.normalized(event.userName) == Self.normalized(account.username)
     }
 
     private static func normalized(_ value: String) -> String {

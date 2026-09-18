@@ -4,8 +4,29 @@ struct RecordingDetailView: View {
     let recording: Recording
     @Bindable var model: ListeningModel
     @Environment(PinsModel.self) private var pins
+    @State private var shareModel: RecordingShareModel
     @State private var isPinEditorPresented = false
+    @State private var isPersonalRecommendationPresented = false
+    @State private var didPresentRecommendationPreview = false
     @State private var pinBlurb = ""
+
+    init(recording: Recording, model: ListeningModel) {
+        self.recording = recording
+        _model = Bindable(wrappedValue: model)
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo") {
+            _shareModel = State(initialValue: RecordingShareModel(
+                account: Account(username: "visual-qa", token: "visual-qa"),
+                recording: recording,
+                provider: RecordingSharePreviewProvider(),
+                socialCache: UserSocialCache(),
+                feedCache: EntityDetailCache()
+            ))
+            return
+        }
+        #endif
+        _shareModel = State(initialValue: RecordingShareModel(account: model.account, recording: recording))
+    }
 
     var body: some View {
         ScrollView {
@@ -28,7 +49,37 @@ struct RecordingDetailView: View {
         .navigationTitle(recording.title)
         .navigationBarTitleDisplayMode(.inline)
         .task { await pins.load() }
+        .onAppear {
+            #if DEBUG
+            guard ProcessInfo.processInfo.arguments.contains("-brainz-open-personal-recommendation"),
+                  !didPresentRecommendationPreview
+            else { return }
+            didPresentRecommendationPreview = true
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(500))
+                shareModel.preparePersonalRecommendation()
+                isPersonalRecommendationPresented = true
+            }
+            #endif
+        }
+        .sheet(isPresented: $isPersonalRecommendationPresented) {
+            PersonalRecommendationSheet(model: shareModel)
+        }
+        .alert(
+            shareModel.notice?.kind == .confirmation ? "Recommendation Shared" : "Couldn’t Share Recommendation",
+            isPresented: Binding(
+                get: { !isPersonalRecommendationPresented && shareModel.notice != nil },
+                set: { if !$0 { shareModel.dismissNotice() } }
+            )
+        ) {
+            Button("OK", role: .cancel) { shareModel.dismissNotice() }
+        } message: {
+            Text(shareModel.notice?.message ?? "")
+        }
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                recommendationMenu
+            }
             if let mbid = recording.identity.mbid {
                 ToolbarItem(placement: .topBarTrailing) {
                     Link(destination: URL(string: "https://musicbrainz.org/recording/\(mbid.uuidString)")!) {
@@ -38,6 +89,35 @@ struct RecordingDetailView: View {
                 }
             }
         }
+    }
+
+    private var recommendationMenu: some View {
+        Menu {
+            Button {
+                Task { await shareModel.recommendToFollowers() }
+            } label: {
+                Label("Recommend to followers", systemImage: "paperplane.fill")
+            }
+            .disabled(!shareModel.canRecommend || shareModel.isSubmitting)
+
+            Button {
+                shareModel.preparePersonalRecommendation()
+                isPersonalRecommendationPresented = true
+            } label: {
+                Label("Recommend personally", systemImage: "person.crop.circle.badge.plus")
+            }
+            .disabled(!shareModel.canRecommend || shareModel.isSubmitting)
+        } label: {
+            if shareModel.isSubmitting {
+                ProgressView()
+            } else {
+                Image(systemName: "paperplane.circle")
+            }
+        }
+        .accessibilityLabel("Recommend recording")
+        .accessibilityHint(shareModel.canRecommend
+            ? "Share this recording through ListenBrainz"
+            : "Requires sign-in and a stable recording identifier")
     }
 
     private var hero: some View {

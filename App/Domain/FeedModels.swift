@@ -112,6 +112,36 @@ struct FeedEvent: Identifiable, Hashable, Sendable {
     }
 }
 
+extension FeedEvent {
+    /// The timeline endpoint returns a stable event row ID separately from the
+    /// app's display identity. Never use `id` in a server mutation.
+    var supportsThank: Bool {
+        guard serverID != nil else { return false }
+        return kind == .recordingRecommendation
+            || kind == .personalRecordingRecommendation
+            || kind == .recordingPin
+    }
+
+    var supportsHide: Bool {
+        guard serverID != nil else { return false }
+        return kind == .recordingRecommendation
+            || kind == .personalRecordingRecommendation
+            || kind == .recordingPin
+            || kind == .thanks
+            || kind == .notification
+            || kind == .critiquebrainzReview
+    }
+
+    var supportsGenericDelete: Bool {
+        guard serverID != nil else { return false }
+        return kind == .recordingRecommendation
+            || kind == .personalRecordingRecommendation
+            || kind == .notification
+    }
+
+    var supportsPinDelete: Bool { serverID != nil && kind == .recordingPin }
+}
+
 struct FeedPage: Hashable, Sendable {
     let username: String
     let serverCount: Int
