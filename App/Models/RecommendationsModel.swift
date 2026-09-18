@@ -39,6 +39,8 @@ final class RecommendationsModel {
 
     private(set) var recommendations: [RecommendedRecording] = []
     private(set) var playlists: [SearchPlaylist] = []
+    private(set) var recommendationFeedback: [String: RecommendationRating] = [:]
+    private(set) var pendingRecommendationFeedback: Set<String> = []
     private(set) var recordingPhase: RecommendationsPhase = .idle
     private(set) var playlistPhase: RecommendationsPhase = .idle
     private(set) var lastUpdated: Date?
@@ -48,6 +50,7 @@ final class RecommendationsModel {
     private(set) var loadMoreError: String?
     private(set) var recordingRefreshMessage: String?
     private(set) var playlistRefreshMessage: String?
+    var feedbackActionError: String?
 
     private var recordingRequestID = UUID()
     private var playlistRequestID = UUID()
@@ -68,6 +71,14 @@ final class RecommendationsModel {
 
     var hasMoreRecommendations: Bool {
         nextOffset < totalCount
+    }
+
+    func feedback(for recommendation: RecommendedRecording) -> RecommendationRating? {
+        recommendationFeedback[recommendation.id]
+    }
+
+    func isUpdatingFeedback(for recommendation: RecommendedRecording) -> Bool {
+        pendingRecommendationFeedback.contains(recommendation.id)
     }
 
     func loadRecommendations() async {
@@ -111,6 +122,34 @@ final class RecommendationsModel {
         await fetchPlaylists(force: true)
     }
 
+    func setFeedback(
+        _ rating: RecommendationRating,
+        for recommendation: RecommendedRecording
+    ) async {
+        guard account.isAuthenticated else {
+            feedbackActionError = "Sign in with a token to tune your recommendations."
+            return
+        }
+        guard let mbid = recommendation.recording.identity.mbid else {
+            feedbackActionError = "ListenBrainz needs a MusicBrainz recording ID before it can save recommendation feedback."
+            return
+        }
+        guard pendingRecommendationFeedback.insert(recommendation.id).inserted else { return }
+
+        let previous = recommendationFeedback[recommendation.id]
+        let updated: RecommendationRating? = previous == rating ? nil : rating
+        recommendationFeedback[recommendation.id] = updated
+        feedbackActionError = nil
+        defer { pendingRecommendationFeedback.remove(recommendation.id) }
+
+        do {
+            try await provider.setRecommendationFeedback(updated, recordingMBID: mbid)
+        } catch {
+            recommendationFeedback[recommendation.id] = previous
+            feedbackActionError = error.localizedDescription
+        }
+    }
+
     private func loadRecommendationPage(
         offset: Int,
         force: Bool,
@@ -126,6 +165,7 @@ final class RecommendationsModel {
             apply(cached.value, appending: appending)
             if cached.isFresh {
                 recordingPhase = .ready
+                await loadFeedback(for: cached.value.recommendations)
                 return
             }
         }
@@ -161,6 +201,7 @@ final class RecommendationsModel {
             loadMoreError = nil
             recordingPhase = .ready
             await recordingCache.save(page, for: key)
+            await loadFeedback(for: page.recommendations)
         } catch is CancellationError {
             guard recordingRequestID == requestID else { return }
             recordingPhase = recommendations.isEmpty ? .idle : .ready
@@ -188,6 +229,29 @@ final class RecommendationsModel {
         totalCount = page.totalCount
         nextOffset = max(nextOffset, page.nextOffset)
         if !appending { nextOffset = page.nextOffset }
+    }
+
+    private func loadFeedback(for values: [RecommendedRecording]) async {
+        guard account.isAuthenticated else { return }
+        let identified = values.compactMap { recommendation -> (String, UUID)? in
+            guard let mbid = recommendation.recording.identity.mbid else { return nil }
+            return (recommendation.id, mbid)
+        }
+        guard !identified.isEmpty else { return }
+
+        do {
+            let loaded = try await provider.recommendationFeedback(
+                username: account.username,
+                recordingMBIDs: identified.map { $0.1 }
+            )
+            try Task.checkCancellation()
+            for (id, mbid) in identified where !pendingRecommendationFeedback.contains(id) {
+                recommendationFeedback[id] = loaded[mbid]
+            }
+        } catch {
+            // Recommendations remain useful when the optional feedback state
+            // cannot be refreshed. A mutation will still report its own error.
+        }
     }
 
     private func fetchPlaylists(force: Bool) async {

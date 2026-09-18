@@ -160,6 +160,15 @@ enum RecordingFeedback: Int, Sendable {
     case love = 1
 }
 
+/// Feedback that trains ListenBrainz recommendations. This is intentionally
+/// distinct from the recording-level Love/Hate state above.
+enum RecommendationRating: String, CaseIterable, Hashable, Sendable {
+    case hate
+    case dislike
+    case like
+    case love
+}
+
 enum ListeningActivityPeriod: String, CaseIterable, Identifiable, Sendable {
     case thisWeek
     case thisMonth

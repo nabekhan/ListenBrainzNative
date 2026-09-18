@@ -42,7 +42,7 @@ Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or
 | Reviews/CritiqueBrainz events | Y | Y | Y | Y | — | Y | P2 | Link/write where useful |
 | Thanks/hide/unhide/delete feed event | Y | Y | Y | P | — | Y | P2 | Read-only event presentation landed; mutations remain staged |
 | Collaborative-filter recommendations | Y | Y | Y | P | Y | P | P1 | Native For You tracks landed with paginated batch hydration; feedback remains staged |
-| Recommendation feedback | Y | Y | P | P | — | P | P1 | Train server recommendations |
+| Recommendation feedback | Y | Y | P | P | Y | P | P1 | Native Hate/Dislike/Like/Love control with batched state reads, tap-again clear, optimistic rollback, and pending-action serialization |
 | Fresh Releases | Y | Y | P | P | Y | — | P1 | Native Discover grid; personalized default and explicit sitewide scope |
 | Created For You/recommended playlists | Y | Y | Y | Y | Y | Y | P1 | Lazy native For You list uses server generator/expiry metadata and the shared playlist detail |
 | User/collaborator playlists | Y | Y | Y | Y | P | Y | P1 | Browse before edit |

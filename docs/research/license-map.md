@@ -23,6 +23,6 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 
 ## Planned tracked reuse
 
-- `Packages/ListenBrainzKit/`: upstream MPL-2.0 source at `c06b12f`, with reliability fixes and typed recommendation/social/feed-read/detail extensions isolated into reviewable commits.
+- `Packages/ListenBrainzKit/`: upstream MPL-2.0 source at `c06b12f`, with reliability fixes and typed recommendation-read/feedback, social/feed-read, and detail extensions isolated into reviewable commits.
 - App UI begins as original code informed by donor behavior. Any future copied/adapted Cassette, Minidisc, first.fm, Autohop, Beans, Bòcan, or Finale file must be entered in `THIRD_PARTY.md` before merge.
 - GPL and unlicensed projects remain reference-only.

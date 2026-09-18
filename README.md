@@ -11,7 +11,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Listen count and top artist, album, and recording rankings
 - Server-calculated listening-activity charts across seven ListenBrainz periods
 - Fresh Releases discovery with deliberate personalized and sitewide scopes
-- For You recording recommendations plus Daily/Weekly generated playlists
+- For You recording recommendations with native feedback, plus Daily/Weekly generated playlists
 - Music-first My Feed, Following, and Similar listening feeds with cached pagination
 - Native user search, visited-user profiles, followers/following, similar listeners, and compatibility
 - Pin history and owner pin actions; public playlist search and complete playlist detail

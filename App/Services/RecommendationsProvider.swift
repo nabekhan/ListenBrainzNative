@@ -8,6 +8,16 @@ protocol RecommendationsProviding: Sendable {
         count: Int
     ) async throws -> RecordingRecommendationPage?
 
+    func recommendationFeedback(
+        username: String,
+        recordingMBIDs: [UUID]
+    ) async throws -> [UUID: RecommendationRating]
+
+    func setRecommendationFeedback(
+        _ rating: RecommendationRating?,
+        recordingMBID: UUID
+    ) async throws
+
     func recommendationPlaylists(username: String) async throws -> [SearchPlaylist]
 }
 
@@ -19,6 +29,17 @@ protocol RecommendationsTransport: Sendable {
     ) async throws -> LBRecordingRecommendations?
 
     func recordingMetadata(mbids: [UUID]) async throws -> [UUID: LBRecording]
+    func recommendationFeedback(
+        username: String,
+        recordingMBIDs: [UUID]
+    ) async throws -> LBRecommendationFeedbackBatch
+    func submitRecommendationFeedback(
+        recordingMBID: UUID,
+        rating: LBRecommendationFeedbackRating
+    ) async throws -> LBRecommendationFeedbackStatus
+    func clearRecommendationFeedback(
+        recordingMBID: UUID
+    ) async throws -> LBRecommendationFeedbackStatus
     func recommendationPlaylists(username: String) async throws -> [LBPlaylistMetadata]
 }
 
@@ -42,6 +63,32 @@ private struct LiveRecommendationsTransport: RecommendationsTransport {
             mbids: mbids,
             including: [LBMetaInclusion.artist, .release]
         )
+    }
+
+    func recommendationFeedback(
+        username: String,
+        recordingMBIDs: [UUID]
+    ) async throws -> LBRecommendationFeedbackBatch {
+        try await client.recommendations.feedback(
+            user: username,
+            recordingMBIDs: recordingMBIDs
+        )
+    }
+
+    func submitRecommendationFeedback(
+        recordingMBID: UUID,
+        rating: LBRecommendationFeedbackRating
+    ) async throws -> LBRecommendationFeedbackStatus {
+        try await client.recommendations.submitFeedback(
+            recordingMBID: recordingMBID,
+            rating: rating
+        )
+    }
+
+    func clearRecommendationFeedback(
+        recordingMBID: UUID
+    ) async throws -> LBRecommendationFeedbackStatus {
+        try await client.recommendations.clearFeedback(recordingMBID: recordingMBID)
     }
 
     func recommendationPlaylists(username: String) async throws -> [LBPlaylistMetadata] {
@@ -98,6 +145,46 @@ struct ListenBrainzRecommendationsProvider: RecommendationsProviding {
         return Self.map(source, recommendations: recommendations)
     }
 
+    func recommendationFeedback(
+        username: String,
+        recordingMBIDs: [UUID]
+    ) async throws -> [UUID: RecommendationRating] {
+        guard !recordingMBIDs.isEmpty else { return [:] }
+        var feedback: [UUID: RecommendationRating] = [:]
+        for start in stride(from: 0, to: recordingMBIDs.count, by: 75) {
+            let end = min(start + 75, recordingMBIDs.count)
+            let source = try await perform {
+                try await transport.recommendationFeedback(
+                    username: username,
+                    recordingMBIDs: Array(recordingMBIDs[start ..< end])
+                )
+            }
+            for item in source.feedback {
+                guard let rating = Self.map(item.rating) else { continue }
+                feedback[item.recordingMBID] = rating
+            }
+        }
+        return feedback
+    }
+
+    func setRecommendationFeedback(
+        _ rating: RecommendationRating?,
+        recordingMBID: UUID
+    ) async throws {
+        let status = try await perform {
+            if let rating {
+                return try await transport.submitRecommendationFeedback(
+                    recordingMBID: recordingMBID,
+                    rating: Self.map(rating)
+                )
+            }
+            return try await transport.clearRecommendationFeedback(recordingMBID: recordingMBID)
+        }
+        guard status.status.lowercased() == "ok" else {
+            throw RecommendationsProviderError.invalidMutationResponse
+        }
+    }
+
     func recommendationPlaylists(username: String) async throws -> [SearchPlaylist] {
         try await perform {
             try await transport.recommendationPlaylists(username: username).map {
@@ -139,6 +226,31 @@ struct ListenBrainzRecommendationsProvider: RecommendationsProviding {
             }
         } catch let LBError.rateLimited(resetIn) {
             throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
+        } catch LBError.invalidAuth {
+            throw RecommendationsProviderError.invalidAuthentication
+        } catch LBError.forbidden {
+            throw RecommendationsProviderError.invalidAuthentication
+        } catch LBError.noToken {
+            throw RecommendationsProviderError.invalidAuthentication
+        }
+    }
+
+    private static func map(_ source: LBRecommendationFeedbackRating) -> RecommendationRating? {
+        switch source {
+        case .hate: .hate
+        case .dislike: .dislike
+        case .like: .like
+        case .love: .love
+        case .badRecommendation: nil
+        }
+    }
+
+    private static func map(_ source: RecommendationRating) -> LBRecommendationFeedbackRating {
+        switch source {
+        case .hate: .hate
+        case .dislike: .dislike
+        case .like: .like
+        case .love: .love
         }
     }
 
@@ -171,5 +283,19 @@ struct ListenBrainzRecommendationsProvider: RecommendationsProviding {
         guard let value else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+enum RecommendationsProviderError: LocalizedError {
+    case invalidAuthentication
+    case invalidMutationResponse
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidAuthentication:
+            "Your ListenBrainz sign-in is no longer valid. Reconnect your token to tune recommendations."
+        case .invalidMutationResponse:
+            "ListenBrainz did not confirm the recommendation update."
+        }
     }
 }

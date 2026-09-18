@@ -13,16 +13,29 @@ struct RecommendationsView: View {
     @Bindable var listeningModel: ListeningModel
     @State private var model: RecommendationsModel
     @State private var selection: Section = .tracks
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(account: Account, listeningModel: ListeningModel) {
         self.account = account
         _listeningModel = Bindable(wrappedValue: listeningModel)
-        _model = State(initialValue: RecommendationsModel(account: account))
         #if DEBUG
-        let initialSelection: Section = ProcessInfo.processInfo.arguments.contains(
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-brainz-recommendations-demo") {
+            _model = State(initialValue: RecommendationsModel(
+                account: Account(username: "visual-qa", token: "visual-qa"),
+                provider: RecommendationsPreviewProvider(),
+                recordingCache: EntityDetailCache(),
+                playlistCache: EntityDetailCache()
+            ))
+        } else {
+            _model = State(initialValue: RecommendationsModel(account: account))
+        }
+        let initialSelection: Section = arguments.contains(
             "-brainz-open-recommendation-playlists"
         ) ? .playlists : .tracks
         _selection = State(initialValue: initialSelection)
+        #else
+        _model = State(initialValue: RecommendationsModel(account: account))
         #endif
     }
 
@@ -46,7 +59,7 @@ struct RecommendationsView: View {
             .padding(.bottom, 44)
         }
         .navigationTitle("For You")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(dynamicTypeSize.isAccessibilitySize ? .inline : .large)
         .refreshable {
             switch selection {
             case .tracks: await model.refreshRecommendations()
@@ -60,15 +73,28 @@ struct RecommendationsView: View {
             }
         }
         .mediaDestinations(model: listeningModel)
+        .alert(
+            "Couldn’t update recommendation feedback",
+            isPresented: Binding(
+                get: { model.feedbackActionError != nil },
+                set: { if !$0 { model.feedbackActionError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { model.feedbackActionError = nil }
+        } message: {
+            Text(model.feedbackActionError ?? "")
+        }
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 9) {
             Label("Made from your listening history", systemImage: "wand.and.stars")
-                .font(.headline)
+                .font((dynamicTypeSize.isAccessibilitySize ? Font.caption : .headline).weight(.semibold))
                 .foregroundStyle(AppTheme.accent)
-            Text("Recommendations and generated playlists from ListenBrainz, with the music—not the algorithm—front and center.")
-                .font(.subheadline)
+            Text(dynamicTypeSize.isAccessibilitySize
+                ? "Tracks and playlists shaped by your ListenBrainz history."
+                : "Recommendations and generated playlists from ListenBrainz, with the music—not the algorithm—front and center.")
+                .font(dynamicTypeSize.isAccessibilitySize ? .footnote : .subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -118,12 +144,34 @@ struct RecommendationsView: View {
                 inlineWarning(message) { await model.refreshRecommendations() }
             }
 
+            if !model.account.isAuthenticated {
+                Label(
+                    "Sign in with a token to tune these recommendations.",
+                    systemImage: "lock.fill"
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
+            }
+
             LazyVStack(spacing: 0) {
                 ForEach(model.recommendations) { recommendation in
-                    NavigationLink(value: recommendation.recording) {
-                        RecommendationRow(recommendation: recommendation)
+                    VStack(spacing: 0) {
+                        NavigationLink(value: recommendation.recording) {
+                            RecommendationRow(recommendation: recommendation)
+                        }
+                        .buttonStyle(.plain)
+
+                        if model.account.isAuthenticated {
+                            Divider().padding(.leading, 66)
+                            RecommendationFeedbackControl(
+                                selected: model.feedback(for: recommendation),
+                                isUpdating: model.isUpdatingFeedback(for: recommendation)
+                            ) { rating in
+                                Task { await model.setFeedback(rating, for: recommendation) }
+                            }
+                        }
                     }
-                    .buttonStyle(.plain)
                     .task {
                         guard recommendation.id == model.recommendations.last?.id else { return }
                         await model.loadMoreRecommendations()
@@ -300,6 +348,112 @@ private struct RecommendationRow: View {
     }
 }
 
+private struct RecommendationFeedbackControl: View {
+    let selected: RecommendationRating?
+    let isUpdating: Bool
+    let action: (RecommendationRating) -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 7) {
+                    status
+                    choices.frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                HStack(spacing: 8) {
+                    status
+                    Spacer(minLength: 4)
+                    choices
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+    }
+
+    private var status: some View {
+        HStack(spacing: 7) {
+            if isUpdating {
+                ProgressView().controlSize(.small)
+            }
+            Text(selected?.confirmationTitle ?? "Tune this pick")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(selected == nil ? Color.secondary : Color.primary)
+                .lineLimit(2)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var choices: some View {
+        HStack(spacing: 0) {
+            ForEach(RecommendationRating.allCases, id: \.self) { rating in
+                let isSelected = selected == rating
+                Button {
+                    action(rating)
+                } label: {
+                    Image(systemName: rating.systemImage)
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 36, height: 34)
+                        .foregroundStyle(isSelected ? Color.white : Color.secondary)
+                        .background(
+                            isSelected ? rating.tint : Color.secondary.opacity(0.09),
+                            in: .capsule
+                        )
+                        .padding(.horizontal, 3)
+                        .padding(.vertical, 5)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .disabled(isUpdating)
+                .accessibilityLabel("\(rating.title) this recommendation")
+                .accessibilityValue(isSelected ? "Selected" : "Not selected")
+                .accessibilityHint(isSelected ? "Double tap to clear" : "Double tap to save")
+            }
+        }
+    }
+}
+
+private extension RecommendationRating {
+    var title: String {
+        switch self {
+        case .hate: "Hate"
+        case .dislike: "Dislike"
+        case .like: "Like"
+        case .love: "Love"
+        }
+    }
+
+    var confirmationTitle: String {
+        switch self {
+        case .hate: "Marked as hated"
+        case .dislike: "Marked as disliked"
+        case .like: "Marked as liked"
+        case .love: "Marked as loved"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .hate: "hand.thumbsdown.fill"
+        case .dislike: "hand.thumbsdown"
+        case .like: "hand.thumbsup"
+        case .love: "heart.fill"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .hate: .red
+        case .dislike: .orange
+        case .like: AppTheme.accent
+        case .love: .pink
+        }
+    }
+}
+
 private struct RecommendationPlaylistCard: View {
     let playlist: SearchPlaylist
 
@@ -370,3 +524,103 @@ private struct RecommendationPlaylistCard: View {
         return "By \(playlist.creator)"
     }
 }
+
+#if DEBUG
+private actor RecommendationsPreviewProvider: RecommendationsProviding {
+    private let values: [RecommendedRecording]
+    private var feedback: [UUID: RecommendationRating]
+
+    init() {
+        let first = Self.recording(
+            mbid: "526bd613-fddd-4bd6-9137-ab709ac74cab",
+            title: "Midnight City",
+            artist: "M83",
+            release: "Hurry Up, We’re Dreaming",
+            score: 9.84,
+            lastListenedAt: nil
+        )
+        let second = Self.recording(
+            mbid: "a6081bc1-2a76-4984-b21f-38bc3dcca3a5",
+            title: "A Very Long Song Title That Still Needs Room to Breathe",
+            artist: "The Listening Historians",
+            release: "Signals from the Archive",
+            score: 8.72,
+            lastListenedAt: Date.now.addingTimeInterval(-21 * 24 * 60 * 60)
+        )
+        let third = Self.recording(
+            mbid: "2fb127aa-3181-4f36-8a7d-d59f66e85360",
+            title: "Everything in Its Right Place",
+            artist: "Radiohead",
+            release: "Kid A",
+            score: 8.31,
+            lastListenedAt: Date.now.addingTimeInterval(-180 * 24 * 60 * 60)
+        )
+        values = [first, second, third]
+        feedback = [
+            first.recording.identity.mbid!: .love,
+            second.recording.identity.mbid!: .dislike,
+        ]
+    }
+
+    func recordingRecommendations(
+        username: String,
+        offset: Int,
+        count: Int
+    ) async throws -> RecordingRecommendationPage? {
+        let page = Array(values.dropFirst(offset).prefix(count))
+        return RecordingRecommendationPage(
+            username: username,
+            lastUpdated: .now.addingTimeInterval(-45 * 60),
+            offset: offset,
+            serverCount: page.count,
+            totalCount: values.count,
+            recommendations: page
+        )
+    }
+
+    func recommendationFeedback(
+        username: String,
+        recordingMBIDs: [UUID]
+    ) async throws -> [UUID: RecommendationRating] {
+        feedback.filter { recordingMBIDs.contains($0.key) }
+    }
+
+    func setRecommendationFeedback(
+        _ rating: RecommendationRating?,
+        recordingMBID: UUID
+    ) async throws {
+        try await Task.sleep(for: .milliseconds(350))
+        feedback[recordingMBID] = rating
+    }
+
+    func recommendationPlaylists(username: String) async throws -> [SearchPlaylist] {
+        []
+    }
+
+    private static func recording(
+        mbid: String,
+        title: String,
+        artist: String,
+        release: String,
+        score: Double,
+        lastListenedAt: Date?
+    ) -> RecommendedRecording {
+        RecommendedRecording(
+            recording: Recording(
+                identity: .init(mbid: UUID(uuidString: mbid), msid: nil),
+                title: title,
+                artistName: artist,
+                artistMBIDs: [],
+                releaseTitle: release,
+                releaseMBID: nil,
+                releaseGroupMBID: nil,
+                artworkReleaseMBID: nil,
+                durationMilliseconds: nil,
+                source: nil
+            ),
+            score: score,
+            lastListenedAt: lastListenedAt
+        )
+    }
+}
+#endif

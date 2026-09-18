@@ -147,36 +147,36 @@ Running integration tests requires setting a ListenBrainz token in the environme
   - [x] POST /1/feedback/user/(user_name)/get-feedback-for-recordings
   - [ ] POST /1/feedback/import
   - Pinned Recording API
-    - [ ] POST /1/pin
-    - [ ] POST /1/pin/unpin
-    - [ ] POST /1/pin/delete/(row_id)
-    - [ ] GET  /1/(user_name)/pins
+    - [x] POST /1/pin
+    - [x] POST /1/pin/unpin
+    - [x] POST /1/pin/delete/(row_id)
+    - [x] GET  /1/(user_name)/pins
     - [ ] GET  /1/(user_name)/pins/following
-    - [ ] GET  /1/(user_name)/pins/current
-    - [ ] POST /1/pin/update/(row_id)
+    - [x] GET  /1/(user_name)/pins/current
+    - [x] POST /1/pin/update/(row_id)
 - Social
   - [ ] POST /1/user/(user_name)/timeline-event/create/recording
   - [ ] POST /1/user/(user_name)/timeline-event/create/notification
   - [ ] POST /1/user/(user_name)/timeline-event/create/review
-  - [ ] GET  /1/user/(user_name)/feed/events
-  - [ ] GET  /1/user/(user_name)/feed/events/listens/following
-  - [ ] GET  /1/user/(user_name)/feed/events/listens/similar
+  - [x] GET  /1/user/(user_name)/feed/events
+  - [x] GET  /1/user/(user_name)/feed/events/listens/following
+  - [x] GET  /1/user/(user_name)/feed/events/listens/similar
   - [ ] POST /1/user/(user_name)/feed/events/delete
   - [ ] POST /1/user/(user_name)/feed/events/hide
   - [ ] POST /1/user/(user_name)/feed/events/unhide
   - [ ] POST /1/user/(user_name)/timeline-event/create/recommend-personal
   - Follow API
-    - [ ] GET  /1/user/(user_name)/followers
-    - [ ] GET  /1/user/(user_name)/following
-    - [ ] POST /1/user/(user_name)/follow
-    - [ ] POST /1/user/(user_name)/unfollow
+    - [x] GET  /1/user/(user_name)/followers
+    - [x] GET  /1/user/(user_name)/following
+    - [x] POST /1/user/(user_name)/follow
+    - [x] POST /1/user/(user_name)/unfollow
 - Recommendations
-  - [ ] GET  /1/cf/recommendation/user/(user_name)/recording
+  - [x] GET  /1/cf/recommendation/user/(user_name)/recording
   - Feedback
-    - [ ] POST /1/recommendation/feedback/submit
-    - [ ] POST /1/recommendation/feedback/delete
-    - [ ] GET  /1/recommendation/feedback/user/(user_name)
-    - [ ] GET  /1/recommendation/feedback/user/(user_name)/recordings
+    - [x] POST /1/recommendation/feedback/submit
+    - [x] POST /1/recommendation/feedback/delete
+    - [x] GET  /1/recommendation/feedback/user/(user_name)
+    - [x] GET  /1/recommendation/feedback/user/(user_name)/recordings
 - Art
   - [ ] POST /1/art/grid/
   - [ ] GET  /1/art/grid-stats/(user_name)/(time_range)/(int: dimension)/(int: layout)/(int: image_size)
@@ -184,7 +184,7 @@ Running integration tests requires setting a ListenBrainz token in the environme
   - [ ] GET  /1/art/year-in-music/(int: year)/(user_name)
 - Misc
   - Explore
-    - [ ] GET  /1/explore/fresh-releases/
+    - [x] GET  /1/explore/fresh-releases/
     - [ ] GET  /1/explore/color/(color)
     - [ ] GET  /1/explore/lb-radio
   - Status
