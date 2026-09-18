@@ -155,16 +155,17 @@ Running integration tests requires setting a ListenBrainz token in the environme
     - [x] GET  /1/(user_name)/pins/current
     - [x] POST /1/pin/update/(row_id)
 - Social
-  - [ ] POST /1/user/(user_name)/timeline-event/create/recording
+  - [x] POST /1/user/(user_name)/timeline-event/create/recording
   - [ ] POST /1/user/(user_name)/timeline-event/create/notification
   - [ ] POST /1/user/(user_name)/timeline-event/create/review
   - [x] GET  /1/user/(user_name)/feed/events
   - [x] GET  /1/user/(user_name)/feed/events/listens/following
   - [x] GET  /1/user/(user_name)/feed/events/listens/similar
-  - [ ] POST /1/user/(user_name)/feed/events/delete
-  - [ ] POST /1/user/(user_name)/feed/events/hide
-  - [ ] POST /1/user/(user_name)/feed/events/unhide
-  - [ ] POST /1/user/(user_name)/timeline-event/create/recommend-personal
+  - [x] POST /1/user/(user_name)/feed/events/delete
+  - [x] POST /1/user/(user_name)/feed/events/hide
+  - [x] POST /1/user/(user_name)/feed/events/unhide
+  - [x] POST /1/user/(user_name)/timeline-event/create/recommend-personal
+  - [x] POST /1/user/(user_name)/timeline-event/create/thanks
   - Follow API
     - [x] GET  /1/user/(user_name)/followers
     - [x] GET  /1/user/(user_name)/following

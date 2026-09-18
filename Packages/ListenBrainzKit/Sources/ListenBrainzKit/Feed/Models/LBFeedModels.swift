@@ -4,6 +4,44 @@
 
 import Foundation
 
+/// The status object returned by supported social-feed mutations.
+public struct LBFeedStatusResponse: Decodable, Equatable, Sendable {
+    public let status: String
+}
+
+/// A timeline event returned immediately after a recording recommendation is created.
+///
+/// This is intentionally distinct from ``LBFeedEvent``: creation endpoints return
+/// a database timeline row, where `user_name` and `created` may be absent and
+/// `hidden` is not included.
+public struct LBFeedCreatedEvent: Decodable, Equatable, Sendable {
+    public let id: Int
+    public let userID: Int
+    public let eventType: String
+    public let userName: String?
+    public let created: Date?
+    public let metadata: LBFeedEventMetadata
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userID = "userId"
+        case eventType
+        case userName
+        case created
+        case metadata
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        userID = try container.decode(Int.self, forKey: .userID)
+        eventType = try container.decode(String.self, forKey: .eventType)
+        userName = try container.decodeIfPresent(String.self, forKey: .userName)
+        created = try container.decodeIfPresent(Date.self, forKey: .created)
+        metadata = try container.decodeIfPresent(LBFeedEventMetadata.self, forKey: .metadata) ?? .init()
+    }
+}
+
 struct LBFeedPageResponse: Decodable {
     let payload: LBFeedPage
 }
@@ -61,6 +99,7 @@ public struct LBFeedEventMetadata: Decodable, Equatable, Sendable {
     public let listenedAt: Date?
     public let insertedAt: Date?
     public let playingNow: Bool?
+    public let recordingMBID: UUID?
     public let recordingMsid: UUID?
     public let blurbContent: String?
     public let users: [String]?
@@ -87,6 +126,7 @@ public struct LBFeedEventMetadata: Decodable, Equatable, Sendable {
         case listenedAt
         case insertedAt
         case playingNow
+        case recordingMBID = "recordingMbid"
         case recordingMsid
         case blurbContent
         case users
@@ -119,6 +159,7 @@ public struct LBFeedEventMetadata: Decodable, Equatable, Sendable {
         listenedAt = try? container.decode(Date.self, forKey: .listenedAt)
         insertedAt = try? container.decode(Date.self, forKey: .insertedAt)
         playingNow = try? container.decode(Bool.self, forKey: .playingNow)
+        recordingMBID = try? container.decode(UUID.self, forKey: .recordingMBID)
         recordingMsid = try? container.decode(UUID.self, forKey: .recordingMsid)
         blurbContent = try? container.decode(String.self, forKey: .blurbContent)
         users = try? container.decode([String].self, forKey: .users)
@@ -146,6 +187,7 @@ public struct LBFeedEventMetadata: Decodable, Equatable, Sendable {
         listenedAt: Date? = nil,
         insertedAt: Date? = nil,
         playingNow: Bool? = nil,
+        recordingMBID: UUID? = nil,
         recordingMsid: UUID? = nil,
         blurbContent: String? = nil,
         users: [String]? = nil,
@@ -171,6 +213,7 @@ public struct LBFeedEventMetadata: Decodable, Equatable, Sendable {
         self.listenedAt = listenedAt
         self.insertedAt = insertedAt
         self.playingNow = playingNow
+        self.recordingMBID = recordingMBID
         self.recordingMsid = recordingMsid
         self.blurbContent = blurbContent
         self.users = users
