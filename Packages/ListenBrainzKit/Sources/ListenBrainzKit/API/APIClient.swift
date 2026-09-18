@@ -50,13 +50,24 @@ struct ListenBrainzAPIClient: APIClient {
             throw error
         }
 
-        return try JSONDecoder.ListenBrainz.decode(Request.Result.self, from: data)
+        return try request.decodeResponse(data, response: resp as? HTTPURLResponse)
     }
 
     func makeURLRequest<Request: APIRequest>(_ request: Request) throws -> URLRequest {
         let relativePath = request.data.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        let endpoint = root.appending(path: relativePath)
-        var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)
+        let endpoint: URL
+        var components: URLComponents?
+        if request.data.pathIsPercentEncoded {
+            components = URLComponents(url: root, resolvingAgainstBaseURL: false)
+            let basePath = components?.percentEncodedPath.trimmingCharacters(in: CharacterSet(charactersIn: "/")) ?? ""
+            components?.percentEncodedPath = "/" + [basePath, relativePath]
+                .filter { !$0.isEmpty }
+                .joined(separator: "/")
+            endpoint = components?.url ?? root
+        } else {
+            endpoint = root.appending(path: relativePath)
+            components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)
+        }
         if request.data.preservesTrailingSlash && request.data.path.hasSuffix("/") {
             components?.path += "/"
         }

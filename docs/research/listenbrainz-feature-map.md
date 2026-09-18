@@ -32,7 +32,7 @@ Snapshot: 2026-09-18. `Y` means source/API evidence exists; `P` means partial or
 | Artist map | Y | Y | Y | Y | — | P | P2 | Map only when data is meaningful |
 | Sitewide statistics/context | Y | Y | P | ? | P | P | P2 | Use sparingly for context |
 | Entity popularity/listener counts | Y | Y | Y | ? | Y | P | P1 | Native global listens/listeners context landed on canonical artist, recording, release, and release-group details; daily cache and no row hydration |
-| Year in Music (2021–2025) | Y | Y | Y | Y | Y | P | P1 | Native current-schema 2025 story landed; legacy years and generated art remain staged |
+| Year in Music (2021–2025) | Y | Y | Y | Y | Y | P | P1 | Native current-schema 2025 story plus explicit official overview-art preview/PNG sharing landed; legacy years remain staged |
 | Similar users and compatibility | Y | Y | Y | Y | Y | Y | P1 | Native Social destination landed without row hydration |
 | Followers/following | Y | Y | Y | Y | Y | Y | P1 | Complete native lists; typed Kit extension |
 | Follow/unfollow | Y | Y | Y | ? | Y | Y | P1 | Optimistic serialized mutation with rollback |
@@ -53,7 +53,7 @@ Snapshot: 2026-09-18. `Y` means source/API evidence exists; `P` means partial or
 | BrainzPlayer queue/content resolution | Y | Y | Y | P | — | P | P2 | Keep modular; viewing is not blocked |
 | Apple/Spotify/YouTube/etc. external play | Y/P | Y | P | P | — | P | P2 | Resolve/open externally before full player |
 | Linked music services | Y | Y | Y | ? | Y | Y | P2 | Settings visibility/connection handoff |
-| Shareable art/stat grids/YiM art | Y | Y | P | P | — | ? | P1 | Prefer server-generated SVG |
+| Shareable art/stat grids/YiM art | Y | Y | P | P | P | ? | P1 | YiM typed variants and explicit overview preview/PNG sharing landed; generic grids/custom/playlist art remain staged |
 | HueSound/color exploration | Y | Y | — | — | — | — | P3 | Delightful but niche |
 | Music Neighborhood/similar artists | Y | Y | P | — | — | P | P2 | Discovery graph/list, not a heavy graph UI |
 | AI Brainz | Y | Y | — | — | — | — | P3 | Experimental; not first-release critical |

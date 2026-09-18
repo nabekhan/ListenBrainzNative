@@ -1,6 +1,6 @@
 # Year in Music working note
 
-Snapshot: 2026-09-17.
+Snapshot: 2026-09-18.
 
 ## Current product contract
 
@@ -26,8 +26,17 @@ Snapshot: 2026-09-17.
 - Reports cache for 30 minutes by normalized user/year, stale content survives refresh failures, and late/cancelled responses cannot overwrite newer state.
 - Cassette's MPL-2.0 Wrapped composition supplies the adapted mesh hero, artist shelf, album grid, track list, and 2025 palette. The annual heatmap and ListenBrainz state handling are app-specific.
 
+## Generated artwork slice
+
+- Canonical report-link sharing remains immediate and independent of image generation.
+- “Preview official artwork…” is the only UI path that requests art; opening the report itself performs no art preload.
+- The typed MPL Kit extension models all seven current variants, 204-as-unavailable, response MIME/SVG validation, encoded usernames, and a 4 MiB payload ceiling. The first UI intentionally exposes only the overview variant.
+- The complete transport operation enters `RequestGate.shared`, feeds 429 timing back into the gate, coalesces identical in-flight work, and uses a bounded 24-hour memory cache. If every waiter leaves before admission, the queued gated task is cancelled so a dismissed sheet cannot consume a later ListenBrainz request slot.
+- A nonpersistent, noninteractive `WKWebView` embeds the SVG as a real document object with JavaScript disabled and link/form navigation rejected. Content rules reject arbitrary HTTP(S) subresources and admit only the current generated-art dependencies: Archive.org cover downloads plus Google Fonts CSS/font hosts. This preserves the server art's external cover images/fonts without allowing a server-provided SVG to call back into ListenBrainz or a tracker; a 924-pixel snapshot is shared as PNG, matching the current website/Android product flow.
+- Snapshot preparation has a recoverable error state. Retrying a failed render reuses the already-fetched SVG rather than issuing a second ListenBrainz request.
+- Light, dark, accessibility-size, and small-device QA use a local fixture and therefore make no production request. Two separate production reconnaissance probes were issued six seconds apart; no burst or parallel ListenBrainz request was used.
+
 ## Deferred
 
-- Explicit generated-art preview/share workflow.
 - Legacy 2021–2024 schema adapters.
 - Secondary current-payload chapters such as genres, discovery playlists, similar users, and new releases after their value and duplication with existing app surfaces are reviewed.

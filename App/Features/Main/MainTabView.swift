@@ -161,12 +161,22 @@ struct MainTabView: View {
             .environment(\.popularityProvider, VisualQAPopularityProvider())
         } else if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo") {
             NavigationStack {
-                YearInMusicView(
-                    account: account,
-                    listeningModel: model,
-                    provider: VisualQAYearInMusicProvider(),
-                    cache: EntityDetailCache()
-                )
+                if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-art-demo") {
+                    YearInMusicView(
+                        account: account,
+                        listeningModel: model,
+                        provider: VisualQAYearInMusicProvider(),
+                        artworkProvider: VisualQAYearInMusicArtworkProvider(),
+                        cache: EntityDetailCache()
+                    )
+                } else {
+                    YearInMusicView(
+                        account: account,
+                        listeningModel: model,
+                        provider: VisualQAYearInMusicProvider(),
+                        cache: EntityDetailCache()
+                    )
+                }
             }
             .environment(pins)
         } else if ProcessInfo.processInfo.arguments.contains("-brainz-release-detail-demo") {

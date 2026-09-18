@@ -6,9 +6,16 @@ import Foundation
 
 protocol APIRequest {
     associatedtype Body: Encodable
-    associatedtype Result: Decodable
+    associatedtype Result
 
     var data: APIRequestData<Body> { get }
+    func decodeResponse(_ data: Data, response: HTTPURLResponse?) throws -> Result
+}
+
+extension APIRequest where Result: Decodable {
+    func decodeResponse(_ data: Data, response: HTTPURLResponse?) throws -> Result {
+        try JSONDecoder.ListenBrainz.decode(Result.self, from: data)
+    }
 }
 
 class NoBody: Encodable {}
@@ -27,6 +34,10 @@ struct APIRequestData<Body: Encodable> {
     let body: Body?
     let statusErrors: [Int: LBError]
     let preservesTrailingSlash: Bool
+    /// `true` only when a request has already percent-encoded an individual
+    /// path segment. This prevents `URL.appending(path:)` from escaping `%` a
+    /// second time while keeping the default behavior unchanged for old calls.
+    let pathIsPercentEncoded: Bool
 
     init(path: String,
          method: Method,
@@ -34,7 +45,8 @@ struct APIRequestData<Body: Encodable> {
          headers: [String: String] = [:],
          body: Body? = nil,
          statusErrors: [Int: LBError] = [:],
-         preservesTrailingSlash: Bool = false) {
+         preservesTrailingSlash: Bool = false,
+         pathIsPercentEncoded: Bool = false) {
         self.path = path
         self.method = method
         self.queryItems = queryItems
@@ -42,5 +54,6 @@ struct APIRequestData<Body: Encodable> {
         self.body = body
         self.statusErrors = statusErrors
         self.preservesTrailingSlash = preservesTrailingSlash
+        self.pathIsPercentEncoded = pathIsPercentEncoded
     }
 }

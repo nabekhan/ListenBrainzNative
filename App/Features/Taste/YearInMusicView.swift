@@ -12,16 +12,26 @@ struct YearInMusicView: View {
     static let latestSupportedYear = 2025
 
     let listeningModel: ListeningModel
+    private let artworkProvider: any YearInMusicArtworkProviding
+    private let automaticallyPresentsArtwork: Bool
     @State private var model: YearInMusicModel
+    @State private var showsArtwork = false
 
     init(
         account: Account,
         listeningModel: ListeningModel,
         year: Int = Self.latestSupportedYear,
         provider: (any YearInMusicProviding)? = nil,
+        artworkProvider: (any YearInMusicArtworkProviding)? = nil,
         cache: EntityDetailCache<YearInMusicCacheKey, YearInMusicReport> = YearInMusicCaches.reports
     ) {
         self.listeningModel = listeningModel
+        self.artworkProvider = artworkProvider ?? ListenBrainzYearInMusicArtworkProvider(token: "")
+        #if DEBUG
+        automaticallyPresentsArtwork = ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-art-demo")
+        #else
+        automaticallyPresentsArtwork = false
+        #endif
         _model = State(
             initialValue: YearInMusicModel(
                 account: account,
@@ -46,17 +56,42 @@ struct YearInMusicView: View {
             if let report = model.report,
                let url = reportURL(username: report.username ?? model.account.username) {
                 ToolbarItem(placement: .topBarTrailing) {
-                    ShareLink(
-                        item: url,
-                        subject: Text("My \(String(report.year)) Year in Music"),
-                        message: Text("My \(String(report.year)) listening story on ListenBrainz")
-                    ) {
+                    Menu {
+                        ShareLink(
+                            item: url,
+                            subject: Text("My \(String(report.year)) Year in Music"),
+                            message: Text("My \(String(report.year)) listening story on ListenBrainz")
+                        ) {
+                            Label("Share report link", systemImage: "link")
+                        }
+
+                        Button {
+                            showsArtwork = true
+                        } label: {
+                            Label("Preview official artwork…", systemImage: "photo.badge.arrow.down")
+                        }
+                    } label: {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
                 }
             }
         }
+        .sheet(isPresented: $showsArtwork) {
+            if let report = model.report,
+               let url = reportURL(username: report.username ?? model.account.username) {
+                YearInMusicArtworkSheet(
+                    report: report,
+                    username: report.username ?? model.account.username,
+                    reportURL: url,
+                    provider: artworkProvider
+                )
+            }
+        }
         .task { await model.load() }
+        .onChange(of: model.report != nil, initial: true) { _, reportIsReady in
+            guard automaticallyPresentsArtwork, reportIsReady else { return }
+            showsArtwork = true
+        }
         .mediaDestinations(model: listeningModel)
     }
 
