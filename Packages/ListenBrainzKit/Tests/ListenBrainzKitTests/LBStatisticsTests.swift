@@ -72,6 +72,66 @@ struct LBStatisticsTests {
         #expect(activity == nil)
     }
 
+    @Test("Genre activity tolerates numeric strings and malformed row values")
+    func deserializeGenreActivity() throws {
+        let response = try JSONDecoder.ListenBrainz.decode(
+            StatsGenreActivityRequest.Result.self,
+            from: Data("""
+            {
+              "payload": {
+                "user_id": "listener",
+                "genre_activity": [
+                  { "genre": "Electronic", "hour": 0, "listen_count": 4 },
+                  { "genre": "Ambient", "hour": "23", "listen_count": "1" },
+                  { "genre": null, "hour": "not-an-hour", "listen_count": null }
+                ],
+                "range": "this_month",
+                "from_ts": 1735689600,
+                "to_ts": 1738368000,
+                "last_updated": 1738454400
+              }
+            }
+            """.utf8)
+        )
+
+        let activity = response.payload
+        #expect(activity.userID == "listener")
+        #expect(activity.range == "this_month")
+        #expect(activity.from == Date(timeIntervalSince1970: 1735689600))
+        #expect(activity.to == Date(timeIntervalSince1970: 1738368000))
+        #expect(activity.lastUpdated == 1738454400)
+        #expect(activity.genreActivity.map(\.genre) == ["Electronic", "Ambient", ""])
+        #expect(activity.genreActivity.map(\.hour) == [0, 23, -1])
+        #expect(activity.genreActivity.map(\.listenCount) == [4, 1, 0])
+    }
+
+    @Test("Genre activity request uses the user endpoint, range query, and escaped URL path")
+    func genreActivityRequestSemantics() throws {
+        let request = StatsGenreActivityRequest(user: "test user", range: .thisMonth)
+        #expect(request.data.path == "/1/stats/user/test user/genre-activity")
+        #expect(request.data.queryItems == ["range": ["this_month"]])
+        #expect(request.data.statusErrors[204] == .noContent)
+
+        let apiClient = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+        let urlRequest = try apiClient.makeURLRequest(request)
+        #expect(urlRequest.url?.path == "/1/stats/user/test user/genre-activity")
+        #expect(urlRequest.url?.absoluteString.contains("test%20user") == true)
+        #expect(urlRequest.url?.query == "range=this_month")
+    }
+
+    @Test("Genre activity maps no-content to nil")
+    func genreActivityNoContentIsNil() async throws {
+        let client = LBStatisticsClient(MockAPIClient(result: .failure(.noContent)))
+
+        let activity = try await client.genreActivity(user: "listener", range: .thisWeek)
+
+        #expect(activity == nil)
+    }
+
     @Test("Era activity decodes original release years")
     func deserializeEraActivity() throws {
         let response = try JSONDecoder.ListenBrainz.decode(

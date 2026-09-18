@@ -879,6 +879,156 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(cancelledModel.artistEvolutionState(for: .thisWeek), .idle)
     }
 
+    func testGenreActivityNormalizesWhitespaceAndCaseWithoutInventingGenreIdentity() {
+        let activity = GenreActivity(
+            period: .thisWeek,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            rows: [
+                .init(genre: "  Electronic  ", hour: 1, listenCount: 2),
+                .init(genre: "electronic", hour: 1, listenCount: 3),
+                .init(genre: "ELECTRONIC", hour: 22, listenCount: Int.max),
+                .init(genre: "Hip   Hop", hour: 0, listenCount: 4),
+                .init(genre: "hip hop", hour: 24, listenCount: 99),
+                .init(genre: " ", hour: 3, listenCount: 99),
+                .init(genre: "Ignored", hour: -1, listenCount: 99),
+                .init(genre: "Ignored", hour: 4, listenCount: -8),
+            ]
+        )
+
+        XCTAssertEqual(activity.genres.map(\.name), ["ELECTRONIC", "Hip Hop", "Ignored"])
+        XCTAssertEqual(activity.genres.map(\.totalListenCount), [Int.max, 4, 0])
+        XCTAssertEqual(activity.leadingGenre?.listenCount(atUTCHour: 1), 5)
+        XCTAssertEqual(activity.leadingGenre?.listenCount(atUTCHour: 22), Int.max)
+        XCTAssertEqual(activity.leadingGenre?.listenCount(atUTCHour: 24), 0)
+        XCTAssertEqual(activity.totalListenCount, Int.max)
+    }
+
+    func testGenreActivityCachesOneFreshRequestPerNormalizedUserAndPeriod() async {
+        let cache = EntityDetailCache<GenreActivityCacheKey, GenreActivity>()
+        let provider = GenreActivityProvider(result: .activity(listenCount: 4))
+        let first = ListeningModel(
+            account: Account(username: " Listener ", token: ""),
+            provider: provider,
+            genreActivityCache: cache
+        )
+
+        await first.loadGenreActivity(for: .thisWeek)
+        await first.loadGenreActivity(for: .thisWeek)
+        let initialRequestCount = await provider.requestCount()
+        XCTAssertEqual(initialRequestCount, 1)
+
+        let sameUser = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: provider,
+            genreActivityCache: cache
+        )
+        await sameUser.loadGenreActivity(for: .thisWeek)
+        let sameUserRequestCount = await provider.requestCount()
+        XCTAssertEqual(sameUserRequestCount, 1)
+
+        let isolated = ListeningModel(
+            account: Account(username: "someone-else", token: ""),
+            provider: provider,
+            genreActivityCache: cache
+        )
+        await isolated.loadGenreActivity(for: .thisWeek)
+        await isolated.loadGenreActivity(for: .allTime)
+        let isolatedRequestCount = await provider.requestCount()
+        XCTAssertEqual(isolatedRequestCount, 3)
+    }
+
+    func testStaleGenreActivityStaysVisibleDuringRefreshFailure() async throws {
+        let cache = EntityDetailCache<GenreActivityCacheKey, GenreActivity>(timeToLive: -1)
+        let stale = GenreActivity.fixture(period: .thisYear, listenCount: 3)
+        await cache.save(stale, for: .init(username: "listener", period: .thisYear))
+        let provider = GenreActivityProvider(result: .failure, delay: .seconds(1))
+        let model = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: provider,
+            genreActivityCache: cache
+        )
+
+        let task = Task { await model.loadGenreActivity(for: .thisYear) }
+        while await provider.requestCount() == 0 {
+            try await ContinuousClock().sleep(for: .milliseconds(1))
+        }
+        guard case let .loaded(visible) = model.genreActivityState(for: .thisYear) else {
+            return XCTFail("Stale genre activity should remain visible while refreshing")
+        }
+        XCTAssertEqual(visible.totalListenCount, stale.totalListenCount)
+
+        await task.value
+        guard case let .loaded(retained) = model.genreActivityState(for: .thisYear) else {
+            return XCTFail("A refresh failure must not discard stale genre activity")
+        }
+        XCTAssertEqual(retained.totalListenCount, stale.totalListenCount)
+        XCTAssertNotNil(model.genreActivityRefreshMessage(for: .thisYear))
+    }
+
+    func testGenreActivityReplacementCannotBeOverwrittenByOlderRequest() async throws {
+        let provider = GenreActivityProvider(
+            results: [.activity(listenCount: 1), .activity(listenCount: 9)],
+            delays: [.milliseconds(80), .zero],
+            ignoresCancellation: true
+        )
+        let model = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: provider,
+            genreActivityCache: EntityDetailCache()
+        )
+
+        let first = Task { await model.loadGenreActivity(for: .thisWeek) }
+        while await provider.requestCount() == 0 {
+            try await ContinuousClock().sleep(for: .milliseconds(1))
+        }
+        let replacement = Task { await model.loadGenreActivity(for: .thisWeek, retrying: true) }
+        await replacement.value
+        first.cancel()
+        await first.value
+
+        guard case let .loaded(activity) = model.genreActivityState(for: .thisWeek) else {
+            return XCTFail("Expected replacement genre activity response")
+        }
+        XCTAssertEqual(activity.totalListenCount, 9)
+    }
+
+    func testGenreActivityNilEmptyAndCancellationStatesAreHonest() async throws {
+        let unavailable = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: GenreActivityProvider(result: .noContent),
+            genreActivityCache: EntityDetailCache()
+        )
+        await unavailable.loadGenreActivity(for: .thisMonth)
+        XCTAssertEqual(unavailable.genreActivityState(for: .thisMonth), .unavailable)
+
+        let empty = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: GenreActivityProvider(result: .activity(listenCount: 0)),
+            genreActivityCache: EntityDetailCache()
+        )
+        await empty.loadGenreActivity(for: .thisMonth)
+        guard case let .loaded(activity) = empty.genreActivityState(for: .thisMonth) else {
+            return XCTFail("Expected a loaded zero-count genre aggregate")
+        }
+        XCTAssertTrue(activity.isEmpty)
+
+        let delayedProvider = GenreActivityProvider(result: .activity(listenCount: 3), delay: .seconds(1))
+        let cancelled = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: delayedProvider,
+            genreActivityCache: EntityDetailCache()
+        )
+        let task = Task { await cancelled.loadGenreActivity(for: .thisWeek) }
+        while await delayedProvider.requestCount() == 0 {
+            try await ContinuousClock().sleep(for: .milliseconds(1))
+        }
+        task.cancel()
+        await task.value
+        XCTAssertEqual(cancelled.genreActivityState(for: .thisWeek), .idle)
+    }
+
     func testFreshReleasesKeepPersonalizedAndSitewideRequestsSeparate() async {
         let provider = FixtureProvider()
         let model = FreshReleasesModel(
@@ -1602,6 +1752,83 @@ private actor ArtistEvolutionProvider: ListeningProvider {
                 throw CancellationError()
             } catch {
                 // Deliberately return late to exercise request-ID protection.
+            }
+        }
+        switch results[min(index, results.count - 1)] {
+        case let .activity(listenCount):
+            return .fixture(period: period, listenCount: listenCount)
+        case .noContent:
+            return nil
+        case .failure:
+            throw URLError(.cannotConnectToHost)
+        }
+    }
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+    func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+    func requestCount() -> Int { requests }
+}
+
+private extension GenreActivity {
+    static func fixture(
+        period: ListeningActivityPeriod,
+        listenCount: Int
+    ) -> GenreActivity {
+        GenreActivity(
+            period: period,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            rows: [.init(genre: "Fixture Genre", hour: 20, listenCount: listenCount)]
+        )
+    }
+}
+
+private actor GenreActivityProvider: ListeningProvider {
+    enum Result: Sendable {
+        case activity(listenCount: Int)
+        case noContent
+        case failure
+    }
+
+    private var results: [Result]
+    private var delays: [Duration]
+    private let ignoresCancellation: Bool
+    private var requests = 0
+
+    init(result: Result, delay: Duration = .zero, ignoresCancellation: Bool = false) {
+        self.results = [result]
+        self.delays = [delay]
+        self.ignoresCancellation = ignoresCancellation
+    }
+
+    init(results: [Result], delays: [Duration], ignoresCancellation: Bool) {
+        self.results = results
+        self.delays = delays
+        self.ignoresCancellation = ignoresCancellation
+    }
+
+    func validateToken() async throws -> String { "fixture" }
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] { [] }
+    func playingNow(username: String) async throws -> Listen? { nil }
+    func listenCount(username: String) async throws -> Int { 0 }
+    func topArtists(username: String, count: Int) async throws -> [RankedArtist] { [] }
+    func topReleases(username: String, count: Int) async throws -> [RankedRelease] { [] }
+    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] { [] }
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        .init(period: period, from: .distantPast, to: .distantPast, lastUpdated: .distantPast, buckets: [])
+    }
+    func genreActivity(username: String, period: ListeningActivityPeriod) async throws -> GenreActivity? {
+        let index = requests
+        requests += 1
+        let delay = delays[min(index, delays.count - 1)]
+        if delay > .zero {
+            do {
+                try await ContinuousClock().sleep(for: delay)
+            } catch where !ignoresCancellation {
+                throw CancellationError()
+            } catch {
+                // Deliberately return after cancellation to exercise the
+                // model's request-ID protection.
             }
         }
         switch results[min(index, results.count - 1)] {

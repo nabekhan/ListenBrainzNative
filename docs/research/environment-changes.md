@@ -1,6 +1,6 @@
 # Environment and cleanup log
 
-Updated: 2026-09-17
+Updated: 2026-09-18
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
 
@@ -61,6 +61,8 @@ All clones are shallow and ignored by Git. Remove `References/` to delete them.
 - `/tmp/listenbrainz-package-tests-artist-evolution.log`, `/tmp/brainz-artist-evolution-*.log`, and `/tmp/brainz-artist-evolution-*.png`: transient package/app test logs plus light, dark, and accessibility-size simulator screenshots. Cleanup: remove those exact/matching temporary files. The fixture mode made no production request and used no real token; no new package or host application was installed, and XcodeGen reused the already-recorded ephemeral Nix environment.
 - `.derived-data/year-in-music-*`: focused app tests, fixture builds, simulator products, visual-QA artifacts, independent review, full-suite verification, and Debug/Release builds for the current Year in Music slice. These are covered by the repository-local `.derived-data/` cleanup rule.
 - `/tmp/listenbrainz-package-tests-year-in-music.log`, `/tmp/listenbrainz-year-in-music-*.log`, and `/tmp/brainz-year-in-music-*.png`: transient package/app test logs and light, dark, focused-section, standalone-route, and accessibility simulator screenshots. Cleanup: remove those exact/matching temporary files. Fixture launches made no production request and used no real token.
+- `.derived-data/genre-activity-*`: focused model/presentation tests, fixture builds, visual-QA products, independent review, full-suite verification, and Debug/Release builds for Genre Activity. These are covered by the repository-local `.derived-data/` cleanup rule.
+- `/tmp/brainz-genre-activity-*.log`, `/tmp/listenbrainz-genre-activity-*.log`, and `/tmp/brainz-genre-activity-*.png`: transient focused/full test logs, Debug/Release build logs, and light, dark, focused-ranking, and accessibility simulator screenshots. Cleanup: remove only those matching temporary files. Fixture modes made no production request and used no real token; XcodeGen reused the already-recorded ephemeral Nix environment.
 - `/tmp/listenbrainz-playwright-yim/`: isolated npm project, Playwright package, and Chromium/browser payload used for live mobile website inspection. `/tmp/listenbrainz-yim-live-mobile.png`, `/tmp/listenbrainz-yim-live-mobile-full.png`, and `/tmp/listenbrainz-yim-live-mobile-top.png` are transient website screenshots. Cleanup: remove only those exact paths.
 - The Debug Brainz app was installed into the disposable `Brainz QA iPhone 17 Pro` simulator for network-free fixture QA. Cleanup without deleting the simulator: `xcrun simctl uninstall 'Brainz QA iPhone 17 Pro' dev.nabekhan.listenbrainznative`. No package or host application was installed for this milestone; XcodeGen reused the already-recorded ephemeral Nix environment.
 - `~/Library/Developer/Xcode/DerivedData/ListenBrainzNative-*/`: Xcode's project-specific products, indexes, and test result bundles. Cleanup: remove only matching ListenBrainzNative directories after Xcode and Simulator are closed.

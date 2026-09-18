@@ -34,7 +34,8 @@ struct MainTabView: View {
             return
         }
         if ProcessInfo.processInfo.arguments.contains("-brainz-artist-evolution-demo")
-            || ProcessInfo.processInfo.arguments.contains("-brainz-artist-evolution-all-time-demo") {
+            || ProcessInfo.processInfo.arguments.contains("-brainz-artist-evolution-all-time-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-genre-activity-demo") {
             let visualAccount = Account(username: "visual-taste", token: "visual-taste")
             _model = State(initialValue: ListeningModel(
                 account: visualAccount,
@@ -132,6 +133,11 @@ struct MainTabView: View {
                     )
                 )
                     .mediaDestinations(model: model)
+            }
+            .environment(pins)
+        } else if ProcessInfo.processInfo.arguments.contains("-brainz-genre-activity-demo") {
+            NavigationStack {
+                GenreActivityView(model: model, period: .constant(.thisMonth))
             }
             .environment(pins)
         } else if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo") {
@@ -581,6 +587,32 @@ private struct VisualQATasteProvider: ListeningProvider {
                 : .now.addingTimeInterval(-365 * 86_400),
             to: .now,
             lastUpdated: .now,
+            rows: rows
+        )
+    }
+    func genreActivity(username: String, period: ListeningActivityPeriod) async throws -> GenreActivity? {
+        let now = Date.now
+        let rows: [GenreActivity.Row] = [
+            .init(genre: "Ambient", hour: 0, listenCount: 42),
+            .init(genre: "Electronic", hour: 0, listenCount: 31),
+            .init(genre: "Dream Pop", hour: 2, listenCount: 38),
+            .init(genre: "Shoegaze", hour: 3, listenCount: 29),
+            .init(genre: "Indie Pop", hour: 7, listenCount: 51),
+            .init(genre: "Alternative Rock", hour: 8, listenCount: 37),
+            .init(genre: "Art Pop", hour: 10, listenCount: 28),
+            .init(genre: "Neo-Psychedelia", hour: 12, listenCount: 46),
+            .init(genre: "Indie Rock", hour: 14, listenCount: 63),
+            .init(genre: "Synthpop", hour: 16, listenCount: 35),
+            .init(genre: "Dream Pop", hour: 18, listenCount: 71),
+            .init(genre: "Indie Pop", hour: 20, listenCount: 58),
+            .init(genre: "Electronic", hour: 22, listenCount: 49),
+            .init(genre: "Ambient", hour: 23, listenCount: 33),
+        ]
+        return GenreActivity(
+            period: period,
+            from: now.addingTimeInterval(-30 * 86_400),
+            to: now,
+            lastUpdated: now,
             rows: rows
         )
     }

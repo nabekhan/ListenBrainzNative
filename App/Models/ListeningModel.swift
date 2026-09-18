@@ -18,6 +18,7 @@ final class ListeningModel {
     private let dailyActivityCache: EntityDetailCache<DailyActivityCacheKey, DailyActivity>
     private let eraActivityCache: EntityDetailCache<EraActivityCacheKey, EraActivity>
     private let artistEvolutionActivityCache: EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity>
+    private let genreActivityCache: EntityDetailCache<GenreActivityCacheKey, GenreActivity>
 
     private(set) var snapshot = ListeningSnapshot.empty
     private(set) var phase: Phase = .idle
@@ -40,6 +41,9 @@ final class ListeningModel {
     private(set) var artistEvolutionActivity: [ListeningActivityPeriod: ArtistEvolutionLoadState] = [:]
     private(set) var artistEvolutionRefreshMessages: [ListeningActivityPeriod: String] = [:]
     private var artistEvolutionRequestIDs: [ListeningActivityPeriod: UUID] = [:]
+    private(set) var genreActivity: [ListeningActivityPeriod: GenreActivityLoadState] = [:]
+    private(set) var genreActivityRefreshMessages: [ListeningActivityPeriod: String] = [:]
+    private var genreActivityRequestIDs: [ListeningActivityPeriod: UUID] = [:]
     var feedback: [String: RecordingFeedback] = [:]
     var actionError: String?
     private var didLoad = false
@@ -52,7 +56,8 @@ final class ListeningModel {
         cache: SnapshotCache = .shared,
         dailyActivityCache: EntityDetailCache<DailyActivityCacheKey, DailyActivity> = EntityDetailCaches.dailyActivity,
         eraActivityCache: EntityDetailCache<EraActivityCacheKey, EraActivity> = EntityDetailCaches.eraActivity,
-        artistEvolutionActivityCache: EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity> = EntityDetailCaches.artistEvolutionActivity
+        artistEvolutionActivityCache: EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity> = EntityDetailCaches.artistEvolutionActivity,
+        genreActivityCache: EntityDetailCache<GenreActivityCacheKey, GenreActivity> = EntityDetailCaches.genreActivity
     ) {
         self.account = account
         self.provider = provider ?? ListenBrainzProvider(token: account.token)
@@ -60,6 +65,7 @@ final class ListeningModel {
         self.dailyActivityCache = dailyActivityCache
         self.eraActivityCache = eraActivityCache
         self.artistEvolutionActivityCache = artistEvolutionActivityCache
+        self.genreActivityCache = genreActivityCache
     }
 
     func load() async {
@@ -471,6 +477,72 @@ final class ListeningModel {
                 artistEvolutionRefreshMessages[period] = error.localizedDescription
             } else {
                 artistEvolutionActivity[period] = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    func genreActivityState(for period: ListeningActivityPeriod) -> GenreActivityLoadState {
+        genreActivity[period] ?? .idle
+    }
+
+    func genreActivityRefreshMessage(for period: ListeningActivityPeriod) -> String? {
+        genreActivityRefreshMessages[period]
+    }
+
+    /// Loads one server-calculated UTC-hour genre aggregate. A stale response
+    /// stays visible while it is revalidated, including if that refresh fails.
+    func loadGenreActivity(for period: ListeningActivityPeriod, retrying: Bool = false) async {
+        let key = GenreActivityCacheKey(username: account.username, period: period)
+        if !retrying, genreActivityRequestIDs[period] != nil {
+            return
+        }
+
+        if let cached = await genreActivityCache.value(for: key) {
+            genreActivity[period] = .loaded(cached.value)
+            if cached.isFresh, !retrying {
+                return
+            }
+        } else {
+            if !retrying {
+                switch genreActivityState(for: period) {
+                case .loaded, .unavailable, .loading:
+                    return
+                case .idle, .failed:
+                    break
+                }
+            }
+            genreActivity[period] = .loading
+        }
+
+        genreActivityRefreshMessages[period] = nil
+        let requestID = UUID()
+        genreActivityRequestIDs[period] = requestID
+
+        do {
+            let result = try await provider.genreActivity(username: account.username, period: period)
+            try Task.checkCancellation()
+            guard genreActivityRequestIDs[period] == requestID else { return }
+            guard let result else {
+                genreActivity[period] = .unavailable
+                genreActivityRequestIDs[period] = nil
+                return
+            }
+            genreActivity[period] = .loaded(result)
+            genreActivityRequestIDs[period] = nil
+            await genreActivityCache.save(result, for: key)
+        } catch is CancellationError {
+            guard genreActivityRequestIDs[period] == requestID else { return }
+            genreActivityRequestIDs[period] = nil
+            if case .loading = genreActivityState(for: period) {
+                genreActivity[period] = .idle
+            }
+        } catch {
+            guard genreActivityRequestIDs[period] == requestID else { return }
+            genreActivityRequestIDs[period] = nil
+            if case .loaded = genreActivityState(for: period) {
+                genreActivityRefreshMessages[period] = error.localizedDescription
+            } else {
+                genreActivity[period] = .failed(error.localizedDescription)
             }
         }
     }

@@ -35,6 +35,7 @@ struct TasteView: View {
                         yearInMusic
                         periodControls
                         dailyListeningHours
+                        genreActivity
                         musicByDecade
                         artistEvolution
                         listeningActivity
@@ -47,6 +48,7 @@ struct TasteView: View {
                     yearInMusic
                     periodControls
                     dailyListeningHours
+                    genreActivity
                     musicByDecade
                     artistEvolution
                     listeningActivity
@@ -560,6 +562,46 @@ struct TasteView: View {
                     eraActivityCard(activity)
                 }
             }
+        }
+    }
+
+    private var genreActivity: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Your sound through the day",
+                subtitle: "Leading genre tags by local time of day"
+            )
+
+            NavigationLink {
+                GenreActivityView(model: model, period: $activityPeriod)
+            } label: {
+                HStack(spacing: 16) {
+                    Image(systemName: "waveform.path.ecg")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(AppTheme.secondary)
+                        .frame(width: 52, height: 52)
+                        .background(AppTheme.secondary.opacity(0.14), in: .circle)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Find your genre rhythm")
+                            .font(.headline)
+                        Text("See which sounds lead your mornings, afternoons, evenings, and nights.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 4)
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(16)
+                .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Loads one ListenBrainz genre activity report for the selected period")
         }
     }
 

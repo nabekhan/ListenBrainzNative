@@ -1,6 +1,6 @@
 # ListenBrainz capability map
 
-Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
+Snapshot: 2026-09-18. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
 
 | User capability | API | Web | Android | iOS | LBKit | KMP | Priority | Product decision |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
@@ -26,7 +26,7 @@ Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or
 | Listening activity | Y | Y | Y | Y | Y | Y | P0 | Native Swift Charts |
 | Daily/hour-of-day activity | Y | Y | Y | Y | Y | — | P1 | Native cached, selectable 7×24 UTC heatmap across the seven server periods |
 | Artist activity | Y | Y | Y | P | — | P | P1 | Explain listening mix |
-| Genre activity | Y | Y | Y | P | — | P | P1 | Show only with adequate mapped metadata |
+| Genre activity | Y | Y | Y | P | Y | P | P1 | Native one-request local-daypart view landed; labels it as incomplete top-per-hour genre-tag matches and explains overlap/time-zone approximation |
 | Era activity | Y | Y | Y | P | Y | P | P1 | Native cached Music by Decade chart with server-derived years and decade-to-year drill-down |
 | Artist evolution activity | Y | Y | — | — | Y | — | P1 | Native on-demand top-artist timeline with touch inspection; one server request per selected range |
 | Artist map | Y | Y | Y | Y | — | P | P2 | Map only when data is meaningful |

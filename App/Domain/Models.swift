@@ -731,6 +731,146 @@ struct ArtistEvolutionActivityCacheKey: Hashable, Sendable {
     }
 }
 
+/// ListenBrainz's server-calculated top genres for each UTC hour. The source
+/// response is intentionally not treated as a complete distribution: it only
+/// contains the server's top genres for an hour.
+struct GenreActivity: Hashable, Sendable {
+    struct Row: Hashable, Sendable {
+        let genre: String
+        let hour: Int
+        let listenCount: Int
+    }
+
+    struct Genre: Identifiable, Hashable, Sendable {
+        /// A normalized display-string key, not a stable ListenBrainz genre ID.
+        let id: String
+        let name: String
+        let hourlyListenCounts: [Int]
+
+        var totalListenCount: Int {
+            hourlyListenCounts.reduce(0, Self.saturatedSum)
+        }
+
+        var peakHourlyListenCount: Int { hourlyListenCounts.max() ?? 0 }
+        var isEmpty: Bool { totalListenCount == 0 }
+
+        func listenCount(atUTCHour hour: Int) -> Int {
+            guard hourlyListenCounts.indices.contains(hour) else { return 0 }
+            return hourlyListenCounts[hour]
+        }
+
+        private static func saturatedSum(_ lhs: Int, _ rhs: Int) -> Int {
+            let result = lhs.addingReportingOverflow(rhs)
+            return result.overflow ? Int.max : result.partialValue
+        }
+    }
+
+    let period: ListeningActivityPeriod
+    let from: Date
+    let to: Date
+    let lastUpdated: Date
+    let genres: [Genre]
+
+    init(
+        period: ListeningActivityPeriod,
+        from: Date,
+        to: Date,
+        lastUpdated: Date,
+        rows: [Row]
+    ) {
+        self.period = period
+        self.from = from
+        self.to = to
+        self.lastUpdated = lastUpdated
+
+        var grouped: [String: GenreAccumulator] = [:]
+        for row in rows {
+            let name = Self.normalizedDisplayName(row.genre)
+            guard !name.isEmpty, (0 ..< 24).contains(row.hour) else { continue }
+
+            let key = Self.normalizedKey(for: name)
+            guard !key.isEmpty else { continue }
+            var accumulator = grouped[key, default: GenreAccumulator()]
+            let count = max(0, row.listenCount)
+            accumulator.nameCounts[name] = Self.saturatedSum(
+                accumulator.nameCounts[name, default: 0],
+                count
+            )
+            accumulator.hourlyCounts[row.hour] = Self.saturatedSum(
+                accumulator.hourlyCounts[row.hour],
+                count
+            )
+            grouped[key] = accumulator
+        }
+
+        genres = grouped.map { key, accumulator in
+            let name = accumulator.nameCounts.keys.sorted { lhs, rhs in
+                let leftCount = accumulator.nameCounts[lhs, default: 0]
+                let rightCount = accumulator.nameCounts[rhs, default: 0]
+                if leftCount == rightCount {
+                    return lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+                }
+                return leftCount > rightCount
+            }.first ?? key
+            return Genre(id: key, name: name, hourlyListenCounts: accumulator.hourlyCounts)
+        }.sorted { lhs, rhs in
+            if lhs.totalListenCount == rhs.totalListenCount {
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+            return lhs.totalListenCount > rhs.totalListenCount
+        }
+    }
+
+    var totalListenCount: Int {
+        genres.reduce(0) { Self.saturatedSum($0, $1.totalListenCount) }
+    }
+
+    var leadingGenre: Genre? { genres.first }
+    var isEmpty: Bool { totalListenCount == 0 }
+
+    private static func normalizedDisplayName(_ rawValue: String) -> String {
+        rawValue
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+    }
+
+    private static func normalizedKey(for displayName: String) -> String {
+        displayName.folding(
+            options: [.caseInsensitive],
+            locale: Locale(identifier: "en_US_POSIX")
+        ).lowercased()
+    }
+
+    private static func saturatedSum(_ lhs: Int, _ rhs: Int) -> Int {
+        let result = lhs.addingReportingOverflow(rhs)
+        return result.overflow ? Int.max : result.partialValue
+    }
+
+    private struct GenreAccumulator {
+        var nameCounts: [String: Int] = [:]
+        var hourlyCounts = Array(repeating: 0, count: 24)
+    }
+}
+
+enum GenreActivityLoadState: Equatable {
+    case idle
+    case loading
+    case loaded(GenreActivity)
+    case unavailable
+    case failed(String)
+}
+
+struct GenreActivityCacheKey: Hashable, Sendable {
+    let username: String
+    let period: ListeningActivityPeriod
+
+    init(username: String, period: ListeningActivityPeriod) {
+        self.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        self.period = period
+    }
+}
+
 struct FreshRelease: Identifiable, Hashable, Sendable {
     let releaseMBID: UUID?
     let releaseGroupMBID: UUID?

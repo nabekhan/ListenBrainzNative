@@ -180,6 +180,29 @@ struct ListenBrainzProvider: ListeningProvider {
         }
     }
 
+    func genreActivity(
+        username: String,
+        period: ListeningActivityPeriod
+    ) async throws -> GenreActivity? {
+        try await perform {
+            guard let result = try await client.stats.genreActivity(
+                user: username,
+                range: Self.range(for: period)
+            ) else {
+                return nil
+            }
+            return GenreActivity(
+                period: period,
+                from: result.from,
+                to: result.to,
+                lastUpdated: Date(timeIntervalSince1970: TimeInterval(result.lastUpdated)),
+                rows: result.genreActivity.map {
+                    .init(genre: $0.genre, hour: $0.hour, listenCount: $0.listenCount)
+                }
+            )
+        }
+    }
+
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] {
         try await perform {
             let result: LBFreshReleases?

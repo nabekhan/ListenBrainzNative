@@ -1,6 +1,6 @@
 # Repository reuse map
 
-Snapshot: 2026-09-17. Repository/source inspection, Xcode 27 builds, simulator runs, and live public-data checks are complete for the implemented slices.
+Snapshot: 2026-09-18. Repository/source inspection, Xcode 27 builds, simulator runs, and live public-data checks are complete for the implemented slices.
 
 | Repository | Purpose / state | License | Best reusable value | Modernization / difficulty | Decision |
 |---|---|---|---|---|---|
@@ -35,7 +35,7 @@ Snapshot: 2026-09-17. Repository/source inspection, Xcode 27 builds, simulator r
 | Playlist detail | Current LB JSPF API + Android behavior + Cassette media patterns | Payload semantics and native artwork/list hierarchy; no GPL UI copied | One-request typed detail, mosaic, creator/metadata summary, lazy non-hydrating track rows, and Created For You entry points |
 | Profile playlist lists | Current LB API/web + official Android/iOS behavior + first.fm profile hierarchy | Owned/collaborator grouping, pagination semantics, and profile placement; no GPL or donor UI copied | Independent SwiftUI segmented section, deterministic artwork, authorization-scoped cache, lazy per-tab paging, and canonical detail routing |
 | For You recommendations | Current LB API/web + Android/KMP behavior | CF paging, feedback semantics, generated-playlist taxonomy, and empty-state behavior; no donor UI copied | Independent native SwiftUI tracks/playlists surface, one batched metadata hydration request per nonempty page, one batched feedback read, and optimistic four-valued feedback controls |
-| Stats/heatmap/eras/evolution | Autohop MIT patterns + current LB API/web behavior + native Swift Charts | Period/history hierarchy and chart interaction concepts; no donor code copied | Typed daily/era/evolution adapters, normalized cached UTC 7×24 heatmap, categorical decade drill-down, and an on-demand multi-series artist timeline with touch breakdowns |
+| Stats/heatmap/genres/eras/evolution | Autohop MIT patterns + current LB API/web behavior + native SwiftUI/Charts | Period/history hierarchy and chart interaction concepts; no donor code copied | Typed daily/genre/era/evolution adapters, normalized cached UTC 7×24 heatmap, one-request local-daypart genre rankings, categorical decade drill-down, and an on-demand multi-series artist timeline with touch breakdowns |
 | Year in Music | Cassette Wrapped + current LB API/web | MPL mesh hero, ranked artist shelf, album grid, and compact track-list composition; current web report semantics | One gated aggregate report, UTC annual heatmap, native entity navigation, truthful state handling, ShareLink, and accessibility-responsive story |
 | Scoped search | Official Android behavior + first.fm structure + Minidisc limiter concept | One-scope debounce/cache behavior and cancellation-safe pacing concepts; no donor UI copied | Native search sheet, separate LB/MB gates, MBID-aware routing, compact truthful fallbacks |
 | Visited-user profile | Current LB web + official Android/iOS behavior + first.fm personality | Profile hierarchy and ListenBrainz semantics; no GPL UI copied | Staged native overview, latest context, pin, listens, lazy stats, section-aware bounded cache |

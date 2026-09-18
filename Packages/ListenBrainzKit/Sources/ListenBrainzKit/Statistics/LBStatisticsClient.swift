@@ -178,6 +178,19 @@ public struct LBStatisticsClient: Sendable {
         return try await (execNoContent(request))?.payload
     }
 
+    /// Get a user's most-listened genres for each UTC hour.
+    ///
+    /// ListenBrainz reports the top genres for an hour, not a complete genre
+    /// distribution. `nil` means ListenBrainz has not calculated statistics yet.
+    public func genreActivity(
+        user: String,
+        range: LBStatRange? = nil
+    ) async throws -> LBGenreActivity? {
+        let request = StatsGenreActivityRequest(user: user, range: range)
+
+        return try await (execNoContent(request))?.payload
+    }
+
     /// Get a user's ListenBrainz Year in Music report.
     /// - Parameters:
     ///   - user: The user to get the report for.
