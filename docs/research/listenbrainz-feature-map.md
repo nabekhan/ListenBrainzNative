@@ -5,7 +5,7 @@ Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or
 | User capability | API | Web | Android | iOS | LBKit | KMP | Priority | Product decision |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
 | Token validation/authentication | Y | Y | Y | Y | Y | Y | P0 | Token-first onboarding; Keychain storage |
-| Recent and historical listens | Y | Y | Y | Y | Y | Y | P0 | Flagship paginated, date-grouped history |
+| Recent and historical listens | Y | Y | Y | Y | Y | Y | P0 | Flagship paginated history with exact server-bounded local-day navigation; non-date filtering remains deferred because the endpoint does not support it |
 | Playing Now | Y | Y | Y | P | Y | Y | P0 | Home hero and conditional bottom accessory |
 | Listen count | Y | Y | Y | Y | Y | Y | P0 | Profile/home summary |
 | Delete a listen | Y | Y | Y | ? | Y | Y | P1 | Context action with confirmation/rollback |

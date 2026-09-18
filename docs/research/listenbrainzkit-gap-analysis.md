@@ -5,7 +5,7 @@ Snapshot: 2026-09-17. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-
 | Area | Classification | Current finding | Decision |
 |---|---|---|---|
 | User search/token validation | SUPPORTED | Typed public API | Reuse |
-| Recent listens/count/Playing Now | SUPPORTED | Timestamp pagination and listen submission included | Reuse after transport fix |
+| Recent listens/count/Playing Now | SUPPORTED | Strict `min_ts`/`max_ts` bounds, timestamp pagination, and listen submission included | Reuse through the shared gate; app-owned History state supplies DST-safe local-day bounds and overlap de-duplication |
 | Delete/submit/batch submit | SUPPORTED | Correct product operations exist | Reuse; keep capture separate |
 | Similar users/pairwise similarity | SUPPORTED | Typed models | Reuse |
 | Followers/following/follow/unfollow | SUPPORTED | Typed social client with endpoint-specific status handling | Reuse native Social slice; upstream candidate |

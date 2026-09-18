@@ -2,7 +2,7 @@ import Foundation
 
 protocol ListeningProvider: Sendable {
     func validateToken() async throws -> String
-    func recentListens(username: String, before: Date?, count: Int) async throws -> [Listen]
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen]
     func playingNow(username: String) async throws -> Listen?
     func listenCount(username: String) async throws -> Int
     func topArtists(username: String, count: Int) async throws -> [RankedArtist]
@@ -11,6 +11,12 @@ protocol ListeningProvider: Sendable {
     func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease]
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws
+}
+
+extension ListeningProvider {
+    func recentListens(username: String, before: Date?, count: Int) async throws -> [Listen] {
+        try await recentListens(username: username, before: before, after: nil, count: count)
+    }
 }
 
 enum ProviderError: LocalizedError {

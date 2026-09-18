@@ -6,7 +6,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 
 - Token authentication with Keychain storage, or read-only public-profile browsing
 - Playing Now and recent-listening home screen
-- Paginated, date-grouped history
+- Paginated, date-grouped history with exact local-day navigation and adjacent-day browsing
 - Recording and artist detail views
 - Listen count and top artist, album, and recording rankings
 - Server-calculated listening-activity charts across seven ListenBrainz periods

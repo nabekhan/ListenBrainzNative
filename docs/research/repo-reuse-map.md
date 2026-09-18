@@ -28,7 +28,7 @@ Snapshot: 2026-09-17. Repository/source inspection, Xcode 27 builds, simulator r
 | API/domain | ListenBrainzKit | Existing P0 clients/models | Reliability fixes, app adapters, typed CF/social/pins/detail extensions |
 | Product behavior | LB API/web + Android | Semantics, event types, pagination, edge cases | Native iOS interaction |
 | Bottom accessory | Apple native APIs + Minidisc behavior | System API behavior; MPL patterns where needed | Conditional Playing Now/latest-listen accessory |
-| History/listen row | first.fm + LB website + Cassette | Dense scrobble hierarchy, media-row mechanics | MBID-aware row, source/time/feedback/context menu |
+| History/listen row | first.fm + LB website + official clients | Dense scrobble hierarchy and website date-jump behavior; no GPL UI copied | MSID-stable paginated rows, exact local-day bounds, adjacent-day navigation, transient filtered state, feedback/context menu, and accessibility-responsive layout |
 | Home shelves | Cassette/Minidisc | Shelf sizing, section headers, loading/empty states | LB-specific curation |
 | Artist screen | Volta visual reference + first.fm | Concept only from GPL Volta; MIT structure from first.fm | Independent stretchy artwork/stat/entity implementation |
 | Release/recording detail | Minidisc/Cassette + first.fm + current LB/MusicBrainz behavior | Album hierarchy, compact facts, ordered-row patterns, and release/release-group semantics; no donor UI copied | Independent native edition/group pages, one gated MusicBrainz track-list request, stable canonical identities, and bounded stale-while-revalidate caches |

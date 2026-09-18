@@ -20,6 +20,19 @@ struct MainTabView: View {
         self.account = account
         _session = Bindable(wrappedValue: session)
         #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-brainz-history-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo") {
+            let visualAccount = Account(username: "visual-history", token: "visual-history")
+            _model = State(initialValue: ListeningModel(
+                account: visualAccount,
+                provider: VisualQAHistoryProvider()
+            ))
+            _pins = State(initialValue: PinsModel(
+                account: visualAccount,
+                provider: VisualQAPinProvider()
+            ))
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo") {
             let visualAccount = Account(username: "visual-qa", token: "visual-qa")
             _model = State(initialValue: ListeningModel(account: visualAccount))
@@ -63,12 +76,22 @@ struct MainTabView: View {
                 else { return }
                 #endif
                 await model.load()
+                #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo"),
+                   let day = Calendar.autoupdatingCurrent.date(byAdding: .day, value: -2, to: .now) {
+                    await model.selectHistoryDay(day)
+                }
+                #endif
             }
             .onAppear {
                 #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("-brainz-open-recommendations")
                     || ProcessInfo.processInfo.arguments.contains("-brainz-open-feed") {
                     selectedTab = .discover
+                }
+                if ProcessInfo.processInfo.arguments.contains("-brainz-history-demo")
+                    || ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo") {
+                    selectedTab = .history
                 }
                 if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo"),
                    presentedListen == nil {
@@ -257,6 +280,80 @@ private struct VisualQAPinProvider: PinProviding {
     func unpin() async throws {}
     func updatePinBlurb(rowID: Int, blurb: String) async throws {}
     func deletePin(rowID: Int) async throws {}
+}
+
+private struct VisualQAHistoryProvider: ListeningProvider {
+    private static let artworkReleaseMBID = UUID(uuidString: "1390f1b7-7851-48ae-983d-eb8a48f78048")!
+    private static let titles = [
+        "Night Drive", "Wildflower", "Parallel Lines", "Between the Bars",
+        "Soft Focus", "Silver Lining", "Afterimage", "Northbound",
+        "Quiet Hours", "All My Friends", "Blue Rev", "Daydreaming",
+    ]
+    private static let artists = ["The Marías", "Alvvays", "Japanese Breakfast", "Radiohead"]
+
+    func validateToken() async throws -> String { "visual-history" }
+
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] {
+        if after != nil, let before {
+            return (0 ..< 12).map { index in
+                Self.makeListen(
+                    index: index + 30,
+                    listenedAt: before.addingTimeInterval(-1_800 - Double(index * 2_820))
+                )
+            }
+        }
+        guard before == nil else { return [] }
+        return Self.makeListens(around: .now, count: 22)
+    }
+
+    func playingNow(username: String) async throws -> Listen? {
+        Self.makeListen(index: 22, listenedAt: .now, isPlayingNow: true)
+    }
+
+    func listenCount(username: String) async throws -> Int { 48_271 }
+    func topArtists(username: String, count: Int) async throws -> [RankedArtist] { [] }
+    func topReleases(username: String, count: Int) async throws -> [RankedRelease] { [] }
+    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] { [] }
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        .init(period: period, from: .distantPast, to: .distantPast, lastUpdated: .now, buckets: [])
+    }
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+    func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+
+    private static func makeListens(around newest: Date, count: Int) -> [Listen] {
+        (0 ..< count).map { index in
+            let dayOffset = index < 7 ? 0 : (index < 15 ? 1 : 2)
+            let minuteOffset = (index * 47) % 360
+            let listenedAt = Calendar.autoupdatingCurrent.date(
+                byAdding: DateComponents(day: -dayOffset, minute: -minuteOffset),
+                to: newest
+            ) ?? newest.addingTimeInterval(TimeInterval(-index * 2_820))
+            return makeListen(index: index, listenedAt: listenedAt)
+        }
+        .sorted { $0.listenedAt > $1.listenedAt }
+    }
+
+    private static func makeListen(index: Int, listenedAt: Date, isPlayingNow: Bool = false) -> Listen {
+        let msid = UUID(uuidString: String(format: "70000000-0000-0000-0000-%012x", index + 1))
+        let artist = artists[index % artists.count]
+        return Listen(
+            recording: Recording(
+                identity: .init(mbid: nil, msid: msid),
+                title: titles[index % titles.count],
+                artistName: artist,
+                artistMBIDs: [],
+                releaseTitle: index.isMultiple(of: 3) ? "Listening Room" : "Midnight Editions",
+                releaseMBID: artworkReleaseMBID,
+                releaseGroupMBID: nil,
+                artworkReleaseMBID: artworkReleaseMBID,
+                durationMilliseconds: 180_000 + index * 1_700,
+                source: index.isMultiple(of: 2) ? "Apple Music" : "Spotify"
+            ),
+            listenedAt: listenedAt,
+            insertedAt: listenedAt.addingTimeInterval(3),
+            isPlayingNow: isPlayingNow
+        )
+    }
 }
 #endif
 

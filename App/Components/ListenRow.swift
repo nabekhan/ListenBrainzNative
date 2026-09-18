@@ -1,46 +1,64 @@
 import SwiftUI
 
 struct ListenRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let listen: Listen
     var showsDate = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: dynamicTypeSize.isAccessibilitySize ? .top : .center, spacing: 12) {
             ArtworkView(url: listen.recording.artworkURL, title: listen.recording.title, cornerRadius: 8)
                 .frame(width: 54, height: 54)
 
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(listen.recording.title)
-                        .font(.body.weight(.semibold))
-                        .lineLimit(1)
-                    if listen.isPlayingNow {
-                        Image(systemName: "waveform")
-                            .symbolEffect(.variableColor.iterative)
-                            .foregroundStyle(AppTheme.accent)
-                            .accessibilityLabel("Playing now")
-                    }
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 6) {
+                    metadata
+                    timestampLabel
                 }
-                Text(listen.recording.artistName)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                if let release = listen.recording.releaseTitle, !release.isEmpty {
-                    Text(release)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                metadata
+                Spacer(minLength: 8)
+                timestampLabel
             }
-
-            Spacer(minLength: 8)
-
-            Text(timestamp)
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+    }
+
+    private var metadata: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 6) {
+                Text(listen.recording.title)
+                    .font(.body.weight(.semibold))
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                if listen.isPlayingNow {
+                    Image(systemName: "waveform")
+                        .symbolEffect(.variableColor.iterative)
+                        .foregroundStyle(AppTheme.accent)
+                        .accessibilityLabel("Playing now")
+                }
+            }
+            Text(listen.recording.artistName)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+            if let release = listen.recording.releaseTitle, !release.isEmpty {
+                Text(release)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+            }
+        }
+    }
+
+    private var timestampLabel: some View {
+        Text(timestamp)
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     private var timestamp: String {

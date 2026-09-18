@@ -71,6 +71,181 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(requestedBefore?.timeIntervalSince1970, 1_901)
     }
 
+    func testHistoryDayBoundsUseLocalCalendarArithmeticAcrossDST() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        let day = calendar.date(from: DateComponents(year: 2024, month: 3, day: 10, hour: 12))!
+        let bounds = HistoryDayBounds(day: day, calendar: calendar)
+
+        XCTAssertEqual(bounds.day, calendar.startOfDay(for: day))
+        XCTAssertEqual(bounds.earliest.timeIntervalSince(bounds.day), -1)
+        XCTAssertEqual(bounds.latest.timeIntervalSince(bounds.day), 23 * 60 * 60)
+    }
+
+    func testSelectedDayForwardsStrictDayBoundsWithoutChangingSnapshot() async {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let day = calendar.date(from: DateComponents(year: 2025, month: 6, day: 8, hour: 12))!
+        let provider = DayHistoryProvider(mode: .singleDay)
+        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        let listensBefore = model.snapshot.recentListens
+        let savedAtBefore = model.snapshot.savedAt
+
+        await model.selectHistoryDay(day, calendar: calendar)
+
+        let request = await provider.requests().first
+        XCTAssertEqual(request?.before, HistoryDayBounds(day: day, calendar: calendar).latest)
+        XCTAssertEqual(request?.after, HistoryDayBounds(day: day, calendar: calendar).earliest)
+        XCTAssertEqual(model.selectedDayListens.count, 1)
+        XCTAssertEqual(model.snapshot.recentListens, listensBefore)
+        XCTAssertEqual(model.snapshot.savedAt, savedAtBefore)
+    }
+
+    func testSelectedDayRefreshPreservesOriginalCalendarBounds() async {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Pacific/Kiritimati")!
+        let day = calendar.date(from: DateComponents(year: 2025, month: 6, day: 8, hour: 12))!
+        let provider = DayHistoryProvider(mode: .singleDay)
+        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+
+        await model.selectHistoryDay(day, calendar: calendar)
+        await model.refreshSelectedHistoryDay()
+
+        let requests = await provider.requests()
+        XCTAssertEqual(requests.count, 2)
+        XCTAssertEqual(requests[0].before, requests[1].before)
+        XCTAssertEqual(requests[0].after, requests[1].after)
+    }
+
+    func testCancellingCurrentDayLoadClearsLoadingWithoutShowingAnError() async throws {
+        let provider = DayHistoryProvider(mode: .staleSelection)
+        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        let task = Task { await model.selectHistoryDay(.now) }
+        let clock = ContinuousClock()
+        while await provider.requests().isEmpty {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+
+        task.cancel()
+        await task.value
+
+        XCTAssertFalse(model.isLoadingSelectedDay)
+        XCTAssertNil(model.selectedDayError)
+    }
+
+    func testCancelledDayLoadThatReturnsNormallyStillClearsLoading() async throws {
+        let provider = DayHistoryProvider(mode: .returnsAfterCancellation)
+        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        let task = Task { await model.selectHistoryDay(.now) }
+        let clock = ContinuousClock()
+        while await provider.requests().isEmpty {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+
+        task.cancel()
+        await task.value
+
+        XCTAssertFalse(model.isLoadingSelectedDay)
+        XCTAssertTrue(model.selectedDayListens.isEmpty)
+        XCTAssertNil(model.selectedDayError)
+    }
+
+    func testCancelledDayLoadReportedAsURLErrorDoesNotBecomeFailure() async throws {
+        let provider = DayHistoryProvider(mode: .urlCancellation)
+        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        let task = Task { await model.selectHistoryDay(.now) }
+        let clock = ContinuousClock()
+        while await provider.requests().isEmpty {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+
+        task.cancel()
+        await task.value
+
+        XCTAssertFalse(model.isLoadingSelectedDay)
+        XCTAssertNil(model.selectedDayError)
+    }
+
+    func testNewerDaySelectionSupersedesOlderResult() async {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let firstDay = calendar.date(from: DateComponents(year: 2025, month: 6, day: 8, hour: 12))!
+        let secondDay = calendar.date(byAdding: .day, value: 1, to: firstDay)!
+        let provider = DayHistoryProvider(mode: .staleSelection)
+        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+
+        async let first: Void = model.selectHistoryDay(firstDay)
+        try? await ContinuousClock().sleep(for: .milliseconds(5))
+        await model.selectHistoryDay(secondDay)
+        await first
+
+        XCTAssertEqual(model.selectedHistoryDay?.day, HistoryDayBounds(day: secondDay).day)
+        XCTAssertEqual(model.selectedDayListens.first?.recording.title, "Newer day")
+    }
+
+    func testSelectedDayPaginationKeepsLowerBoundAndDistinctMSIDs() async {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let day = calendar.date(from: DateComponents(year: 2025, month: 6, day: 8, hour: 12))!
+        let provider = DayHistoryProvider(mode: .boundarySiblings)
+        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+
+        await model.selectHistoryDay(day, calendar: calendar)
+        await model.loadMoreSelectedHistoryDay()
+
+        let bounds = HistoryDayBounds(day: day, calendar: calendar)
+        let requests = await provider.requests()
+        XCTAssertEqual(requests.last?.after, bounds.earliest)
+        XCTAssertEqual(model.selectedDayListens.count, 102)
+        XCTAssertEqual(Set(model.selectedDayListens.map(\.id)).count, 102)
+        XCTAssertTrue(model.selectedDayListens.contains { $0.recording.identity.msid != nil })
+    }
+
+    func testSelectedDayStopsWhenAPageCannotAdvanceCursor() async {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let day = calendar.date(from: DateComponents(year: 2025, month: 6, day: 8, hour: 12))!
+        let provider = DayHistoryProvider(mode: .repeatedCursor)
+        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+
+        await model.selectHistoryDay(day, calendar: calendar)
+        await model.loadMoreSelectedHistoryDay()
+
+        XCTAssertFalse(model.canLoadMoreSelectedDay)
+    }
+
+    func testSelectingAnotherDayResetsSupersededPaginationState() async throws {
+        let provider = DayHistoryProvider(mode: .stalePagination)
+        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        await model.selectHistoryDay(.now.addingTimeInterval(-86_400))
+        let pagination = Task { await model.loadMoreSelectedHistoryDay() }
+        let clock = ContinuousClock()
+        while await provider.requests().count < 2 {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+
+        await model.selectHistoryDay(.now)
+        await pagination.value
+
+        XCTAssertFalse(model.isLoadingSelectedDay)
+        XCTAssertFalse(model.isLoadingMoreSelectedDay)
+        XCTAssertEqual(model.selectedDayListens.first?.recording.title, "Replacement day")
+    }
+
+    func testRecentHistoryStopsWhenAFullPageCannotAdvanceCursor() async {
+        let provider = DayHistoryProvider(mode: .repeatedCursor)
+        let model = ListeningModel(
+            account: Account(username: "recent-repeat-\(UUID().uuidString)", token: ""),
+            provider: provider
+        )
+
+        await model.load()
+        await model.loadMore()
+
+        XCTAssertFalse(model.canLoadMore)
+        XCTAssertEqual(model.snapshot.recentListens.count, 100)
+    }
+
     func testInvalidatedCacheLeaseRejectsLateWrites() async throws {
         let root = FileManager.default.temporaryDirectory
             .appending(path: "BrainzCacheTests-\(UUID().uuidString)", directoryHint: .isDirectory)
@@ -688,7 +863,7 @@ private actor FixtureProvider: ListeningProvider {
 
     func validateToken() async throws -> String { "fixture-user" }
 
-    func recentListens(username: String, before: Date?, count: Int) async throws -> [Listen] {
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] {
         [
             listen(title: "Fixture Track", timestamp: 1_700_000_000),
             listen(title: "Earlier Track", timestamp: 1_699_999_000),
@@ -820,7 +995,7 @@ private actor BoundaryProvider: ListeningProvider {
 
     func validateToken() async throws -> String { "fixture-user" }
 
-    func recentListens(username: String, before: Date?, count: Int) async throws -> [Listen] {
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] {
         lastBefore = before
         lastCount = count
         if before == nil {
@@ -868,6 +1043,111 @@ private actor BoundaryProvider: ListeningProvider {
                 artworkReleaseMBID: nil,
                 durationMilliseconds: nil,
                 source: "Fixture"
+            ),
+            listenedAt: Date(timeIntervalSince1970: timestamp),
+            insertedAt: nil,
+            isPlayingNow: false
+        )
+    }
+}
+
+private actor DayHistoryProvider: ListeningProvider {
+    enum Mode {
+        case singleDay
+        case staleSelection
+        case boundarySiblings
+        case repeatedCursor
+        case returnsAfterCancellation
+        case urlCancellation
+        case stalePagination
+    }
+    struct Request: Sendable { let before: Date?; let after: Date? }
+
+    private let mode: Mode
+    private var requestsMade: [Request] = []
+    private var requestNumber = 0
+    private let recordingMBID = UUID(uuidString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")!
+
+    init(mode: Mode) { self.mode = mode }
+
+    func validateToken() async throws -> String { "fixture-user" }
+
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] {
+        requestsMade.append(.init(before: before, after: after))
+        requestNumber += 1
+        switch mode {
+        case .singleDay:
+            return [listen(title: "Day listen", timestamp: 1_700_000_000, msid: nil)]
+        case .staleSelection:
+            if requestNumber == 1 {
+                try await ContinuousClock().sleep(for: .milliseconds(60))
+                return [listen(title: "Older day", timestamp: 1_700_000_000, msid: nil)]
+            }
+            return [listen(title: "Newer day", timestamp: 1_700_086_400, msid: nil)]
+        case .boundarySiblings:
+            if requestNumber == 1 {
+                return (0 ..< 100).map { index in
+                    listen(title: "Initial \(index)", timestamp: 2_000 - Double(index), msid: index == 99 ? UUID(uuidString: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")! : nil)
+                }
+            }
+            return [
+                listen(title: "Initial 99", timestamp: 1_901, msid: UUID(uuidString: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")!),
+                listen(title: "Boundary sibling", timestamp: 1_901, msid: UUID(uuidString: "cccccccc-cccc-cccc-cccc-cccccccccccc")!),
+                listen(title: "Older", timestamp: 1_900, msid: nil),
+            ]
+        case .repeatedCursor:
+            return (0 ..< 100).map { index in
+                listen(title: "Repeated \(index)", timestamp: 2_000 - Double(index), msid: nil)
+            }
+        case .returnsAfterCancellation:
+            try? await ContinuousClock().sleep(for: .seconds(1))
+            return [listen(title: "Cancelled result", timestamp: 1_700_000_000, msid: nil)]
+        case .urlCancellation:
+            do {
+                try await ContinuousClock().sleep(for: .seconds(1))
+            } catch {
+                throw URLError(.cancelled)
+            }
+            return []
+        case .stalePagination:
+            if requestNumber == 1 {
+                return (0 ..< 100).map { index in
+                    listen(title: "Initial \(index)", timestamp: 2_000 - Double(index), msid: nil)
+                }
+            }
+            if requestNumber == 2 {
+                try? await ContinuousClock().sleep(for: .milliseconds(60))
+                return [listen(title: "Stale page", timestamp: 1_899, msid: nil)]
+            }
+            return [listen(title: "Replacement day", timestamp: 1_800, msid: nil)]
+        }
+    }
+
+    func playingNow(username: String) async throws -> Listen? { nil }
+    func listenCount(username: String) async throws -> Int { 0 }
+    func topArtists(username: String, count: Int) async throws -> [RankedArtist] { [] }
+    func topReleases(username: String, count: Int) async throws -> [RankedRelease] { [] }
+    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] { [] }
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        .init(period: period, from: .distantPast, to: .distantPast, lastUpdated: .distantPast, buckets: [])
+    }
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+    func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+    func requests() -> [Request] { requestsMade }
+
+    private func listen(title: String, timestamp: TimeInterval, msid: UUID?) -> Listen {
+        Listen(
+            recording: Recording(
+                identity: .init(mbid: recordingMBID, msid: msid),
+                title: title,
+                artistName: "Fixture Artist",
+                artistMBIDs: [],
+                releaseTitle: nil,
+                releaseMBID: nil,
+                releaseGroupMBID: nil,
+                artworkReleaseMBID: nil,
+                durationMilliseconds: nil,
+                source: nil
             ),
             listenedAt: Date(timeIntervalSince1970: timestamp),
             insertedAt: nil,

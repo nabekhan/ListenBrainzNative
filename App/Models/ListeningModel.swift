@@ -20,12 +20,19 @@ final class ListeningModel {
     private(set) var phase: Phase = .idle
     private(set) var isLoadingMore = false
     private(set) var canLoadMore = true
+    private(set) var selectedHistoryDay: HistoryDayBounds?
+    private(set) var selectedDayListens: [Listen] = []
+    private(set) var isLoadingSelectedDay = false
+    private(set) var isLoadingMoreSelectedDay = false
+    private(set) var canLoadMoreSelectedDay = false
+    private(set) var selectedDayError: String?
     private(set) var listeningActivity: [ListeningActivityPeriod: ListeningActivityLoadState] = [:]
     private var listeningActivityRequestIDs: [ListeningActivityPeriod: UUID] = [:]
     var feedback: [String: RecordingFeedback] = [:]
     var actionError: String?
     private var didLoad = false
     private var cacheLease: UUID?
+    private var selectedDayRequestID: UUID?
 
     init(
         account: Account,
@@ -89,13 +96,114 @@ final class ListeningModel {
                 count: 100
             )
             let existing = Set(snapshot.recentListens.map(\.id))
-            snapshot.recentListens.append(contentsOf: values.filter { !existing.contains($0.id) })
-            canLoadMore = values.count == 100
+            let additions = values.filter { !existing.contains($0.id) }
+            snapshot.recentListens.append(contentsOf: additions)
+            // A repeated full boundary page cannot advance this timestamp
+            // cursor. Stop instead of issuing the same request indefinitely.
+            canLoadMore = values.count == 100 && !additions.isEmpty
             snapshot.savedAt = .now
             await saveSnapshot()
         } catch {
             actionError = error.localizedDescription
         }
+    }
+
+    func selectHistoryDay(_ day: Date, calendar: Calendar = .autoupdatingCurrent) async {
+        await loadSelectedHistoryDay(HistoryDayBounds(day: day, calendar: calendar))
+    }
+
+    func refreshSelectedHistoryDay() async {
+        guard let selectedHistoryDay else { return }
+        await loadSelectedHistoryDay(selectedHistoryDay)
+    }
+
+    private func loadSelectedHistoryDay(_ bounds: HistoryDayBounds) async {
+        let requestID = UUID()
+        selectedDayRequestID = requestID
+        selectedHistoryDay = bounds
+        selectedDayListens = []
+        selectedDayError = nil
+        canLoadMoreSelectedDay = false
+        // A new day or a refresh supersedes any pagination task. Its stale
+        // defer must not leave the replacement day permanently "loading more."
+        isLoadingMoreSelectedDay = false
+        isLoadingSelectedDay = true
+
+        do {
+            let values = try await provider.recentListens(
+                username: account.username,
+                before: bounds.latest,
+                after: bounds.earliest,
+                count: 100
+            )
+            guard selectedDayRequestID == requestID else { return }
+            guard !Task.isCancelled else {
+                isLoadingSelectedDay = false
+                return
+            }
+            selectedDayListens = values
+            canLoadMoreSelectedDay = values.count == 100
+            isLoadingSelectedDay = false
+        } catch {
+            guard selectedDayRequestID == requestID else { return }
+            isLoadingSelectedDay = false
+            if Task.isCancelled
+                || error is CancellationError
+                || (error as? URLError)?.code == .cancelled {
+                return
+            }
+            selectedDayError = error.localizedDescription
+        }
+    }
+
+    func loadMoreSelectedHistoryDay() async {
+        guard !isLoadingSelectedDay,
+              !isLoadingMoreSelectedDay,
+              canLoadMoreSelectedDay,
+              let bounds = selectedHistoryDay,
+              let oldest = selectedDayListens.last?.listenedAt
+        else { return }
+
+        let requestID = UUID()
+        selectedDayRequestID = requestID
+        selectedDayError = nil
+        isLoadingMoreSelectedDay = true
+        defer {
+            if selectedDayRequestID == requestID {
+                isLoadingMoreSelectedDay = false
+            }
+        }
+
+        do {
+            // Keep the same inclusive day lower bound while overlapping the
+            // second at the older cursor, then reject duplicates locally.
+            let values = try await provider.recentListens(
+                username: account.username,
+                before: oldest.addingTimeInterval(1),
+                after: bounds.earliest,
+                count: 100
+            )
+            guard selectedDayRequestID == requestID, !Task.isCancelled else { return }
+            let existing = Set(selectedDayListens.map(\.id))
+            let additions = values.filter { !existing.contains($0.id) }
+            selectedDayListens.append(contentsOf: additions)
+            // A full response with no new identities means this cursor cannot
+            // make progress (for example, a server-side repeated boundary).
+            canLoadMoreSelectedDay = values.count == 100 && !additions.isEmpty
+        } catch {
+            guard selectedDayRequestID == requestID, !Task.isCancelled else { return }
+            selectedDayError = error.localizedDescription
+        }
+    }
+
+    func showLatestHistory() {
+        selectedDayRequestID = UUID()
+        selectedHistoryDay = nil
+        selectedDayListens = []
+        selectedDayError = nil
+        isLoadingSelectedDay = false
+        isLoadingMoreSelectedDay = false
+        canLoadMoreSelectedDay = false
     }
 
     func setFeedback(_ value: RecordingFeedback, for recording: Recording) async {

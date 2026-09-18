@@ -51,7 +51,29 @@ struct Listen: Identifiable, Hashable, Codable, Sendable {
     let insertedAt: Date?
     let isPlayingNow: Bool
 
-    var id: String { "\(recording.id):\(listenedAt.timeIntervalSince1970):\(isPlayingNow)" }
+    // A mapped recording can legitimately have more than one MSID at the same
+    // second. Keep that source identity in the listen key so overlapping pages
+    // do not discard a distinct submitted listen.
+    var id: String {
+        let sourceIdentity = recording.identity.msid?.uuidString ?? recording.id
+        return "\(sourceIdentity):\(listenedAt.timeIntervalSince1970):\(isPlayingNow)"
+    }
+}
+
+/// The ListenBrainz listens endpoint uses strict, second-granular bounds.
+/// A local day is therefore `(start - 1 second, nextStart)`, which includes
+/// a listen exactly at local midnight and remains correct across DST changes.
+struct HistoryDayBounds: Hashable, Sendable {
+    let day: Date
+    let earliest: Date
+    let latest: Date
+
+    init(day: Date, calendar: Calendar = .autoupdatingCurrent) {
+        let start = calendar.startOfDay(for: day)
+        self.day = start
+        self.earliest = start.addingTimeInterval(-1)
+        self.latest = calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
+    }
 }
 
 struct PinnedRecording: Identifiable, Hashable, Sendable {

@@ -18,6 +18,14 @@ final class SessionModel {
     func restore() async {
         guard !didRestore else { return }
         didRestore = true
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-brainz-history-demo")
+            || arguments.contains("-brainz-history-day-demo") {
+            state = .active(Account(username: "visual-history", token: "visual-history"))
+            return
+        }
+        #endif
         let username = UserDefaults.standard.string(forKey: "listenbrainz.username") ?? ""
         if !username.isEmpty {
             state = .active(Account(username: username, token: KeychainStore.loadToken() ?? ""))

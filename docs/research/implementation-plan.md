@@ -40,7 +40,7 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 
 1. Token onboarding, validation, Keychain persistence, and explicit demo/public-profile mode for previews.
 2. Home: Playing Now or latest listen hero, recent shelf, short listening snapshot, current pin placeholder hook.
-3. History: date-grouped paginated recent listens, artwork, exact time/source, pull to refresh, loading/error/empty states.
+3. History: date-grouped paginated listens, artwork, exact time/source, pull to refresh, loading/error/empty states, and server-bounded local-day navigation with adjacent-day controls.
 4. Recording detail: identity, artwork, release/artist links, counts where available, love/hate/pin/recommend hooks.
 5. Artist detail: artwork hero, personal count, top recordings and releases.
 6. Profile: identity/listen count and top artists/releases/recordings.
@@ -48,19 +48,19 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 
 ## Staging after the slice
 
-- Phase 3: full history/date jump and broader playlist browsing. Native recommendation feedback, My Feed/Following/Similar with supported feed mutations, public/personal recording sharing, Statistics, Fresh Releases, scoped search, Pins, visited-user/social profiles, release-group/playlist details, and For You recommendations now have initial slices.
+- Phase 3: server-efficient full History/date navigation is now implemented alongside native recommendation feedback, My Feed/Following/Similar with supported feed mutations, public/personal recording sharing, Statistics, Fresh Releases, scoped search, Pins, visited-user/social profiles, release-group/playlist details, and For You recommendations. Broader playlist/profile entry points remain.
 - Phase 4: Year in Music, shareable art, LB Radio, playlist editing, playback/content resolution, MusicKit-scoped capture, offline submit queue, inspect/mapping tools. Spotify-linked playback through a libspot/librespot-family implementation is deferred until the core product is complete and may be investigated only on a separate branch after exact project identity, licensing, Spotify policy, authentication, maintenance, and App Store constraints are audited.
 
 ## Next implementation sequence
 
-1. Expand History navigation and filtering using only server-efficient queries.
-2. Add broader playlist/profile entry points without metadata waterfalls.
+1. Add broader playlist/profile entry points without metadata waterfalls.
+2. Expand server-backed Taste statistics (daily/hour activity, artist/era evolution) without client-side history scans.
 
 ## Constraints recorded
 
 - Production website interactive inspection was blocked by the unavailable configured browser; current frontend source/routes and public API calls were inspected instead.
 - Xcode 27, the iOS 27 runtime, app build, test bundle, real simulator tests, and live public data have now been exercised. Visual checkpoints cover onboarding plus real-data Home in light/dark mode; smaller-device validation is recorded with the build evidence.
-- The verified checkpoint currently passes 81 vendored-package tests and 101 app tests, plus the deliberately paced opt-in production public API smoke suite.
+- The verified checkpoint currently passes 81 vendored-package tests and 112 app tests, plus the deliberately paced opt-in production public API smoke suite.
 - Phase 3 statistics now includes on-demand server activity for the website's seven primary ranges, per-period request caching, accessible native charts, and explicit empty/retry behavior. Real-data visual checks covered all-time activity on large and small simulators in dark and light modes.
 - Fresh Releases now uses an upstreamable ListenBrainzKit extension. Personalized results are the default and an HTTP 204 becomes an honest empty state; selecting All is the only route that makes a sitewide request. The native slice follows the website's one-week window and newest-first presentation, while distinguishing upcoming releases and concrete release versus release-group identity. The API client preserves the sitewide endpoint's required terminal slash, with regression coverage.
 - Search now exposes Users, Artists, Albums (release groups), Tracks, and public Playlists in one native sheet. It sends only the selected scope after a 500 ms debounce, caches per normalized query, cancels abandoned/stale work, preserves release-group identity, and reuses the native artist/recording destinations. ListenBrainz and MusicBrainz have independent process-shared gates; canonical paths avoid hidden redirect requests. Real MusicBrainz results were visually checked in dark/light mode and XXL Dynamic Type.
@@ -74,6 +74,7 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 - Recording detail now offers public follower recommendations and a native multi-select personal-recommendation sheet. Eligible recipients come from one cached followers request, local search causes no additional calls, notes are limited to 280 characters, duplicate submissions serialize, failures preserve the user's selection, and successful sends invalidate feed caches without forcing a refresh. The selection interaction follows Cassette's MPL-compatible sheet pattern but was independently implemented with app-owned types; official clients supplied behavior only.
 - My Feed now exposes only the mutations accepted by the current server: thanks for another listener's recommendation/pin, hide/unhide for supported foreign events and owned notifications, generic deletion for owned recommendation/notification events, and the dedicated Pins deletion route for owned pins. Hidden cards intentionally reveal neither actor nor event type. Mutations use stable server row IDs, optimistic hide/delete with rollback, per-event serialization, shared-gate transport, and cache invalidation without an automatic follow-up request. No authenticated production mutation was exercised.
 - Concrete release pages now use one independently gated MusicBrainz lookup with `artist-credits+recordings+media+release-groups+labels`, then render position-normalized discs and tracks without row hydration. A concrete release MBID is the canonical navigation identity from Fresh Releases, Home, Taste, Profile, and Recording Detail; release groups remain a separate native destination. Fresh Releases tags/listen context survives the shared navigation path, stale cached editions survive refresh failures, and unmapped tracks remain visible but non-navigable.
+- History date jumps now issue one bounded ListenBrainz request for the selected local calendar day, using strict `min_ts = start - 1 second` and `max_ts = next local day` semantics that remain correct across DST. Selected-day results are transient and never replace the cached recent snapshot; pagination preserves the lower bound, overlaps same-second cursors, retains distinct MSIDs, terminates repeated cursors, and cancels superseded day selections. Artist/source/search filters remain intentionally absent because the endpoint cannot apply them to complete history.
 - Simulator QA covers recording sharing in light/dark mode and accessibility-extra-large text, the hidden-feed privacy state, and concrete editions at both the artwork/facts and ordered-track positions. Edition QA exposed and fixed a two-column accessibility-facts squeeze and moved durations below titles at accessibility sizes. An earlier checkpoint also exposed and fixed a missing `PinsModel` environment value when recording detail is presented from the bottom accessory.
 - Runtime QA exposed three transport/metadata defects that source-only tests had missed: release-group and recording-metadata routes require terminal slashes to avoid hidden redirects, encoded JSON bodies need an explicit content type, and Cover Art Archive rejects uppercase UUID paths. Canonical request/header tests and centralized lowercase artwork URL tests now guard the fixes.
 - Official KMP framework export was attempted and currently fails at the native Room KSP step; it remains a behavior reference rather than an app dependency.

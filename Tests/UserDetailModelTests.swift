@@ -180,7 +180,7 @@ private actor UserDetailFixtureProvider: ListeningProvider {
 
     func validateToken() async throws -> String { "fixture" }
 
-    func recentListens(username: String, before: Date?, count: Int) async throws -> [Listen] {
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] {
         callNames.append("recent:\(username)")
         return [Self.listen(title: "Recent track")]
     }

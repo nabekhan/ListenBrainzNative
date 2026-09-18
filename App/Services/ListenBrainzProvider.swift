@@ -23,11 +23,12 @@ struct ListenBrainzProvider: ListeningProvider {
         }
     }
 
-    func recentListens(username: String, before: Date?, count: Int) async throws -> [Listen] {
+    func recentListens(username: String, before: Date?, after: Date? = nil, count: Int) async throws -> [Listen] {
         try await perform {
             let result = try await client.core.userListens(
                 username: username,
                 latest: before,
+                earliest: after,
                 count: min(max(count, 1), 100)
             )
             return result.listens.map(Self.map)
