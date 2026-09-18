@@ -36,6 +36,10 @@ actor EntityDetailCache<Key: Hashable & Sendable, Value: Sendable> {
         trimIfNeeded()
     }
 
+    func removeValue(for key: Key) {
+        entries.removeValue(forKey: key)
+    }
+
     func removeAll() {
         entries.removeAll()
     }
@@ -56,7 +60,7 @@ actor EntityDetailCache<Key: Hashable & Sendable, Value: Sendable> {
 enum EntityDetailCaches {
     static let releaseGroups = EntityDetailCache<UUID, ReleaseGroupDetail>()
     static let releases = EntityDetailCache<UUID, ReleaseDetail>()
-    static let playlists = EntityDetailCache<UUID, PlaylistDetail>()
+    static let playlists = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
     static let dailyActivity = EntityDetailCache<DailyActivityCacheKey, DailyActivity>(
         timeToLive: 10 * 60,
         maximumEntryCount: 28

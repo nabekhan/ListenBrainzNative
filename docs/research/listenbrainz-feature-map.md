@@ -46,7 +46,7 @@ Snapshot: 2026-09-18. `Y` means source/API evidence exists; `P` means partial or
 | Fresh Releases | Y | Y | P | P | Y | — | P1 | Native Discover grid; personalized default and explicit sitewide scope |
 | Created For You/recommended playlists | Y | Y | Y | Y | Y | Y | P1 | Lazy native For You list uses server generator/expiry metadata and the shared playlist detail |
 | User/collaborator playlists | Y | Y | Y | Y | Y | Y | P1 | Native owned/collaborating Profile tabs landed with lazy server pagination, public browsing, and no row hydration |
-| Playlist detail/create/edit/delete | Y | Y | Y | P | P | Y | P2 | Native one-request detail landed; mutations remain staged |
+| Playlist detail/create/edit/delete | Y | Y | Y | P | P | Y | P2 | Native one-request detail, authenticated empty creation, and owner metadata/privacy editing landed; deletion remains staged |
 | Playlist add/remove/reorder/copy | Y | Y | Y | ? | — | Y | P2 | Stage after playlist detail |
 | Playlist import/export/service sync | Y | Y | P | ? | — | P | P3 | Advanced feature |
 | LB Radio generation/tags/artist radio | Y | Y | P | — | Y | — | P2 | Native explicit recipe generation and playlist browsing landed; playback/content resolution remains separate |

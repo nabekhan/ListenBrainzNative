@@ -18,7 +18,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Music-first My Feed, Following, and Similar listening feeds with cached pagination, thanks, hide/unhide, and owner deletion
 - Native user search, visited-user profiles, followers/following, similar listeners, and compatibility
 - Pin history and owner pin actions; public playlist search and complete playlist detail
-- Lazy owned and collaborating Profile playlists with privacy-aware caching, server pagination, and direct detail navigation
+- Lazy owned and collaborating Profile playlists with privacy-aware caching, server pagination, authenticated empty-playlist creation, owner metadata/privacy editing, and direct detail navigation
 - Canonical MusicBrainz edition pages with release-group links and ordered, multi-disc track lists
 - Recording feedback for authenticated users
 - Public and multi-recipient personal recording recommendations, with follower-only selection and optional 280-character notes
@@ -56,6 +56,7 @@ This repository follows an inspect-first, reuse-first workflow. Start with:
 - `docs/research/implementation-plan.md`
 - `docs/research/listenbrainz-feature-map.md`
 - `docs/research/listenbrainzkit-gap-analysis.md`
+- `docs/research/playlist-mutations.md`
 - `docs/research/lb-radio.md`
 - `docs/research/kmp-status.md`
 - `docs/research/repo-reuse-map.md`

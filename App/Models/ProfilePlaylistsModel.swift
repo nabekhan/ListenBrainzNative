@@ -110,6 +110,48 @@ final class ProfilePlaylistsModel {
         await fetch(category: category, offset: 0, force: true, appending: false)
     }
 
+    func refreshAfterMutation() async {
+        await cache.removeAll()
+        if state(for: .owned).phase == .idle {
+            await load(category: .owned)
+        } else {
+            await refresh(category: .owned)
+        }
+    }
+
+    func reconcileAfterConfirmedEdit(_ edit: ConfirmedPlaylistMetadataEdit) async {
+        guard account.isAuthenticated,
+              Self.normalized(account.username) == Self.normalized(edit.ownerUsername),
+              let draft = try? edit.draft.normalized(ownerUsername: account.username)
+        else { return }
+
+        // Every cached page can contain this row at a different offset. Clear
+        // the account-scoped page source, then update already-visible state so
+        // returning from detail never flashes stale privacy or metadata.
+        await cache.removeAll()
+        for category in ProfilePlaylistCategory.allCases {
+            var current = state(for: category)
+            current.playlists = current.playlists.map { playlist in
+                guard playlist.playlistMBID == edit.mbid else { return playlist }
+                return SearchPlaylist(
+                    title: draft.title,
+                    creator: playlist.creator,
+                    annotation: draft.optionalAnnotation,
+                    identifier: playlist.identifier,
+                    isPublic: draft.isPublic,
+                    lastModifiedAt: playlist.lastModifiedAt,
+                    createdAt: playlist.createdAt,
+                    durationMilliseconds: playlist.durationMilliseconds,
+                    createdFor: playlist.createdFor,
+                    collaborators: draft.collaborators,
+                    recommendationType: playlist.recommendationType,
+                    expiresAt: playlist.expiresAt
+                )
+            }
+            states[category] = current
+        }
+    }
+
     func loadMore(category: ProfilePlaylistCategory) async {
         var current = state(for: category)
         let offset = current.loadMoreRetryOffset ?? current.nextOffset

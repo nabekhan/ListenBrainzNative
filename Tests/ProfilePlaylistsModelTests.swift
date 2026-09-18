@@ -241,6 +241,83 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         XCTAssertEqual(model.state(for: .owned).playlists.map(\.title), ["fresh"])
     }
 
+    func testConfirmedMutationInvalidatesCacheAndRefreshesOwnedPlaylists() async {
+        let provider = SequencedProfilePlaylistProvider()
+        let cache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
+        let model = ProfilePlaylistsModel(
+            account: .init(username: "listener", token: "token"),
+            provider: provider,
+            cache: cache
+        )
+
+        await model.load(category: .owned)
+        XCTAssertEqual(model.state(for: .owned).playlists.map(\.title), ["before"])
+
+        await model.refreshAfterMutation()
+
+        XCTAssertEqual(model.state(for: .owned).playlists.map(\.title), ["after"])
+        let requests = await provider.requests
+        XCTAssertEqual(requests, [
+            .init(category: .owned, offset: 0),
+            .init(category: .owned, offset: 0),
+        ])
+    }
+
+    func testConfirmedEditUpdatesLoadedRowAndInvalidatesPageWithoutRefetching() async {
+        let mbid = UUID()
+        let source = SearchPlaylist(
+            title: "Before",
+            creator: "listener",
+            annotation: "Old note",
+            identifier: "https://listenbrainz.org/playlist/\(mbid.uuidString)",
+            isPublic: true,
+            lastModifiedAt: .distantPast,
+            collaborators: ["Alice"]
+        )
+        let provider = PlaylistFixtureProvider(pages: [
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned,
+                offset: 0,
+                total: 1,
+                rows: [source]
+            ),
+        ])
+        let cache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
+        let model = ProfilePlaylistsModel(
+            account: .init(username: "Listener", token: "token"),
+            provider: provider,
+            cache: cache
+        )
+        await model.load(category: .owned)
+
+        await model.reconcileAfterConfirmedEdit(.init(
+            mbid: mbid,
+            ownerUsername: "listener",
+            draft: .init(
+                title: "After",
+                annotation: "New note",
+                isPublic: false,
+                collaborators: ["Alice", "Bob"]
+            )
+        ))
+
+        let row = model.state(for: .owned).playlists.first
+        XCTAssertEqual(row?.title, "After")
+        XCTAssertEqual(row?.annotation, "New note")
+        XCTAssertEqual(row?.isPublic, false)
+        XCTAssertEqual(row?.collaborators, ["Alice", "Bob"])
+        let calls = await provider.calls
+        XCTAssertEqual(calls, [.init(category: .owned, offset: 0)])
+        let cached = await cache.value(for: .init(
+            username: "listener",
+            accessScope: .authenticatedViewer("listener"),
+            category: .owned,
+            offset: 0,
+            count: 20
+        ))
+        XCTAssertNil(cached)
+    }
+
     func testCancellationReturnsToIdle() async {
         let blocking = BlockingPlaylistProvider()
         let model = makeModel(provider: blocking)
@@ -371,6 +448,27 @@ private actor RefreshBlockingPlaylistProvider: ProfilePlaylistsProviding {
 
     func waitForRefreshRequest() async { while requestCount < 2 { await Task.yield() } }
     func releaseRefresh() { continuation?.resume(); continuation = nil }
+}
+
+private actor SequencedProfilePlaylistProvider: ProfilePlaylistsProviding {
+    private(set) var requests: [PlaylistRequest] = []
+
+    func page(
+        username: String,
+        category: ProfilePlaylistCategory,
+        offset: Int,
+        count: Int
+    ) async throws -> ProfilePlaylistPage {
+        requests.append(.init(category: category, offset: offset))
+        let title = requests.count == 1 ? "before" : "after"
+        return makePage(
+            category: category,
+            offset: offset,
+            total: 1,
+            rows: [playlist(title)],
+            requestedCount: count
+        )
+    }
 }
 
 private actor BlockingPlaylistProvider: ProfilePlaylistsProviding {

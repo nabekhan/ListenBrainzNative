@@ -206,7 +206,7 @@ final class MediaDetailModelTests: XCTestCase {
         let provider = MediaDetailFixtureProvider(playlist: playlistDetail(mbid: UUID()))
         let model = PlaylistDetailModel(
             seed: seed,
-            token: "",
+            account: Account(username: "listener", token: ""),
             provider: provider,
             cache: EntityDetailCache()
         )
@@ -271,7 +271,7 @@ final class MediaDetailModelTests: XCTestCase {
         let provider = MediaDetailFixtureProvider(playlist: detail)
         let model = PlaylistDetailModel(
             seed: playlistSeed(mbid: mbid),
-            token: "",
+            account: Account(username: "listener", token: ""),
             provider: provider,
             cache: EntityDetailCache()
         )
@@ -289,12 +289,13 @@ final class MediaDetailModelTests: XCTestCase {
     func testPlaylistFreshCacheAvoidsTransport() async {
         let mbid = UUID()
         let cached = playlistDetail(mbid: mbid)
-        let cache = EntityDetailCache<UUID, PlaylistDetail>()
-        await cache.save(cached, for: mbid)
+        let account = Account(username: "listener", token: "")
+        let cache = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
+        await cache.save(cached, for: .init(mbid: mbid, accessScope: .init(account: account)))
         let provider = MediaDetailFixtureProvider(playlist: playlistDetail(mbid: mbid, title: "Network"))
         let model = PlaylistDetailModel(
             seed: playlistSeed(mbid: mbid),
-            token: "",
+            account: account,
             provider: provider,
             cache: cache
         )
@@ -304,6 +305,151 @@ final class MediaDetailModelTests: XCTestCase {
         XCTAssertEqual(model.detail?.title, "Fixture playlist")
         let calls = await provider.playlistCalls
         XCTAssertTrue(calls.isEmpty)
+    }
+
+    func testPlaylistCacheIsScopedByViewerAccess() async {
+        let mbid = UUID()
+        let cache = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
+        let authenticated = Account(username: "listener", token: "private-token")
+        await cache.save(
+            playlistDetail(mbid: mbid, title: "Private cached title"),
+            for: .init(mbid: mbid, accessScope: .init(account: authenticated))
+        )
+
+        let publicAccount = Account(username: "listener", token: "")
+        let publicProvider = MediaDetailFixtureProvider(
+            playlist: playlistDetail(mbid: mbid, title: "Public transport title")
+        )
+        let publicModel = PlaylistDetailModel(
+            seed: playlistSeed(mbid: mbid),
+            account: publicAccount,
+            provider: publicProvider,
+            cache: cache
+        )
+
+        await publicModel.load()
+
+        XCTAssertEqual(publicModel.detail?.title, "Public transport title")
+        let calls = await publicProvider.playlistCalls
+        XCTAssertEqual(calls, [mbid])
+    }
+
+    func testConfirmedPrivateEditEvictsFormerPublicDetailBeforeTokenlessLoad() async {
+        let mbid = UUID()
+        let cache = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
+        let authenticated = Account(username: "listener", token: "private-token")
+        let publicAccount = Account(username: "listener", token: "")
+        let formerlyPublic = playlistDetail(mbid: mbid, title: "Formerly public")
+        await cache.save(
+            formerlyPublic,
+            for: .init(mbid: mbid, accessScope: .init(account: authenticated))
+        )
+        await cache.save(
+            formerlyPublic,
+            for: .init(mbid: mbid, accessScope: .init(account: publicAccount))
+        )
+        let authenticatedProvider = MediaDetailFixtureProvider(
+            playlist: playlistDetail(mbid: mbid, title: "Private now", isPublic: false)
+        )
+        let authenticatedModel = PlaylistDetailModel(
+            seed: playlistSeed(mbid: mbid),
+            account: authenticated,
+            provider: authenticatedProvider,
+            cache: cache
+        )
+        await authenticatedModel.load()
+
+        await authenticatedModel.reconcileAfterConfirmedEdit(.init(
+            title: "Private now",
+            annotation: "Description",
+            isPublic: false,
+            collaborators: []
+        ))
+
+        let publicProvider = MediaDetailFixtureProvider(error: MediaDetailFixtureError.failed)
+        let publicModel = PlaylistDetailModel(
+            seed: playlistSeed(mbid: mbid),
+            account: publicAccount,
+            provider: publicProvider,
+            cache: cache
+        )
+        await publicModel.load()
+
+        XCTAssertNil(publicModel.detail)
+        guard case .failed = publicModel.phase else {
+            return XCTFail("Expected tokenless lookup to reauthorize with the server")
+        }
+        let publicCalls = await publicProvider.playlistCalls
+        XCTAssertEqual(publicCalls, [mbid])
+        let publicCached = await cache.value(for: .init(
+            mbid: mbid,
+            accessScope: .publicOnly
+        ))
+        XCTAssertNil(publicCached)
+    }
+
+    func testConfirmedPlaylistEditReconcilesWithServerDetail() async {
+        let mbid = UUID()
+        let account = Account(username: "listener", token: "token")
+        let cache = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
+        let provider = SequencedPlaylistProvider(
+            initial: playlistDetail(mbid: mbid, title: "Before"),
+            refreshed: playlistDetail(mbid: mbid, title: "Canonical server title")
+        )
+        let model = PlaylistDetailModel(
+            seed: playlistSeed(mbid: mbid),
+            account: account,
+            provider: provider,
+            cache: cache
+        )
+        await model.load()
+
+        await model.reconcileAfterConfirmedEdit(.init(
+            title: "Locally confirmed title",
+            annotation: "Updated note",
+            isPublic: false,
+            collaborators: ["friend"]
+        ))
+
+        XCTAssertEqual(model.detail?.title, "Canonical server title")
+        XCTAssertNil(model.refreshMessage)
+        let calls = await provider.playlistCalls
+        XCTAssertEqual(calls, [mbid, mbid])
+        let cached = await cache.value(for: .init(mbid: mbid, accessScope: .init(account: account)))
+        XCTAssertEqual(cached?.value.title, "Canonical server title")
+    }
+
+    func testConfirmedPlaylistEditSurvivesFailedReconciliation() async {
+        let mbid = UUID()
+        let account = Account(username: "listener", token: "token")
+        let cache = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
+        let provider = SequencedPlaylistProvider(
+            initial: playlistDetail(mbid: mbid, title: "Before"),
+            refreshError: MediaDetailFixtureError.failed
+        )
+        let model = PlaylistDetailModel(
+            seed: playlistSeed(mbid: mbid),
+            account: account,
+            provider: provider,
+            cache: cache
+        )
+        await model.load()
+
+        await model.reconcileAfterConfirmedEdit(.init(
+            title: "Confirmed locally",
+            annotation: "",
+            isPublic: false,
+            collaborators: ["friend"]
+        ))
+
+        XCTAssertEqual(model.phase, .ready)
+        XCTAssertEqual(model.detail?.title, "Confirmed locally")
+        XCTAssertNil(model.detail?.annotation)
+        XCTAssertFalse(model.detail?.isPublic ?? true)
+        XCTAssertEqual(model.detail?.collaborators, ["friend"])
+        XCTAssertEqual(model.refreshMessage, MediaDetailFixtureError.failed.localizedDescription)
+        let cached = await cache.value(for: .init(mbid: mbid, accessScope: .init(account: account)))
+        XCTAssertEqual(cached?.value.title, "Confirmed locally")
     }
 
     func testDetailCacheEvictsLeastRecentlyUsedValue() async {
@@ -411,6 +557,8 @@ final class MediaDetailModelTests: XCTestCase {
     private func playlistDetail(
         mbid: UUID,
         title: String = "Fixture playlist",
+        isPublic: Bool = true,
+        collaborators: [String] = [],
         tracks: [PlaylistTrack] = []
     ) -> PlaylistDetail {
         PlaylistDetail(
@@ -420,9 +568,9 @@ final class MediaDetailModelTests: XCTestCase {
             annotation: "Description",
             createdAt: nil,
             lastModifiedAt: nil,
-            isPublic: true,
+            isPublic: isPublic,
             createdFor: nil,
-            collaborators: [],
+            collaborators: collaborators,
             copiedFrom: nil,
             tracks: tracks
         )
@@ -468,6 +616,30 @@ private actor MediaDetailFixtureProvider: ReleaseDetailProviding, ConcreteReleas
         if let error { throw error }
         guard let playlistValue else { throw MediaDetailFixtureError.missingFixture }
         return playlistValue
+    }
+}
+
+private actor SequencedPlaylistProvider: PlaylistDetailProviding {
+    private(set) var playlistCalls: [UUID] = []
+    private let initial: PlaylistDetail
+    private let refreshed: PlaylistDetail?
+    private let refreshError: (any Error & Sendable)?
+
+    init(
+        initial: PlaylistDetail,
+        refreshed: PlaylistDetail? = nil,
+        refreshError: (any Error & Sendable)? = nil
+    ) {
+        self.initial = initial
+        self.refreshed = refreshed
+        self.refreshError = refreshError
+    }
+
+    func playlist(mbid: UUID) async throws -> PlaylistDetail {
+        playlistCalls.append(mbid)
+        if playlistCalls.count == 1 { return initial }
+        if let refreshError { throw refreshError }
+        return refreshed ?? initial
     }
 }
 

@@ -166,8 +166,9 @@ final class ReleaseGroupDetailModel {
 @Observable
 final class PlaylistDetailModel {
     let seed: SearchPlaylist
+    let account: Account
     private let provider: any PlaylistDetailProviding
-    private let cache: EntityDetailCache<UUID, PlaylistDetail>
+    private let cache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>
 
     private(set) var detail: PlaylistDetail?
     private(set) var phase: EntityDetailPhase = .idle
@@ -177,12 +178,13 @@ final class PlaylistDetailModel {
 
     init(
         seed: SearchPlaylist,
-        token: String,
+        account: Account,
         provider: (any PlaylistDetailProviding)? = nil,
-        cache: EntityDetailCache<UUID, PlaylistDetail> = EntityDetailCaches.playlists
+        cache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail> = EntityDetailCaches.playlists
     ) {
         self.seed = seed
-        self.provider = provider ?? ListenBrainzMediaDetailProvider(token: token)
+        self.account = account
+        self.provider = provider ?? ListenBrainzMediaDetailProvider(token: account.token)
         self.cache = cache
     }
 
@@ -194,7 +196,7 @@ final class PlaylistDetailModel {
             return
         }
 
-        if let cached = await cache.value(for: mbid) {
+        if let cached = await cache.value(for: cacheKey(mbid: mbid)) {
             detail = cached.value
             if cached.isFresh {
                 phase = .ready
@@ -205,6 +207,46 @@ final class PlaylistDetailModel {
             phase = .loading
         }
         await fetch(mbid: mbid)
+    }
+
+    /// Editing a full metadata snapshot must start from a network-confirmed
+    /// value, not a fresh-looking cache entry. The editor calls this again at
+    /// save time and refuses to overwrite metadata that changed meanwhile.
+    func revalidateForEditing() async throws -> PlaylistDetail {
+        guard let mbid = seed.playlistMBID else {
+            let error = MediaDetailError.invalidPlaylistIdentifier
+            phase = .failed(error.localizedDescription)
+            throw error
+        }
+
+        let id = UUID()
+        requestID = id
+        refreshMessage = nil
+        phase = detail == nil ? .loading : .refreshing
+        do {
+            let value = try await provider.playlist(mbid: mbid)
+            try Task.checkCancellation()
+            guard requestID == id else { throw CancellationError() }
+            detail = value
+            phase = .ready
+            await removePublicCacheIfPrivate(value)
+            await cache.save(value, for: cacheKey(mbid: mbid))
+            return value
+        } catch is CancellationError {
+            guard requestID == id else { throw CancellationError() }
+            didLoad = false
+            phase = detail == nil ? .idle : .ready
+            throw CancellationError()
+        } catch {
+            guard requestID == id else { throw CancellationError() }
+            if detail == nil {
+                phase = .failed(error.localizedDescription)
+            } else {
+                refreshMessage = error.localizedDescription
+                phase = .ready
+            }
+            throw error
+        }
     }
 
     func refresh() async {
@@ -218,6 +260,40 @@ final class PlaylistDetailModel {
         await fetch(mbid: mbid)
     }
 
+    func reconcileAfterConfirmedEdit(_ draft: PlaylistMetadataDraft) async {
+        guard let current = detail else { return }
+        let normalized: PlaylistMetadataDraft
+        do {
+            normalized = try draft.normalized(ownerUsername: account.username)
+        } catch {
+            refreshMessage = error.localizedDescription
+            return
+        }
+
+        let confirmed = PlaylistDetail(
+            mbid: current.mbid,
+            title: normalized.title,
+            creator: current.creator,
+            annotation: normalized.optionalAnnotation,
+            createdAt: current.createdAt,
+            lastModifiedAt: current.lastModifiedAt,
+            isPublic: normalized.isPublic,
+            createdFor: current.createdFor,
+            collaborators: normalized.collaborators,
+            copiedFrom: current.copiedFrom,
+            tracks: current.tracks
+        )
+        detail = confirmed
+        phase = .ready
+        refreshMessage = nil
+        // A public-to-private edit must not leave any viewer scope with a
+        // formerly public copy. The authenticated confirmed value is restored
+        // only after every scope has been discarded.
+        await cache.removeAll()
+        await cache.save(confirmed, for: cacheKey(mbid: current.mbid))
+        await refresh()
+    }
+
     private func fetch(mbid: UUID) async {
         let id = UUID()
         requestID = id
@@ -228,7 +304,8 @@ final class PlaylistDetailModel {
             detail = value
             refreshMessage = nil
             phase = .ready
-            await cache.save(value, for: mbid)
+            await removePublicCacheIfPrivate(value)
+            await cache.save(value, for: cacheKey(mbid: mbid))
         } catch is CancellationError {
             guard requestID == id else { return }
             didLoad = false
@@ -243,4 +320,37 @@ final class PlaylistDetailModel {
             }
         }
     }
+
+
+    private func cacheKey(mbid: UUID) -> PlaylistDetailCacheKey {
+        PlaylistDetailCacheKey(mbid: mbid, accessScope: .init(account: account))
+    }
+
+    private func removePublicCacheIfPrivate(_ value: PlaylistDetail) async {
+        guard account.isAuthenticated, !value.isPublic else { return }
+        await cache.removeValue(for: PlaylistDetailCacheKey(
+            mbid: value.mbid,
+            accessScope: .publicOnly
+        ))
+    }
+}
+
+enum PlaylistDetailAccessScope: Hashable, Sendable {
+    case publicOnly
+    case authenticatedViewer(String)
+
+    init(account: Account) {
+        if account.isAuthenticated {
+            self = .authenticatedViewer(
+                account.username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            )
+        } else {
+            self = .publicOnly
+        }
+    }
+}
+
+struct PlaylistDetailCacheKey: Hashable, Sendable {
+    let mbid: UUID
+    let accessScope: PlaylistDetailAccessScope
 }

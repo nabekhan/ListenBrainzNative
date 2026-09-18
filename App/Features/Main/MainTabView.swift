@@ -21,7 +21,8 @@ struct MainTabView: View {
         _session = Bindable(wrappedValue: session)
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-demo")
-            || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo") {
+            || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-edit-demo") {
             let visualAccount = Account(username: "visual-listener", token: "visual-token")
             _model = State(initialValue: ListeningModel(
                 account: visualAccount,
@@ -129,7 +130,9 @@ struct MainTabView: View {
 
     var body: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-demo")
+        if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-edit-demo") {
+            PlaylistMutationVisualQAScreen()
+        } else if ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo") {
             ProfilePlaylistVisualQAScreen(
                 selection: ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo")

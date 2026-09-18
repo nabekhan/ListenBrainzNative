@@ -3,12 +3,35 @@ import SwiftUI
 struct PlaylistDetailView: View {
     let playlist: SearchPlaylist
     let viewer: Account
+    private let mutationProvider: any PlaylistMutationProviding
+    private let mutationJournal: PlaylistMutationJournal
+    private let automaticallyPresentsEditor: Bool
     @State private var model: PlaylistDetailModel
+    @State private var showsEditor = false
+    @State private var didAutomaticallyPresentEditor = false
+    @State private var isPreparingEditor = false
 
-    init(playlist: SearchPlaylist, viewer: Account) {
+    init(
+        playlist: SearchPlaylist,
+        viewer: Account,
+        provider: (any PlaylistDetailProviding)? = nil,
+        mutationProvider: (any PlaylistMutationProviding)? = nil,
+        cache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail> = EntityDetailCaches.playlists,
+        mutationJournal: PlaylistMutationJournal = .shared,
+        automaticallyPresentsEditor: Bool = false
+    ) {
         self.playlist = playlist
         self.viewer = viewer
-        _model = State(initialValue: PlaylistDetailModel(seed: playlist, token: viewer.token))
+        self.mutationProvider = mutationProvider
+            ?? ListenBrainzPlaylistMutationProvider(token: viewer.token)
+        self.mutationJournal = mutationJournal
+        self.automaticallyPresentsEditor = automaticallyPresentsEditor
+        _model = State(initialValue: PlaylistDetailModel(
+            seed: playlist,
+            account: viewer,
+            provider: provider,
+            cache: cache
+        ))
     }
 
     var body: some View {
@@ -41,8 +64,22 @@ struct PlaylistDetailView: View {
         .navigationTitle(displayTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if let url = model.detail?.listenBrainzURL ?? playlist.listenBrainzURL {
-                ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if canEdit {
+                    Button {
+                        Task { await presentEditor() }
+                    } label: {
+                        if isPreparingEditor {
+                            ProgressView()
+                                .controlSize(.small)
+                                .accessibilityLabel("Refreshing playlist before editing")
+                        } else {
+                            Text("Edit")
+                        }
+                    }
+                    .disabled(isPreparingEditor)
+                }
+                if let url = model.detail?.listenBrainzURL ?? playlist.listenBrainzURL {
                     Link(destination: url) {
                         Image(systemName: "arrow.up.right.square")
                     }
@@ -50,7 +87,34 @@ struct PlaylistDetailView: View {
                 }
             }
         }
-        .task { await model.load() }
+        .sheet(isPresented: $showsEditor) {
+            if let detail = model.detail {
+                PlaylistMetadataEditorSheet(
+                    account: viewer,
+                    detail: detail,
+                    editPreflight: { try await model.revalidateForEditing() },
+                    provider: mutationProvider,
+                    onIndeterminateResult: {
+                        Task { await model.refresh() }
+                    }
+                ) { mutation in
+                    guard case let .edited(draft) = mutation else { return }
+                    mutationJournal.recordConfirmedEdit(
+                        mbid: detail.mbid,
+                        ownerUsername: viewer.username,
+                        draft: draft
+                    )
+                    Task { await model.reconcileAfterConfirmedEdit(draft) }
+                }
+            }
+        }
+        .task {
+            await model.load()
+            if automaticallyPresentsEditor, canEdit, !didAutomaticallyPresentEditor {
+                didAutomaticallyPresentEditor = true
+                await presentEditor()
+            }
+        }
     }
 
     private var hero: some View {
@@ -223,6 +287,29 @@ struct PlaylistDetailView: View {
         model.detail?.creator ?? playlist.creator
     }
 
+    private var canEdit: Bool {
+        guard viewer.isAuthenticated, let creator = model.detail?.creator else { return false }
+        return creator.trimmingCharacters(in: .whitespacesAndNewlines)
+            .caseInsensitiveCompare(viewer.username.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
+    }
+
+    private func presentEditor() async {
+        guard canEdit, !isPreparingEditor else { return }
+        isPreparingEditor = true
+        defer { isPreparingEditor = false }
+        do {
+            _ = try await model.revalidateForEditing()
+            try Task.checkCancellation()
+            showsEditor = true
+        } catch is CancellationError {
+            return
+        } catch {
+            // The model already exposes the refresh failure beside the
+            // playlist. Do not open an editor from unverified cached metadata.
+            return
+        }
+    }
+
     private func fact(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label).font(.caption).foregroundStyle(.secondary)
@@ -268,3 +355,53 @@ struct PlaylistDetailView: View {
         return hours > 0 ? "\(hours) hr \(minutes) min" : "\(minutes) min"
     }
 }
+
+#if DEBUG
+struct PlaylistMutationVisualQAScreen: View {
+    private let account = Account(username: "visual-listener", token: "visual-token")
+
+    var body: some View {
+        NavigationStack {
+            PlaylistDetailView(
+                playlist: Self.playlist,
+                viewer: account,
+                provider: VisualQAPlaylistDetailProvider(),
+                mutationProvider: VisualQAPlaylistMutationProvider(),
+                cache: EntityDetailCache(),
+                automaticallyPresentsEditor: true
+            )
+        }
+    }
+
+    private static let playlistMBID = UUID(uuidString: "11111111-1111-4111-8111-111111111111")!
+    private static let playlist = SearchPlaylist(
+        title: "Soft Focus — late-night favorites",
+        creator: "visual-listener",
+        annotation: "Dream pop, ambient edges, and songs that make the room feel quieter.",
+        identifier: "https://listenbrainz.org/playlist/\(playlistMBID.uuidString)",
+        isPublic: false,
+        lastModifiedAt: Date(timeIntervalSince1970: 1_789_689_600),
+        createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+        durationMilliseconds: 4_860_000,
+        collaborators: ["cassetteclub", "softstatic"]
+    )
+}
+
+private struct VisualQAPlaylistDetailProvider: PlaylistDetailProviding {
+    func playlist(mbid: UUID) async throws -> PlaylistDetail {
+        PlaylistDetail(
+            mbid: mbid,
+            title: "Soft Focus — late-night favorites",
+            creator: "visual-listener",
+            annotation: "Dream pop, ambient edges, and songs that make the room feel quieter.",
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            lastModifiedAt: Date(timeIntervalSince1970: 1_789_689_600),
+            isPublic: false,
+            createdFor: nil,
+            collaborators: ["cassetteclub", "softstatic"],
+            copiedFrom: nil,
+            tracks: []
+        )
+    }
+}
+#endif

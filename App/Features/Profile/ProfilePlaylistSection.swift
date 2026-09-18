@@ -4,10 +4,26 @@ struct ProfilePlaylistSection: View {
     @Bindable var model: ProfilePlaylistsModel
     @Binding var selection: ProfilePlaylistCategory
     let viewer: Account
+    var mutationProvider: (any PlaylistMutationProviding)? = nil
+    private let mutationJournal = PlaylistMutationJournal.shared
+    @State private var showsCreator = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "Playlists", subtitle: sectionSubtitle)
+            HStack(alignment: .top, spacing: 12) {
+                SectionHeader(title: "Playlists", subtitle: sectionSubtitle)
+                if canCreate {
+                    Button {
+                        showsCreator = true
+                    } label: {
+                        Label("New", systemImage: "plus")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .accessibilityLabel("Create playlist")
+                }
+            }
 
             Picker("Playlist category", selection: $selection) {
                 ForEach(ProfilePlaylistCategory.allCases, id: \.self) { category in
@@ -21,6 +37,22 @@ struct ProfilePlaylistSection: View {
         }
         .task(id: selection) {
             await model.load(category: selection)
+        }
+        .task(id: mutationJournal.revision) {
+            guard let edit = mutationJournal.latestConfirmedEdit else { return }
+            await model.reconcileAfterConfirmedEdit(edit)
+        }
+        .sheet(isPresented: $showsCreator) {
+            PlaylistMetadataEditorSheet(
+                account: viewer,
+                provider: resolvedMutationProvider,
+                onIndeterminateResult: {
+                    Task { await model.refreshAfterMutation() }
+                }
+            ) { mutation in
+                guard case .created = mutation else { return }
+                Task { await model.refreshAfterMutation() }
+            }
         }
     }
 
@@ -129,7 +161,7 @@ struct ProfilePlaylistSection: View {
         HStack(spacing: 12) {
             ProgressView()
             VStack(alignment: .leading, spacing: 2) {
-                Text("Loading (selection.shortTitle.lowercased()) playlists…")
+                Text("Loading \(selection.shortTitle.lowercased()) playlists…")
                     .font(.subheadline.weight(.semibold))
                 Text("Only playlist details are fetched here; tracks load when opened.")
                     .font(.caption)
@@ -180,6 +212,14 @@ struct ProfilePlaylistSection: View {
             return "\(totalCount.formatted()) \(selection.countLabel(for: totalCount))"
         }
         return selection.description(isAuthenticated: viewer.isAuthenticated)
+    }
+
+    private var canCreate: Bool {
+        selection == .owned && viewer.isAuthenticated
+    }
+
+    private var resolvedMutationProvider: any PlaylistMutationProviding {
+        mutationProvider ?? ListenBrainzPlaylistMutationProvider(token: viewer.token)
     }
 }
 
@@ -409,7 +449,12 @@ struct ProfilePlaylistVisualQAScreen: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                ProfilePlaylistSection(model: model, selection: $selection, viewer: account)
+                ProfilePlaylistSection(
+                    model: model,
+                    selection: $selection,
+                    viewer: account,
+                    mutationProvider: VisualQAPlaylistMutationProvider()
+                )
                     .padding(.horizontal, 18)
                     .padding(.vertical, 24)
             }

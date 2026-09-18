@@ -235,6 +235,43 @@ public struct LBCoreClient: Sendable {
         return LBPlaylist(raw: result.playlist, mbid: mbid)
     }
 
+    /// Create a ListenBrainz playlist from a complete metadata snapshot.
+    ///
+    /// Pass no recording MBIDs to create an empty playlist, or pass MusicBrainz
+    /// recording IDs to create a populated JSPF playlist. ListenBrainz accepts
+    /// only canonical recording identifiers at creation time.
+    ///
+    /// - Returns: The UUID of the newly created playlist.
+    public func createPlaylist(
+        metadata: LBPlaylistMutationMetadata,
+        recordingMBIDs: [UUID] = []
+    ) async throws -> UUID {
+        try metadata.validate()
+        let request = CreatePlaylistRequest(
+            metadata: metadata,
+            recordingMBIDs: recordingMBIDs
+        )
+        let response = try await apiClient.execute(request)
+        guard response.status == "ok" else { throw LBError.invalidResponse }
+        return response.playlistMBID
+    }
+
+    /// Replace a ListenBrainz playlist's editable metadata.
+    ///
+    /// This API deliberately takes a full ``LBPlaylistMutationMetadata`` value:
+    /// ListenBrainz overwrites metadata on edit, so omission could accidentally
+    /// clear collaborators. Pass `annotation: nil` to clear a description and
+    /// `collaborators: []` to remove all collaborators.
+    public func editPlaylist(
+        mbid: UUID,
+        metadata: LBPlaylistMutationMetadata
+    ) async throws {
+        try metadata.validate()
+        let request = EditPlaylistRequest(mbid: mbid, metadata: metadata)
+        let response = try await apiClient.execute(request)
+        guard response.status == "ok" else { throw LBError.invalidResponse }
+    }
+
     /// Get playlists created for the given user
     /// - Parameters:
     ///   - username: User the playlists are created for
