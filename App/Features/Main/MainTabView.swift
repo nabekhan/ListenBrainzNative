@@ -33,6 +33,19 @@ struct MainTabView: View {
             ))
             return
         }
+        if ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo") {
+            let visualAccount = Account(username: "visual-taste", token: "visual-taste")
+            _model = State(initialValue: ListeningModel(
+                account: visualAccount,
+                provider: VisualQATasteProvider()
+            ))
+            _pins = State(initialValue: PinsModel(
+                account: visualAccount,
+                provider: VisualQAPinProvider()
+            ))
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo") {
             let visualAccount = Account(username: "visual-qa", token: "visual-qa")
             _model = State(initialValue: ListeningModel(account: visualAccount))
@@ -49,7 +62,12 @@ struct MainTabView: View {
 
     var body: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-brainz-release-detail-demo") {
+        if ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo") {
+            TasteView(model: model)
+                .task { await model.load() }
+                .environment(pins)
+        } else if ProcessInfo.processInfo.arguments.contains("-brainz-release-detail-demo") {
             NavigationStack {
                 ReleaseDetailView(
                     release: Self.releasePreviewSeed,
@@ -353,6 +371,74 @@ private struct VisualQAHistoryProvider: ListeningProvider {
             insertedAt: listenedAt.addingTimeInterval(3),
             isPlayingNow: isPlayingNow
         )
+    }
+}
+
+private struct VisualQATasteProvider: ListeningProvider {
+    private static let artistMBIDs = [
+        UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab")!,
+        UUID(uuidString: "6c0b31f3-2e41-4d70-bd16-5fa8551bd59b")!,
+        UUID(uuidString: "a1d4c987-9c07-4c71-8f75-6505e2e8f554")!,
+    ]
+    private static let releaseMBID = UUID(uuidString: "1390f1b7-7851-48ae-983d-eb8a48f78048")!
+
+    func validateToken() async throws -> String { "visual-taste" }
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] { [] }
+    func playingNow(username: String) async throws -> Listen? { nil }
+    func listenCount(username: String) async throws -> Int { 48_271 }
+    func topArtists(username: String, count: Int) async throws -> [RankedArtist] {
+        [
+            .init(mbid: Self.artistMBIDs[0], name: "Alvvays", listenCount: 1_283),
+            .init(mbid: Self.artistMBIDs[1], name: "Japanese Breakfast", listenCount: 947),
+            .init(mbid: Self.artistMBIDs[2], name: "The Marías", listenCount: 781),
+        ]
+    }
+    func topReleases(username: String, count: Int) async throws -> [RankedRelease] {
+        [
+            .init(mbid: Self.releaseMBID, name: "Blue Rev", artistName: "Alvvays", artistMBIDs: [Self.artistMBIDs[0]], listenCount: 423),
+            .init(mbid: nil, name: "Jubilee", artistName: "Japanese Breakfast", artistMBIDs: [Self.artistMBIDs[1]], listenCount: 287),
+        ]
+    }
+    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] {
+        [
+            .init(mbid: nil, releaseMBID: Self.releaseMBID, title: "After the Earthquake", artistName: "Alvvays", artistMBIDs: [Self.artistMBIDs[0]], releaseTitle: "Blue Rev", listenCount: 96),
+            .init(mbid: nil, releaseMBID: nil, title: "Be Sweet", artistName: "Japanese Breakfast", artistMBIDs: [Self.artistMBIDs[1]], releaseTitle: "Jubilee", listenCount: 83),
+        ]
+    }
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        let now = Date.now
+        return .init(
+            period: period,
+            from: now.addingTimeInterval(-7 * 86_400),
+            to: now,
+            lastUpdated: now,
+            buckets: [
+                .init(label: "Mon", from: now.addingTimeInterval(-7 * 86_400), to: now, listenCount: 112),
+                .init(label: "Tue", from: now.addingTimeInterval(-6 * 86_400), to: now, listenCount: 176),
+                .init(label: "Wed", from: now.addingTimeInterval(-5 * 86_400), to: now, listenCount: 94),
+                .init(label: "Thu", from: now.addingTimeInterval(-4 * 86_400), to: now, listenCount: 203),
+                .init(label: "Fri", from: now.addingTimeInterval(-3 * 86_400), to: now, listenCount: 138),
+                .init(label: "Sat", from: now.addingTimeInterval(-2 * 86_400), to: now, listenCount: 232),
+                .init(label: "Sun", from: now.addingTimeInterval(-86_400), to: now, listenCount: 156),
+            ]
+        )
+    }
+    func dailyActivity(username: String, period: ListeningActivityPeriod) async throws -> DailyActivity? {
+        let values = Dictionary(uniqueKeysWithValues: ListeningWeekday.allCases.map { weekday in
+            (weekday.rawValue, (0 ..< 24).map { hour in
+                DailyActivity.Hour(hour: hour, listenCount: tasteCount(weekday: weekday, hour: hour))
+            })
+        })
+        return DailyActivity(period: period, from: .now.addingTimeInterval(-7 * 86_400), to: .now, lastUpdated: .now, dailyActivity: values)
+    }
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+    func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+
+    private func tasteCount(weekday: ListeningWeekday, hour: Int) -> Int {
+        let weekdayOffset = ListeningWeekday.allCases.firstIndex(of: weekday) ?? 0
+        if (19 ... 23).contains(hour) { return 5 + ((weekdayOffset * 3 + hour) % 12) }
+        if (12 ... 15).contains(hour) { return 1 + ((weekdayOffset + hour) % 5) }
+        return (weekdayOffset + hour).isMultiple(of: 11) ? 2 : 0
     }
 }
 #endif

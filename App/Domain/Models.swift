@@ -260,6 +260,113 @@ enum ListeningActivityLoadState: Equatable {
     case failed(String)
 }
 
+enum ListeningWeekday: String, CaseIterable, Identifiable, Hashable, Sendable {
+    case monday = "Monday"
+    case tuesday = "Tuesday"
+    case wednesday = "Wednesday"
+    case thursday = "Thursday"
+    case friday = "Friday"
+    case saturday = "Saturday"
+    case sunday = "Sunday"
+
+    var id: Self { self }
+
+    var shortTitle: String {
+        String(rawValue.prefix(3))
+    }
+}
+
+/// ListenBrainz's server-calculated listening distribution. The API reports
+/// UTC weekdays/hours, so this deliberately never applies the device timezone.
+struct DailyActivity: Hashable, Sendable {
+    struct Hour: Hashable, Sendable {
+        let hour: Int
+        let listenCount: Int
+    }
+
+    struct Cell: Identifiable, Hashable, Sendable {
+        let weekday: ListeningWeekday
+        let hour: Int
+        let listenCount: Int
+
+        var id: String { "\(weekday.rawValue)-\(hour)" }
+    }
+
+    let period: ListeningActivityPeriod
+    let from: Date
+    let to: Date
+    let lastUpdated: Date
+    /// Always Monday through Sunday, with 24 cells (00:00–23:00 UTC) each.
+    let cells: [Cell]
+
+    init(
+        period: ListeningActivityPeriod,
+        from: Date,
+        to: Date,
+        lastUpdated: Date,
+        dailyActivity: [String: [Hour]]
+    ) {
+        self.period = period
+        self.from = from
+        self.to = to
+        self.lastUpdated = lastUpdated
+
+        var counts: [ListeningWeekday: [Int: Int]] = [:]
+        for weekday in ListeningWeekday.allCases {
+            for value in dailyActivity[weekday.rawValue] ?? [] where (0 ..< 24).contains(value.hour) {
+                // Be defensive if an upstream payload contains duplicates or
+                // malformed negative counts: combine valid samples and leave
+                // the visualization in a meaningful, non-negative state.
+                let count = max(0, value.listenCount)
+                var weekdayCounts = counts[weekday, default: [:]]
+                let current = weekdayCounts[value.hour, default: 0]
+                weekdayCounts[value.hour] = current.addingReportingOverflow(count).overflow
+                    ? Int.max
+                    : current + count
+                counts[weekday] = weekdayCounts
+            }
+        }
+
+        self.cells = ListeningWeekday.allCases.flatMap { weekday in
+            (0 ..< 24).map { hour in
+                Cell(weekday: weekday, hour: hour, listenCount: counts[weekday]?[hour, default: 0] ?? 0)
+            }
+        }
+    }
+
+    var totalListens: Int {
+        cells.reduce(into: 0) { total, cell in
+            let addition = total.addingReportingOverflow(cell.listenCount)
+            total = addition.overflow ? Int.max : addition.partialValue
+        }
+    }
+    var maximumListenCount: Int { cells.map(\.listenCount).max() ?? 0 }
+    var isEmpty: Bool { maximumListenCount == 0 }
+
+    func cell(weekday: ListeningWeekday, hour: Int) -> Cell? {
+        guard (0 ..< 24).contains(hour) else { return nil }
+        return cells[ListeningWeekday.allCases.firstIndex(of: weekday)! * 24 + hour]
+    }
+}
+
+enum DailyActivityLoadState: Equatable {
+    case idle
+    case loading
+    case loaded(DailyActivity)
+    case unavailable
+    case failed(String)
+}
+
+struct DailyActivityCacheKey: Hashable, Sendable {
+    let username: String
+    let period: ListeningActivityPeriod
+
+    init(username: String, period: ListeningActivityPeriod) {
+        self.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        self.period = period
+    }
+}
+
 struct FreshRelease: Identifiable, Hashable, Sendable {
     let releaseMBID: UUID?
     let releaseGroupMBID: UUID?

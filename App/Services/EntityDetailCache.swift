@@ -57,4 +57,8 @@ enum EntityDetailCaches {
     static let releaseGroups = EntityDetailCache<UUID, ReleaseGroupDetail>()
     static let releases = EntityDetailCache<UUID, ReleaseDetail>()
     static let playlists = EntityDetailCache<UUID, PlaylistDetail>()
+    static let dailyActivity = EntityDetailCache<DailyActivityCacheKey, DailyActivity>(
+        timeToLive: 10 * 60,
+        maximumEntryCount: 28
+    )
 }

@@ -344,6 +344,175 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(requestCount, 2)
     }
 
+    func testRetryingLoadedActivityStartsANewRequest() async {
+        let provider = FixtureProvider()
+        let model = ListeningModel(
+            account: Account(username: "fixture-\(UUID().uuidString)", token: ""),
+            provider: provider
+        )
+
+        await model.loadListeningActivity(for: .thisWeek)
+        await model.loadListeningActivity(for: .thisWeek)
+        let initialRequestCount = await provider.activityRequestCount(for: .thisWeek)
+        XCTAssertEqual(initialRequestCount, 1)
+
+        await model.loadListeningActivity(for: .thisWeek, retrying: true)
+        let retryRequestCount = await provider.activityRequestCount(for: .thisWeek)
+        XCTAssertEqual(retryRequestCount, 2)
+    }
+
+    func testDailyActivityNormalizesToACompleteUTCWeek() {
+        let activity = DailyActivity(
+            period: .thisWeek,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            dailyActivity: [
+                "Monday": [
+                    .init(hour: 0, listenCount: 2),
+                    .init(hour: 0, listenCount: 3),
+                    .init(hour: 24, listenCount: 99),
+                    .init(hour: -1, listenCount: 99),
+                    .init(hour: 3, listenCount: -8),
+                ],
+                "Sunday": [.init(hour: 23, listenCount: 7)],
+            ]
+        )
+
+        XCTAssertEqual(activity.cells.count, 168)
+        XCTAssertEqual(activity.cell(weekday: .monday, hour: 0)?.listenCount, 5)
+        XCTAssertEqual(activity.cell(weekday: .monday, hour: 3)?.listenCount, 0)
+        XCTAssertEqual(activity.cell(weekday: .tuesday, hour: 12)?.listenCount, 0)
+        XCTAssertEqual(activity.cell(weekday: .sunday, hour: 23)?.listenCount, 7)
+        XCTAssertNil(activity.cell(weekday: .monday, hour: 24))
+    }
+
+    func testDailyActivityDateRangeIsFormattedInUTC() {
+        let activity = DailyActivity(
+            period: .thisWeek,
+            from: Date(timeIntervalSince1970: 1_735_689_600), // 2025-01-01 00:00 UTC
+            to: Date(timeIntervalSince1970: 1_735_776_000),   // 2025-01-02 00:00 UTC
+            lastUpdated: .distantPast,
+            dailyActivity: [:]
+        )
+
+        XCTAssertEqual(
+            TasteView.dailyActivityDateRange(activity, locale: Locale(identifier: "en_US_POSIX")),
+            "Jan 1, 2025 – Jan 2, 2025 · UTC"
+        )
+    }
+
+    func testDailyActivityCachesOneFreshRequestPerNormalizedUserAndPeriod() async {
+        let cache = EntityDetailCache<DailyActivityCacheKey, DailyActivity>()
+        let provider = DailyActivityProvider(result: .activity(listenCount: 4))
+        let first = ListeningModel(
+            account: Account(username: " Listener ", token: ""),
+            provider: provider,
+            dailyActivityCache: cache
+        )
+
+        await first.loadDailyActivity(for: .thisWeek)
+        await first.loadDailyActivity(for: .thisWeek)
+        let firstRequestCount = await provider.requestCount()
+        XCTAssertEqual(firstRequestCount, 1)
+
+        let sameUser = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: provider,
+            dailyActivityCache: cache
+        )
+        await sameUser.loadDailyActivity(for: .thisWeek)
+        let sameUserRequestCount = await provider.requestCount()
+        XCTAssertEqual(sameUserRequestCount, 1)
+
+        let otherUser = ListeningModel(
+            account: Account(username: "someone-else", token: ""),
+            provider: provider,
+            dailyActivityCache: cache
+        )
+        await otherUser.loadDailyActivity(for: .thisWeek)
+        await otherUser.loadDailyActivity(for: .thisMonth)
+        let isolatedRequestCount = await provider.requestCount()
+        XCTAssertEqual(isolatedRequestCount, 3)
+    }
+
+    func testStaleDailyActivityStaysVisibleDuringRefreshAndOnFailure() async throws {
+        let cache = EntityDetailCache<DailyActivityCacheKey, DailyActivity>(timeToLive: -1)
+        let stale = DailyActivity.fixture(period: .thisWeek, listenCount: 3)
+        await cache.save(stale, for: .init(username: "listener", period: .thisWeek))
+        let provider = DailyActivityProvider(result: .failure, delay: .seconds(1))
+        let model = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: provider,
+            dailyActivityCache: cache
+        )
+
+        let task = Task { await model.loadDailyActivity(for: .thisWeek) }
+        while await provider.requestCount() == 0 {
+            try await ContinuousClock().sleep(for: .milliseconds(1))
+        }
+        guard case let .loaded(visible) = model.dailyActivityState(for: .thisWeek) else {
+            return XCTFail("Stale data should remain visible while refreshing")
+        }
+        XCTAssertEqual(visible.totalListens, stale.totalListens)
+
+        await task.value
+        guard case let .loaded(retained) = model.dailyActivityState(for: .thisWeek) else {
+            return XCTFail("A refresh failure must not discard stale data")
+        }
+        XCTAssertEqual(retained.totalListens, stale.totalListens)
+        XCTAssertNotNil(model.dailyActivityRefreshMessage(for: .thisWeek))
+    }
+
+    func testDailyActivityReplacementCannotBeOverwrittenByOlderRequest() async throws {
+        let provider = DailyActivityProvider(
+            results: [.activity(listenCount: 2), .activity(listenCount: 9)],
+            delays: [.milliseconds(80), .milliseconds(1)],
+            ignoresCancellation: true
+        )
+        let model = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: provider,
+            dailyActivityCache: EntityDetailCache()
+        )
+
+        let first = Task { await model.loadDailyActivity(for: .thisWeek) }
+        while await provider.requestCount() < 1 {
+            try await ContinuousClock().sleep(for: .milliseconds(1))
+        }
+        let replacement = Task { await model.loadDailyActivity(for: .thisWeek, retrying: true) }
+        await first.value
+        await replacement.value
+
+        guard case let .loaded(activity) = model.dailyActivityState(for: .thisWeek) else {
+            return XCTFail("Expected replacement result")
+        }
+        XCTAssertEqual(activity.totalListens, 9)
+    }
+
+    func testDailyActivityNilAndAllZeroResponsesAreHonest() async {
+        let noContent = DailyActivityProvider(result: .noContent)
+        let noContentModel = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: noContent,
+            dailyActivityCache: EntityDetailCache()
+        )
+        await noContentModel.loadDailyActivity(for: .thisWeek)
+        XCTAssertEqual(noContentModel.dailyActivityState(for: .thisWeek), .unavailable)
+
+        let zeros = DailyActivityProvider(result: .activity(listenCount: 0))
+        let zeroModel = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: zeros,
+            dailyActivityCache: EntityDetailCache()
+        )
+        await zeroModel.loadDailyActivity(for: .thisWeek)
+        guard case let .loaded(activity) = zeroModel.dailyActivityState(for: .thisWeek) else {
+            return XCTFail("Expected a loaded all-zero matrix")
+        }
+        XCTAssertTrue(activity.isEmpty)
+    }
+
     func testFreshReleasesKeepPersonalizedAndSitewideRequestsSeparate() async {
         let provider = FixtureProvider()
         let model = FreshReleasesModel(
@@ -845,6 +1014,84 @@ private actor SearchFixtureProvider: SearchProviding {
     func requestCount() -> Int { calls.count }
     func queries() -> [String] { calls.map(\.0) }
     func cancellationCount() -> Int { cancellations }
+}
+
+private extension DailyActivity {
+    static func fixture(period: ListeningActivityPeriod, listenCount: Int) -> DailyActivity {
+        DailyActivity(
+            period: period,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            dailyActivity: ["Monday": [.init(hour: 20, listenCount: listenCount)]]
+        )
+    }
+}
+
+private actor DailyActivityProvider: ListeningProvider {
+    enum Result: Sendable {
+        case activity(listenCount: Int)
+        case noContent
+        case failure
+    }
+
+    private var results: [Result]
+    private var delays: [Duration]
+    private let ignoresCancellation: Bool
+    private var requests = 0
+
+    init(
+        result: Result,
+        delay: Duration = .zero,
+        ignoresCancellation: Bool = false
+    ) {
+        self.results = [result]
+        self.delays = [delay]
+        self.ignoresCancellation = ignoresCancellation
+    }
+
+    init(results: [Result], delays: [Duration], ignoresCancellation: Bool) {
+        self.results = results
+        self.delays = delays
+        self.ignoresCancellation = ignoresCancellation
+    }
+
+    func validateToken() async throws -> String { "fixture" }
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] { [] }
+    func playingNow(username: String) async throws -> Listen? { nil }
+    func listenCount(username: String) async throws -> Int { 0 }
+    func topArtists(username: String, count: Int) async throws -> [RankedArtist] { [] }
+    func topReleases(username: String, count: Int) async throws -> [RankedRelease] { [] }
+    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] { [] }
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        .init(period: period, from: .distantPast, to: .distantPast, lastUpdated: .distantPast, buckets: [])
+    }
+    func dailyActivity(username: String, period: ListeningActivityPeriod) async throws -> DailyActivity? {
+        let index = requests
+        requests += 1
+        let delay = delays[min(index, delays.count - 1)]
+        if delay > .zero {
+            do {
+                try await ContinuousClock().sleep(for: delay)
+            } catch where !ignoresCancellation {
+                throw CancellationError()
+            } catch {
+                // Deliberately behave like a provider that returns late after
+                // cancellation, to prove the model's request ID protection.
+            }
+        }
+        switch results[min(index, results.count - 1)] {
+        case let .activity(listenCount):
+            return .fixture(period: period, listenCount: listenCount)
+        case .noContent:
+            return nil
+        case .failure:
+            throw URLError(.cannotConnectToHost)
+        }
+    }
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+    func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+    func requestCount() -> Int { requests }
 }
 
 private actor FixtureProvider: ListeningProvider {

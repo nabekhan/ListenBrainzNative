@@ -15,6 +15,7 @@ final class ListeningModel {
     let account: Account
     private let provider: any ListeningProvider
     private let cache: SnapshotCache
+    private let dailyActivityCache: EntityDetailCache<DailyActivityCacheKey, DailyActivity>
 
     private(set) var snapshot = ListeningSnapshot.empty
     private(set) var phase: Phase = .idle
@@ -28,6 +29,9 @@ final class ListeningModel {
     private(set) var selectedDayError: String?
     private(set) var listeningActivity: [ListeningActivityPeriod: ListeningActivityLoadState] = [:]
     private var listeningActivityRequestIDs: [ListeningActivityPeriod: UUID] = [:]
+    private(set) var dailyActivity: [ListeningActivityPeriod: DailyActivityLoadState] = [:]
+    private(set) var dailyActivityRefreshMessages: [ListeningActivityPeriod: String] = [:]
+    private var dailyActivityRequestIDs: [ListeningActivityPeriod: UUID] = [:]
     var feedback: [String: RecordingFeedback] = [:]
     var actionError: String?
     private var didLoad = false
@@ -37,11 +41,13 @@ final class ListeningModel {
     init(
         account: Account,
         provider: (any ListeningProvider)? = nil,
-        cache: SnapshotCache = .shared
+        cache: SnapshotCache = .shared,
+        dailyActivityCache: EntityDetailCache<DailyActivityCacheKey, DailyActivity> = EntityDetailCaches.dailyActivity
     ) {
         self.account = account
         self.provider = provider ?? ListenBrainzProvider(token: account.token)
         self.cache = cache
+        self.dailyActivityCache = dailyActivityCache
     }
 
     func load() async {
@@ -227,11 +233,11 @@ final class ListeningModel {
 
     func loadListeningActivity(for period: ListeningActivityPeriod, retrying: Bool = false) async {
         switch activityState(for: period) {
-        case .loaded:
+        case .loaded where !retrying:
             return
         case .failed where !retrying:
             return
-        case .idle, .loading, .failed:
+        case .idle, .loading, .loaded, .failed:
             listeningActivity[period] = .loading
         }
 
@@ -253,6 +259,72 @@ final class ListeningModel {
                 ? .idle
                 : .failed(error.localizedDescription)
             listeningActivityRequestIDs[period] = nil
+        }
+    }
+
+    func dailyActivityState(for period: ListeningActivityPeriod) -> DailyActivityLoadState {
+        dailyActivity[period] ?? .idle
+    }
+
+    func dailyActivityRefreshMessage(for period: ListeningActivityPeriod) -> String? {
+        dailyActivityRefreshMessages[period]
+    }
+
+    /// Loads only the selected server range. A stale cached matrix remains
+    /// visible during revalidation, and any refresh failure leaves it usable.
+    func loadDailyActivity(for period: ListeningActivityPeriod, retrying: Bool = false) async {
+        let key = DailyActivityCacheKey(username: account.username, period: period)
+        if !retrying, dailyActivityRequestIDs[period] != nil {
+            return
+        }
+
+        if let cached = await dailyActivityCache.value(for: key) {
+            dailyActivity[period] = .loaded(cached.value)
+            if cached.isFresh, !retrying {
+                return
+            }
+        } else {
+            if !retrying {
+                switch dailyActivityState(for: period) {
+                case .loaded, .unavailable, .loading:
+                    return
+                case .idle, .failed:
+                    break
+                }
+            }
+            dailyActivity[period] = .loading
+        }
+
+        dailyActivityRefreshMessages[period] = nil
+        let requestID = UUID()
+        dailyActivityRequestIDs[period] = requestID
+
+        do {
+            let result = try await provider.dailyActivity(username: account.username, period: period)
+            try Task.checkCancellation()
+            guard dailyActivityRequestIDs[period] == requestID else { return }
+            guard let result else {
+                dailyActivity[period] = .unavailable
+                dailyActivityRequestIDs[period] = nil
+                return
+            }
+            dailyActivity[period] = .loaded(result)
+            dailyActivityRequestIDs[period] = nil
+            await dailyActivityCache.save(result, for: key)
+        } catch is CancellationError {
+            guard dailyActivityRequestIDs[period] == requestID else { return }
+            dailyActivityRequestIDs[period] = nil
+            if case .loading = dailyActivityState(for: period) {
+                dailyActivity[period] = .idle
+            }
+        } catch {
+            guard dailyActivityRequestIDs[period] == requestID else { return }
+            dailyActivityRequestIDs[period] = nil
+            if case .loaded = dailyActivityState(for: period) {
+                dailyActivityRefreshMessages[period] = error.localizedDescription
+            } else {
+                dailyActivity[period] = .failed(error.localizedDescription)
+            }
         }
     }
 

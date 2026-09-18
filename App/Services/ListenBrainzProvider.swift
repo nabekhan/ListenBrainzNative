@@ -118,6 +118,23 @@ struct ListenBrainzProvider: ListeningProvider {
         }
     }
 
+    func dailyActivity(username: String, period: ListeningActivityPeriod) async throws -> DailyActivity? {
+        try await perform {
+            guard let result = try await client.stats.dailyActivity(user: username, range: Self.range(for: period)) else {
+                return nil
+            }
+            return DailyActivity(
+                period: period,
+                from: result.from,
+                to: result.to,
+                lastUpdated: Date(timeIntervalSince1970: TimeInterval(result.lastUpdated)),
+                dailyActivity: result.dailyActivity.mapValues { values in
+                    values.map { .init(hour: $0.hour, listenCount: $0.listenCount) }
+                }
+            )
+        }
+    }
+
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] {
         try await perform {
             let result: LBFreshReleases?

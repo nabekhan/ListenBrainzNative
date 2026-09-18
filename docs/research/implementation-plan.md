@@ -48,20 +48,20 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 
 ## Staging after the slice
 
-- Phase 3: server-efficient full History/date navigation is now implemented alongside native recommendation feedback, My Feed/Following/Similar with supported feed mutations, public/personal recording sharing, Statistics, Fresh Releases, scoped search, Pins, visited-user/social profiles, release-group/playlist details, and For You recommendations. Broader playlist/profile entry points remain.
+- Phase 3: server-efficient full History/date navigation is now implemented alongside native recommendation feedback, My Feed/Following/Similar with supported feed mutations, public/personal recording sharing, Statistics with a UTC listening-hours heatmap, Fresh Releases, scoped search, Pins, visited-user/social profiles, release-group/playlist details, and For You recommendations. Broader playlist/profile entry points remain.
 - Phase 4: Year in Music, shareable art, LB Radio, playlist editing, playback/content resolution, MusicKit-scoped capture, offline submit queue, inspect/mapping tools. Spotify-linked playback through a libspot/librespot-family implementation is deferred until the core product is complete and may be investigated only on a separate branch after exact project identity, licensing, Spotify policy, authentication, maintenance, and App Store constraints are audited.
 
 ## Next implementation sequence
 
-1. Add broader playlist/profile entry points without metadata waterfalls.
-2. Expand server-backed Taste statistics (daily/hour activity, artist/era evolution) without client-side history scans.
+1. Add owned and collaborating playlist entry points to Profile with server pagination and no metadata waterfalls.
+2. Expand server-backed Taste statistics with artist/era evolution without client-side history scans.
 
 ## Constraints recorded
 
 - Production website interactive inspection was blocked by the unavailable configured browser; current frontend source/routes and public API calls were inspected instead.
 - Xcode 27, the iOS 27 runtime, app build, test bundle, real simulator tests, and live public data have now been exercised. Visual checkpoints cover onboarding plus real-data Home in light/dark mode; smaller-device validation is recorded with the build evidence.
-- The verified checkpoint currently passes 81 vendored-package tests and 112 app tests, plus the deliberately paced opt-in production public API smoke suite.
-- Phase 3 statistics now includes on-demand server activity for the website's seven primary ranges, per-period request caching, accessible native charts, and explicit empty/retry behavior. Real-data visual checks covered all-time activity on large and small simulators in dark and light modes.
+- The verified checkpoint currently passes 84 vendored-package tests and 119 app tests, plus the deliberately paced opt-in production public API smoke suite.
+- Phase 3 statistics now includes on-demand server activity and daily/hour activity for the website's seven primary ranges. The daily response is normalized into a selectable 7×24 UTC grid, cached per normalized user and period, and retains stale data through refresh failure. Explicit unavailable/empty/retry states, VoiceOver cell values, and horizontal accessibility-size expansion avoid pretending the server can provide local-time buckets. Fixture-only visual checks covered dark/light mode and accessibility-extra-extra-extra-large text without a production request.
 - Fresh Releases now uses an upstreamable ListenBrainzKit extension. Personalized results are the default and an HTTP 204 becomes an honest empty state; selecting All is the only route that makes a sitewide request. The native slice follows the website's one-week window and newest-first presentation, while distinguishing upcoming releases and concrete release versus release-group identity. The API client preserves the sitewide endpoint's required terminal slash, with regression coverage.
 - Search now exposes Users, Artists, Albums (release groups), Tracks, and public Playlists in one native sheet. It sends only the selected scope after a 500 ms debounce, caches per normalized query, cancels abandoned/stale work, preserves release-group identity, and reuses the native artist/recording destinations. ListenBrainz and MusicBrainz have independent process-shared gates; canonical paths avoid hidden redirect requests. Real MusicBrainz results were visually checked in dark/light mode and XXL Dynamic Type.
 - Pins now includes a current-profile card, lazy paginated history, recording-detail pin/unpin, 280-character notes, and owner-only edit/delete actions. Mutations are optimistic with rollback, and the ListenBrainzKit extension follows the endpoint-specific response contracts (including the Boolean update result). Public-profile empty-state presentation was visually checked in the simulator; production mutations were deliberately not exercised.

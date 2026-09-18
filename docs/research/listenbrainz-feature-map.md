@@ -24,7 +24,7 @@ Snapshot: 2026-09-17. `Y` means source/API evidence exists; `P` means partial or
 | Top release groups | Y | Y | Y | P | Y | P | P1 | Preserve release/release-group distinction |
 | Top recordings/tracks | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
 | Listening activity | Y | Y | Y | Y | Y | Y | P0 | Native Swift Charts |
-| Daily/hour-of-day activity | Y | Y | Y | Y | — | P | P1 | Heatmap/histogram |
+| Daily/hour-of-day activity | Y | Y | Y | Y | Y | — | P1 | Native cached, selectable 7×24 UTC heatmap across the seven server periods |
 | Artist activity | Y | Y | Y | P | — | P | P1 | Explain listening mix |
 | Genre activity | Y | Y | Y | P | — | P | P1 | Show only with adequate mapped metadata |
 | Era activity | Y | Y | Y | P | — | P | P1 | Server-derived; group decades in UI |
