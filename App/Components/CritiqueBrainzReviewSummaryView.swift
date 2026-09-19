@@ -75,7 +75,19 @@ struct CritiqueBrainzReviewSummaryView: View {
                 }
 
                 ForEach(summary.reviews.prefix(3)) { review in
-                    reviewCard(review)
+                    CritiqueBrainzReviewCard(review: review, truncatesText: true)
+                }
+
+                if !summary.reviews.isEmpty {
+                    NavigationLink {
+                        CritiqueBrainzReviewReaderView(summary: summary)
+                    } label: {
+                        Label(
+                            summary.reviews.count == 1 ? "Read this review" : "Read these reviews",
+                            systemImage: "text.page"
+                        )
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
 
                 Link(destination: summary.entity.browseURL) {
@@ -85,54 +97,6 @@ struct CritiqueBrainzReviewSummaryView: View {
                 .accessibilityHint("Opens this entity’s CritiqueBrainz page")
             }
         }
-    }
-
-    private func reviewCard(_ review: CritiqueBrainzReview) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(review.author ?? "CritiqueBrainz member")
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                    if let publishedAt = review.publishedAt {
-                        Text(publishedAt.formatted(date: .abbreviated, time: .omitted))
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                Spacer(minLength: 6)
-                if let rating = review.rating {
-                    Label("\(rating) out of 5", systemImage: "star.fill")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(AppTheme.accent)
-                        .accessibilityLabel("Rating \(rating) out of 5")
-                }
-            }
-            if let text = review.text {
-                Text(text)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 8 : 4)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            HStack(spacing: 10) {
-                if let license = review.licenseID, let url = review.licenseURL {
-                    Link(license, destination: url)
-                        .font(.caption)
-                        .lineLimit(1)
-                        .accessibilityLabel("License \(license)")
-                } else if let license = review.licenseID {
-                    Text(license).font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 4)
-                Link("Read review", destination: review.reviewURL)
-                    .font(.caption.weight(.semibold))
-                    .accessibilityHint("Opens this review on CritiqueBrainz")
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(13)
-        .background(.quaternary.opacity(0.45), in: .rect(cornerRadius: 14, style: .continuous))
     }
 
     private var failureCard: some View {
@@ -161,5 +125,100 @@ struct CritiqueBrainzReviewSummaryView: View {
     private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content().frame(maxWidth: .infinity, alignment: .leading).padding(18)
             .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+    }
+}
+
+/// A local, value-only reader for the short review page already loaded by the
+/// summary card. It intentionally has no provider or task of its own.
+struct CritiqueBrainzReviewReaderView: View {
+    let summary: CritiqueBrainzReviewSummary
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 14) {
+                Text("Published reviews from CritiqueBrainz")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                ForEach(summary.reviews) { review in
+                    CritiqueBrainzReviewCard(review: review, truncatesText: false)
+                }
+
+                Link(destination: summary.entity.browseURL) {
+                    Label("View on CritiqueBrainz", systemImage: "arrow.up.right.square")
+                }
+                .buttonStyle(.bordered)
+                .accessibilityHint("Opens this entity’s CritiqueBrainz page")
+                .padding(.top, 2)
+            }
+            .padding(20)
+        }
+        .navigationTitle("CritiqueBrainz reviews")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+}
+
+private struct CritiqueBrainzReviewCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let review: CritiqueBrainzReview
+    let truncatesText: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(review.author ?? "CritiqueBrainz member")
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    if let publishedAt = review.publishedAt {
+                        Text(publishedAt.formatted(date: .abbreviated, time: .omitted))
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                Spacer(minLength: 6)
+                if let rating = review.rating {
+                    Label("\(rating) out of 5", systemImage: "star.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppTheme.accent)
+                        .accessibilityLabel("Rating \(rating) out of 5")
+                }
+            }
+            if let text = review.text {
+                Text(text)
+                    .font(.subheadline)
+                    .foregroundStyle(truncatesText ? .secondary : .primary)
+                    .lineLimit(truncatesText ? (dynamicTypeSize.isAccessibilitySize ? 8 : 4) : nil)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 10) {
+                if let license = review.licenseID, let url = review.licenseURL {
+                    Link(license, destination: url)
+                        .font(.caption)
+                        .lineLimit(1)
+                        .accessibilityLabel("License \(license)")
+                } else if let license = review.licenseID {
+                    Text(license).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 4)
+                Link("Read review", destination: review.reviewURL)
+                    .font(.caption.weight(.semibold))
+                    .accessibilityLabel(externalReviewAccessibilityLabel)
+                    .accessibilityHint("Opens this review on CritiqueBrainz")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(13)
+        .background(.quaternary.opacity(0.45), in: .rect(cornerRadius: 14, style: .continuous))
+    }
+
+    private var externalReviewAccessibilityLabel: String {
+        guard let author = review.author?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !author.isEmpty else {
+            return "Read this review on CritiqueBrainz"
+        }
+        return "Read \(author)’s review on CritiqueBrainz"
     }
 }

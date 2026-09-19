@@ -5,6 +5,24 @@ import XCTest
 
 @MainActor
 final class CritiqueBrainzReviewModelTests: XCTestCase {
+    func testDecoderKeepsEveryLoadedReviewAndItsFullText() throws {
+        let entity = CritiqueBrainzEntity(kind: .artist, mbid: UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab")!)
+        let longText = "A sharply observed record that keeps opening up with each listen. Its hooks arrive softly, then stay with you for days."
+        let summary = try CritiqueBrainzReviewDecoder.decode(Data("""
+        {"reviews":[
+          {"id":"a4c81c31-0e10-4ee0-bd37-842c5dcdf7ad","entity_id":"526bd613-fddd-4bd6-9137-ab709ac74cab","entity_type":"artist","rating":5,"text":"\(longText)","user":{"display_name":"Avery Chen"},"published_on":"Tue, 15 Sep 2026 10:40:41 GMT","license_id":"CC BY-SA 3.0","info_url":"https://creativecommons.org/licenses/by-sa/3.0/"},
+          {"id":"4602e98e-61f1-456b-85d0-a0fe0167d659","entity_id":"526bd613-fddd-4bd6-9137-ab709ac74cab","entity_type":"artist","rating":4,"text":"Bright melodies, precise details, and a lovely sense of motion.","user":{"username":"Samira"}},
+          {"id":"5e9ee8e7-85d9-4216-956c-8d699a5bd2e0","entity_id":"526bd613-fddd-4bd6-9137-ab709ac74cab","entity_type":"artist","text":"The quiet details make this one worth returning to.","license_id":"CC0-1.0"},
+          {"id":"b5d2f714-c340-4924-9ee3-2a13d4b7c0d1","entity_id":"526bd613-fddd-4bd6-9137-ab709ac74cab","entity_type":"artist","rating":3,"text":"A beautiful first half, though the final stretch feels less certain.","user":{"name":"Mina"}},
+          {"id":"39ad19e5-c0b0-454a-985b-201fb92898a0","entity_id":"526bd613-fddd-4bd6-9137-ab709ac74cab","entity_type":"artist","rating":2,"text":"The production is polished, but the songs never quite settle into a shape of their own.","user":{"username":"Rowan"}}
+        ]}
+        """.utf8), for: entity)
+
+        XCTAssertEqual(summary?.reviews.count, 5)
+        XCTAssertEqual(summary?.reviews.first?.text, longText)
+        XCTAssertEqual(summary?.reviews.compactMap(\.rating), [5, 4, 3, 2])
+    }
+
     func testFlatResponseDropsHiddenDraftWrongEntityAndMalformedRows() throws {
         let entity = CritiqueBrainzEntity(kind: .artist, mbid: UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab")!)
         let summary = try CritiqueBrainzReviewDecoder.decode(Data("""

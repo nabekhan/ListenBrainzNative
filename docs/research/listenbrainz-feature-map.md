@@ -40,7 +40,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Social feed/timeline | Y | Y | Y | Y | Y | Y | P1 | Native My Feed read surface; unknown event types survive and malformed nested metadata is tolerated |
 | Following/similar-user listen feeds | Y | Y | Y | Y | Y | Y | P1 | Separate modes; exact-oldest cursor, stable dedupe, and stable seven-day recent-window semantics |
 | Recommend recording/personal blurb | Y | Y | Y | Y | Y | Y | P1 | Native public and follower-only personal sharing landed with cached multi-select recipients and 280-character notes |
-| Reviews/CritiqueBrainz events | Y | Y | Y | Y | — | Y | P2 | Native published-review highlights landed for canonical artist, recording, and release-group details; writing/voting remains staged |
+| Reviews/CritiqueBrainz events | Y | Y | Y | Y | — | Y | P2 | Native highlights and a full-text reader landed for every row in the existing five-review page; there is no pagination or all-reviews fetch, and writing/voting remains staged |
 | Thanks/hide/unhide/delete feed event | Y | Y | Y | P | Y | Y | P2 | Native eligibility-aware actions landed with stable row IDs, optimistic rollback, hidden-card privacy, and dedicated pin deletion |
 | Collaborative-filter recommendations | Y | Y | Y | P | Y | P | P1 | Native For You tracks landed with paginated batch hydration; feedback remains staged |
 | Recommendation feedback | Y | Y | P | P | Y | P | P1 | Native Hate/Dislike/Like/Love control with batched state reads, tap-again clear, optimistic rollback, and pending-action serialization |

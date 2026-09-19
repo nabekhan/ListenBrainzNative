@@ -80,6 +80,7 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-top-listeners-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-top-listeners-expanded-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reader-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-unavailable-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-failure-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-similar-artists-demo")
@@ -338,6 +339,15 @@ struct MainTabView: View {
                 }
                 .environment(pins)
                 .environment(\.similarArtistsProvider, VisualQASimilarArtistsProvider())
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reader-demo") {
+                NavigationStack {
+                    CritiqueBrainzReviewReaderView(
+                        summary: VisualQACritiqueBrainzReviewsProvider.readerDemo(
+                            entity: .init(kind: .artist, mbid: Self.popularityPreviewArtist.mbid!)
+                        )
+                    )
+                }
+                .environment(pins)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-unavailable-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-failure-demo")
@@ -1008,6 +1018,61 @@ struct MainTabView: View {
     private struct VisualQACritiqueBrainzReviewsProvider: CritiqueBrainzReviewsProviding {
         enum Result { case populated, unavailable, failure }
         let result: Result
+
+        static func readerDemo(entity: CritiqueBrainzEntity) -> CritiqueBrainzReviewSummary {
+            CritiqueBrainzReviewSummary(
+                entity: entity,
+                reviews: [
+                    .init(
+                        id: UUID(uuidString: "a4c81c31-0e10-4ee0-bd37-842c5dcdf7ad")!,
+                        author: "Avery Chen",
+                        licenseID: "CC BY-SA 3.0",
+                        licenseURL: URL(string: "https://creativecommons.org/licenses/by-sa/3.0/"),
+                        rating: 5,
+                        text: "A sharply observed record that keeps opening up with each listen. Its hooks arrive softly, then stay with you for days. The arrangements keep shifting at the edges without losing their center, and the final song reframes everything that came before it. Even the smallest transitions feel deliberate.",
+                        publishedAt: .now.addingTimeInterval(-14 * 86_400)
+                    ),
+                    .init(
+                        id: UUID(uuidString: "4602e98e-61f1-456b-85d0-a0fe0167d659")!,
+                        author: "Samira",
+                        licenseID: nil,
+                        licenseURL: nil,
+                        rating: 4,
+                        text: "Bright melodies, precise details, and a lovely sense of motion.",
+                        publishedAt: .now.addingTimeInterval(-93 * 86_400)
+                    ),
+                    .init(
+                        id: UUID(uuidString: "5e9ee8e7-85d9-4216-956c-8d699a5bd2e0")!,
+                        author: nil,
+                        licenseID: "CC0-1.0",
+                        licenseURL: nil,
+                        rating: nil,
+                        text: "The quiet details make this one worth returning to.",
+                        publishedAt: nil
+                    ),
+                    .init(
+                        id: UUID(uuidString: "b5d2f714-c340-4924-9ee3-2a13d4b7c0d1")!,
+                        author: "Mina",
+                        licenseID: "CC BY 4.0",
+                        licenseURL: URL(string: "https://creativecommons.org/licenses/by/4.0/"),
+                        rating: 3,
+                        text: "A beautiful first half, though the final stretch feels less certain.",
+                        publishedAt: .now.addingTimeInterval(-181 * 86_400)
+                    ),
+                    .init(
+                        id: UUID(uuidString: "39ad19e5-c0b0-454a-985b-201fb92898a0")!,
+                        author: "Rowan",
+                        licenseID: nil,
+                        licenseURL: nil,
+                        rating: 2,
+                        text: "The production is polished, but the songs never quite settle into a shape of their own.",
+                        publishedAt: .now.addingTimeInterval(-260 * 86_400)
+                    )
+                ],
+                averageRating: 3.8,
+                ratingCount: 19
+            )
+        }
 
         func reviews(for entity: CritiqueBrainzEntity) async throws -> CritiqueBrainzReviewSummary? {
             await Task.yield()
