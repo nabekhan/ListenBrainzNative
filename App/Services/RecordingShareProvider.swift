@@ -67,6 +67,7 @@ private struct LiveRecordingShareTransport: RecordingShareTransport {
 struct ListenBrainzRecordingShareProvider: RecordingShareProviding {
     private let transport: any RecordingShareTransport
     private let gate: RequestGate
+    private let readScope: RequestGate.ReadScope
 
     init(token: String, gate: RequestGate = .shared) {
         transport = LiveRecordingShareTransport(
@@ -76,15 +77,21 @@ struct ListenBrainzRecordingShareProvider: RecordingShareProviding {
             )
         )
         self.gate = gate
+        readScope = .authenticated(token: token)
     }
 
-    init(transport: some RecordingShareTransport, gate: RequestGate) {
+    init(
+        transport: some RecordingShareTransport,
+        gate: RequestGate,
+        readScope: RequestGate.ReadScope = .isolated()
+    ) {
         self.transport = transport
         self.gate = gate
+        self.readScope = readScope
     }
 
     func followers(of username: String) async throws -> [SearchUser] {
-        try await perform {
+        try await read(.recordingShareFollowers(readScope, user: username)) {
             try await transport.followers(username: username)
                 .map { SearchUser(username: $0) }
                 .sorted { $0.username.localizedCaseInsensitiveCompare($1.username) == .orderedAscending }
@@ -141,13 +148,19 @@ struct ListenBrainzRecordingShareProvider: RecordingShareProviding {
         }
     }
 
-    private func perform<Result: Sendable>(
+    private func read<Result: Sendable>(
+        _ key: RequestGate.ReadKey,
         _ operation: @escaping @Sendable () async throws -> Result
     ) async throws -> Result {
         do {
-            return try await gated(operation)
+            return try await gate.read(for: key, operation) { error in
+                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
         } catch LBError.invalidAuth, LBError.noToken, LBError.forbidden {
             throw RecordingShareProviderError.invalidAuthentication
+        } catch let LBError.rateLimited(resetIn) {
+            throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
         }
     }
 

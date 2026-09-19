@@ -5,6 +5,7 @@ import CryptoKit
 struct ListenBrainzProvider: ListeningProvider {
     private let client: LBClient
     private let gate: RequestGate
+    private let readScope: RequestGate.ReadScope
     private let deletionTransport: any ListenDeletionTransport
 
     init(token: String, gate: RequestGate = .shared) {
@@ -13,6 +14,7 @@ struct ListenBrainzProvider: ListeningProvider {
             userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"
         )
         self.gate = gate
+        readScope = .authenticated(token: token)
         deletionTransport = LiveListenDeletionTransport(client: client)
     }
 
@@ -23,11 +25,12 @@ struct ListenBrainzProvider: ListeningProvider {
         )
         self.client = client
         self.gate = gate
+        readScope = .authenticated(token: token)
         self.deletionTransport = deletionTransport
     }
 
     func validateToken() async throws -> String {
-        try await perform {
+        try await read(.tokenValidation(readScope)) {
             let info = try await client.core.isTokenValid()
             guard info.valid, let username = info.userName, !username.isEmpty else {
                 throw ProviderError.invalidToken
@@ -37,19 +40,20 @@ struct ListenBrainzProvider: ListeningProvider {
     }
 
     func recentListens(username: String, before: Date?, after: Date? = nil, count: Int) async throws -> [Listen] {
-        try await perform {
+        let safeCount = min(max(count, 1), 100)
+        return try await read(.historyRecent(readScope, user: username, before: before, after: after, count: safeCount)) {
             let result = try await client.core.userListens(
                 username: username,
                 latest: before,
                 earliest: after,
-                count: min(max(count, 1), 100)
+                count: safeCount
             )
             return result.listens.map(Self.map)
         }
     }
 
     func playingNow(username: String) async throws -> Listen? {
-        try await perform {
+        try await read(.playingNow(readScope, user: username)) {
             guard let value = try await client.core.userPlayingNow(username: username) else {
                 return nil
             }
@@ -63,12 +67,13 @@ struct ListenBrainzProvider: ListeningProvider {
     }
 
     func listenCount(username: String) async throws -> Int {
-        try await perform { try await client.core.userListensCount(username: username) }
+        try await read(.listenCount(readScope, user: username)) { try await client.core.userListensCount(username: username) }
     }
 
     func topArtists(username: String, count: Int) async throws -> [RankedArtist] {
-        try await perform {
-            let value = try await client.stats.topArtists(user: username, count: count, range: .allTime)
+        let safeCount = max(count, 1)
+        return try await read(.topArtists(readScope, user: username, count: safeCount)) {
+            let value = try await client.stats.topArtists(user: username, count: safeCount, range: .allTime)
             return value?.artists.map {
                 RankedArtist(mbid: $0.mbid, name: $0.name, listenCount: $0.listenCount)
             } ?? []
@@ -76,8 +81,9 @@ struct ListenBrainzProvider: ListeningProvider {
     }
 
     func topReleases(username: String, count: Int) async throws -> [RankedRelease] {
-        try await perform {
-            let value = try await client.stats.topReleases(user: username, count: count, range: .allTime)
+        let safeCount = max(count, 1)
+        return try await read(.topReleases(readScope, user: username, count: safeCount)) {
+            let value = try await client.stats.topReleases(user: username, count: safeCount, range: .allTime)
             return value?.releases.map {
                 RankedRelease(
                     mbid: $0.releaseMbid,
@@ -91,8 +97,9 @@ struct ListenBrainzProvider: ListeningProvider {
     }
 
     func topRecordings(username: String, count: Int) async throws -> [RankedRecording] {
-        try await perform {
-            let value = try await client.stats.topRecordings(user: username, count: count, range: .allTime)
+        let safeCount = max(count, 1)
+        return try await read(.topRecordings(readScope, user: username, count: safeCount)) {
+            let value = try await client.stats.topRecordings(user: username, count: safeCount, range: .allTime)
             return value?.recordings.map {
                 RankedRecording(
                     mbid: $0.recordingMbid,
@@ -108,7 +115,8 @@ struct ListenBrainzProvider: ListeningProvider {
     }
 
     func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
-        try await perform {
+        let rangeName = Self.range(for: period).rawValue
+        return try await read(.listeningActivity(readScope, user: username, period: rangeName)) {
             let result = try await client.stats.listenActivity(user: username, range: Self.range(for: period))
             guard let result else {
                 return ListeningActivity(
@@ -132,7 +140,8 @@ struct ListenBrainzProvider: ListeningProvider {
     }
 
     func dailyActivity(username: String, period: ListeningActivityPeriod) async throws -> DailyActivity? {
-        try await perform {
+        let rangeName = Self.range(for: period).rawValue
+        return try await read(.dailyActivity(readScope, user: username, period: rangeName)) {
             guard let result = try await client.stats.dailyActivity(user: username, range: Self.range(for: period)) else {
                 return nil
             }
@@ -149,7 +158,8 @@ struct ListenBrainzProvider: ListeningProvider {
     }
 
     func eraActivity(username: String, period: ListeningActivityPeriod) async throws -> EraActivity? {
-        try await perform {
+        let rangeName = Self.range(for: period).rawValue
+        return try await read(.eraActivity(readScope, user: username, period: rangeName)) {
             guard let result = try await client.stats.eraActivity(user: username, range: Self.range(for: period)) else {
                 return nil
             }
@@ -169,7 +179,8 @@ struct ListenBrainzProvider: ListeningProvider {
         username: String,
         period: ListeningActivityPeriod
     ) async throws -> ArtistEvolutionActivity? {
-        try await perform {
+        let rangeName = Self.range(for: period).rawValue
+        return try await read(.artistEvolution(readScope, user: username, period: rangeName)) {
             guard let result = try await client.stats.artistEvolutionActivity(
                 user: username,
                 range: Self.range(for: period)
@@ -197,7 +208,8 @@ struct ListenBrainzProvider: ListeningProvider {
         username: String,
         period: ListeningActivityPeriod
     ) async throws -> GenreActivity? {
-        try await perform {
+        let rangeName = Self.range(for: period).rawValue
+        return try await read(.genreActivity(readScope, user: username, period: rangeName)) {
             guard let result = try await client.stats.genreActivity(
                 user: username,
                 range: Self.range(for: period)
@@ -217,7 +229,8 @@ struct ListenBrainzProvider: ListeningProvider {
     }
 
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] {
-        try await perform {
+        let requestUser = scope == .forYou ? username : nil
+        return try await read(.freshReleases(readScope, user: requestUser, scopeName: scope.rawValue)) {
             let result: LBFreshReleases?
             switch scope {
             case .forYou:
@@ -305,6 +318,20 @@ struct ListenBrainzProvider: ListeningProvider {
         } catch let LBError.rateLimited(resetIn) {
             let delay = max(resetIn, 1)
             throw ProviderError.rateLimited(retryAfterSeconds: delay)
+        }
+    }
+
+    private func read<Result: Sendable>(
+        _ key: RequestGate.ReadKey,
+        _ operation: @escaping @Sendable () async throws -> Result
+    ) async throws -> Result {
+        do {
+            return try await gate.read(for: key, operation) { error in
+                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
+        } catch let LBError.rateLimited(resetIn) {
+            throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
         }
     }
 
@@ -415,9 +442,19 @@ actor RequestGate {
         static var anonymous: Self { .init(digest: Data()) }
 
         static func authenticated(token: String) -> Self {
-            guard !token.isEmpty else { return .anonymous }
             let digest = HMAC<SHA256>.authenticationCode(
                 for: Data(token.utf8),
+                using: processKey
+            )
+            return .init(digest: Data(digest))
+        }
+
+        /// A unique boundary for injected transports that do not represent a
+        /// real credential. This prevents unrelated fixtures/adapters from
+        /// coalescing merely because neither has a token.
+        static func isolated() -> Self {
+            let digest = HMAC<SHA256>.authenticationCode(
+                for: Data(UUID().uuidString.utf8),
                 using: processKey
             )
             return .init(digest: Data(digest))
@@ -435,6 +472,9 @@ actor RequestGate {
         case statsTopRecordings
         case statsListeningActivity
         case statsDailyActivity
+        case statsEraActivity
+        case statsArtistEvolution
+        case statsGenreActivity
         case searchResults
         case discoveryFreshReleases
         case feedPage
@@ -443,6 +483,7 @@ actor RequestGate {
         case metadataArtist
         case metadataRelease
         case metadataRecording
+        case recommendationsMetadata
         case artworkYearInMusic
         case radioPlaylist
         case radioMetadata
@@ -456,6 +497,12 @@ actor RequestGate {
         case recommendationsFeedback
         case popularitySummary
         case yearInMusicSummary
+        case pinsCurrent
+        case pinsHistory
+        case profilePlaylists
+        case recordingShareFollowers
+        case searchListenBrainzUsers
+        case searchListenBrainzPlaylists
     }
 
     struct ReadKey: Hashable, Sendable {
@@ -472,6 +519,58 @@ actor RequestGate {
             self.feature = feature
             self.identityComponents = identityComponents
         }
+
+        // Endpoint-specific factories keep sensitive request identity out of
+        // call sites and make coalescing match the exact shaped request.
+        private static func endpoint(_ scope: ReadScope, _ feature: ReadFeature, _ components: [String]) -> Self {
+            .init(scope: scope, feature: feature, identityComponents: components)
+        }
+        static func tokenValidation(_ scope: ReadScope) -> Self { endpoint(scope, .coreTokenValidation, []) }
+        static func playingNow(_ scope: ReadScope, user: String) -> Self { endpoint(scope, .historyPlayingNow, [userID(user)]) }
+        static func listenCount(_ scope: ReadScope, user: String) -> Self { endpoint(scope, .historyListenCount, [userID(user)]) }
+        static func topArtists(_ scope: ReadScope, user: String, count: Int) -> Self { endpoint(scope, .statsTopArtists, [userID(user), String(count), "all-time"]) }
+        static func topReleases(_ scope: ReadScope, user: String, count: Int) -> Self { endpoint(scope, .statsTopReleases, [userID(user), String(count), "all-time"]) }
+        static func topRecordings(_ scope: ReadScope, user: String, count: Int) -> Self { endpoint(scope, .statsTopRecordings, [userID(user), String(count), "all-time"]) }
+        static func listeningActivity(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsListeningActivity, [userID(user), period]) }
+        static func dailyActivity(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsDailyActivity, [userID(user), period]) }
+        static func eraActivity(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsEraActivity, [userID(user), period]) }
+        static func artistEvolution(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsArtistEvolution, [userID(user), period]) }
+        static func genreActivity(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsGenreActivity, [userID(user), period]) }
+        static func freshReleases(_ scope: ReadScope, user: String?, scopeName: String) -> Self {
+            endpoint(
+                scope,
+                .discoveryFreshReleases,
+                [scopeName, "7"] + (user.map { [userID($0)] } ?? [])
+            )
+        }
+        static func currentPin(_ scope: ReadScope, user: String) -> Self { endpoint(scope, .pinsCurrent, [userID(user)]) }
+        static func recommendations(_ scope: ReadScope, user: String, offset: Int, count: Int) -> Self { endpoint(scope, .recommendationsRecordings, [userID(user), String(offset), String(count)]) }
+        static func recommendationPlaylists(_ scope: ReadScope, user: String) -> Self { endpoint(scope, .recommendationsPlaylists, [userID(user)]) }
+        static func radioPlaylist(_ scope: ReadScope, prompt: String, mode: String) -> Self { endpoint(scope, .radioPlaylist, [prompt, mode]) }
+        static func socialFollowers(_ scope: ReadScope, user: String) -> Self { endpoint(scope, .socialFollowers, [userID(user)]) }
+        static func socialFollowing(_ scope: ReadScope, user: String) -> Self { endpoint(scope, .socialFollowing, [userID(user)]) }
+        static func similarUsers(_ scope: ReadScope, user: String) -> Self { endpoint(scope, .socialSimilarUsers, [userID(user)]) }
+        static func recordingShareFollowers(_ scope: ReadScope, user: String) -> Self { endpoint(scope, .recordingShareFollowers, [userID(user)]) }
+        static func compatibility(_ scope: ReadScope, viewer: String, user: String) -> Self { endpoint(scope, .socialCompatibility, [userID(viewer), userID(user)]) }
+        static func yearInMusic(_ scope: ReadScope, user: String, year: Int) -> Self { endpoint(scope, .yearInMusicSummary, [userID(user), String(year)]) }
+        static func searchUsers(_ scope: ReadScope, query: String) -> Self { endpoint(scope, .searchListenBrainzUsers, [query]) }
+        static func searchPlaylists(_ scope: ReadScope, query: String, count: Int) -> Self { endpoint(scope, .searchListenBrainzPlaylists, [query, String(count)]) }
+        static func historyRecent(_ scope: ReadScope, user: String, before: Date?, after: Date?, count: Int) -> Self { endpoint(scope, .historyRecent, [userID(user), epoch(before), epoch(after), String(count)]) }
+        static func feedPage(_ scope: ReadScope, user: String, mode: String, before: Date?, minimum: Date?, count: Int) -> Self { endpoint(scope, .feedPage, [userID(user), mode, epoch(before), epoch(minimum), String(count)]) }
+        static func pinHistory(_ scope: ReadScope, user: String, count: Int, offset: Int) -> Self { endpoint(scope, .pinsHistory, [userID(user), String(count), String(offset)]) }
+        static func profilePlaylists(_ scope: ReadScope, user: String, category: String, offset: Int, count: Int) -> Self { endpoint(scope, .profilePlaylists, [userID(user), category, String(offset), String(count)]) }
+        static func releaseGroup(_ scope: ReadScope, mbid: UUID) -> Self { endpoint(scope, .metadataRelease, [uuid(mbid), "artist", "tag"]) }
+        static func playlistDetail(_ scope: ReadScope, mbid: UUID) -> Self { endpoint(scope, .playlistDetail, [uuid(mbid)]) }
+        static func popularity(_ scope: ReadScope, kind: String, mbid: UUID) -> Self { endpoint(scope, .popularitySummary, [kind, uuid(mbid)]) }
+        static func radioMetadata(_ scope: ReadScope, mbids: [UUID]) -> Self { endpoint(scope, .radioMetadata, mbids.map(uuid)) }
+        static func recommendationMetadata(_ scope: ReadScope, mbids: [UUID]) -> Self { endpoint(scope, .recommendationsMetadata, mbids.map(uuid)) }
+        static func recommendationFeedback(_ scope: ReadScope, user: String, mbids: [UUID]) -> Self { endpoint(scope, .recommendationsFeedback, [userID(user)] + mbids.map(uuid)) }
+        static func yearInMusicArtwork(_ scope: ReadScope, user: String, year: Int, variant: String, anonymous: Bool?) -> Self { endpoint(scope, .artworkYearInMusic, [userID(user), String(year), variant, anonymous.map(String.init) ?? "nil"]) }
+        private static func uuid(_ id: UUID) -> String { id.uuidString.lowercased() }
+        // Usernames stay byte-for-byte aligned with the value sent by the
+        // provider. Normalizing only the key could merge distinct wire URLs.
+        private static func userID(_ user: String) -> String { user }
+        private static func epoch(_ date: Date?) -> String { date.map { String(Int($0.timeIntervalSince1970)) } ?? "nil" }
     }
 
     enum ReadError: Swift.Error, Sendable {

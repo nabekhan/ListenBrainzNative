@@ -129,6 +129,7 @@ private struct LiveFeedTransport: FeedTransport {
 struct ListenBrainzFeedProvider: FeedProviding {
     private let transport: any FeedTransport
     private let gate: RequestGate
+    private let readScope: RequestGate.ReadScope
 
     init(token: String, gate: RequestGate = .shared) {
         transport = LiveFeedTransport(
@@ -138,11 +139,17 @@ struct ListenBrainzFeedProvider: FeedProviding {
             )
         )
         self.gate = gate
+        readScope = .authenticated(token: token)
     }
 
-    init(transport: some FeedTransport, gate: RequestGate) {
+    init(
+        transport: some FeedTransport,
+        gate: RequestGate,
+        readScope: RequestGate.ReadScope = .isolated()
+    ) {
         self.transport = transport
         self.gate = gate
+        self.readScope = readScope
     }
 
     func page(
@@ -153,7 +160,7 @@ struct ListenBrainzFeedProvider: FeedProviding {
         count: Int
     ) async throws -> FeedPage {
         let safeCount = min(max(count, 1), 1_000)
-        return try await perform {
+        return try await read(.feedPage(readScope, user: username, mode: mode.rawValue, before: before, minimum: minimumTimestamp, count: safeCount)) {
             let source = try await transport.page(
                 username: username,
                 mode: mode,
@@ -183,21 +190,18 @@ struct ListenBrainzFeedProvider: FeedProviding {
         try await performAction { try await transport.deletePin(rowID: rowID) }
     }
 
-    private func perform<Result: Sendable>(
+    private func read<Result: Sendable>(
+        _ key: RequestGate.ReadKey,
         _ operation: @escaping @Sendable () async throws -> Result
     ) async throws -> Result {
         do {
-            return try await gate.perform(operation) { error in
+            return try await gate.read(for: key, operation) { error in
                 guard case let LBError.rateLimited(resetIn) = error else { return nil }
                 return .seconds(max(resetIn, 1))
             }
         } catch let LBError.rateLimited(resetIn) {
             throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
-        } catch LBError.invalidAuth {
-            throw FeedProviderError.invalidAuthentication
-        } catch LBError.forbidden {
-            throw FeedProviderError.invalidAuthentication
-        } catch LBError.noToken {
+        } catch LBError.invalidAuth, LBError.forbidden, LBError.noToken {
             throw FeedProviderError.invalidAuthentication
         }
     }

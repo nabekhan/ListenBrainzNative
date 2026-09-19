@@ -36,6 +36,7 @@ struct ListenBrainzPopularityProvider: PopularityProviding {
     private let transport: any PopularityTransport
     private let gate: RequestGate
     private let cache: PopularityCache
+    private let readScope: RequestGate.ReadScope
 
     init(
         token: String,
@@ -50,21 +51,24 @@ struct ListenBrainzPopularityProvider: PopularityProviding {
         )
         self.gate = gate
         self.cache = cache
+        readScope = .authenticated(token: token)
     }
 
     init(
         transport: some PopularityTransport,
         gate: RequestGate,
-        cache: PopularityCache = .init()
+        cache: PopularityCache = .init(),
+        readScope: RequestGate.ReadScope = .isolated()
     ) {
         self.transport = transport
         self.gate = gate
         self.cache = cache
+        self.readScope = readScope
     }
 
     func popularity(for entity: PopularityEntity) async throws -> GlobalPopularity {
         try await cache.value(for: entity) {
-            let rows: [LBPopularity] = try await gate.perform({
+            let rows: [LBPopularity] = try await gate.read(for: .popularity(readScope, kind: entity.kind.rawValue, mbid: entity.mbid)) {
                 switch entity.kind {
                 case .artist:
                     try await transport.artists([entity.mbid])
@@ -75,7 +79,7 @@ struct ListenBrainzPopularityProvider: PopularityProviding {
                 case .releaseGroup:
                     try await transport.releaseGroups([entity.mbid])
                 }
-            }) { error in
+            } deferralForError: { error in
                 guard case let LBError.rateLimited(resetIn) = error else { return nil }
                 return .seconds(max(resetIn, 1))
             }

@@ -16,6 +16,7 @@ protocol PlaylistDetailProviding: Sendable {
 struct ListenBrainzMediaDetailProvider: ReleaseDetailProviding, PlaylistDetailProviding {
     private let client: LBClient
     private let gate: RequestGate
+    private let readScope: RequestGate.ReadScope
 
     init(token: String, gate: RequestGate = .shared) {
         self.client = LBClient(
@@ -23,10 +24,11 @@ struct ListenBrainzMediaDetailProvider: ReleaseDetailProviding, PlaylistDetailPr
             userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"
         )
         self.gate = gate
+        readScope = .authenticated(token: token)
     }
 
     func releaseGroup(mbid: UUID) async throws -> ReleaseGroupDetail? {
-        try await perform {
+        try await read(.releaseGroup(readScope, mbid: mbid)) {
             guard let value = try await client.metadata.releaseGroup(
                 mbid: mbid,
                 including: [LBMetaInclusion.artist, .tag]
@@ -60,7 +62,7 @@ struct ListenBrainzMediaDetailProvider: ReleaseDetailProviding, PlaylistDetailPr
 
     func playlist(mbid: UUID) async throws -> PlaylistDetail {
         do {
-            return try await perform {
+            return try await read(.playlistDetail(readScope, mbid: mbid)) {
                 let value = try await client.core.playlist(mbid: mbid)
                 let metadata = value.metadata
                 let tracks = value.tracks.enumerated().map { index, track in
@@ -106,11 +108,12 @@ struct ListenBrainzMediaDetailProvider: ReleaseDetailProviding, PlaylistDetailPr
         }
     }
 
-    private func perform<Result: Sendable>(
+    private func read<Result: Sendable>(
+        _ key: RequestGate.ReadKey,
         _ operation: @escaping @Sendable () async throws -> Result
     ) async throws -> Result {
         do {
-            return try await gate.perform(operation) { error in
+            return try await gate.read(for: key, operation) { error in
                 guard case let LBError.rateLimited(resetIn) = error else { return nil }
                 return .seconds(max(resetIn, 1))
             }

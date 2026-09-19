@@ -13,6 +13,7 @@ protocol SocialProviding: Sendable {
 struct ListenBrainzSocialProvider: SocialProviding {
     private let client: LBClient
     private let gate: RequestGate
+    private let readScope: RequestGate.ReadScope
 
     init(token: String, gate: RequestGate = .shared) {
         client = LBClient(
@@ -20,22 +21,23 @@ struct ListenBrainzSocialProvider: SocialProviding {
             userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"
         )
         self.gate = gate
+        readScope = .authenticated(token: token)
     }
 
     func followers(of username: String) async throws -> [SearchUser] {
-        try await perform {
+        try await read(.socialFollowers(readScope, user: username)) {
             try await client.social.followers(username: username).map(SearchUser.init)
         }
     }
 
     func following(of username: String) async throws -> [SearchUser] {
-        try await perform {
+        try await read(.socialFollowing(readScope, user: username)) {
             try await client.social.following(username: username).map(SearchUser.init)
         }
     }
 
     func similarUsers(to username: String) async throws -> [SimilarListener] {
-        try await perform {
+        try await read(.similarUsers(readScope, user: username)) {
             try await client.core.userSimilarUsers(username: username).map {
                 SimilarListener(user: SearchUser(username: $0.userName), similarity: $0.similarity)
             }
@@ -44,7 +46,7 @@ struct ListenBrainzSocialProvider: SocialProviding {
 
     func compatibility(between viewer: String, and username: String) async throws -> Double? {
         do {
-            return try await perform {
+            return try await read(.compatibility(readScope, viewer: viewer, user: username)) {
                 try await client.core.userSimilarTo(username: viewer, other: username).similarity
             }
         } catch LBError.notFound {
@@ -75,6 +77,20 @@ struct ListenBrainzSocialProvider: SocialProviding {
     ) async throws -> Result {
         do {
             return try await gate.perform(operation) { error in
+                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
+        } catch let LBError.rateLimited(resetIn) {
+            throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
+        }
+    }
+
+    private func read<Result: Sendable>(
+        _ key: RequestGate.ReadKey,
+        _ operation: @escaping @Sendable () async throws -> Result
+    ) async throws -> Result {
+        do {
+            return try await gate.read(for: key, operation) { error in
                 guard case let LBError.rateLimited(resetIn) = error else { return nil }
                 return .seconds(max(resetIn, 1))
             }

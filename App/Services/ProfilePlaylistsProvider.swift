@@ -57,6 +57,7 @@ private struct LiveProfilePlaylistsTransport: ProfilePlaylistsTransport {
 struct ListenBrainzProfilePlaylistsProvider: ProfilePlaylistsProviding {
     private let transport: any ProfilePlaylistsTransport
     private let gate: RequestGate
+    private let readScope: RequestGate.ReadScope
 
     init(token: String, gate: RequestGate = .shared) {
         transport = LiveProfilePlaylistsTransport(
@@ -66,11 +67,17 @@ struct ListenBrainzProfilePlaylistsProvider: ProfilePlaylistsProviding {
             )
         )
         self.gate = gate
+        readScope = .authenticated(token: token)
     }
 
-    init(transport: some ProfilePlaylistsTransport, gate: RequestGate) {
+    init(
+        transport: some ProfilePlaylistsTransport,
+        gate: RequestGate,
+        readScope: RequestGate.ReadScope = .isolated()
+    ) {
         self.transport = transport
         self.gate = gate
+        self.readScope = readScope
     }
 
     func page(
@@ -82,7 +89,7 @@ struct ListenBrainzProfilePlaylistsProvider: ProfilePlaylistsProviding {
         let safeOffset = max(offset, 0)
         let safeCount = min(max(count, 1), 100)
         do {
-            return try await gate.perform {
+            return try await gate.read(for: .profilePlaylists(readScope, user: username, category: category.rawValue, offset: safeOffset, count: safeCount)) {
                 let source = try await transport.page(
                     username: username,
                     category: category,

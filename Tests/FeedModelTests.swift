@@ -64,6 +64,90 @@ final class FeedModelTests: XCTestCase {
         XCTAssertEqual(calls, 1)
     }
 
+    func testProviderCoalescesConcurrentIdenticalPageRequests() async throws {
+        let gate = RequestGate(minimumInterval: .zero)
+        let scope = RequestGate.ReadScope.authenticated(token: "feed-coalescing-fixture")
+        let transport = FeedTransportSpy(page: try sourceFeedPage(), blocksRequests: true)
+        let provider = ListenBrainzFeedProvider(
+            transport: transport,
+            gate: gate,
+            readScope: scope
+        )
+        let key = RequestGate.ReadKey.feedPage(
+            scope,
+            user: "listener",
+            mode: FeedMode.activity.rawValue,
+            before: nil,
+            minimum: nil,
+            count: 40
+        )
+
+        let first = Task { try await provider.page(
+            username: "listener",
+            mode: .activity,
+            before: nil,
+            minimumTimestamp: nil,
+            count: 40
+        ) }
+        try await waitForCondition { await transport.calls == 1 }
+        let second = Task { try await provider.page(
+            username: "listener",
+            mode: .activity,
+            before: nil,
+            minimumTimestamp: nil,
+            count: 40
+        ) }
+
+        do {
+            try await waitForCondition { await gate.readWaiterCountForTesting(key) == 2 }
+        } catch {
+            first.cancel()
+            second.cancel()
+            await transport.releaseAll()
+            throw error
+        }
+        await transport.releaseAll()
+        _ = try await [first.value, second.value]
+        let calls = await transport.calls
+        XCTAssertEqual(calls, 1)
+    }
+
+    func testProviderKeepsDistinctBeforePaginationRequestsSeparate() async throws {
+        let transport = FeedTransportSpy(page: try sourceFeedPage(), blocksRequests: true)
+        let provider = ListenBrainzFeedProvider(
+            transport: transport,
+            gate: RequestGate(minimumInterval: .zero)
+        )
+
+        let first = Task { try await provider.page(
+            username: "listener",
+            mode: .activity,
+            before: Date(timeIntervalSince1970: 100),
+            minimumTimestamp: nil,
+            count: 40
+        ) }
+        let second = Task { try await provider.page(
+            username: "listener",
+            mode: .activity,
+            before: Date(timeIntervalSince1970: 99),
+            minimumTimestamp: nil,
+            count: 40
+        ) }
+
+        do {
+            try await waitForCondition { await transport.calls == 2 }
+        } catch {
+            first.cancel()
+            second.cancel()
+            await transport.releaseAll()
+            throw error
+        }
+        await transport.releaseAll()
+        _ = try await [first.value, second.value]
+        let calls = await transport.calls
+        XCTAssertEqual(calls, 2)
+    }
+
     func testModesUseIndependentCachedFirstPages() async {
         let cache = EntityDetailCache<FeedPageKey, FeedPage>()
         let provider = FeedFixtureProvider(pages: [
@@ -409,6 +493,33 @@ final class FeedModelTests: XCTestCase {
             events: (position ..< position + count).map { FeedEvent.fixture(position: $0, created: created - Double($0 - position)) }
         )
     }
+
+    private func sourceFeedPage() throws -> LBFeedPage {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .secondsSince1970
+        return try decoder.decode(
+            LBFeedPage.self,
+            from: Data(#"{"count":0,"user_id":"listener","events":[]}"#.utf8)
+        )
+    }
+
+    private func waitForCondition(
+        timeout: Duration = .seconds(2),
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        _ condition: @escaping @Sendable () async -> Bool
+    ) async throws {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        while !(await condition()) {
+            guard clock.now < deadline else {
+                XCTFail("Timed out waiting for asynchronous test state.", file: file, line: line)
+                throw FeedTestError.timeout
+            }
+            try await clock.sleep(for: .milliseconds(1))
+        }
+    }
 }
 
 private actor FeedFixtureProvider: FeedProviding {
@@ -500,13 +611,17 @@ private actor FeedMutationFixtureProvider: FeedProviding {
 }
 
 private enum FeedFixtureError: LocalizedError { case failed }
+private enum FeedTestError: Error { case timeout }
 
 private actor FeedTransportSpy: FeedTransport {
     private let source: LBFeedPage
+    private let blocksRequests: Bool
+    private var continuations: [CheckedContinuation<Void, Never>] = []
     private(set) var calls = 0
 
-    init(page: LBFeedPage) {
+    init(page: LBFeedPage, blocksRequests: Bool = false) {
         source = page
+        self.blocksRequests = blocksRequests
     }
 
     func page(
@@ -517,7 +632,18 @@ private actor FeedTransportSpy: FeedTransport {
         count: Int
     ) async throws -> LBFeedPage {
         calls += 1
+        if blocksRequests {
+            await withCheckedContinuation { continuation in
+                continuations.append(continuation)
+            }
+        }
         return source
+    }
+
+    func releaseAll() {
+        let pending = continuations
+        continuations.removeAll()
+        pending.forEach { $0.resume() }
     }
 }
 

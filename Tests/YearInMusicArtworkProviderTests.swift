@@ -30,6 +30,36 @@ final class YearInMusicArtworkProviderTests: XCTestCase {
         ])
     }
 
+    func testCacheDoesNotReuseArtworkAcrossCredentialScopes() async throws {
+        let cache = YearInMusicArtworkCache()
+        let firstTransport = ArtworkFixtureTransport(svg: "<svg id=\"first\"/>")
+        let secondTransport = ArtworkFixtureTransport(svg: "<svg id=\"second\"/>")
+        let gate = RequestGate(minimumInterval: .zero)
+        let firstProvider = ListenBrainzYearInMusicArtworkProvider(
+            transport: firstTransport,
+            gate: gate,
+            cache: cache,
+            readScope: .authenticated(token: "artwork-fixture-a")
+        )
+        let secondProvider = ListenBrainzYearInMusicArtworkProvider(
+            transport: secondTransport,
+            gate: gate,
+            cache: cache,
+            readScope: .authenticated(token: "artwork-fixture-b")
+        )
+        let options = YearInMusicArtworkOptions(username: "listener", year: 2025)
+
+        let first = try await firstProvider.artwork(for: options)
+        let second = try await secondProvider.artwork(for: options)
+        let firstCallCount = await firstTransport.callCount()
+        let secondCallCount = await secondTransport.callCount()
+
+        XCTAssertEqual(first?.svg, "<svg id=\"first\"/>")
+        XCTAssertEqual(second?.svg, "<svg id=\"second\"/>")
+        XCTAssertEqual(firstCallCount, 1)
+        XCTAssertEqual(secondCallCount, 1)
+    }
+
     func testDuplicateLoadsCoalesceAndUnavailableIsCached() async throws {
         let transport = ArtworkFixtureTransport(svg: nil, delay: .milliseconds(30))
         let provider = ListenBrainzYearInMusicArtworkProvider(
@@ -68,8 +98,8 @@ final class YearInMusicArtworkProviderTests: XCTestCase {
     }
 
     func testCancellationBeforeGateDelayDoesNotReachTransport() async throws {
-        let gate = RequestGate(minimumInterval: .seconds(5))
-        _ = try await gate.perform { true }
+        let gate = RequestGate(minimumInterval: .zero)
+        await gate.deferRequests(for: .seconds(5))
         let transport = ArtworkFixtureTransport(svg: "<svg/>")
         let provider = ListenBrainzYearInMusicArtworkProvider(
             transport: transport,

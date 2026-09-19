@@ -21,6 +21,7 @@ private struct LiveYearInMusicTransport: YearInMusicTransport {
 struct ListenBrainzYearInMusicProvider: YearInMusicProviding {
     private let transport: any YearInMusicTransport
     private let gate: RequestGate
+    private let readScope: RequestGate.ReadScope
 
     init(token: String, gate: RequestGate = .shared) {
         transport = LiveYearInMusicTransport(
@@ -30,19 +31,25 @@ struct ListenBrainzYearInMusicProvider: YearInMusicProviding {
             )
         )
         self.gate = gate
+        readScope = .authenticated(token: token)
     }
 
-    init(transport: some YearInMusicTransport, gate: RequestGate) {
+    init(
+        transport: some YearInMusicTransport,
+        gate: RequestGate,
+        readScope: RequestGate.ReadScope = .isolated()
+    ) {
         self.transport = transport
         self.gate = gate
+        self.readScope = readScope
     }
 
     func report(username: String, year: Int) async throws -> YearInMusicReport? {
         do {
-            let report = try await gate.perform({
+            let report = try await gate.read(for: .yearInMusic(readScope, user: username, year: year)) {
                 let source = try await transport.yearInMusic(username: username, year: year)
                 return source.flatMap { YearInMusicReport(source: $0, requestedYear: year) }
-            }) { error in
+            } deferralForError: { error in
                 guard case let LBError.rateLimited(resetIn) = error else { return nil }
                 return .seconds(max(resetIn, 1))
             }

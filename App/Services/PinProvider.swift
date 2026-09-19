@@ -13,14 +13,20 @@ protocol PinProviding: Sendable {
 struct ListenBrainzPinProvider: PinProviding {
     private let client: LBClient
     private let gate: RequestGate
+    private let readScope: RequestGate.ReadScope
 
     init(token: String, gate: RequestGate = .shared) {
         client = LBClient(token: token, userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)")
         self.gate = gate
+        readScope = .authenticated(token: token)
     }
 
     func currentPin(username: String) async throws -> PinnedRecording? {
-        try await perform { try await client.pins.current(user: username).map { Self.map($0, isCurrent: true) } }
+        try await read(.currentPin(readScope, user: username)) {
+            try await client.pins.current(user: username).map {
+                Self.map($0, isCurrent: true)
+            }
+        }
     }
 
     func pin(_ recording: Recording, blurb: String?) async throws -> PinnedRecording {
@@ -37,8 +43,10 @@ struct ListenBrainzPinProvider: PinProviding {
     }
 
     func pinHistory(username: String, count: Int, offset: Int) async throws -> (pins: [PinnedRecording], totalCount: Int) {
-        try await perform {
-            let page = try await client.pins.history(user: username, count: count, offset: offset)
+        let safeCount = min(max(count, 1), 100)
+        let safeOffset = max(offset, 0)
+        return try await read(.pinHistory(readScope, user: username, count: safeCount, offset: safeOffset)) {
+            let page = try await client.pins.history(user: username, count: safeCount, offset: safeOffset)
             return (page.pinnedRecordings.map { Self.map($0, isCurrent: false) }, page.totalCount)
         }
     }
@@ -53,6 +61,20 @@ struct ListenBrainzPinProvider: PinProviding {
     private func perform<Result: Sendable>(_ operation: @escaping @Sendable () async throws -> Result) async throws -> Result {
         do {
             return try await gate.perform(operation) { error in
+                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
+        } catch let LBError.rateLimited(resetIn) {
+            throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
+        }
+    }
+
+    private func read<Result: Sendable>(
+        _ key: RequestGate.ReadKey,
+        _ operation: @escaping @Sendable () async throws -> Result
+    ) async throws -> Result {
+        do {
+            return try await gate.read(for: key, operation) { error in
                 guard case let LBError.rateLimited(resetIn) = error else { return nil }
                 return .seconds(max(resetIn, 1))
             }

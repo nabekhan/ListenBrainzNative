@@ -1794,6 +1794,20 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(Self.milliseconds(elapsed), 40)
     }
 
+    nonisolated func testAuthenticatedEmptyTokenScopeIsNotAnonymous() {
+        XCTAssertNotEqual(
+            RequestGate.ReadScope.authenticated(token: ""),
+            .anonymous
+        )
+    }
+
+    nonisolated func testIsolatedReadScopesDoNotMatch() {
+        XCTAssertNotEqual(
+            RequestGate.ReadScope.isolated(),
+            RequestGate.ReadScope.isolated()
+        )
+    }
+
     nonisolated func testServerDeferralReschedulesAlreadyQueuedCallers() async throws {
         let gate = RequestGate(minimumInterval: .milliseconds(20))
         let clock = ContinuousClock()

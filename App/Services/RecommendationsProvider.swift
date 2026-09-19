@@ -99,6 +99,7 @@ private struct LiveRecommendationsTransport: RecommendationsTransport {
 struct ListenBrainzRecommendationsProvider: RecommendationsProviding {
     private let transport: any RecommendationsTransport
     private let gate: RequestGate
+    private let readScope: RequestGate.ReadScope
 
     init(token: String, gate: RequestGate = .shared) {
         self.transport = LiveRecommendationsTransport(
@@ -108,11 +109,17 @@ struct ListenBrainzRecommendationsProvider: RecommendationsProviding {
             )
         )
         self.gate = gate
+        readScope = .authenticated(token: token)
     }
 
-    init(transport: some RecommendationsTransport, gate: RequestGate) {
+    init(
+        transport: some RecommendationsTransport,
+        gate: RequestGate,
+        readScope: RequestGate.ReadScope = .isolated()
+    ) {
         self.transport = transport
         self.gate = gate
+        self.readScope = readScope
     }
 
     func recordingRecommendations(
@@ -120,11 +127,13 @@ struct ListenBrainzRecommendationsProvider: RecommendationsProviding {
         offset: Int,
         count: Int
     ) async throws -> RecordingRecommendationPage? {
-        guard let source = try await perform({
+        let safeOffset = max(offset, 0)
+        let safeCount = min(max(count, 1), 100)
+        guard let source = try await read(.recommendations(readScope, user: username, offset: safeOffset, count: safeCount), {
             try await transport.recordingRecommendations(
                 username: username,
-                offset: offset,
-                count: count
+                offset: safeOffset,
+                count: safeCount
             )
         }) else { return nil }
 
@@ -133,9 +142,10 @@ struct ListenBrainzRecommendationsProvider: RecommendationsProviding {
             return Self.map(source, recommendations: [])
         }
 
-        let recommendations = try await perform {
+        let orderedIDs = orderedRecommendations.map(\.recordingMBID)
+        let recommendations = try await read(.recommendationMetadata(readScope, mbids: orderedIDs)) {
             let metadata = try await transport.recordingMetadata(
-                mbids: orderedRecommendations.map(\.recordingMBID)
+                mbids: orderedIDs
             )
             return orderedRecommendations.map { recommendation in
                 Self.map(recommendation, metadata: metadata[recommendation.recordingMBID])
@@ -153,10 +163,11 @@ struct ListenBrainzRecommendationsProvider: RecommendationsProviding {
         var feedback: [UUID: RecommendationRating] = [:]
         for start in stride(from: 0, to: recordingMBIDs.count, by: 75) {
             let end = min(start + 75, recordingMBIDs.count)
-            let source = try await perform {
+            let chunk = Array(recordingMBIDs[start ..< end])
+            let source = try await read(.recommendationFeedback(readScope, user: username, mbids: chunk)) {
                 try await transport.recommendationFeedback(
                     username: username,
-                    recordingMBIDs: Array(recordingMBIDs[start ..< end])
+                    recordingMBIDs: chunk
                 )
             }
             for item in source.feedback {
@@ -186,7 +197,7 @@ struct ListenBrainzRecommendationsProvider: RecommendationsProviding {
     }
 
     func recommendationPlaylists(username: String) async throws -> [SearchPlaylist] {
-        try await perform {
+        try await read(.recommendationPlaylists(readScope, user: username)) {
             try await transport.recommendationPlaylists(username: username).map {
                 SearchPlaylist(
                     title: $0.title,
@@ -231,6 +242,22 @@ struct ListenBrainzRecommendationsProvider: RecommendationsProviding {
         } catch LBError.forbidden {
             throw RecommendationsProviderError.invalidAuthentication
         } catch LBError.noToken {
+            throw RecommendationsProviderError.invalidAuthentication
+        }
+    }
+
+    private func read<Result: Sendable>(
+        _ key: RequestGate.ReadKey,
+        _ operation: @escaping @Sendable () async throws -> Result
+    ) async throws -> Result {
+        do {
+            return try await gate.read(for: key, operation) { error in
+                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
+        } catch let LBError.rateLimited(resetIn) {
+            throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
+        } catch LBError.invalidAuth, LBError.forbidden, LBError.noToken {
             throw RecommendationsProviderError.invalidAuthentication
         }
     }

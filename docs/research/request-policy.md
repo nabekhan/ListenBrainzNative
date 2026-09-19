@@ -16,20 +16,20 @@ Snapshot: 2026-09-18. Project-specific API permission allows behavior comparable
 
 The useful precedent is not unbounded traffic. It is endpoint-specific intent: bounded pages, debounced search, cache reuse, limited artwork work, and realtime updates instead of polling.
 
-## Brainz decision
+## Brainz request policy
 
-The existing one-request-per-second gate remains in place until a tested replacement lands. The next networking milestone should:
+The tested replacement is active. It deliberately separates reads from mutations:
 
-1. admit at most two independent ListenBrainz reads at once initially;
-2. coalesce identical in-flight reads by endpoint, normalized account, and parameters;
-3. retain feature-specific guards: one history/feed page at a time, debounced cancellable search, cached one-shot profile/stat loads, and realtime Playing Now where supported;
-4. cancel work whose view/model intent has ended and prevent stale results from publishing;
-5. apply server reset timing globally after 429 and surface read failures without automatic replay; any future bounded retry requires endpoint-specific proof and tests;
-6. keep mutations on one serialized lane with no automatic retry;
-7. record privacy-safe DEBUG/test telemetry for closed endpoint category, coalescing, cancellation, status class, and in-flight count—never request identity, token, parameters, headers, error descriptions, or response payload;
-8. prove that repeated SwiftUI lifecycle events, duplicate page triggers, stale searches, and 429 responses cannot create request storms.
+1. at most two independent ListenBrainz reads may run at once;
+2. identical in-flight reads coalesce only when credential scope, endpoint, and shaped wire parameters match exactly;
+3. cancelled final waiters cancel queued work and reserve an already-started request key until its transport drains;
+4. feature-level guards remain in place: bounded history/feed pages, debounced cancellable search, cached one-shot profile/stat loads, and no lifecycle-owned polling loops;
+5. an HTTP 429 reset defers both lanes globally, while the original failure is surfaced without automatic replay;
+6. mutations remain on one serialized lane with a one-second minimum interval and are never retried automatically;
+7. DEBUG/test telemetry records only a closed endpoint category, lifecycle, coalesced-waiter count, and in-flight count—never request identity, token, parameters, headers, error descriptions, or response payload;
+8. credential-derived scopes are process-local HMAC values. Raw tokens are never placed in request keys, telemetry, or cache keys.
 
-Relaxation is complete only when those tests and telemetry demonstrate fewer unnecessary calls than the current implementation. Official iOS fan-out is product evidence, not the traffic-safety model.
+This is intentionally stricter than copying the official clients' unconstrained fan-out. The conditional API allowance is used for selective concurrency, while coalescing, pagination guards, cancellation, caching, shared 429 deferral, and tests prevent erroneous traffic. Any future retry or concurrency increase requires endpoint-specific evidence and new tests first.
 
 ## Inspected source
 

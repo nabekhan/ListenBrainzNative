@@ -51,6 +51,7 @@ private struct LiveRadioTransport: RadioTransport {
 struct ListenBrainzRadioProvider: RadioProviding {
     private let transport: any RadioTransport
     private let gate: RequestGate
+    private let readScope: RequestGate.ReadScope
 
     init(token: String, gate: RequestGate = .shared) {
         transport = LiveRadioTransport(
@@ -60,16 +61,23 @@ struct ListenBrainzRadioProvider: RadioProviding {
             )
         )
         self.gate = gate
+        readScope = .authenticated(token: token)
     }
 
-    init(transport: some RadioTransport, gate: RequestGate) {
+    init(
+        transport: some RadioTransport,
+        gate: RequestGate,
+        readScope: RequestGate.ReadScope = .isolated()
+    ) {
         self.transport = transport
         self.gate = gate
+        self.readScope = readScope
     }
 
     func generate(options: RadioGenerationOptions) async throws -> RadioMix {
-        let generated = try await perform {
-            try await transport.generate(prompt: options.prompt, mode: options.mode)
+        let prompt = options.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        let generated = try await read(.radioPlaylist(readScope, prompt: prompt, mode: options.mode.rawValue)) {
+            try await transport.generate(prompt: prompt, mode: options.mode)
         }
         try Task.checkCancellation()
 
@@ -78,7 +86,7 @@ struct ListenBrainzRadioProvider: RadioProviding {
         var metadataEnrichmentFailed = false
         if !recordingMBIDs.isEmpty {
             do {
-                metadata = try await perform {
+                metadata = try await read(.radioMetadata(readScope, mbids: recordingMBIDs)) {
                     try await transport.recordingMetadata(mbids: recordingMBIDs)
                 }
             } catch is CancellationError {
@@ -112,11 +120,12 @@ struct ListenBrainzRadioProvider: RadioProviding {
         )
     }
 
-    private func perform<Result: Sendable>(
+    private func read<Result: Sendable>(
+        _ key: RequestGate.ReadKey,
         _ operation: @escaping @Sendable () async throws -> Result
     ) async throws -> Result {
         do {
-            return try await gate.perform(operation) { error in
+            return try await gate.read(for: key, operation) { error in
                 guard case let LBError.rateLimited(resetIn) = error else { return nil }
                 return .seconds(max(resetIn, 1))
             }

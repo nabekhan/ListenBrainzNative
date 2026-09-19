@@ -9,6 +9,7 @@ struct SearchProvider: SearchProviding {
     private let listenBrainz: LBClient
     private let musicBrainz: MusicBrainzSearchClient
     private let listenBrainzGate: RequestGate
+    private let listenBrainzReadScope: RequestGate.ReadScope
 
     init(
         token: String,
@@ -20,6 +21,7 @@ struct SearchProvider: SearchProviding {
             userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"
         )
         self.listenBrainzGate = listenBrainzGate
+        listenBrainzReadScope = .authenticated(token: token)
         self.musicBrainz = musicBrainz
     }
 
@@ -28,13 +30,15 @@ struct SearchProvider: SearchProviding {
         case .artists, .releaseGroups, .recordings:
             return try await musicBrainz.search(query: query, scope: scope)
         case .users:
-            return try await performListenBrainz {
-                try await listenBrainz.core.searchUser(term: query).map { .user(.init(username: $0)) }
+            let effectiveQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+            return try await performListenBrainz(.searchUsers(listenBrainzReadScope, query: effectiveQuery)) {
+                try await listenBrainz.core.searchUser(term: effectiveQuery).map { .user(.init(username: $0)) }
             }
         case .playlists:
-            guard query.count >= scope.minimumQueryLength else { return [] }
-            return try await performListenBrainz {
-                try await listenBrainz.core.searchPlaylists(query: query, count: 20).map {
+            let effectiveQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard effectiveQuery.count >= scope.minimumQueryLength else { return [] }
+            return try await performListenBrainz(.searchPlaylists(listenBrainzReadScope, query: effectiveQuery, count: 20)) {
+                try await listenBrainz.core.searchPlaylists(query: effectiveQuery, count: 20).map {
                     .playlist(.init(
                         title: $0.title,
                         creator: $0.creator,
@@ -49,10 +53,11 @@ struct SearchProvider: SearchProviding {
     }
 
     private func performListenBrainz<Result: Sendable>(
+        _ key: RequestGate.ReadKey,
         _ operation: @escaping @Sendable () async throws -> Result
     ) async throws -> Result {
         do {
-            return try await listenBrainzGate.perform(operation) { error in
+            return try await listenBrainzGate.read(for: key, operation) { error in
                 guard case let LBError.rateLimited(resetIn) = error else { return nil }
                 return .seconds(max(resetIn, 1))
             }

@@ -37,6 +37,7 @@ struct ListenBrainzYearInMusicArtworkProvider: YearInMusicArtworkProviding {
     private let transport: any YearInMusicArtworkTransport
     private let gate: RequestGate
     private let cache: YearInMusicArtworkCache
+    private let readScope: RequestGate.ReadScope
 
     init(
         token: String,
@@ -51,29 +52,32 @@ struct ListenBrainzYearInMusicArtworkProvider: YearInMusicArtworkProviding {
         )
         self.gate = gate
         self.cache = cache
+        readScope = .authenticated(token: token)
     }
 
     init(
         transport: some YearInMusicArtworkTransport,
         gate: RequestGate,
-        cache: YearInMusicArtworkCache = .init()
+        cache: YearInMusicArtworkCache = .init(),
+        readScope: RequestGate.ReadScope = .isolated()
     ) {
         self.transport = transport
         self.gate = gate
         self.cache = cache
+        self.readScope = readScope
     }
 
     func artwork(for options: YearInMusicArtworkOptions) async throws -> YearInMusicArtwork? {
-        try await cache.value(for: options) {
+        try await cache.value(for: options, scope: readScope) {
             do {
-                let source = try await gate.perform({
+                let source = try await gate.read(for: .yearInMusicArtwork(readScope, user: options.username, year: options.year, variant: options.variant.rawValue, anonymous: options.anonymous)) {
                     try await transport.yearInMusic(
                         username: options.username,
                         year: options.year,
                         variant: options.variant,
                         anonymous: options.anonymous
                     )
-                }) { error in
+                } deferralForError: { error in
                     guard case let LBError.rateLimited(resetIn) = error else { return nil }
                     return .seconds(max(resetIn, 1))
                 }
@@ -90,6 +94,11 @@ struct ListenBrainzYearInMusicArtworkProvider: YearInMusicArtworkProviding {
 actor YearInMusicArtworkCache {
     static let shared = YearInMusicArtworkCache()
 
+    private struct Key: Hashable, Sendable {
+        let options: YearInMusicArtworkOptions
+        let scope: RequestGate.ReadScope
+    }
+
     private struct Entry {
         let value: YearInMusicArtwork?
         let savedAt: Date
@@ -104,8 +113,8 @@ actor YearInMusicArtworkCache {
 
     private let timeToLive: TimeInterval
     private let maximumEntryCount: Int
-    private var entries: [YearInMusicArtworkOptions: Entry] = [:]
-    private var inFlight: [YearInMusicArtworkOptions: Flight] = [:]
+    private var entries: [Key: Entry] = [:]
+    private var inFlight: [Key: Flight] = [:]
 
     init(timeToLive: TimeInterval = 24 * 60 * 60, maximumEntryCount: Int = 24) {
         self.timeToLive = timeToLive
@@ -114,19 +123,21 @@ actor YearInMusicArtworkCache {
 
     func value(
         for options: YearInMusicArtworkOptions,
+        scope: RequestGate.ReadScope,
         now: Date = .now,
         load: @escaping @Sendable () async throws -> YearInMusicArtwork?
     ) async throws -> YearInMusicArtwork? {
-        if var entry = entries[options], now.timeIntervalSince(entry.savedAt) < timeToLive {
+        let key = Key(options: options, scope: scope)
+        if var entry = entries[key], now.timeIntervalSince(entry.savedAt) < timeToLive {
             entry.lastAccessedAt = now
-            entries[options] = entry
+            entries[key] = entry
             return entry.value
         }
         let waiterID = UUID()
         let flight: Flight
-        if var existing = inFlight[options] {
+        if var existing = inFlight[key] {
             existing.waiterIDs.insert(waiterID)
-            inFlight[options] = existing
+            inFlight[key] = existing
             flight = existing
         } else {
             let created = Flight(
@@ -134,7 +145,7 @@ actor YearInMusicArtworkCache {
                 task: Task { try await load() },
                 waiterIDs: [waiterID]
             )
-            inFlight[options] = created
+            inFlight[key] = created
             flight = created
         }
 
@@ -145,53 +156,53 @@ actor YearInMusicArtworkCache {
                 Task {
                     await self.cancelWaiter(
                         waiterID,
-                        for: options,
+                        for: key,
                         flightID: flight.id
                     )
                 }
             }
             try Task.checkCancellation()
-            completeFlight(loaded, for: options, flightID: flight.id, now: now)
+            completeFlight(loaded, for: key, flightID: flight.id, now: now)
             return loaded
         } catch is CancellationError {
-            cancelWaiter(waiterID, for: options, flightID: flight.id)
+            cancelWaiter(waiterID, for: key, flightID: flight.id)
             throw CancellationError()
         } catch {
-            failFlight(for: options, flightID: flight.id)
+            failFlight(for: key, flightID: flight.id)
             throw error
         }
     }
 
     private func cancelWaiter(
         _ waiterID: UUID,
-        for options: YearInMusicArtworkOptions,
+        for key: Key,
         flightID: UUID
     ) {
-        guard var flight = inFlight[options], flight.id == flightID else { return }
+        guard var flight = inFlight[key], flight.id == flightID else { return }
         guard flight.waiterIDs.remove(waiterID) != nil else { return }
         if flight.waiterIDs.isEmpty {
             flight.task.cancel()
-            inFlight.removeValue(forKey: options)
+            inFlight.removeValue(forKey: key)
         } else {
-            inFlight[options] = flight
+            inFlight[key] = flight
         }
     }
 
     private func completeFlight(
         _ loaded: YearInMusicArtwork?,
-        for options: YearInMusicArtworkOptions,
+        for key: Key,
         flightID: UUID,
         now: Date
     ) {
-        guard inFlight[options]?.id == flightID else { return }
-        entries[options] = Entry(value: loaded, savedAt: now, lastAccessedAt: now)
-        inFlight.removeValue(forKey: options)
+        guard inFlight[key]?.id == flightID else { return }
+        entries[key] = Entry(value: loaded, savedAt: now, lastAccessedAt: now)
+        inFlight.removeValue(forKey: key)
         trimIfNeeded()
     }
 
-    private func failFlight(for options: YearInMusicArtworkOptions, flightID: UUID) {
-        guard inFlight[options]?.id == flightID else { return }
-        inFlight.removeValue(forKey: options)
+    private func failFlight(for key: Key, flightID: UUID) {
+        guard inFlight[key]?.id == flightID else { return }
+        inFlight.removeValue(forKey: key)
     }
 
     private func trimIfNeeded() {
