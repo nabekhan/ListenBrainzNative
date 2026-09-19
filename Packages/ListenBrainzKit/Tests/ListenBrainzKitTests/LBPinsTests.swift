@@ -38,6 +38,37 @@ import Testing
         #expect(object?["blurb_content"] == nil)
     }
 
+    @Test("Following pins preserve public-page semantics")
+    func followingPins() throws {
+        let request = FollowingPinsRequest(user: "test user", count: 1_001, offset: -2)
+        #expect(request.data.path == "/1/test user/pins/following")
+        #expect(request.data.queryItems["count"] == ["1000"])
+        #expect(request.data.queryItems["offset"] == ["0"])
+        #expect(request.data.statusErrors[400] == .badRequest)
+        #expect(request.data.statusErrors[404] == .notFound)
+
+        let page = try JSONDecoder.ListenBrainz.decode(LBFollowingPinsPage.self, from: Data("""
+        {"pinned_recordings":[{"row_id":17,"created":1700000000,"recording_mbid":"40ef0ae1-5626-43eb-838f-1b34187519bf","recording_msid":null,"user_name":"owner","track_metadata":{"artist_name":"Artist","track_name":"Track"}}],"count":1,"offset":0,"user_name":"viewer"}
+        """.utf8))
+        #expect(page.count == 1)
+        #expect(page.userName == "viewer")
+        #expect(page.pinnedRecordings.first?.userName == "owner")
+        #expect(page.pinnedRecordings.first?.trackMetadata?.release == nil)
+
+        let incomplete = try JSONDecoder.ListenBrainz.decode(LBFollowingPinsPage.self, from: Data("{}".utf8))
+        #expect(incomplete.pinnedRecordings.isEmpty)
+        #expect(incomplete.count == 0)
+        #expect(incomplete.offset == 0)
+
+        let lossy = try JSONDecoder.ListenBrainz.decode(LBFollowingPinsPage.self, from: Data("""
+        {"pinned_recordings":[{"row_id":"bad"},{"row_id":18,"created":1700000001,"user_name":"kept"}],"count":"2","offset":"25","user_name":7}
+        """.utf8))
+        #expect(lossy.pinnedRecordings.map(\.rowID) == [18])
+        #expect(lossy.count == 2)
+        #expect(lossy.offset == 25)
+        #expect(lossy.userName == nil)
+    }
+
     @Test("Pins client rejects an identifierless create")
     func invalidCreate() async {
         let client = LBPinsClient(MockAPIClient(result: .failure(.unknownError)))

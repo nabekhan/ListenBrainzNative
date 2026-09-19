@@ -25,6 +25,20 @@ struct PinHistoryRequest: APIRequest {
     }
 }
 
+struct FollowingPinsRequest: APIRequest {
+    typealias Result = LBFollowingPinsPage
+    let data: APIRequestData<NoBody>
+
+    init(user: String, count: Int, offset: Int) {
+        data = .init(
+            path: "/1/\(user)/pins/following",
+            method: .get,
+            queryItems: ["count": [String(min(max(count, 0), 1_000))], "offset": [String(max(offset, 0))]],
+            statusErrors: [400: .badRequest, 404: .notFound]
+        )
+    }
+}
+
 struct CreatePinRequest: APIRequest {
     typealias Result = CreatePinResponse
     let data: APIRequestData<Body>

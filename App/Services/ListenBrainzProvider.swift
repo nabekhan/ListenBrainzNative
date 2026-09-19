@@ -545,6 +545,7 @@ actor RequestGate {
         case yearInMusicSummary
         case pinsCurrent
         case pinsHistory
+        case pinsFollowing
         case profilePlaylists
         case recordingShareFollowers
         case searchListenBrainzUsers
@@ -609,6 +610,7 @@ actor RequestGate {
         static func historyRecent(_ scope: ReadScope, user: String, before: Date?, after: Date?, count: Int) -> Self { endpoint(scope, .historyRecent, [userID(user), epoch(before), epoch(after), String(count)]) }
         static func feedPage(_ scope: ReadScope, user: String, mode: String, before: Date?, minimum: Date?, count: Int) -> Self { endpoint(scope, .feedPage, [userID(user), mode, epoch(before), epoch(minimum), String(count)]) }
         static func pinHistory(_ scope: ReadScope, user: String, count: Int, offset: Int) -> Self { endpoint(scope, .pinsHistory, [userID(user), String(count), String(offset)]) }
+        static func followingPins(_ scope: ReadScope, user: String, count: Int, offset: Int) -> Self { endpoint(scope, .pinsFollowing, [userID(user), String(count), String(offset)]) }
         static func profilePlaylists(_ scope: ReadScope, user: String, category: String, offset: Int, count: Int) -> Self { endpoint(scope, .profilePlaylists, [userID(user), category, String(offset), String(count)]) }
         static func releaseGroup(_ scope: ReadScope, mbid: UUID) -> Self { endpoint(scope, .metadataRelease, [uuid(mbid), "artist", "tag"]) }
         static func playlistDetail(_ scope: ReadScope, mbid: UUID) -> Self { endpoint(scope, .playlistDetail, [uuid(mbid)]) }

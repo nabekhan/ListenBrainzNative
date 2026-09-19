@@ -100,7 +100,7 @@ Running integration tests requires setting a ListenBrainz token in the environme
   - [x] GET  /1/stats/user/(user_name)/release-groups
   - [x] GET  /1/stats/user/(user_name)/recordings
   - [x] GET  /1/stats/user/(user_name)/listening-activity
-  - [ ] GET  /1/stats/user/(user_name)/daily-activity
+  - [x] GET  /1/stats/user/(user_name)/daily-activity
   - [x] GET  /1/stats/user/(user_name)/artist-map
   - [x] GET  /1/stats/artist/(artist_mbid)/listeners
   - [x] GET  /1/stats/release-group/(release_group_mbid)/listeners
@@ -110,15 +110,15 @@ Running integration tests requires setting a ListenBrainz token in the environme
   - [x] GET  /1/stats/sitewide/recordings
   - [x] GET  /1/stats/sitewide/listening-activity
   - [x] GET  /1/stats/sitewide/artist-map
-  - [ ] GET  /1/stats/user/(user_name)/year-in-music/(int: year)
-  - [ ] GET  /1/stats/user/(user_name)/year-in-music
+  - [x] GET  /1/stats/user/(user_name)/year-in-music/(int: year)
+  - [x] GET  /1/stats/user/(user_name)/year-in-music
 - Popularity
   - [ ] GET  /1/popularity/top-recordings-for-artist/(artist_mbid)
   - [ ] GET  /1/popularity/top-release-groups-for-artist/(artist_mbid)
-  - [ ] POST /1/popularity/recording
-  - [ ] POST /1/popularity/artist
-  - [ ] POST /1/popularity/release
-  - [ ] POST /1/popularity/release-group
+  - [x] POST /1/popularity/recording
+  - [x] POST /1/popularity/artist
+  - [x] POST /1/popularity/release
+  - [x] POST /1/popularity/release-group
 - Playlists
   - [x] GET  /1/user/(playlist_user_name)/playlists
   - [x] GET  /1/user/(playlist_user_name)/playlists/createdfor
@@ -151,7 +151,7 @@ Running integration tests requires setting a ListenBrainz token in the environme
     - [x] POST /1/pin/unpin
     - [x] POST /1/pin/delete/(row_id)
     - [x] GET  /1/(user_name)/pins
-    - [ ] GET  /1/(user_name)/pins/following
+    - [x] GET  /1/(user_name)/pins/following
     - [x] GET  /1/(user_name)/pins/current
     - [x] POST /1/pin/update/(row_id)
 - Social
@@ -182,11 +182,11 @@ Running integration tests requires setting a ListenBrainz token in the environme
   - [ ] POST /1/art/grid/
   - [ ] GET  /1/art/grid-stats/(user_name)/(time_range)/(int: dimension)/(int: layout)/(int: image_size)
   - [ ] GET  /1/art/(custom_name)/(user_name)/(time_range)/(int: image_size)
-  - [ ] GET  /1/art/year-in-music/(int: year)/(user_name)
+  - [x] GET  /1/art/year-in-music/(int: year)/(user_name)
 - Misc
   - Explore
     - [x] GET  /1/explore/fresh-releases/
     - [ ] GET  /1/explore/color/(color)
-    - [ ] GET  /1/explore/lb-radio
+    - [x] GET  /1/explore/lb-radio
   - Status
     - [ ] GET  /1/status/get-dump-info

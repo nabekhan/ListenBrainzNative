@@ -27,6 +27,9 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-remove-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-remove-review-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-following-pins-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-following-pins-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-following-pins-failure-demo")
             {
                 let visualAccount = Account(username: "visual-listener", token: "visual-token")
                 _model = State(
@@ -299,6 +302,14 @@ struct MainTabView: View {
                         cache: EntityDetailCache()
                     )
                 }
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-following-pins-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-following-pins-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-following-pins-failure-demo")
+            {
+                NavigationStack {
+                    FollowingPinsView(account: model.account, listeningModel: model)
+                }
+                .environment(pins)
             } else {
                 mainContent
             }

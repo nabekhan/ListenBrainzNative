@@ -18,7 +18,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Inspect raw listen/mapping state | Y | Y | P | ? | P | P | P2 | Advanced detail sheet |
 | Manual metadata mapping | Y | Y | ? | ? | Y | ? | P3 | Advanced workflow only |
 | Recording love/hate/clear feedback | Y | Y | P | P | Y | P | P1 | Optimistic action with rollback |
-| Pins/current pin/pin history/blurb | Y | Y | Y | Y | Y | Y | P1 | Native current/history and owner mutations landed; following pins remain for Social |
+| Pins/current pin/pin history/blurb | Y | Y | Y | Y | Y | Y | P1 | Native current/history, owner mutations, and Following Pins landed; the public Following Pins page stays aggregate and non-hydrating |
 | Top artists | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
 | Top releases/albums | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
 | Top release groups | Y | Y | Y | P | Y | P | P1 | Preserve release/release-group distinction |
@@ -77,6 +77,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 - Artist Origins is a public aggregate statistics response built from up to a user's top 1,000 artists that have MusicBrainz country data. The native destination performs one cached user/range read, then ranks by artist or listen count and opens server-embedded country artists locally; it does not issue per-country or per-artist hydration requests.
 - Artist Activity is a bounded ranked response derived from mapped release-group statistics: at most 15 leading artists, each with its album/release-group breakdown. The native destination makes one cached user/range read, merges MBID-first identities locally, and opens only identifiers already present in the response; expanding albums makes no request.
 - Artist and release-group listener rankings are public, server-computed samples capped at 10 rows. The native detail cards explicitly request `all_time`, cache both content and 204/empty results for five minutes, expand locally, and navigate with embedded usernames without profile hydration.
+- Following Pins is a separate public, newest-first aggregate of each followed user's active pin. The native destination makes one bounded request per page, preserves the server count/offset contract, deduplicates by owner plus row ID, caches pages for five minutes, and never hydrates rows individually.
 
 ## Evidence
 

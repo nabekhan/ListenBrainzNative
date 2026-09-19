@@ -20,6 +20,12 @@ public struct LBPinsClient: Sendable {
         try await apiClient.execute(PinHistoryRequest(user: user, count: count, offset: offset))
     }
 
+    /// Current pins from people a user follows. This public endpoint has no
+    /// total count; use the returned page count to determine pagination.
+    public func following(user: String, count: Int = 25, offset: Int = 0) async throws -> LBFollowingPinsPage {
+        try await apiClient.execute(FollowingPinsRequest(user: user, count: count, offset: offset))
+    }
+
     /// Creates a current pin. Omitting `pinnedUntil` deliberately retains the server's default lifetime.
     @discardableResult
     public func create(

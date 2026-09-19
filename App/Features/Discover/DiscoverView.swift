@@ -5,6 +5,7 @@ struct DiscoverView: View {
     @State private var isSearchPresented = false
     @State private var isRecommendationsPresented = false
     @State private var isFeedPresented = false
+    @State private var isFollowingPinsPresented = false
     @Bindable var listeningModel: ListeningModel
     private let account: Account
     @AppStorage("discover.freshReleaseScope") private var scope: FreshReleaseScope = .forYou
@@ -23,6 +24,7 @@ struct DiscoverView: View {
                     recommendationsLink
                     radioLink
                     feedLink
+                    followingPinsLink
                     scopePicker
                     content
                 }
@@ -58,6 +60,9 @@ struct DiscoverView: View {
                 if ProcessInfo.processInfo.arguments.contains("-brainz-open-feed") {
                     isFeedPresented = true
                 }
+                if ProcessInfo.processInfo.arguments.contains("-brainz-open-following-pins") {
+                    isFollowingPinsPresented = true
+                }
                 #endif
             }
             .sheet(isPresented: $isSearchPresented) {
@@ -69,8 +74,34 @@ struct DiscoverView: View {
             .navigationDestination(isPresented: $isFeedPresented) {
                 FeedView(account: account, listeningModel: listeningModel)
             }
+            .navigationDestination(isPresented: $isFollowingPinsPresented) {
+                FollowingPinsView(account: account, listeningModel: listeningModel)
+            }
             .mediaDestinations(model: listeningModel)
         }
+    }
+
+    private var followingPinsLink: some View {
+        NavigationLink {
+            FollowingPinsView(account: account, listeningModel: listeningModel)
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(AppTheme.artworkGradient(seed: "following-pins"))
+                    Image(systemName: "pin.fill").font(.system(size: 27, weight: .semibold)).foregroundStyle(.white)
+                }.frame(width: 72, height: 72)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Following pins").font(.headline).foregroundStyle(.primary)
+                    Text("Tracks pinned by people you follow").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading).lineLimit(3)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right").font(.caption.bold()).foregroundStyle(.tertiary)
+            }
+            .padding(14).background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous)).contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Open current pins from people you follow")
     }
 
     private var feedLink: some View {

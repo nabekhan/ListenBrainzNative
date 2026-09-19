@@ -25,7 +25,7 @@ Snapshot: 2026-09-19. Repository/source inspection, Xcode 27 builds, simulator r
 | Requirement | Best donor | What can be reused | What is written here |
 |---|---|---|---|
 | Overall information architecture | first.fm + current LB web | Profile/history/ranking hierarchy and LB product grouping | Native tab/search flow for Home, History, Discover, Stats, Profile |
-| API/domain | ListenBrainzKit | Existing P0 clients/models | Reliability fixes, app adapters, typed CF/social/pins/detail/era/evolution/artist-map/artist-activity/entity-listener/generated-radio extensions |
+| API/domain | ListenBrainzKit | Existing P0 clients/models | Reliability fixes, app adapters, typed CF/social/pins/following-pins/detail/era/evolution/artist-map/artist-activity/entity-listener/generated-radio extensions |
 | Product behavior | LB API/web + Android | Semantics, event types, pagination, edge cases | Native iOS interaction |
 | Bottom accessory | Apple native APIs + Minidisc behavior | System API behavior; MPL patterns where needed | Conditional Playing Now/latest-listen accessory |
 | History/listen row | first.fm + current LB API/web + official Android/KMP | Dense scrobble hierarchy, date-jump behavior, and timestamp/MSID deletion semantics; no GPL UI copied | MSID-stable pagination, exact local-day bounds, adjacent-day navigation, feedback, track-specific deletion confirmation, durable no-replay state, and accessibility-responsive layout |
@@ -49,6 +49,7 @@ Snapshot: 2026-09-19. Repository/source inspection, Xcode 27 builds, simulator r
 | User social graph | Current LB API/web + official Android/KMP behavior | Relationship semantics and similarity direction; no GPL UI copied | Lazy native destination, isolated viewer/public caches, non-hydrating rows, optimistic follow rollback |
 | Social feed and actions | Current LB API/web + official Android/KMP behavior + Cassette selection/dialog patterns | Event/action taxonomy, server eligibility, cursor semantics, and native multi-select/confirmation interaction; no GPL or donor UI copied | Native My Feed/Following/Similar cards, stable-ID thanks/hide/delete, and public/personal recording sharing through one shared request gate |
 | Pins | Current LB API/web + official Android/iOS behavior | Product semantics and response contracts; no GPL UI copied | Typed MPL Kit extension, profile card, lazy history, owner actions, optimistic rollback |
+| Following Pins | Current LB API/server + existing native pin/feed hierarchy | Public aggregate paging and active-pin semantics; no GPL source or UI copied | Typed MPL Kit page/request plus independent artwork-first SwiftUI, owner-and-row dedupe, five-minute cache, cancellation, and no row hydration |
 | Auth/Keychain | first.fm/Cassette patterns | Small MIT/MPL patterns | Token validation and onboarding copy |
 | Caching | Cassette/Minidisc + URLCache | Actor/service patterns | Small stale-while-revalidate cache boundary |
 | Scrobbling/offline retry | FastScrobbler behavior + Cassette/Minidisc | MPL queue code only if later adopted | Deferred capture module |

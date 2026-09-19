@@ -83,7 +83,7 @@ struct ListenBrainzPinProvider: PinProviding {
         }
     }
 
-    private static func map(_ pin: LBPinnedRecording, isCurrent: Bool, fallbackRecording: Recording? = nil) -> PinnedRecording {
+    static func map(_ pin: LBPinnedRecording, isCurrent: Bool, fallbackRecording: Recording? = nil) -> PinnedRecording {
         let metadata = pin.trackMetadata
         let mapped = metadata?.mbidMapping
         let additional = metadata?.additionalInfo
