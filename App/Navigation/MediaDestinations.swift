@@ -15,7 +15,7 @@ private struct MediaDestinations: ViewModifier {
                 ReleaseDetailView(release: release)
             }
             .navigationDestination(for: SearchReleaseGroup.self) { group in
-                ReleaseGroupDetailView(group: group, token: model.account.token)
+                ReleaseGroupDetailView(group: group, viewer: model.account)
             }
     }
 }

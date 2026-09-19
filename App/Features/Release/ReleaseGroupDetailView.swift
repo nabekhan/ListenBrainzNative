@@ -3,16 +3,18 @@ import SwiftUI
 struct ReleaseGroupDetailView: View {
     let group: SearchReleaseGroup
     let discoveryContext: ReleaseDiscoveryContext?
+    let viewer: Account
     @State private var model: ReleaseGroupDetailModel
 
     init(
         group: SearchReleaseGroup,
-        token: String,
+        viewer: Account,
         discoveryContext: ReleaseDiscoveryContext? = nil
     ) {
         self.group = group
+        self.viewer = viewer
         self.discoveryContext = discoveryContext
-        _model = State(initialValue: ReleaseGroupDetailModel(seed: group, token: token))
+        _model = State(initialValue: ReleaseGroupDetailModel(seed: group, token: viewer.token))
     }
 
     var body: some View {
@@ -24,6 +26,7 @@ struct ReleaseGroupDetailView: View {
                 tags
                 listenBrainzContext
                 popularity
+                topListeners
                 facts
             }
             .padding(.horizontal, 20)
@@ -53,6 +56,9 @@ struct ReleaseGroupDetailView: View {
             }
         }
         .task { await model.load() }
+        .navigationDestination(for: SearchUser.self) { user in
+            UserDetailView(user: user, viewer: viewer)
+        }
     }
 
     private var hero: some View {
@@ -176,6 +182,13 @@ struct ReleaseGroupDetailView: View {
 
     private var popularity: some View {
         PopularitySummaryView(entity: PopularityEntity(kind: .releaseGroup, mbid: group.mbid))
+    }
+
+    private var topListeners: some View {
+        TopListenersSummaryView(
+            entity: TopListenersEntity(kind: .releaseGroup, mbid: group.mbid),
+            viewer: viewer
+        )
     }
 
     private var facts: some View {

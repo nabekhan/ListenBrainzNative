@@ -9,6 +9,77 @@ import Testing
 
 @Suite
 struct LBStatisticsTests {
+    @Test("Top listeners decode tolerantly and preserve useful rows")
+    func deserializeTopListeners() throws {
+        let response = try JSONDecoder.ListenBrainz.decode(
+            StatsTopListenersRequest.Result.self,
+            from: Data("""
+            { "payload": {
+              "artist_mbid": "11111111-1111-1111-1111-111111111111",
+              "artist_name": "Example Artist",
+              "listeners": [
+                { "user_name": "listener", "listen_count": "12" },
+                { "user_name": null, "listen_count": null }
+              ],
+              "total_listen_count": "48", "total_user_count": "9", "range": "all_time",
+              "from_ts": 1, "to_ts": 2, "last_updated": "3"
+            } }
+            """.utf8)
+        )
+        #expect(response.payload.listeners.map(\.userName) == ["listener", ""])
+        #expect(response.payload.listeners.map(\.listenCount) == [12, 0])
+        #expect(response.payload.artistMBID == "11111111-1111-1111-1111-111111111111")
+        #expect(response.payload.artistName == "Example Artist")
+        #expect(response.payload.totalListenCount == 48)
+        #expect(response.payload.totalUserCount == 9)
+        #expect(response.payload.range == "all_time")
+        #expect(response.payload.lastUpdated == 3)
+
+        let releaseGroup = try JSONDecoder.ListenBrainz.decode(
+            StatsTopListenersRequest.Result.self,
+            from: Data("""
+            { "payload": {
+              "release_group_mbid": "22222222-2222-2222-2222-222222222222",
+              "release_group_name": "Example Album", "artist_name": "Example Artist",
+              "artist_mbids": ["11111111-1111-1111-1111-111111111111"],
+              "caa_id": "42", "caa_release_mbid": "33333333-3333-3333-3333-333333333333",
+              "listeners": [], "total_listen_count": 0
+            } }
+            """.utf8)
+        )
+        #expect(releaseGroup.payload.releaseGroupMBID == "22222222-2222-2222-2222-222222222222")
+        #expect(releaseGroup.payload.releaseGroupName == "Example Album")
+        #expect(releaseGroup.payload.artistName == "Example Artist")
+        #expect(releaseGroup.payload.artistMBIDs == ["11111111-1111-1111-1111-111111111111"])
+        #expect(releaseGroup.payload.coverArtArchiveID == 42)
+        #expect(releaseGroup.payload.coverArtArchiveReleaseMBID == "33333333-3333-3333-3333-333333333333")
+    }
+
+    @Test("Top listener routes keep artist and release group identities distinct")
+    func topListenerRequestSemantics() async throws {
+        let artistID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+        let groupID = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
+        let artist = StatsTopListenersRequest(entity: .artist, mbid: artistID, range: .thisMonth)
+        let group = StatsTopListenersRequest(entity: .releaseGroup, mbid: groupID, range: nil)
+        #expect(artist.data.path == "/1/stats/artist/11111111-1111-1111-1111-111111111111/listeners")
+        #expect(group.data.path == "/1/stats/release-group/22222222-2222-2222-2222-222222222222/listeners")
+        #expect(artist.data.queryItems == ["range": ["this_month"]])
+        #expect(group.data.queryItems.isEmpty)
+        #expect(artist.data.statusErrors == [400: .badRequest, 404: .notFound, 204: .noContent])
+
+        let apiClient = ListenBrainzAPIClient(
+            token: "", root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+        let urlRequest = try apiClient.makeURLRequest(artist)
+        #expect(urlRequest.url?.path == artist.data.path)
+        #expect(urlRequest.url?.query == "range=this_month")
+
+        let client = LBStatisticsClient(MockAPIClient(result: .failure(.noContent)))
+        #expect(try await client.artistListeners(mbid: artistID, range: .allTime) == nil)
+        #expect(try await client.releaseGroupListeners(mbid: groupID) == nil)
+    }
+
     @Test("Artist activity decodes user and sitewide payloads tolerantly")
     func deserializeArtistActivity() throws {
         let response = try JSONDecoder.ListenBrainz.decode(StatsArtistActivityRequest.Result.self, from: Data("""

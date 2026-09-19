@@ -9,6 +9,7 @@ struct ArtistDetailView: View {
             LazyVStack(alignment: .leading, spacing: 28) {
                 hero
                 popularity
+                topListeners
                 topRecordings
                 recentListens
             }
@@ -26,6 +27,9 @@ struct ArtistDetailView: View {
         .navigationDestination(for: Recording.self) { recording in
             RecordingDetailView(recording: recording, model: model)
         }
+        .navigationDestination(for: SearchUser.self) { user in
+            UserDetailView(user: user, viewer: model.account)
+        }
         .toolbar {
             if let mbid = artist.mbid {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -42,6 +46,16 @@ struct ArtistDetailView: View {
     private var popularity: some View {
         if let mbid = artist.mbid {
             PopularitySummaryView(entity: PopularityEntity(kind: .artist, mbid: mbid))
+        }
+    }
+
+    @ViewBuilder
+    private var topListeners: some View {
+        if let mbid = artist.mbid {
+            TopListenersSummaryView(
+                entity: TopListenersEntity(kind: .artist, mbid: mbid),
+                viewer: model.account
+            )
         }
     }
 

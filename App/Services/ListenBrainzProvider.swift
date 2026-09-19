@@ -520,6 +520,7 @@ actor RequestGate {
         case statsGenreActivity
         case statsArtistOrigins
         case statsArtistActivity
+        case statsTopListeners
         case searchResults
         case discoveryFreshReleases
         case feedPage
@@ -583,6 +584,9 @@ actor RequestGate {
         static func genreActivity(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsGenreActivity, [userID(user), period]) }
         static func artistOrigins(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsArtistOrigins, [userID(user), period]) }
         static func artistActivity(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsArtistActivity, [userID(user), period]) }
+        static func topListeners(_ scope: ReadScope, kind: String, mbid: UUID, range: String) -> Self {
+            endpoint(scope, .statsTopListeners, [kind, uuid(mbid), range])
+        }
         static func freshReleases(_ scope: ReadScope, user: String?, scopeName: String) -> Self {
             endpoint(
                 scope,

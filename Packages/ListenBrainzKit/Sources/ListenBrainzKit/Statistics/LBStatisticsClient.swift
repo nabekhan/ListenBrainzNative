@@ -216,6 +216,18 @@ public struct LBStatisticsClient: Sendable {
         try await (execNoContent(StatsArtistActivityRequest(user: nil, range: range)))?.payload
     }
 
+    /// Get the bounded ranked listeners for a canonical artist.
+    /// A `nil` result means the entity has no calculated listener statistic.
+    public func artistListeners(mbid: UUID, range: LBStatRange? = nil) async throws -> LBTopListeners? {
+        try await (execNoContent(StatsTopListenersRequest(entity: .artist, mbid: mbid, range: range)))?.payload
+    }
+
+    /// Get the bounded ranked listeners for a canonical release group.
+    /// A `nil` result means the entity has no calculated listener statistic.
+    public func releaseGroupListeners(mbid: UUID, range: LBStatRange? = nil) async throws -> LBTopListeners? {
+        try await (execNoContent(StatsTopListenersRequest(entity: .releaseGroup, mbid: mbid, range: range)))?.payload
+    }
+
     /// Get a user's ListenBrainz Year in Music report.
     /// - Parameters:
     ///   - user: The user to get the report for.

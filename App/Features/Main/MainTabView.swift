@@ -62,7 +62,10 @@ struct MainTabView: View {
                     ))
                 return
             }
-            if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo") {
+            if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-top-listeners-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-top-listeners-expanded-demo")
+            {
                 let visualAccount = Account(username: "visual-popularity", token: "visual-popularity")
                 _model = State(
                     initialValue: ListeningModel(
@@ -226,6 +229,31 @@ struct MainTabView: View {
                         .mediaDestinations(model: model)
                 }
                 .environment(pins)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-top-listeners-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-top-listeners-expanded-demo")
+            {
+                NavigationStack {
+                    ScrollView {
+                        TopListenersSummaryView(
+                            entity: TopListenersEntity(
+                                kind: .artist,
+                                mbid: Self.popularityPreviewArtist.mbid!
+                            ),
+                            viewer: model.account,
+                            initiallyExpanded: ProcessInfo.processInfo.arguments.contains(
+                                "-brainz-top-listeners-expanded-demo"
+                            )
+                        )
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                    }
+                    .navigationTitle("Always")
+                    .navigationDestination(for: SearchUser.self) { user in
+                        UserDetailView(user: user, viewer: model.account)
+                    }
+                }
+                .environment(pins)
+                .environment(\.topListenersProvider, VisualQATopListenersProvider())
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo") {
                 NavigationStack {
                     ArtistDetailView(artist: Self.popularityPreviewArtist, model: model)
@@ -603,6 +631,25 @@ struct MainTabView: View {
                 entity: entity,
                 totalListenCount: 2_418_731,
                 totalUserCount: 148_206
+            )
+        }
+    }
+
+    private struct VisualQATopListenersProvider: TopListenersProviding {
+        func topListeners(for entity: TopListenersEntity) async throws -> TopListeners? {
+            await Task.yield()
+            return TopListeners(
+                entity: entity,
+                listeners: [
+                    .init(username: "marina-listens-to-everything", listenCount: 2_184),
+                    .init(username: "quietlycataloguing", listenCount: 1_744),
+                    .init(username: "astral_tape_archive", listenCount: 982),
+                    .init(username: "sound-and-vision", listenCount: 401),
+                    .init(username: "bluehour", listenCount: 188),
+                    .init(username: "a-very-long-listenbrainz-username-for-layout", listenCount: 75),
+                    .init(username: "late_night_side_b", listenCount: 31),
+                ],
+                totalListenCount: 5_605
             )
         }
     }

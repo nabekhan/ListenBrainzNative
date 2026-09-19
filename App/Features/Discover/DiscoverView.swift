@@ -288,7 +288,7 @@ struct DiscoverView: View {
                                 primaryType: release.primaryType,
                                 firstReleaseDate: release.releaseDate
                             ),
-                            token: account.token,
+                            viewer: account,
                             discoveryContext: release.discoveryContext
                         )
                     } label: {

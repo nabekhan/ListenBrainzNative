@@ -135,7 +135,7 @@ struct SearchView: View {
         case let .recording(recording):
             RecordingDetailView(recording: recording, model: listeningModel)
         case let .releaseGroup(group):
-            ReleaseGroupDetailView(group: group, token: listeningModel.account.token)
+            ReleaseGroupDetailView(group: group, viewer: listeningModel.account)
         case let .user(user):
             UserDetailView(user: user, viewer: listeningModel.account)
         case let .playlist(playlist):

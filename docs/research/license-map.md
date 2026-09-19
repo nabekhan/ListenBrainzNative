@@ -24,7 +24,7 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 
 ## Planned tracked reuse
 
-- `Packages/ListenBrainzKit/`: upstream MPL-2.0 source at `c06b12f`, with reliability fixes and typed recommendation-read/feedback, social/feed-read/feed-mutation, detail, era/activity/evolution/artist-activity, Year in Music/report-art, popularity, generated-radio, and playlist create/edit/append/copy extensions isolated into reviewable commits.
+- `Packages/ListenBrainzKit/`: upstream MPL-2.0 source at `c06b12f`, with reliability fixes and typed recommendation-read/feedback, social/feed-read/feed-mutation, detail, era/activity/evolution/artist-activity/entity-listener, Year in Music/report-art, popularity, generated-radio, and playlist create/edit/append/copy extensions isolated into reviewable commits.
 - The personal-recommendation sheet adapts Cassette's general MPL-2.0 selection-sheet interaction (searchable full-row multi-select and toolbar commit state) using independently written app types and source; no Cassette file was copied.
 - The concrete release page independently implements the inspected Minidisc/Cassette album hierarchy and ordered-row behavior with app-owned types and components; no donor file was copied or adapted.
 - The listening-hours heatmap independently implements the inspected ListenBrainz behavior and Autohop-style period/heatmap interaction with app-owned SwiftUI; no donor file was copied or adapted.
@@ -34,6 +34,7 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 - Artist Activity independently implements the current aggregate API and website behavior with app-owned SwiftUI rankings, proportional album composition, and existing entity navigation. The GPL website/server supplied behavior only; first.fm and Autohop supplied general statistics hierarchy, and no donor UI or GPL source was copied.
 - Genre Activity independently implements the current server/website behavior with app-owned SwiftUI and proportional rankings. No GPL React/Nivo code or donor UI file was copied; Autohop, first.fm, and Cassette informed only the general hierarchy and personality.
 - Entity popularity independently implements the inspected API/web behavior and first.fm-style paired metric hierarchy with app-owned SwiftUI. No first.fm, official-client, or website UI source was copied.
+- Entity Top Listeners independently implements current API/web and official Android behavior with app-owned SwiftUI. The GPL server, website, and Android client supplied endpoint and product semantics only; no GPL source or UI was copied.
 - `App/Features/Taste/YearInMusicView.swift` is an MPL-covered adaptation of Cassette's Wrapped hero/ranking composition, mesh gradient implementation, and 2025 palette at commit `49da821`. Its file header preserves Cassette's copyright and MPL notice; ListenBrainz's GPL website supplied behavior only and no frontend code was copied.
 - `App/Features/Taste/YearInMusicArtworkSheet.swift` and its provider/model are independently written. The GPL website and Android client supplied behavior only; no source was copied. Rendering and export use Apple WebKit/CoreTransferable APIs.
 - The Profile playlist tabs independently implement API and official-client behavior with app-owned models and SwiftUI; no GPL official-client or donor UI source was copied.
