@@ -8,7 +8,7 @@ Snapshot: 2026-09-18. `Y` means source/API evidence exists; `P` means partial or
 | Recent and historical listens | Y | Y | Y | Y | Y | Y | P0 | Flagship paginated history with exact server-bounded local-day navigation; non-date filtering remains deferred because the endpoint does not support it |
 | Playing Now | Y | Y | Y | P | Y | Y | P0 | Home hero and conditional bottom accessory |
 | Listen count | Y | Y | Y | Y | Y | Y | P0 | Profile/home summary |
-| Delete a listen | Y | Y | Y | ? | Y | Y | P1 | Context action with confirmation/rollback |
+| Delete a listen | Y | Y | Y | — | Y | Y | P1 | Native authenticated History action landed with track-specific confirmation, exact timestamp/MSID identity, durable ambiguous-outcome protection, and no automatic replay |
 | Submit/batch-submit/Playing Now | Y | Y | Y | ? | Y | Y | P2 | Separate capture layer; do not block viewer |
 | User search and visited-user profiles | Y | Y | Y | Y | Y | Y | P1 | Native scoped search/profile landed with staged reads, bounded cache, and no N+1 hydration |
 | Artist/release/recording search | Y* | Y | Y | — | — | Y | P1 | Native MusicBrainz scopes landed; `*` adjacent MB APIs |

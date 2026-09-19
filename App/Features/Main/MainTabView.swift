@@ -87,7 +87,10 @@ struct MainTabView: View {
             return
         }
         if ProcessInfo.processInfo.arguments.contains("-brainz-history-demo")
-            || ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo") {
+            || ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-long-title-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-recovery-demo") {
             let visualAccount = Account(username: "visual-history", token: "visual-history")
             _model = State(initialValue: ListeningModel(
                 account: visualAccount,
@@ -250,7 +253,10 @@ struct MainTabView: View {
                     selectedTab = .discover
                 }
                 if ProcessInfo.processInfo.arguments.contains("-brainz-history-demo")
-                    || ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo") {
+                    || ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo")
+                    || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-demo")
+                    || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-long-title-demo")
+                    || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-recovery-demo") {
                     selectedTab = .history
                 }
                 if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo"),
@@ -546,7 +552,8 @@ private struct VisualQAHistoryProvider: ListeningProvider {
     private static let titles = [
         "Night Drive", "Wildflower", "Parallel Lines", "Between the Bars",
         "Soft Focus", "Silver Lining", "Afterimage", "Northbound",
-        "Quiet Hours", "All My Friends", "Blue Rev", "Daydreaming",
+        "Quiet Hours", "All My Friends", "Blue Rev",
+        "Everything We Heard Through the Open Windows on the Long Way Home",
     ]
     private static let artists = ["The Marías", "Alvvays", "Japanese Breakfast", "Radiohead"]
 

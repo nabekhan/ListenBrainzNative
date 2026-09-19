@@ -1,9 +1,21 @@
+import Darwin
 import Foundation
 import Observation
 
 @MainActor
 @Observable
 final class ListeningModel {
+    private struct ListenDeletionKey: Hashable, Sendable {
+        let listenedAt: Int
+        let recordingMSID: UUID
+
+        init?(_ listen: Listen) {
+            guard let recordingMSID = listen.recording.identity.msid else { return nil }
+            self.listenedAt = Int(listen.listenedAt.timeIntervalSince1970)
+            self.recordingMSID = recordingMSID
+        }
+    }
+
     enum Phase: Equatable {
         case idle
         case loading
@@ -19,6 +31,7 @@ final class ListeningModel {
     private let eraActivityCache: EntityDetailCache<EraActivityCacheKey, EraActivity>
     private let artistEvolutionActivityCache: EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity>
     private let genreActivityCache: EntityDetailCache<GenreActivityCacheKey, GenreActivity>
+    private let deletionJournal: ListenDeletionSafetyJournal
 
     private(set) var snapshot = ListeningSnapshot.empty
     private(set) var phase: Phase = .idle
@@ -46,9 +59,12 @@ final class ListeningModel {
     private var genreActivityRequestIDs: [ListeningActivityPeriod: UUID] = [:]
     var feedback: [String: RecordingFeedback] = [:]
     var actionError: String?
+    var deletionNotice: String?
+    var deletionSafetyRecoveryNeeded = false
     private var didLoad = false
     private var cacheLease: UUID?
     private var selectedDayRequestID: UUID?
+    private var deletionRequestsInFlight: Set<ListenDeletionKey> = []
 
     init(
         account: Account,
@@ -57,7 +73,8 @@ final class ListeningModel {
         dailyActivityCache: EntityDetailCache<DailyActivityCacheKey, DailyActivity> = EntityDetailCaches.dailyActivity,
         eraActivityCache: EntityDetailCache<EraActivityCacheKey, EraActivity> = EntityDetailCaches.eraActivity,
         artistEvolutionActivityCache: EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity> = EntityDetailCaches.artistEvolutionActivity,
-        genreActivityCache: EntityDetailCache<GenreActivityCacheKey, GenreActivity> = EntityDetailCaches.genreActivity
+        genreActivityCache: EntityDetailCache<GenreActivityCacheKey, GenreActivity> = EntityDetailCaches.genreActivity,
+        deletionJournal: ListenDeletionSafetyJournal = .shared
     ) {
         self.account = account
         self.provider = provider ?? ListenBrainzProvider(token: account.token)
@@ -66,6 +83,7 @@ final class ListeningModel {
         self.eraActivityCache = eraActivityCache
         self.artistEvolutionActivityCache = artistEvolutionActivityCache
         self.genreActivityCache = genreActivityCache
+        self.deletionJournal = deletionJournal
     }
 
     func load() async {
@@ -74,8 +92,25 @@ final class ListeningModel {
         let lease = await cache.beginSession(username: account.username)
         cacheLease = lease
         if let cached = await cache.load(username: account.username, lease: lease) {
-            snapshot = cached
+            var restored = cached
+            let visibleListens = removingDeletedListens(from: restored.recentListens)
+            var removedConfirmedDeletion = visibleListens.count != restored.recentListens.count
+            restored.recentListens = visibleListens
+            if let playingNow = restored.playingNow,
+               let key = ListenDeletionKey(playingNow),
+               deletionJournal.state(
+                   username: account.username,
+                   listenedAt: key.listenedAt,
+                   recordingMSID: key.recordingMSID
+               ) == .confirmed {
+                restored.playingNow = nil
+                removedConfirmedDeletion = true
+            }
+            snapshot = restored
             phase = .refreshing
+            if removedConfirmedDeletion {
+                await saveSnapshot()
+            }
         } else {
             phase = .loading
         }
@@ -90,7 +125,7 @@ final class ListeningModel {
                 before: nil,
                 count: 40
             )
-            snapshot.recentListens = newListens
+            snapshot.recentListens = removingDeletedListens(from: newListens)
             snapshot.savedAt = .now
             canLoadMore = newListens.count == 40
             phase = .ready
@@ -120,7 +155,7 @@ final class ListeningModel {
                 count: 100
             )
             let existing = Set(snapshot.recentListens.map(\.id))
-            let additions = values.filter { !existing.contains($0.id) }
+            let additions = removingDeletedListens(from: values).filter { !existing.contains($0.id) }
             snapshot.recentListens.append(contentsOf: additions)
             // A repeated full boundary page cannot advance this timestamp
             // cursor. Stop instead of issuing the same request indefinitely.
@@ -165,7 +200,7 @@ final class ListeningModel {
                 isLoadingSelectedDay = false
                 return
             }
-            selectedDayListens = values
+            selectedDayListens = removingDeletedListens(from: values)
             canLoadMoreSelectedDay = values.count == 100
             isLoadingSelectedDay = false
         } catch {
@@ -209,7 +244,7 @@ final class ListeningModel {
             )
             guard selectedDayRequestID == requestID, !Task.isCancelled else { return }
             let existing = Set(selectedDayListens.map(\.id))
-            let additions = values.filter { !existing.contains($0.id) }
+            let additions = removingDeletedListens(from: values).filter { !existing.contains($0.id) }
             selectedDayListens.append(contentsOf: additions)
             // A full response with no new identities means this cursor cannot
             // make progress (for example, a server-side repeated boundary).
@@ -241,6 +276,137 @@ final class ListeningModel {
             try await provider.submitFeedback(value, for: recording)
         } catch {
             feedback[recording.id] = previous
+            actionError = error.localizedDescription
+        }
+    }
+
+    func isDeletionIndeterminate(_ listen: Listen) -> Bool {
+        guard let key = ListenDeletionKey(listen) else { return false }
+        return deletionJournal.state(
+            username: account.username,
+            listenedAt: key.listenedAt,
+            recordingMSID: key.recordingMSID
+        ) == .indeterminate
+    }
+
+    func deleteListen(_ listen: Listen) async {
+        await performListenDeletion(listen, retryingIndeterminateAttempt: false)
+    }
+
+    func retryListenDeletionAnyway(_ listen: Listen) async {
+        await performListenDeletion(listen, retryingIndeterminateAttempt: true)
+    }
+
+    func dismissDeletionSafetyRecovery() {
+        deletionSafetyRecoveryNeeded = false
+    }
+
+    func resetDeletionSafetyData() {
+        guard deletionJournal.resetUnreadableStorage() else {
+            actionError = "Brainz couldn’t reset its deletion record. Restart the app and try again."
+            return
+        }
+        deletionSafetyRecoveryNeeded = false
+    }
+
+    private func performListenDeletion(_ listen: Listen, retryingIndeterminateAttempt: Bool) async {
+        guard account.isAuthenticated else {
+            actionError = "Sign in to delete this listen."
+            return
+        }
+        guard !listen.isPlayingNow else {
+            actionError = "Wait until this track appears in your history, then delete it."
+            return
+        }
+        guard let key = ListenDeletionKey(listen) else {
+            actionError = "ListenBrainz hasn’t assigned this listen an ID, so it can’t be deleted yet."
+            return
+        }
+        guard !deletionRequestsInFlight.contains(key) else { return }
+        guard !deletionJournal.requiresRecovery else {
+            deletionSafetyRecoveryNeeded = true
+            return
+        }
+        let priorState = deletionJournal.state(
+            username: account.username,
+            listenedAt: key.listenedAt,
+            recordingMSID: key.recordingMSID
+        )
+        guard priorState != .confirmed else {
+            actionError = "Deletion is already scheduled. This listen wasn’t sent again."
+            return
+        }
+
+        guard priorState != .indeterminate || retryingIndeterminateAttempt else {
+            actionError = "The first request couldn’t be confirmed, so Brainz didn’t send it again. Wait until after the next hour, then refresh."
+            return
+        }
+
+        deletionRequestsInFlight.insert(key)
+        defer { deletionRequestsInFlight.remove(key) }
+        var reservedExistingIndeterminateAttempt: Bool?
+        do {
+            let canonicalUsername = try await provider.validateToken()
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+            guard canonicalUsername == account.username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
+                actionError = "No deletion was sent. This token belongs to another account. Sign in again."
+                return
+            }
+
+            let reservation = deletionJournal.reserveAttempt(
+                username: account.username,
+                listenedAt: key.listenedAt,
+                recordingMSID: key.recordingMSID,
+                retryingIndeterminateAttempt: retryingIndeterminateAttempt
+            )
+            switch reservation {
+            case let .reserved(previouslyIndeterminate):
+                reservedExistingIndeterminateAttempt = previouslyIndeterminate
+            case .inFlight:
+                actionError = "This deletion is already in progress."
+                return
+            case .confirmed:
+                actionError = "Deletion is already scheduled. This listen wasn’t sent again."
+                return
+            case .indeterminate:
+                actionError = "The first request couldn’t be confirmed, so Brainz didn’t send it again. Wait until after the next hour, then refresh."
+                return
+            case .unavailable:
+                deletionSafetyRecoveryNeeded = true
+                return
+            }
+            defer {
+                deletionJournal.releaseReservation(
+                    username: account.username,
+                    listenedAt: key.listenedAt,
+                    recordingMSID: key.recordingMSID
+                )
+            }
+
+            try await provider.deleteListen(listenedAt: listen.listenedAt, recordingMSID: key.recordingMSID)
+            deletionJournal.markConfirmed(
+                username: account.username,
+                listenedAt: key.listenedAt,
+                recordingMSID: key.recordingMSID
+            )
+            removeDeletedListen(key)
+            deletionNotice = "ListenBrainz usually removes it shortly after the next hour. Statistics may update later."
+            await saveSnapshot()
+        } catch is CancellationError {
+            // The delete transport never started. Clear only a new provisional
+            // marker; an older indeterminate attempt remains unresolved.
+            if reservedExistingIndeterminateAttempt == false {
+                deletionJournal.resolve(username: account.username, listenedAt: key.listenedAt, recordingMSID: key.recordingMSID)
+            }
+        } catch ProviderError.deleteListenOutcomeUnknown {
+            actionError = ProviderError.deleteListenOutcomeUnknown.localizedDescription
+        } catch {
+            // A response-backed failure means the server did not accept this
+            // deletion. Keep the visible listen and allow a later retry.
+            if reservedExistingIndeterminateAttempt == false {
+                deletionJournal.resolve(username: account.username, listenedAt: key.listenedAt, recordingMSID: key.recordingMSID)
+            }
             actionError = error.localizedDescription
         }
     }
@@ -581,5 +747,288 @@ final class ListeningModel {
     private func saveSnapshot() async {
         guard let cacheLease else { return }
         await cache.save(snapshot, username: account.username, lease: cacheLease)
+    }
+
+    private func removingDeletedListens(from listens: [Listen]) -> [Listen] {
+        listens.filter { listen in
+            guard let key = ListenDeletionKey(listen) else { return true }
+            return deletionJournal.state(
+                username: account.username,
+                listenedAt: key.listenedAt,
+                recordingMSID: key.recordingMSID
+            ) != .confirmed
+        }
+    }
+
+    private func removeDeletedListen(_ key: ListenDeletionKey) {
+        snapshot.recentListens = snapshot.recentListens.filter { ListenDeletionKey($0) != key }
+        selectedDayListens = selectedDayListens.filter { ListenDeletionKey($0) != key }
+        if let playingNow = snapshot.playingNow, ListenDeletionKey(playingNow) == key {
+            snapshot.playingNow = nil
+        }
+    }
+}
+
+enum ListenDeletionSafetyState: String, Codable, Equatable, Sendable {
+    case indeterminate
+    case confirmed
+}
+
+enum ListenDeletionReservation: Equatable, Sendable {
+    case reserved(previouslyIndeterminate: Bool)
+    case inFlight
+    case confirmed
+    case indeterminate
+    case unavailable
+}
+
+struct ListenDeletionSafetyRecord: Codable, Equatable, Sendable {
+    let username: String
+    let listenedAt: Int
+    let recordingMSID: UUID
+    let attemptedAt: Date
+    var state: ListenDeletionSafetyState
+}
+
+/// Durable, token-free state for accepted or unresolved delete POSTs. The
+/// server queues accepted work, so a refresh is not proof that replay is safe.
+@MainActor
+final class ListenDeletionSafetyJournal {
+    static let shared: ListenDeletionSafetyJournal = {
+        let fileManager = FileManager.default
+        guard let root = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return ListenDeletionSafetyJournal(storageUnavailable: true)
+        }
+        return ListenDeletionSafetyJournal(
+            fileURL: root
+                .appending(path: "Brainz", directoryHint: .isDirectory)
+                .appending(path: "listen-deletion-journal-v1.json")
+        )
+    }()
+
+    private let fileURL: URL?
+    private var records: [String: ListenDeletionSafetyRecord]
+    private var activeReservations: Set<String> = []
+    private(set) var requiresRecovery: Bool
+
+    /// A nil URL is an in-memory store intended for focused tests. Production
+    /// always supplies the Application Support URL above.
+    init(fileURL: URL? = nil) {
+        self.fileURL = fileURL
+        let loaded = Self.load(fileURL: fileURL)
+        records = loaded.records
+        requiresRecovery = loaded.requiresRecovery
+    }
+
+    private init(storageUnavailable: Bool) {
+        fileURL = nil
+        records = [:]
+        requiresRecovery = storageUnavailable
+    }
+
+    func state(username: String, listenedAt: Int, recordingMSID: UUID) -> ListenDeletionSafetyState? {
+        records[key(username: username, listenedAt: listenedAt, recordingMSID: recordingMSID)]?.state
+    }
+
+    /// Atomically establishes the persisted replay barrier and the transient
+    /// cross-scene claim. Call only after the token owner has been verified.
+    func reserveAttempt(
+        username: String,
+        listenedAt: Int,
+        recordingMSID: UUID,
+        retryingIndeterminateAttempt: Bool,
+        at date: Date = .now
+    ) -> ListenDeletionReservation {
+        guard !requiresRecovery else { return .unavailable }
+        let recordKey = key(username: username, listenedAt: listenedAt, recordingMSID: recordingMSID)
+        guard !activeReservations.contains(recordKey) else { return .inFlight }
+
+        let previousState = records[recordKey]?.state
+        switch previousState {
+        case .confirmed:
+            return .confirmed
+        case .indeterminate where !retryingIndeterminateAttempt:
+            return .indeterminate
+        case .indeterminate:
+            activeReservations.insert(recordKey)
+            return .reserved(previouslyIndeterminate: true)
+        case nil:
+            let normalizedUsername = Self.normalized(username)
+            records[recordKey] = .init(
+                username: normalizedUsername,
+                listenedAt: listenedAt,
+                recordingMSID: recordingMSID,
+                attemptedAt: date,
+                state: .indeterminate
+            )
+            guard persist() else {
+                records.removeValue(forKey: recordKey)
+                requiresRecovery = true
+                return .unavailable
+            }
+            activeReservations.insert(recordKey)
+            return .reserved(previouslyIndeterminate: false)
+        }
+    }
+
+    func releaseReservation(username: String, listenedAt: Int, recordingMSID: UUID) {
+        activeReservations.remove(key(username: username, listenedAt: listenedAt, recordingMSID: recordingMSID))
+    }
+
+    /// Must run before the provider is asked to acquire RequestGate, so a
+    /// process crash after dispatch is always fail-closed on relaunch.
+    func beginAttempt(username: String, listenedAt: Int, recordingMSID: UUID, at date: Date = .now) {
+        guard !requiresRecovery else { return }
+        let normalizedUsername = Self.normalized(username)
+        records[key(username: normalizedUsername, listenedAt: listenedAt, recordingMSID: recordingMSID)] = .init(
+            username: normalizedUsername,
+            listenedAt: listenedAt,
+            recordingMSID: recordingMSID,
+            attemptedAt: date,
+            state: .indeterminate
+        )
+        if !persist() {
+            requiresRecovery = true
+        }
+    }
+
+    func markConfirmed(username: String, listenedAt: Int, recordingMSID: UUID) {
+        let recordKey = key(username: username, listenedAt: listenedAt, recordingMSID: recordingMSID)
+        guard var record = records[recordKey] else { return }
+        record.state = .confirmed
+        records[recordKey] = record
+        if !persist() {
+            requiresRecovery = true
+        }
+    }
+
+    /// Only a definite pre-acceptance failure or an accepted response may
+    /// clear the barrier. Ambiguous outcomes deliberately remain recorded.
+    func resolve(username: String, listenedAt: Int, recordingMSID: UUID) {
+        records.removeValue(forKey: key(username: username, listenedAt: listenedAt, recordingMSID: recordingMSID))
+        if !persist() {
+            requiresRecovery = true
+        }
+    }
+
+    /// Recovery is deliberately explicit because discarding an unreadable
+    /// barrier can make an earlier accepted request replayable.
+    func resetUnreadableStorage() -> Bool {
+        guard requiresRecovery else { return true }
+        // A production instance created without an Application Support URL
+        // cannot be made crash-safe by resetting it into an in-memory store.
+        guard let fileURL else { return false }
+        do {
+            let fileManager = FileManager.default
+            if fileManager.fileExists(atPath: fileURL.path()) {
+                try fileManager.removeItem(at: fileURL)
+                try Self.syncDirectory(fileURL.deletingLastPathComponent())
+            }
+            guard !fileManager.fileExists(atPath: fileURL.path()) else { return false }
+        } catch {
+            return false
+        }
+        records.removeAll()
+        activeReservations.removeAll()
+        requiresRecovery = false
+        return true
+    }
+
+    private func key(username: String, listenedAt: Int, recordingMSID: UUID) -> String {
+        "\(Self.normalized(username)):\(listenedAt):\(recordingMSID.uuidString.lowercased())"
+    }
+
+    private func persist() -> Bool {
+        guard let data = try? JSONEncoder().encode(records.values.sorted {
+            ($0.username, $0.listenedAt, $0.recordingMSID.uuidString) < ($1.username, $1.listenedAt, $1.recordingMSID.uuidString)
+        }) else { return false }
+        guard let fileURL else { return true }
+        do {
+            try Self.writeDurably(data, to: fileURL)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private static func load(fileURL: URL?) -> (
+        records: [String: ListenDeletionSafetyRecord],
+        requiresRecovery: Bool
+    ) {
+        guard let fileURL else { return ([:], false) }
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: fileURL.path()) else { return ([:], false) }
+        guard let data = try? Data(contentsOf: fileURL) else { return ([:], true) }
+        guard let values = try? JSONDecoder().decode([ListenDeletionSafetyRecord].self, from: data) else {
+            return ([:], true)
+        }
+        let records = values.reduce(into: [:]) { result, value in
+            result["\(normalized(value.username)):\(value.listenedAt):\(value.recordingMSID.uuidString.lowercased())"] = value
+        }
+        return (records, false)
+    }
+
+    /// The barrier is synced before its atomic rename becomes visible. The
+    /// parent directory is synced as well so ordinary app termination cannot
+    /// lose the rename after a delete POST has started.
+    private static func writeDurably(_ data: Data, to fileURL: URL) throws {
+        let fileManager = FileManager.default
+        let directoryURL = fileURL.deletingLastPathComponent()
+        let directoryAlreadyExisted = fileManager.fileExists(atPath: directoryURL.path())
+        try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        if !directoryAlreadyExisted {
+            try syncDirectory(directoryURL.deletingLastPathComponent())
+        }
+
+        let temporaryURL = directoryURL.appending(
+            path: ".\(fileURL.lastPathComponent).\(UUID().uuidString).tmp"
+        )
+        do {
+            try data.write(to: temporaryURL)
+            #if os(iOS)
+            try? fileManager.setAttributes(
+                [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+                ofItemAtPath: temporaryURL.path()
+            )
+            #endif
+            let handle = try FileHandle(forWritingTo: temporaryURL)
+            do {
+                try handle.synchronize()
+                try handle.close()
+            } catch {
+                try? handle.close()
+                throw error
+            }
+
+            let renameResult = temporaryURL.path.withCString { source in
+                fileURL.path.withCString { destination in
+                    Darwin.rename(source, destination)
+                }
+            }
+            guard renameResult == 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
+            try syncDirectory(directoryURL)
+        } catch {
+            try? fileManager.removeItem(at: temporaryURL)
+            throw error
+        }
+    }
+
+    private static func syncDirectory(_ directoryURL: URL) throws {
+        let descriptor = directoryURL.path.withCString { path in
+            Darwin.open(path, O_RDONLY)
+        }
+        guard descriptor >= 0 else {
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+        }
+        defer { _ = Darwin.close(descriptor) }
+        guard Darwin.fsync(descriptor) == 0 else {
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+        }
+    }
+
+    private static func normalized(_ username: String) -> String {
+        username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }

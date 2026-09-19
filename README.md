@@ -7,6 +7,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Token authentication with Keychain storage, or read-only public-profile browsing
 - Playing Now and recent-listening home screen
 - Paginated, date-grouped history with exact local-day navigation and adjacent-day browsing
+- Safe authenticated listen deletion with explicit confirmation, asynchronous-status copy, and a durable no-replay barrier for uncertain outcomes
 - Recording and artist detail views
 - Global ListenBrainz listen/listener context on canonical artist, recording, release, and release-group pages
 - Listen count and top artist, album, and recording rankings
@@ -59,6 +60,8 @@ This repository follows an inspect-first, reuse-first workflow. Start with:
 - `docs/research/listenbrainz-feature-map.md`
 - `docs/research/listenbrainzkit-gap-analysis.md`
 - `docs/research/playlist-mutations.md`
+- `docs/research/listen-deletion.md`
+- `docs/research/request-policy.md`
 - `docs/research/lb-radio.md`
 - `docs/research/kmp-status.md`
 - `docs/research/repo-reuse-map.md`

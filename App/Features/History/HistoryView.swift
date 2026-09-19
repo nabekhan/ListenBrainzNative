@@ -1,10 +1,38 @@
 import SwiftUI
 
 struct HistoryView: View {
+    private struct DeletionConfirmation: Identifiable {
+        let listen: Listen
+        let isRetryAnyway: Bool
+        var id: String { "\(listen.id):\(isRetryAnyway)" }
+    }
+
+    private enum HistoryAlert: Identifiable {
+        case deletionConfirmation(DeletionConfirmation)
+        case deletionScheduled(String)
+        case deletionSafetyRecovery
+
+        var id: String {
+            switch self {
+            case let .deletionConfirmation(confirmation):
+                "deletion-confirmation:\(confirmation.id)"
+            case let .deletionScheduled(message):
+                "deletion-scheduled:\(message)"
+            case .deletionSafetyRecovery:
+                "deletion-safety-recovery"
+            }
+        }
+    }
+
     @Bindable var model: ListeningModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var isDatePickerPresented = false
     @State private var draftDay = Date()
     @State private var dayLoadTask: Task<Void, Never>?
+    @State private var historyAlert: HistoryAlert?
+    #if DEBUG
+    @State private var didPresentDeleteDemo = false
+    #endif
 
     private var calendar: Calendar { .autoupdatingCurrent }
     private var isShowingSelectedDay: Bool { model.selectedHistoryDay != nil }
@@ -31,6 +59,73 @@ struct HistoryView: View {
             .mediaDestinations(model: model)
         }
         .sheet(isPresented: $isDatePickerPresented) { historyDatePicker }
+        .alert(item: historyAlertBinding) { alert in
+            switch alert {
+            case let .deletionConfirmation(confirmation):
+                Alert(
+                    title: Text(confirmation.isRetryAnyway ? "Send deletion again?" : "Delete this listen?"),
+                    message: Text(deletionMessage(for: confirmation)),
+                    primaryButton: .destructive(Text(confirmation.isRetryAnyway ? "Send again" : "Delete listen")) {
+                        Task {
+                            if confirmation.isRetryAnyway {
+                                await model.retryListenDeletionAnyway(confirmation.listen)
+                            } else {
+                                await model.deleteListen(confirmation.listen)
+                            }
+                        }
+                    },
+                    secondaryButton: .cancel()
+                )
+            case let .deletionScheduled(message):
+                Alert(
+                    title: Text("Deletion scheduled"),
+                    message: Text(message),
+                    dismissButton: .cancel(Text("Done")) { model.deletionNotice = nil }
+                )
+            case .deletionSafetyRecovery:
+                Alert(
+                    title: Text(dynamicTypeSize.isAccessibilitySize ? "Status unknown" : "Deletion status unknown"),
+                    message: Text(
+                        dynamicTypeSize.isAccessibilitySize
+                            ? "Reset may resend. Refresh after the next hour."
+                            : "Resetting may resend a request. Wait until after the next hour, then refresh."
+                    ),
+                    primaryButton: .destructive(Text("Reset record")) { model.resetDeletionSafetyData() },
+                    secondaryButton: .cancel(Text("Cancel")) { model.dismissDeletionSafetyRecovery() }
+                )
+            }
+        }
+        .onChange(of: model.deletionNotice, initial: true) { _, _ in
+            presentPendingHistoryAlert()
+        }
+        .onChange(of: model.deletionSafetyRecoveryNeeded, initial: true) { _, _ in
+            presentPendingHistoryAlert()
+        }
+        #if DEBUG
+        .task(id: visibleListens.first?.id) {
+            let arguments = ProcessInfo.processInfo.arguments
+            guard arguments.contains("-brainz-history-delete-demo")
+                    || arguments.contains("-brainz-history-delete-long-title-demo")
+                    || arguments.contains("-brainz-history-delete-recovery-demo"),
+                  !didPresentDeleteDemo
+            else { return }
+            if arguments.contains("-brainz-history-delete-recovery-demo") {
+                didPresentDeleteDemo = true
+                model.deletionSafetyRecoveryNeeded = true
+                historyAlert = .deletionSafetyRecovery
+                return
+            }
+            let candidates = visibleListens.filter {
+                !$0.isPlayingNow && $0.recording.identity.msid != nil
+            }
+            let listen = arguments.contains("-brainz-history-delete-long-title-demo")
+                ? candidates.max { $0.recording.title.count < $1.recording.title.count }
+                : candidates.first
+            guard let listen else { return }
+            didPresentDeleteDemo = true
+            historyAlert = .deletionConfirmation(.init(listen: listen, isRetryAnyway: false))
+        }
+        #endif
     }
 
     @ToolbarContentBuilder
@@ -173,6 +268,23 @@ struct HistoryView: View {
         .contextMenu {
             Button { Task { await model.setFeedback(.love, for: listen.recording) } } label: { Label("Love", systemImage: "heart") }
             Button { Task { await model.setFeedback(.hate, for: listen.recording) } } label: { Label("Hate", systemImage: "hand.thumbsdown") }
+            if model.account.isAuthenticated,
+               !listen.isPlayingNow,
+               listen.recording.identity.msid != nil {
+                if model.isDeletionIndeterminate(listen) {
+                    Button(role: .destructive) {
+                        historyAlert = .deletionConfirmation(.init(listen: listen, isRetryAnyway: true))
+                    } label: {
+                        Label("Retry deletion…", systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90")
+                    }
+                } else {
+                    Button(role: .destructive) {
+                        historyAlert = .deletionConfirmation(.init(listen: listen, isRetryAnyway: false))
+                    } label: {
+                        Label("Delete listen", systemImage: "trash")
+                    }
+                }
+            }
             if let mbid = listen.recording.identity.mbid {
                 Link(destination: URL(string: "https://musicbrainz.org/recording/\(mbid.uuidString)")!) { Label("Open in MusicBrainz", systemImage: "arrow.up.right.square") }
             }
@@ -217,6 +329,43 @@ struct HistoryView: View {
     private var loadedListenCountTitle: String {
         let count = model.selectedDayListens.count
         return "\(count) \(count == 1 ? "listen" : "listens") loaded"
+    }
+
+    private var historyAlertBinding: Binding<HistoryAlert?> {
+        Binding(
+            get: { historyAlert },
+            set: { alert in
+                historyAlert = alert
+                guard alert == nil else { return }
+                Task { @MainActor in
+                    await Task.yield()
+                    presentPendingHistoryAlert()
+                }
+            }
+        )
+    }
+
+    private func presentPendingHistoryAlert() {
+        guard historyAlert == nil else { return }
+        if model.deletionSafetyRecoveryNeeded {
+            historyAlert = .deletionSafetyRecovery
+        } else if let notice = model.deletionNotice {
+            historyAlert = .deletionScheduled(notice)
+        }
+    }
+
+    private func deletionMessage(for confirmation: DeletionConfirmation) -> String {
+        if dynamicTypeSize.isAccessibilitySize {
+            return confirmation.isRetryAnyway
+                ? "ListenBrainz may already have this request. Wait until after the next hour and refresh first."
+                : "ListenBrainz usually removes this listen after the next hour. Statistics may update later."
+        }
+
+        let title = confirmation.listen.recording.title
+        let displayTitle = title.count > 36 ? "\(title.prefix(35))…" : title
+        return confirmation.isRetryAnyway
+            ? "ListenBrainz may already have the request for “\(displayTitle)”. Wait until after the next hour and refresh first."
+            : "Removes “\(displayTitle)” from your history, usually shortly after the next hour. Statistics may update later."
     }
 
     private var isSelectedDayTodayOrLater: Bool {

@@ -71,6 +71,423 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(requestedBefore?.timeIntervalSince1970, 1_901)
     }
 
+    func testConfirmedListenDeletionRemovesEveryMatchingVisibleOccurrenceAndFiltersRefreshes() async {
+        let provider = DeleteListenProvider()
+        let model = ListeningModel(
+            account: Account(username: "delete-\(UUID().uuidString)", token: "token"),
+            provider: provider,
+            cache: SnapshotCache(rootDirectory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString))
+        )
+
+        await model.load()
+        await model.selectHistoryDay(.now)
+        let target = try! XCTUnwrap(model.snapshot.recentListens.first)
+
+        await model.deleteListen(target)
+
+        XCTAssertFalse(model.snapshot.recentListens.contains { $0.recording.identity.msid == target.recording.identity.msid && $0.listenedAt == target.listenedAt })
+        XCTAssertFalse(model.selectedDayListens.contains { $0.recording.identity.msid == target.recording.identity.msid && $0.listenedAt == target.listenedAt })
+        let deleteRequests = await provider.deleteRequestCount()
+        XCTAssertEqual(deleteRequests, 1)
+
+        await model.refresh()
+        XCTAssertFalse(model.snapshot.recentListens.contains { $0.recording.identity.msid == target.recording.identity.msid && $0.listenedAt == target.listenedAt })
+    }
+
+    func testAmbiguousListenDeletionRetainsListenAndNeverReplays() async {
+        let provider = DeleteListenProvider(deleteResult: .ambiguous)
+        let model = ListeningModel(
+            account: Account(username: "delete-\(UUID().uuidString)", token: "token"),
+            provider: provider
+        )
+
+        await model.load()
+        let target = try! XCTUnwrap(model.snapshot.recentListens.first)
+        await model.deleteListen(target)
+        await model.deleteListen(target)
+        await model.refresh()
+
+        XCTAssertTrue(model.snapshot.recentListens.contains { $0.id == target.id })
+        let deleteRequests = await provider.deleteRequestCount()
+        XCTAssertEqual(deleteRequests, 1)
+        XCTAssertTrue(model.actionError?.contains("didn’t send it again") == true)
+    }
+
+    func testConfirmedListenDeletionRemainsHiddenAfterRelaunch() async {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let journalURL = root.appending(path: "journal.json")
+        let account = Account(username: "listener", token: "token")
+        let provider = DeleteListenProvider()
+        let firstJournal = ListenDeletionSafetyJournal(fileURL: journalURL)
+        let model = ListeningModel(account: account, provider: provider, deletionJournal: firstJournal)
+
+        await model.load()
+        let target = try! XCTUnwrap(model.snapshot.recentListens.first)
+        await model.deleteListen(target)
+
+        let reopenedJournal = ListenDeletionSafetyJournal(fileURL: journalURL)
+        let reopenedModel = ListeningModel(account: account, provider: provider, deletionJournal: reopenedJournal)
+        await reopenedModel.load()
+
+        XCTAssertFalse(reopenedModel.snapshot.recentListens.contains { $0.id == target.id })
+        let timestamp = Int(target.listenedAt.timeIntervalSince1970)
+        let msid = try! XCTUnwrap(target.recording.identity.msid)
+        XCTAssertEqual(
+            reopenedJournal.state(username: account.username, listenedAt: timestamp, recordingMSID: msid),
+            .confirmed
+        )
+    }
+
+    func testConfirmedDeletionIsRemovedFromCacheBeforeAnOfflineRefresh() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let account = Account(username: "listener", token: "token")
+        let journal = ListenDeletionSafetyJournal(fileURL: root.appending(path: "journal.json"))
+        let initialCache = SnapshotCache(rootDirectory: root)
+        let initialModel = ListeningModel(
+            account: account,
+            provider: DeleteListenProvider(),
+            cache: initialCache,
+            deletionJournal: journal
+        )
+
+        await initialModel.load()
+        let target = try XCTUnwrap(initialModel.snapshot.recentListens.first)
+        let timestamp = Int(target.listenedAt.timeIntervalSince1970)
+        let msid = try XCTUnwrap(target.recording.identity.msid)
+        journal.beginAttempt(username: account.username, listenedAt: timestamp, recordingMSID: msid)
+        journal.markConfirmed(username: account.username, listenedAt: timestamp, recordingMSID: msid)
+
+        let offlineCache = SnapshotCache(rootDirectory: root)
+        let offlineModel = ListeningModel(
+            account: account,
+            provider: DeleteListenProvider(recentListensFails: true),
+            cache: offlineCache,
+            deletionJournal: journal
+        )
+        await offlineModel.load()
+
+        XCTAssertFalse(offlineModel.snapshot.recentListens.contains { $0.id == target.id })
+        XCTAssertEqual(offlineModel.phase, .ready)
+
+        let persistedCache = SnapshotCache(rootDirectory: root)
+        let persistedLease = await persistedCache.beginSession(username: account.username)
+        let persistedValue = await persistedCache.load(username: account.username, lease: persistedLease)
+        let persisted = try XCTUnwrap(persistedValue)
+        XCTAssertFalse(persisted.recentListens.contains { $0.id == target.id })
+    }
+
+    func testDefiniteListenDeletionFailureRetainsListenAndAllowsLaterRetry() async {
+        let provider = DeleteListenProvider(deleteResult: .definiteFailure)
+        let model = ListeningModel(
+            account: Account(username: "delete-\(UUID().uuidString)", token: "token"),
+            provider: provider
+        )
+
+        await model.load()
+        let target = try! XCTUnwrap(model.snapshot.recentListens.first)
+        await model.deleteListen(target)
+        await model.deleteListen(target)
+
+        XCTAssertTrue(model.snapshot.recentListens.contains { $0.id == target.id })
+        let deleteRequests = await provider.deleteRequestCount()
+        XCTAssertEqual(deleteRequests, 2)
+    }
+
+    func testDuplicateRapidDeletionRequestsDispatchOnlyOnce() async {
+        let provider = DeleteListenProvider(deleteDelay: .milliseconds(30))
+        let model = ListeningModel(
+            account: Account(username: "delete-\(UUID().uuidString)", token: "token"),
+            provider: provider
+        )
+
+        await model.load()
+        let target = try! XCTUnwrap(model.snapshot.recentListens.first)
+        async let first: Void = model.deleteListen(target)
+        async let second: Void = model.deleteListen(target)
+        _ = await (first, second)
+
+        let deleteRequests = await provider.deleteRequestCount()
+        XCTAssertEqual(deleteRequests, 1)
+        XCTAssertFalse(model.snapshot.recentListens.contains { $0.id == target.id })
+    }
+
+    func testConcurrentModelsShareOneDeletionReservation() async {
+        let journal = ListenDeletionSafetyJournal()
+        let provider = DeleteListenProvider(
+            deleteDelay: .milliseconds(30),
+            validationDelay: .milliseconds(30)
+        )
+        let account = Account(username: "listener", token: "token")
+        let firstModel = ListeningModel(account: account, provider: provider, deletionJournal: journal)
+        let secondModel = ListeningModel(account: account, provider: provider, deletionJournal: journal)
+        await firstModel.load()
+        let target = try! XCTUnwrap(firstModel.snapshot.recentListens.first)
+
+        async let first: Void = firstModel.deleteListen(target)
+        async let second: Void = secondModel.deleteListen(target)
+        _ = await (first, second)
+
+        let deleteRequests = await provider.deleteRequestCount()
+        XCTAssertEqual(deleteRequests, 1)
+    }
+
+    func testUnreadableDeletionJournalBlocksPostsUntilExplicitReset() async {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try! FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let journalURL = root.appending(path: "journal.json")
+        try! Data("not valid JSON".utf8).write(to: journalURL)
+        let journal = ListenDeletionSafetyJournal(fileURL: journalURL)
+        let provider = DeleteListenProvider()
+        let model = ListeningModel(
+            account: Account(username: "listener", token: "token"),
+            provider: provider,
+            deletionJournal: journal
+        )
+        await model.load()
+        let target = try! XCTUnwrap(model.snapshot.recentListens.first)
+
+        await model.deleteListen(target)
+
+        XCTAssertTrue(model.deletionSafetyRecoveryNeeded)
+        let blockedRequestCount = await provider.deleteRequestCount()
+        XCTAssertEqual(blockedRequestCount, 0)
+
+        model.resetDeletionSafetyData()
+        await model.deleteListen(target)
+
+        XCTAssertFalse(model.deletionSafetyRecoveryNeeded)
+        let acceptedRequestCount = await provider.deleteRequestCount()
+        XCTAssertEqual(acceptedRequestCount, 1)
+    }
+
+    func testIndeterminateDeletionSurvivesRelaunchWithoutFilteringTheListen() async {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let journalURL = root.appending(path: "journal.json")
+        let journal = ListenDeletionSafetyJournal(fileURL: journalURL)
+        let provider = DeleteListenProvider(deleteResult: .ambiguous)
+        let account = Account(username: " Delete Listener ", token: "token")
+        let model = ListeningModel(account: account, provider: provider, deletionJournal: journal)
+
+        await model.load()
+        let target = try! XCTUnwrap(model.snapshot.recentListens.first)
+        await model.deleteListen(target)
+        XCTAssertTrue(model.snapshot.recentListens.contains { $0.id == target.id })
+
+        let reopened = ListenDeletionSafetyJournal(fileURL: journalURL)
+        let reopenedModel = ListeningModel(account: account, provider: provider, deletionJournal: reopened)
+        await reopenedModel.load()
+        XCTAssertTrue(reopenedModel.isDeletionIndeterminate(target))
+        XCTAssertTrue(reopenedModel.snapshot.recentListens.contains { $0.id == target.id })
+    }
+
+    func testIndeterminateRetryCancellationPreservesOriginalReplayBarrier() async {
+        let journal = ListenDeletionSafetyJournal()
+        let provider = DeleteListenProvider(deleteResult: .cancelled)
+        let account = Account(username: "listener", token: "token")
+        let model = ListeningModel(account: account, provider: provider, deletionJournal: journal)
+
+        await model.load()
+        let target = try! XCTUnwrap(model.snapshot.recentListens.first)
+        let timestamp = Int(target.listenedAt.timeIntervalSince1970)
+        let msid = try! XCTUnwrap(target.recording.identity.msid)
+        journal.beginAttempt(username: account.username, listenedAt: timestamp, recordingMSID: msid)
+
+        await model.retryListenDeletionAnyway(target)
+
+        XCTAssertTrue(model.isDeletionIndeterminate(target))
+        XCTAssertEqual(
+            journal.state(username: account.username, listenedAt: timestamp, recordingMSID: msid),
+            .indeterminate
+        )
+    }
+
+    func testExplicitIndeterminateRetryPostsOnceAndPreservesBarrierAfterDefiniteFailure() async {
+        let journal = ListenDeletionSafetyJournal()
+        let provider = DeleteListenProvider(deleteResults: [.ambiguous, .definiteFailure])
+        let account = Account(username: "listener", token: "token")
+        let model = ListeningModel(account: account, provider: provider, deletionJournal: journal)
+
+        await model.load()
+        let target = try! XCTUnwrap(model.snapshot.recentListens.first)
+        await model.deleteListen(target)
+        await model.retryListenDeletionAnyway(target)
+
+        let deleteRequests = await provider.deleteRequestCount()
+        XCTAssertEqual(deleteRequests, 2)
+        XCTAssertTrue(model.snapshot.recentListens.contains { $0.id == target.id })
+        XCTAssertTrue(model.isDeletionIndeterminate(target))
+    }
+
+    func testDeletionJournalSeparatesAccountsAndContainsNoTokenField() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let journalURL = root.appending(path: "journal.json")
+        let journal = ListenDeletionSafetyJournal(fileURL: journalURL)
+        let msid = UUID()
+
+        journal.beginAttempt(username: " Listener ", listenedAt: 123, recordingMSID: msid)
+
+        XCTAssertEqual(journal.state(username: "listener", listenedAt: 123, recordingMSID: msid), .indeterminate)
+        XCTAssertNil(journal.state(username: "other-listener", listenedAt: 123, recordingMSID: msid))
+        let data = try Data(contentsOf: journalURL)
+        let json = try XCTUnwrap(String(data: data, encoding: .utf8))
+        XCTAssertFalse(json.localizedCaseInsensitiveContains("token"))
+        XCTAssertFalse(json.contains("super-secret-value"))
+    }
+
+    func testMismatchedValidatedUsernameSendsNoDeletePost() async {
+        let provider = DeleteListenProvider(canonicalUsername: "someone-else")
+        let model = ListeningModel(
+            account: Account(username: "listener", token: "token"),
+            provider: provider
+        )
+
+        await model.load()
+        let target = try! XCTUnwrap(model.snapshot.recentListens.first)
+        await model.deleteListen(target)
+
+        XCTAssertTrue(model.snapshot.recentListens.contains { $0.id == target.id })
+        let deleteRequests = await provider.deleteRequestCount()
+        XCTAssertEqual(deleteRequests, 0)
+        XCTAssertTrue(model.actionError?.contains("another account") == true)
+    }
+
+    func testDeletionRejectsUnauthenticatedPlayingNowAndUnmappedListensWithoutPosting() async {
+        let provider = DeleteListenProvider()
+        let unauthenticated = ListeningModel(
+            account: Account(username: "listener", token: ""),
+            provider: provider
+        )
+        await unauthenticated.load()
+        let submitted = try! XCTUnwrap(unauthenticated.snapshot.recentListens.first)
+        await unauthenticated.deleteListen(submitted)
+
+        let authenticated = ListeningModel(
+            account: Account(username: "listener", token: "token"),
+            provider: provider
+        )
+        let playingNow = Listen(
+            recording: submitted.recording,
+            listenedAt: submitted.listenedAt,
+            insertedAt: submitted.insertedAt,
+            isPlayingNow: true
+        )
+        await authenticated.deleteListen(playingNow)
+        let unmapped = Listen(
+            recording: Recording(
+                identity: .init(mbid: nil, msid: nil),
+                title: "Unmapped",
+                artistName: "Artist",
+                artistMBIDs: [],
+                releaseTitle: nil,
+                releaseMBID: nil,
+                releaseGroupMBID: nil,
+                artworkReleaseMBID: nil,
+                durationMilliseconds: nil,
+                source: nil
+            ),
+            listenedAt: submitted.listenedAt,
+            insertedAt: nil,
+            isPlayingNow: false
+        )
+        await authenticated.deleteListen(unmapped)
+
+        let deleteRequests = await provider.deleteRequestCount()
+        XCTAssertEqual(deleteRequests, 0)
+    }
+
+    nonisolated func testDeleteProviderTreatsServerUnknownAsIndeterminate() async {
+        let transport = DeleteListenTransportSpy(error: .unknownError)
+        let provider = ListenBrainzProvider(
+            token: "token",
+            gate: RequestGate(minimumInterval: .zero),
+            deletionTransport: transport
+        )
+
+        do {
+            try await provider.deleteListen(listenedAt: .now, recordingMSID: UUID())
+            XCTFail("Expected an indeterminate outcome")
+        } catch ProviderError.deleteListenOutcomeUnknown {
+            // A 5xx may follow a committed queue insert, so it is never retryable.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        let calls = await transport.callCount
+        XCTAssertEqual(calls, 1)
+    }
+
+    nonisolated func testDeleteProviderPreservesDefiniteValidationFailure() async {
+        let transport = DeleteListenTransportSpy(error: .invalidJSON)
+        let provider = ListenBrainzProvider(
+            token: "token",
+            gate: RequestGate(minimumInterval: .zero),
+            deletionTransport: transport
+        )
+
+        do {
+            try await provider.deleteListen(listenedAt: .now, recordingMSID: UUID())
+            XCTFail("Expected invalid JSON")
+        } catch ProviderError.deleteListenRejected {
+            // The server rejected the body before accepting a deletion.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        let calls = await transport.callCount
+        XCTAssertEqual(calls, 1)
+    }
+
+    nonisolated func testDeleteProviderCancellationBeforeTransportRemainsCancellation() async throws {
+        let gate = RequestGate(minimumInterval: .seconds(5))
+        _ = try await gate.perform { true }
+        let transport = DeleteListenTransportSpy()
+        let provider = ListenBrainzProvider(token: "token", gate: gate, deletionTransport: transport)
+        let task = Task {
+            try await provider.deleteListen(listenedAt: .now, recordingMSID: UUID())
+        }
+        await Task.yield()
+        task.cancel()
+
+        do {
+            try await task.value
+            XCTFail("Expected pre-transport cancellation")
+        } catch is CancellationError {
+            // No POST was admitted.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        let calls = await transport.callCount
+        XCTAssertEqual(calls, 0)
+    }
+
+    nonisolated func testDeleteProviderCancellationAfterTransportIsIndeterminate() async throws {
+        let transport = DeleteListenTransportSpy(waitsForCancellation: true)
+        let provider = ListenBrainzProvider(
+            token: "token",
+            gate: RequestGate(minimumInterval: .zero),
+            deletionTransport: transport
+        )
+        let task = Task {
+            try await provider.deleteListen(listenedAt: .now, recordingMSID: UUID())
+        }
+        while !(await transport.hasStarted) { await Task.yield() }
+        task.cancel()
+
+        do {
+            try await task.value
+            XCTFail("Expected an indeterminate post-transport cancellation")
+        } catch ProviderError.deleteListenOutcomeUnknown {
+            // Transport began, so URLSession cancellation cannot prove rejection.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        let calls = await transport.callCount
+        XCTAssertEqual(calls, 1)
+    }
+
     func testHistoryDayBoundsUseLocalCalendarArithmeticAcrossDST() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/New_York")!
@@ -1843,6 +2260,136 @@ private actor GenreActivityProvider: ListeningProvider {
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
     func requestCount() -> Int { requests }
+}
+
+private actor DeleteListenProvider: ListeningProvider {
+    enum DeleteResult: Sendable {
+        case accepted
+        case ambiguous
+        case cancelled
+        case definiteFailure
+    }
+
+    private let deleteResults: [DeleteResult]
+    private let deleteDelay: Duration
+    private let validationDelay: Duration
+    private let canonicalUsername: String?
+    private let recentListensFails: Bool
+    private let targetMSID = UUID(uuidString: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")!
+    private var deleteRequests = 0
+    private var requestedUsername = "fixture-user"
+
+    init(
+        deleteResult: DeleteResult = .accepted,
+        deleteDelay: Duration = .zero,
+        validationDelay: Duration = .zero,
+        canonicalUsername: String? = nil,
+        recentListensFails: Bool = false
+    ) {
+        deleteResults = [deleteResult]
+        self.deleteDelay = deleteDelay
+        self.validationDelay = validationDelay
+        self.canonicalUsername = canonicalUsername
+        self.recentListensFails = recentListensFails
+    }
+
+    init(deleteResults: [DeleteResult], deleteDelay: Duration = .zero) {
+        self.deleteResults = deleteResults
+        self.deleteDelay = deleteDelay
+        validationDelay = .zero
+        canonicalUsername = nil
+        recentListensFails = false
+    }
+
+    func validateToken() async throws -> String {
+        if validationDelay > .zero {
+            try await ContinuousClock().sleep(for: validationDelay)
+        }
+        return canonicalUsername ?? requestedUsername
+    }
+
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] {
+        requestedUsername = username
+        if recentListensFails {
+            throw URLError(.notConnectedToInternet)
+        }
+        let target = listen(title: "Delete me", timestamp: 1_700_000_000, msid: targetMSID)
+        // Duplicate source rows can arise through overlapping history pages;
+        // a confirmed deletion must hide both rather than only the tapped row.
+        return [target, target, listen(title: "Keep me", timestamp: 1_699_999_000, msid: UUID())]
+    }
+
+    func playingNow(username: String) async throws -> Listen? { nil }
+    func listenCount(username: String) async throws -> Int { 0 }
+    func topArtists(username: String, count: Int) async throws -> [RankedArtist] { [] }
+    func topReleases(username: String, count: Int) async throws -> [RankedRelease] { [] }
+    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] { [] }
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        .init(period: period, from: .distantPast, to: .distantPast, lastUpdated: .distantPast, buckets: [])
+    }
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+    func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+
+    func deleteListen(listenedAt: Date, recordingMSID: UUID) async throws {
+        deleteRequests += 1
+        if deleteDelay > .zero {
+            try await ContinuousClock().sleep(for: deleteDelay)
+        }
+        let result = deleteResults[min(deleteRequests - 1, deleteResults.count - 1)]
+        switch result {
+        case .accepted:
+            return
+        case .ambiguous:
+            throw ProviderError.deleteListenOutcomeUnknown
+        case .cancelled:
+            throw CancellationError()
+        case .definiteFailure:
+            throw LBError.invalidJSON
+        }
+    }
+
+    func deleteRequestCount() -> Int { deleteRequests }
+
+    private func listen(title: String, timestamp: TimeInterval, msid: UUID) -> Listen {
+        Listen(
+            recording: Recording(
+                identity: .init(mbid: nil, msid: msid),
+                title: title,
+                artistName: "Fixture Artist",
+                artistMBIDs: [],
+                releaseTitle: nil,
+                releaseMBID: nil,
+                releaseGroupMBID: nil,
+                artworkReleaseMBID: nil,
+                durationMilliseconds: nil,
+                source: nil
+            ),
+            listenedAt: Date(timeIntervalSince1970: timestamp),
+            insertedAt: nil,
+            isPlayingNow: false
+        )
+    }
+}
+
+private actor DeleteListenTransportSpy: ListenDeletionTransport {
+    private let error: LBError?
+    private let waitsForCancellation: Bool
+    private(set) var callCount = 0
+    private(set) var hasStarted = false
+
+    init(error: LBError? = nil, waitsForCancellation: Bool = false) {
+        self.error = error
+        self.waitsForCancellation = waitsForCancellation
+    }
+
+    func deleteListen(listenedAt: Date, recordingMSID: UUID) async throws {
+        callCount += 1
+        hasStarted = true
+        if waitsForCancellation {
+            try await ContinuousClock().sleep(for: .seconds(30))
+        }
+        if let error { throw error }
+    }
 }
 
 private actor FixtureProvider: ListeningProvider {

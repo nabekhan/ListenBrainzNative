@@ -19,6 +19,7 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 | FastScrobbler | No license found | Do not copy | Behavior reference only |
 | Finale | BSD-3-Clause | Permitted selectively | Preserve BSD notice |
 | Discrobble | MIT | Permitted | Documentation/ADR reference only so far |
+| UX Writing Skill | MIT | Development-process guidance only; no source ships in the app | No runtime dependency or app attribution required |
 | Spotify playback experiment | TBD pending exact repository identification | No code copied or dependency added | Separate branch only; audit license, Spotify Developer Terms, authentication, App Store eligibility, and maintenance before implementation |
 
 ## Planned tracked reuse
@@ -36,6 +37,7 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 - The Profile playlist tabs independently implement API and official-client behavior with app-owned models and SwiftUI; no GPL official-client or donor UI source was copied.
 - Playlist creation/editing UI, state, caching, and provider code are independently written from current server/API and official-client behavior. The exact JSPF transport is a local MPL-2.0 ListenBrainzKit extension; no GPL server, Android, iOS, or web source was copied.
 - Playlist-copy UI, state, cache/reconciliation, and provider code are independently written from current API/server/web and official Android/KMP behavior. The typed transport is a local MPL-2.0 ListenBrainzKit extension; no GPL source was copied and no new attribution is required.
+- Listen deletion UI, state, and crash-safe replay protection are independently written from the current API/server and official Android behavior. The existing MPL ListenBrainzKit request is reused unchanged apart from its local regression test; no GPL source was copied.
 - `App/Features/Playlist/PlaylistAddSheet.swift` is an MPL-covered adaptation of Minidisc's destination sheet and explicit duplicate-decision interaction from `AddToPlaylistSheet.swift`, `AddToPlaylistViewModel.swift`, and `PlaylistAppendIntent.swift` at commit `2072435702909a8ac313d7871ed7cf114a8e1012`. Its file header and `THIRD_PARTY.md` preserve the license/provenance; ListenBrainz-specific provider and reconciliation behavior is app-owned.
 - The LB Radio screen/provider independently implement the inspected server and website behavior with app-owned SwiftUI/domain types while reusing MPL ListenBrainzKit JSPF models and existing app playlist components. No GPL server, web, Android, or iOS source was copied.
 - App UI is original code informed by donor behavior except for the explicitly tracked Year in Music and playlist-add adaptations. Any future copied/adapted Cassette, Minidisc, first.fm, Autohop, Beans, Bòcan, or Finale file must be entered in `THIRD_PARTY.md` before merge.

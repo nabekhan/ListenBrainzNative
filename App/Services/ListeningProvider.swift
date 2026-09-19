@@ -15,6 +15,9 @@ protocol ListeningProvider: Sendable {
     func genreActivity(username: String, period: ListeningActivityPeriod) async throws -> GenreActivity?
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease]
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws
+    /// Asks ListenBrainz to queue deletion of one submitted listen. The server
+    /// processes accepted deletions asynchronously.
+    func deleteListen(listenedAt: Date, recordingMSID: UUID) async throws
 }
 
 extension ListeningProvider {
@@ -40,18 +43,29 @@ extension ListeningProvider {
     func genreActivity(username: String, period: ListeningActivityPeriod) async throws -> GenreActivity? {
         nil
     }
+
+    func deleteListen(listenedAt: Date, recordingMSID: UUID) async throws {
+        throw ProviderError.deleteListenUnavailable
+    }
 }
 
 enum ProviderError: LocalizedError {
     case invalidToken
     case feedbackNeedsIdentifier
+    case deleteListenRejected
+    case deleteListenUnavailable
+    case deleteListenOutcomeUnknown
     case missingUsername
     case rateLimited(retryAfterSeconds: Int)
 
     var errorDescription: String? {
         switch self {
-        case .invalidToken: "That ListenBrainz token is not valid."
+        case .invalidToken: "ListenBrainz couldn’t verify this token. Check the token and try again."
         case .feedbackNeedsIdentifier: "ListenBrainz cannot rate this unmapped recording yet."
+        case .deleteListenRejected: "ListenBrainz couldn’t schedule this deletion. Refresh your history and try again."
+        case .deleteListenUnavailable: "Deletion isn’t available in this build."
+        case .deleteListenOutcomeUnknown:
+            "We couldn’t confirm the deletion. Wait until shortly after the next hour, then refresh before trying again."
         case .missingUsername: "Enter a ListenBrainz username."
         case let .rateLimited(seconds): "ListenBrainz is busy. Try again in about \(seconds) seconds."
         }

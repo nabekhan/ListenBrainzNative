@@ -4,6 +4,7 @@ import ListenBrainzKit
 struct ListenBrainzProvider: ListeningProvider {
     private let client: LBClient
     private let gate: RequestGate
+    private let deletionTransport: any ListenDeletionTransport
 
     init(token: String, gate: RequestGate = .shared) {
         self.client = LBClient(
@@ -11,6 +12,17 @@ struct ListenBrainzProvider: ListeningProvider {
             userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"
         )
         self.gate = gate
+        deletionTransport = LiveListenDeletionTransport(client: client)
+    }
+
+    init(token: String, gate: RequestGate, deletionTransport: some ListenDeletionTransport) {
+        let client = LBClient(
+            token: token,
+            userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"
+        )
+        self.client = client
+        self.gate = gate
+        self.deletionTransport = deletionTransport
     }
 
     func validateToken() async throws -> String {
@@ -239,6 +251,48 @@ struct ListenBrainzProvider: ListeningProvider {
         }
     }
 
+    func deleteListen(listenedAt: Date, recordingMSID: UUID) async throws {
+        let attempt = ListenDeletionAttemptState()
+        do {
+            try await gate.perform {
+                await attempt.markTransportStarted()
+                try await deletionTransport.deleteListen(listenedAt: listenedAt, recordingMSID: recordingMSID)
+            } deferralForError: { error in
+                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
+        } catch let LBError.rateLimited(resetIn) {
+            throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
+        } catch let error as LBError {
+            switch error {
+            case .invalidAuth, .noToken:
+                throw ProviderError.invalidToken
+            case .invalidJSON, .invalidParam, .badRequest:
+                // These response-backed validation/authentication failures are
+                // definite pre-acceptance outcomes and remain retryable.
+                throw ProviderError.deleteListenRejected
+            case .invalidResponse, .noContent, .unknownError, .notFound, .forbidden:
+                throw ProviderError.deleteListenOutcomeUnknown
+            case .rateLimited:
+                // RequestGate's deferral closure leaves this branch only if a
+                // nonstandard client returned it outside the normal path.
+                throw error
+            }
+        } catch let error as ProviderError {
+            // `perform` maps response-backed throttling to this app-facing
+            // error. It is likewise safe to retain the listen and let the
+            // user decide whether to try again later.
+            throw error
+        } catch is CancellationError {
+            guard await attempt.didStartTransport else { throw CancellationError() }
+            throw ProviderError.deleteListenOutcomeUnknown
+        } catch {
+            // URLSession failures and cancellation can happen after the POST
+            // leaves the device. Never turn that ambiguity into a replay.
+            throw ProviderError.deleteListenOutcomeUnknown
+        }
+    }
+
     private func perform<Result: Sendable>(
         _ operation: @escaping @Sendable () async throws -> Result
     ) async throws -> Result {
@@ -324,6 +378,24 @@ struct ListenBrainzProvider: ListeningProvider {
             sourcePosition: sourcePosition
         )
     }
+}
+
+protocol ListenDeletionTransport: Sendable {
+    func deleteListen(listenedAt: Date, recordingMSID: UUID) async throws
+}
+
+private struct LiveListenDeletionTransport: ListenDeletionTransport {
+    let client: LBClient
+
+    func deleteListen(listenedAt: Date, recordingMSID: UUID) async throws {
+        try await client.core.deleteListen(listenedAt: listenedAt, recordingMsid: recordingMSID)
+    }
+}
+
+private actor ListenDeletionAttemptState {
+    private(set) var didStartTransport = false
+
+    func markTransportStarted() { didStartTransport = true }
 }
 
 actor RequestGate {

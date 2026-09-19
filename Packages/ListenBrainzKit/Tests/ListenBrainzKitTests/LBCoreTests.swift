@@ -232,6 +232,24 @@ import Testing
         )
     }
 
+    @Test("Delete listen posts its second-granular source identity")
+    func deleteListen() async throws {
+        let mock = MockAPIClient(result: .success(NoResult()))
+        let listenedAt = Date(timeIntervalSince1970: 1_700_000_000.9)
+        let msid = UUID(uuidString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")!
+
+        try await LBCoreClient(mock).deleteListen(listenedAt: listenedAt, recordingMsid: msid)
+
+        let request = try #require(mock.request as? DeleteListenRequest)
+        #expect(request.data.path == "/1/delete-listen")
+        #expect(request.data.method == .post)
+        #expect(request.data.headers["Content-Type"] == "application/json")
+        #expect(request.data.statusErrors[400] == .invalidJSON)
+        #expect(request.data.statusErrors[401] == .invalidAuth)
+        #expect(request.data.body?.listenedAt == 1_700_000_000)
+        #expect(request.data.body?.recordingMsid == msid)
+    }
+
     @Test("Submit multiple listens")
     func submitListens() async throws {
         let date1 = Date.now.addingTimeInterval(-300)
