@@ -31,6 +31,7 @@ struct HistoryView: View {
     @State private var dayLoadTask: Task<Void, Never>?
     @State private var historyAlert: HistoryAlert?
     @State private var inspectedListen: Listen?
+    @State private var searchQuery = HistoryLoadedListenSearch.debugQuery
     #if DEBUG
     @State private var didPresentDeleteDemo = false
     #endif
@@ -38,6 +39,15 @@ struct HistoryView: View {
     private var calendar: Calendar { .autoupdatingCurrent }
     private var isShowingSelectedDay: Bool { model.selectedHistoryDay != nil }
     private var visibleListens: [Listen] { isShowingSelectedDay ? model.selectedDayListens : model.snapshot.recentListens }
+    private var filteredListens: [Listen] { HistoryLoadedListenSearch.filter(visibleListens, query: searchQuery) }
+    private var filteredPlayingNow: Listen? {
+        guard !isShowingSelectedDay,
+              let playingNow = model.snapshot.playingNow,
+              HistoryLoadedListenSearch.matches(playingNow, query: searchQuery)
+        else { return nil }
+        return playingNow
+    }
+    private var isSearchingLoadedListens: Bool { HistoryLoadedListenSearch.isActive(searchQuery) }
     private var isLoadingMore: Bool { isShowingSelectedDay ? model.isLoadingMoreSelectedDay : model.isLoadingMore }
     private var canLoadMore: Bool { isShowingSelectedDay ? model.canLoadMoreSelectedDay : model.canLoadMore }
 
@@ -57,6 +67,11 @@ struct HistoryView: View {
             .navigationTitle("History")
             .navigationBarTitleDisplayMode(.large)
             .toolbar { historyToolbar }
+            .searchable(
+                text: $searchQuery,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: "Search loaded listens"
+            )
             .mediaDestinations(model: model)
         }
         .sheet(isPresented: $isDatePickerPresented) { historyDatePicker }
@@ -191,7 +206,7 @@ struct HistoryView: View {
         List {
             if isShowingSelectedDay {
                 selectedDayNavigation
-            } else if let playing = model.snapshot.playingNow {
+            } else if let playing = filteredPlayingNow {
                 Section("Playing now") {
                     NavigationLink(value: playing.recording) { ListenRow(listen: playing) }
                         .contextMenu {
@@ -205,29 +220,65 @@ struct HistoryView: View {
                 }
             }
 
-            ForEach(groupedDays, id: \.date) { day in
+            if isSearchingLoadedListens {
                 Section {
-                    ForEach(day.listens) { listen in
-                        listenLink(listen)
-                    }
-                } header: {
-                    if !isShowingSelectedDay {
-                        Text(day.title)
+                    if dynamicTypeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("Loaded listens only", systemImage: "magnifyingglass")
+                                .font(.subheadline.weight(.semibold))
+                            Button("Clear search") { searchQuery = "" }
+                                .buttonStyle(.borderless)
+                        }
+                    } else {
+                        HStack {
+                            Label("Loaded listens only", systemImage: "magnifyingglass")
+                                .font(.subheadline.weight(.semibold))
+                            Spacer(minLength: 12)
+                            Button("Clear") { searchQuery = "" }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel("Clear search")
+                        }
                     }
                 }
             }
 
-            if let error = model.selectedDayError, isShowingSelectedDay, !model.selectedDayListens.isEmpty {
+            if isSearchingLoadedListens, filteredListens.isEmpty, filteredPlayingNow == nil {
+                ContentUnavailableView {
+                    Label("No matches in loaded listens", systemImage: "magnifyingglass")
+                } description: {
+                    Text("Try another artist, album, or track.")
+                }
+                .listRowSeparator(.hidden)
+            } else {
+                ForEach(groupedDays, id: \.date) { day in
+                    Section {
+                        ForEach(day.listens) { listen in
+                            listenLink(listen)
+                        }
+                    } header: {
+                        if !isShowingSelectedDay {
+                            Text(day.title)
+                        }
+                    }
+                }
+            }
+
+            paginationSentinel
+
+            if !isSearchingLoadedListens,
+               let error = model.selectedDayError,
+               isShowingSelectedDay,
+               !model.selectedDayListens.isEmpty {
                 Section {
                     Button("Try loading earlier listens again") { Task { await model.loadMoreSelectedHistoryDay() } }
                         .accessibilityHint(error)
                 }
             }
 
-            if isLoadingMore {
+            if !isSearchingLoadedListens, isLoadingMore {
                 HStack { Spacer(); ProgressView("Loading earlier listens…"); Spacer() }
                     .listRowSeparator(.hidden)
-            } else if !canLoadMore {
+            } else if !isSearchingLoadedListens, !canLoadMore {
                 Text(isShowingSelectedDay ? "You’ve reached the start of this day." : "You’ve reached the end of the loaded history.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -237,6 +288,7 @@ struct HistoryView: View {
         }
         .listStyle(.plain)
         .refreshable {
+            guard HistoryLoadedListenSearch.allowsRefresh(query: searchQuery) else { return }
             if isShowingSelectedDay { await model.refreshSelectedHistoryDay() }
             else { await model.refresh() }
         }
@@ -271,11 +323,6 @@ struct HistoryView: View {
     private func listenLink(_ listen: Listen) -> some View {
         NavigationLink(value: listen.recording) {
             ListenRow(listen: listen)
-                .task {
-                    guard listen.id == visibleListens.last?.id else { return }
-                    if isShowingSelectedDay { await model.loadMoreSelectedHistoryDay() }
-                    else { await model.loadMore() }
-                }
         }
         .contextMenu {
             Button {
@@ -309,6 +356,25 @@ struct HistoryView: View {
         }
     }
 
+    private var paginationSentinel: some View {
+        Color.clear
+            .frame(height: 1)
+            .listRowInsets(.init())
+            .listRowSeparator(.hidden)
+            .accessibilityHidden(true)
+            .id("history-pagination-sentinel")
+            .task(id: paginationTaskID) {
+                guard HistoryLoadedListenSearch.allowsPagination(query: searchQuery) else { return }
+                if isShowingSelectedDay { await model.loadMoreSelectedHistoryDay() }
+                else { await model.loadMore() }
+            }
+    }
+
+    private var paginationTaskID: String {
+        let scope = model.selectedHistoryDay.map { "day:\(Int($0.day.timeIntervalSince1970))" } ?? "latest"
+        return "\(scope):\(visibleListens.last?.id ?? "empty")"
+    }
+
     @ViewBuilder
     private func externalLinkAction(for listen: Listen) -> some View {
         if let externalLink = listen.recording.externalLink ?? listen.inspection?.externalLink {
@@ -340,7 +406,7 @@ struct HistoryView: View {
     }
 
     private var groupedDays: [(date: Date, title: String, listens: [Listen])] {
-        let grouped = Dictionary(grouping: visibleListens) { calendar.startOfDay(for: $0.listenedAt) }
+        let grouped = Dictionary(grouping: filteredListens) { calendar.startOfDay(for: $0.listenedAt) }
         return grouped.keys.sorted(by: >).map { date in
             let title: String
             if calendar.isDateInToday(date) { title = "Today" }
@@ -415,5 +481,53 @@ struct HistoryView: View {
         dayLoadTask = Task {
             await model.selectHistoryDay(day, calendar: calendar)
         }
+    }
+}
+
+/// Filters only the listens already held by `HistoryView`. It deliberately has
+/// no provider/model dependency so changing a query cannot schedule a provider read.
+enum HistoryLoadedListenSearch {
+    static var debugQuery: String {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-brainz-history-search-query"),
+              arguments.indices.contains(index + 1)
+        else { return "" }
+        return arguments[index + 1]
+        #else
+        ""
+        #endif
+    }
+
+    static func isActive(_ query: String) -> Bool { !terms(in: query).isEmpty }
+
+    static func allowsPagination(query: String) -> Bool { !isActive(query) }
+    static func allowsRefresh(query: String) -> Bool { !isActive(query) }
+
+    static func filter(_ listens: [Listen], query: String) -> [Listen] {
+        listens.filter { matches($0, query: query) }
+    }
+
+    static func matches(_ listen: Listen, query: String) -> Bool {
+        let queryTerms = terms(in: query)
+        guard !queryTerms.isEmpty else { return true }
+        let fields = [
+            listen.recording.title,
+            listen.recording.artistName,
+            listen.recording.releaseTitle,
+            listen.inspection?.submittedTrack,
+            listen.inspection?.submittedArtist,
+            listen.inspection?.submittedRelease,
+        ].compactMap { $0 }
+
+        return queryTerms.allSatisfy { term in
+            fields.contains { field in
+                field.range(of: term, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+            }
+        }
+    }
+
+    private static func terms(in query: String) -> [String] {
+        query.split(whereSeparator: \.isWhitespace).map(String.init)
     }
 }

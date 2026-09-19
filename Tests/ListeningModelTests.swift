@@ -2314,6 +2314,52 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(Self.milliseconds(elapsed), 50)
     }
 
+    func testLoadedHistorySearchMatchesCanonicalAndSubmittedMetadata() {
+        let canonical = historySearchListen(
+            title: "Midnight City",
+            artist: "M83",
+            release: "Hurry Up, We're Dreaming"
+        )
+        let submitted = historySearchListen(
+            title: "Resolved title",
+            artist: "Resolved artist",
+            release: "Resolved release",
+            submittedTrack: "Original Élan",
+            submittedArtist: "Björk",
+            submittedRelease: "Debut"
+        )
+        let listens = [canonical, submitted]
+
+        XCTAssertEqual(HistoryLoadedListenSearch.filter(listens, query: "").count, 2)
+        XCTAssertEqual(HistoryLoadedListenSearch.filter(listens, query: "midnight").map(\.id), [canonical.id])
+        XCTAssertEqual(HistoryLoadedListenSearch.filter(listens, query: "m83").map(\.id), [canonical.id])
+        XCTAssertEqual(HistoryLoadedListenSearch.filter(listens, query: "dreaming").map(\.id), [canonical.id])
+        XCTAssertEqual(HistoryLoadedListenSearch.filter(listens, query: "elan").map(\.id), [submitted.id])
+        XCTAssertEqual(HistoryLoadedListenSearch.filter(listens, query: "bjork").map(\.id), [submitted.id])
+        XCTAssertEqual(HistoryLoadedListenSearch.filter(listens, query: "debut").map(\.id), [submitted.id])
+    }
+
+    func testLoadedHistorySearchAllowsTermsAcrossFieldsAndMatchesPlayingNow() {
+        let playingNow = historySearchListen(
+            title: "Neon Skyline",
+            artist: "Andy Shauf",
+            release: "The Neon Skyline",
+            isPlayingNow: true
+        )
+        let other = historySearchListen(title: "Neon", artist: "Someone Else", release: "Elsewhere")
+
+        XCTAssertTrue(HistoryLoadedListenSearch.matches(playingNow, query: "neon andy"))
+        XCTAssertFalse(HistoryLoadedListenSearch.matches(other, query: "neon andy"))
+        XCTAssertEqual(HistoryLoadedListenSearch.filter([playingNow, other], query: "neon andy").map(\.id), [playingNow.id])
+    }
+
+    func testLoadedHistorySearchSuppressesPaginationAndRefreshWhileActive() {
+        XCTAssertTrue(HistoryLoadedListenSearch.allowsPagination(query: "   "))
+        XCTAssertTrue(HistoryLoadedListenSearch.allowsRefresh(query: "\n\t"))
+        XCTAssertFalse(HistoryLoadedListenSearch.allowsPagination(query: "artist"))
+        XCTAssertFalse(HistoryLoadedListenSearch.allowsRefresh(query: "artist"))
+    }
+
     private func recording(mbid: UUID?, msid: UUID?) -> Recording {
         Recording(
             identity: .init(mbid: mbid, msid: msid),
@@ -2326,6 +2372,70 @@ final class ListeningModelTests: XCTestCase {
             artworkReleaseMBID: FixtureProvider.releaseMBID,
             durationMilliseconds: 180_000,
             source: "Fixture"
+        )
+    }
+
+    private func historySearchListen(
+        title: String,
+        artist: String,
+        release: String?,
+        submittedTrack: String? = nil,
+        submittedArtist: String? = nil,
+        submittedRelease: String? = nil,
+        isPlayingNow: Bool = false
+    ) -> Listen {
+        let inspection: ListenInspection?
+        if let submittedTrack, let submittedArtist {
+            inspection = ListenInspection(
+                submittedArtist: submittedArtist,
+                submittedTrack: submittedTrack,
+                submittedRelease: submittedRelease,
+                recordingMSID: nil,
+                submittedRecordingMSID: nil,
+                submittedArtistMBIDs: [],
+                submittedRecordingMBID: nil,
+                submittedReleaseMBID: nil,
+                submittedReleaseGroupMBID: nil,
+                submittedTrackMBID: nil,
+                submittedWorkMBIDs: [],
+                resolvedArtistMBIDs: [],
+                resolvedRecordingMBID: nil,
+                resolvedReleaseMBID: nil,
+                resolvedReleaseGroupMBID: nil,
+                resolvedRecordingName: nil,
+                trackNumber: nil,
+                isrc: nil,
+                spotifyID: nil,
+                tags: [],
+                mediaPlayer: nil,
+                mediaPlayerVersion: nil,
+                submissionClient: nil,
+                submissionClientVersion: nil,
+                musicService: nil,
+                musicServiceName: nil,
+                originURL: nil,
+                durationMilliseconds: nil
+            )
+        } else {
+            inspection = nil
+        }
+        return Listen(
+            recording: Recording(
+                identity: .init(mbid: nil, msid: UUID()),
+                title: title,
+                artistName: artist,
+                artistMBIDs: [],
+                releaseTitle: release,
+                releaseMBID: nil,
+                releaseGroupMBID: nil,
+                artworkReleaseMBID: nil,
+                durationMilliseconds: nil,
+                source: nil
+            ),
+            listenedAt: .now,
+            insertedAt: nil,
+            isPlayingNow: isPlayingNow,
+            inspection: inspection
         )
     }
 
