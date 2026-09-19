@@ -122,20 +122,33 @@ struct ProfileView: View {
             SectionHeader(title: "Defining artists", subtitle: "The artists at the center of this profile")
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 16)], spacing: 18) {
                 ForEach(model.snapshot.topArtists.prefix(8)) { artist in
-                    NavigationLink(value: artist) {
-                        VStack(spacing: 8) {
-                            ArtistArtworkView(artist: artist)
-                                .aspectRatio(1, contentMode: .fit)
-                            Text(artist.name)
-                                .font(.caption.weight(.semibold))
-                                .lineLimit(2)
-                                .multilineTextAlignment(.center)
+                    if let destination = artist.detailDestination() {
+                        NavigationLink(value: destination) {
+                            favoriteArtistCard(artist)
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens artist details")
+                    } else {
+                        favoriteArtistCard(artist)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
+    }
+
+    private func favoriteArtistCard(_ artist: RankedArtist) -> some View {
+        VStack(spacing: 8) {
+            ArtistArtworkView(artist: artist)
+                .aspectRatio(1, contentMode: .fit)
+            Text(artist.name)
+                .font(.caption.weight(.semibold))
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(artist.name), \(artist.listenCount.formatted()) \(artist.listenCount == 1 ? "listen" : "listens")"
+        )
     }
 
     private var favoriteReleases: some View {

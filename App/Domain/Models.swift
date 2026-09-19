@@ -419,6 +419,15 @@ struct RankedArtist: Identifiable, Hashable, Codable, Sendable {
     let listenCount: Int
 
     var id: String { mbid?.uuidString ?? "artist:\(name)" }
+
+    /// Returns a route value only when MusicBrainz supplies a stable identity.
+    /// A count from someone else's profile must not be presented as the
+    /// viewer's listening total on Artist Detail.
+    func detailDestination(includingListenCount: Bool = true) -> RankedArtist? {
+        guard mbid != nil else { return nil }
+        guard !includingListenCount else { return self }
+        return RankedArtist(mbid: mbid, name: name, listenCount: 0)
+    }
 }
 
 struct RankedRelease: Identifiable, Hashable, Codable, Sendable {
@@ -1737,6 +1746,12 @@ struct ReleaseGroupDetail: Hashable, Sendable {
 struct SearchUser: Identifiable, Hashable, Sendable {
     let username: String
     var id: String { username.lowercased() }
+
+    func isSameListener(as account: Account) -> Bool {
+        username.trimmingCharacters(in: .whitespacesAndNewlines)
+            .caseInsensitiveCompare(account.username.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
+    }
+
     var listenBrainzURL: URL? {
         URL(string: "https://listenbrainz.org")?
             .appending(path: "user")

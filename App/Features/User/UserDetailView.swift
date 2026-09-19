@@ -195,26 +195,10 @@ struct UserDetailView: View {
                 ContentUnavailableView("No artist stats yet", systemImage: "music.mic")
                     .frame(maxWidth: .infinity, minHeight: 130)
             case .ready:
-                ScrollView(.horizontal) {
-                    LazyHStack(spacing: 16) {
-                        ForEach(model.snapshot.topArtists.prefix(12)) { artist in
-                            VStack(alignment: .leading, spacing: 8) {
-                                ArtistArtworkView(artist: artist)
-                                    .frame(width: 116, height: 116)
-                                Text(artist.name)
-                                    .font(.subheadline.weight(.semibold))
-                                    .lineLimit(1)
-                                Text("\(artist.listenCount.formatted()) listens")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(width: 116, alignment: .leading)
-                        }
-                    }
-                    .scrollTargetLayout()
-                }
-                .scrollTargetBehavior(.viewAligned)
-                .scrollIndicators(.hidden)
+                DefiningArtistsCarousel(
+                    artists: Array(model.snapshot.topArtists.prefix(12)),
+                    includesListenCountInDestination: model.user.isSameListener(as: viewer)
+                )
             }
         }
         .task { await model.loadTopArtists() }
@@ -239,3 +223,143 @@ struct UserDetailView: View {
         return date.formatted(.relative(presentation: .named))
     }
 }
+
+private struct DefiningArtistsCarousel: View {
+    let artists: [RankedArtist]
+    let includesListenCountInDestination: Bool
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    @ViewBuilder
+    var body: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            LazyVStack(spacing: 12) {
+                ForEach(artists) { artist in
+                    artistCard(artist)
+                }
+            }
+        } else {
+            ScrollView(.horizontal) {
+                LazyHStack(alignment: .top, spacing: 16) {
+                    ForEach(artists) { artist in
+                        artistCard(artist)
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.viewAligned)
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    @ViewBuilder
+    private func artistCard(_ artist: RankedArtist) -> some View {
+        if let destination = artist.detailDestination(
+            includingListenCount: includesListenCountInDestination
+        ) {
+            NavigationLink(value: destination) {
+                cardContents(artist, showsDisclosure: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens artist details")
+        } else {
+            cardContents(artist, showsDisclosure: false)
+        }
+    }
+
+    @ViewBuilder
+    private func cardContents(_ artist: RankedArtist, showsDisclosure: Bool) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top) {
+                    ArtistArtworkView(artist: artist)
+                        .frame(width: 76, height: 76)
+                    Spacer(minLength: 8)
+                    if showsDisclosure {
+                        Image(systemName: "chevron.right")
+                            .font(.caption.bold())
+                            .foregroundStyle(.tertiary)
+                            .padding(.top, 4)
+                            .accessibilityHidden(true)
+                    }
+                }
+                Text(artist.name)
+                    .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(listenCountLabel(artist.listenCount))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(.thinMaterial, in: .rect(cornerRadius: 18, style: .continuous))
+            .contentShape(.rect)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(artist.name), \(listenCountLabel(artist.listenCount))")
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                ArtistArtworkView(artist: artist)
+                    .frame(width: 116, height: 116)
+                Text(artist.name)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2, reservesSpace: true)
+                Text(listenCountLabel(artist.listenCount))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 116, alignment: .leading)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(artist.name), \(listenCountLabel(artist.listenCount))")
+        }
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        "\(count.formatted()) \(count == 1 ? "listen" : "listens")"
+    }
+}
+
+#if DEBUG
+struct UserDefiningArtistsVisualQAScreen: View {
+    @Bindable var model: ListeningModel
+
+    private let artists = [
+        RankedArtist(
+            mbid: UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab"),
+            name: "Alvvays",
+            listenCount: 1_283
+        ),
+        RankedArtist(mbid: nil, name: "Unmapped Demo Artist", listenCount: 36),
+        RankedArtist(
+            mbid: UUID(uuidString: "6c0b31f3-2e41-4d70-bd16-5fa8551bd59b"),
+            name: "Japanese Breakfast",
+            listenCount: 947
+        ),
+        RankedArtist(
+            mbid: UUID(uuidString: "a1d4c987-9c07-4c71-8f75-6505e2e8f554"),
+            name: "The Marías",
+            listenCount: 1
+        ),
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    SectionHeader(
+                        title: "Defining artists",
+                        subtitle: "All-time favorites from ListenBrainz"
+                    )
+                    DefiningArtistsCarousel(
+                        artists: artists,
+                        includesListenCountInDestination: false
+                    )
+                }
+                .padding(18)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("music-friend")
+            .navigationBarTitleDisplayMode(.inline)
+            .mediaDestinations(model: model)
+        }
+    }
+}
+#endif

@@ -30,6 +30,33 @@ final class UserDetailModelTests: XCTestCase {
         XCTAssertEqual(allCalls.last, "artists:target-user")
     }
 
+    func testArtistDestinationsRequireCanonicalIdentityWithoutHydration() async throws {
+        let provider = UserDetailFixtureProvider()
+        let model = UserDetailModel(
+            user: SearchUser(username: "target-user"),
+            token: "",
+            provider: provider,
+            cache: UserProfileCache()
+        )
+
+        await model.loadTopArtists()
+
+        let mapped = try XCTUnwrap(model.snapshot.topArtists.first)
+        let unmapped = try XCTUnwrap(model.snapshot.topArtists.last)
+        let ownDestination = mapped.detailDestination()
+        let otherListenerDestination = mapped.detailDestination(includingListenCount: false)
+
+        XCTAssertEqual(ownDestination?.mbid, UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab"))
+        XCTAssertEqual(ownDestination?.listenCount, 12)
+        XCTAssertEqual(otherListenerDestination?.listenCount, 0)
+        XCTAssertNil(unmapped.detailDestination())
+        XCTAssertTrue(SearchUser(username: "  TARGET-user ").isSameListener(
+            as: Account(username: "target-USER", token: "")
+        ))
+        let calls = await provider.callNames
+        XCTAssertEqual(calls, ["artists:target-user"])
+    }
+
     func testFreshCacheUsesNormalizedUsernameWithoutNetworkCalls() async {
         let cache = UserProfileCache()
         var cached = UserProfileSnapshot.empty
@@ -239,7 +266,14 @@ private actor UserDetailFixtureProvider: ListeningProvider {
 
     func topArtists(username: String, count: Int) async throws -> [RankedArtist] {
         callNames.append("artists:\(username)")
-        return [RankedArtist(mbid: nil, name: "Fixture artist", listenCount: 12)]
+        return [
+            RankedArtist(
+                mbid: UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab"),
+                name: "Fixture artist",
+                listenCount: 12
+            ),
+            RankedArtist(mbid: nil, name: "Unmapped artist", listenCount: 4),
+        ]
     }
 
     func topReleases(username: String, count: Int) async throws -> [RankedRelease] { [] }
