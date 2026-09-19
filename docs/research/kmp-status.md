@@ -47,4 +47,6 @@ The KMP module uses Compose dependencies and has migrated meaningful supporting 
 
 Ship native SwiftUI over an app-facing provider using the fixed Swift package now. Keep provider models independent from both LBKit and KMP. The current upstream shared module demonstrably does not link for the iOS Simulator without source changes, so it cannot be a present dependency. Re-evaluate only when MetaBrainz publishes a stable XCFramework, fixes the native Room/Skiko build, documents Swift interop, demonstrates an iOS consumer, and can be adopted per domain without pulling the full Compose/app graph.
 
+Creator-only playlist deletion follows that division: the app uses a small typed ListenBrainzKit empty-body request today, while app-owned Swift code supplies the durable no-replay barrier, privacy-safe cache invalidation, and native recovery UI. The official KMP implementation remains behavior evidence and a future replacement candidate, not an iOS build dependency.
+
 Evidence: `References/listenbrainz-android/shared/build.gradle.kts`, `shared/src/{commonMain,androidMain,iosMain}`, and official iOS/Android application source.

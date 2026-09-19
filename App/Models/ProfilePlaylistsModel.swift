@@ -201,6 +201,44 @@ final class ProfilePlaylistsModel {
         states[.owned] = owned
     }
 
+    func reconcileAfterConfirmedDeletion(_ deletion: ConfirmedPlaylistDeletion) async {
+        guard account.isAuthenticated,
+              Self.normalized(account.username) == Self.normalized(deletion.ownerUsername) else { return }
+        await cache.removeAll()
+        for category in ProfilePlaylistCategory.allCases {
+            // An older page response may still contain the deleted row.
+            // Invalidate it before updating visible state so it cannot restore
+            // the row after this semantic mutation event.
+            requestIDs[category] = UUID()
+            requestedOffsets[category] = []
+            var current = state(for: category)
+            let before = current.playlists.count
+            current.playlists.removeAll { $0.playlistMBID == deletion.playlistMBID }
+            let removedCount = before - current.playlists.count
+            if category == .owned, let total = current.totalCount {
+                // A creator deletion always removes exactly one Owned row,
+                // even when that row was beyond the pages loaded on screen.
+                current.totalCount = max(0, total - 1)
+            } else if removedCount > 0, let total = current.totalCount {
+                current.totalCount = max(0, total - removedCount)
+            }
+            if removedCount > 0 {
+                current.nextOffset = max(0, current.nextOffset - removedCount)
+            }
+            if let total = current.totalCount {
+                current.hasMore = current.nextOffset < total
+            }
+            current.isLoadingMore = false
+            current.loadMoreError = nil
+            current.loadMoreRetryOffset = nil
+            if current.phase != .idle {
+                current.phase = .ready
+            }
+            states[category] = current
+            resumeLoadWaiters(category: category)
+        }
+    }
+
     func reconcileAfterJournalEvent(_ event: PlaylistJournalEvent) async {
         switch event {
         case let .edit(edit):
@@ -209,6 +247,8 @@ final class ProfilePlaylistsModel {
             await reconcileAfterConfirmedCopy(copy)
         case let .accessLoss(accessLoss):
             await reconcileAfterAccessLoss(accessLoss)
+        case let .deletion(deletion):
+            await reconcileAfterConfirmedDeletion(deletion)
         }
     }
 

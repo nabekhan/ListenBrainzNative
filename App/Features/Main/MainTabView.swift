@@ -25,6 +25,9 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-edit-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-add-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-confirmation-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-confirmed-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-review-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-remove-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-remove-review-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-following-pins-demo")
@@ -220,6 +223,12 @@ struct MainTabView: View {
                 GenericArtVisualQAScreen(fixture: .failure)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo") {
                 PlaylistCopyVisualQAScreen()
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-confirmation-demo") {
+                PlaylistDeletionVisualQAScreen(mode: .confirmation)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-confirmed-demo") {
+                PlaylistDeletionVisualQAScreen(mode: .confirmed)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-review-demo") {
+                PlaylistDeletionVisualQAScreen(mode: .needsReview)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-remove-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-remove-review-demo")
             {

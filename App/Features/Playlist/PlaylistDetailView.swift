@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PlaylistDetailView: View {
+    @Environment(\.dismiss) private var dismiss
     let playlist: SearchPlaylist
     let viewer: Account
     private let mutationProvider: any PlaylistMutationProviding
@@ -8,20 +9,25 @@ struct PlaylistDetailView: View {
     private let automaticallyPresentsEditor: Bool
     private let automaticallyPresentsCopyConfirmation: Bool
     private let automaticallyPresentsRemovalConfirmation: Bool
+    private let automaticallyPresentsDeletionConfirmation: Bool
     @State private var model: PlaylistDetailModel
     @State private var copyModel: PlaylistCopyModel
     @State private var removalModel: PlaylistItemRemovalModel
+    @State private var deletionModel: PlaylistDeletionModel
     @State private var showsEditor = false
     @State private var showsCopyConfirmation = false
     @State private var copyDestination: SearchPlaylist?
     @State private var didAutomaticallyPresentEditor = false
     @State private var didAutomaticallyPresentCopyConfirmation = false
     @State private var didAutomaticallyPresentRemovalConfirmation = false
+    @State private var didAutomaticallyPresentDeletionConfirmation = false
     @State private var isPreparingEditor = false
     @State private var isPreparingCopy = false
     @State private var trackPendingRemoval: PlaylistTrack?
     @State private var showsRemovalConfirmation = false
     @State private var showsSafetyResetConfirmation = false
+    @State private var showsDeletionSafetyResetConfirmation = false
+    @State private var showsDeletionConfirmation = false
     @State private var showsArtwork = false
 
     init(
@@ -36,9 +42,12 @@ struct PlaylistDetailView: View {
         copyReconciliationJournal: PlaylistCopyReconciliationJournal = .shared,
         removalProvider: (any PlaylistItemRemovalProviding)? = nil,
         removalJournal: PlaylistItemRemovalJournal = .shared,
+        deletionProvider: (any PlaylistDeletionProviding)? = nil,
+        deletionJournal: PlaylistDeletionJournal = .shared,
         automaticallyPresentsEditor: Bool = false,
         automaticallyPresentsCopyConfirmation: Bool = false,
-        automaticallyPresentsRemovalConfirmation: Bool = false
+        automaticallyPresentsRemovalConfirmation: Bool = false,
+        automaticallyPresentsDeletionConfirmation: Bool = false
     ) {
         self.playlist = playlist
         self.viewer = viewer
@@ -48,6 +57,7 @@ struct PlaylistDetailView: View {
         self.automaticallyPresentsEditor = automaticallyPresentsEditor
         self.automaticallyPresentsCopyConfirmation = automaticallyPresentsCopyConfirmation
         self.automaticallyPresentsRemovalConfirmation = automaticallyPresentsRemovalConfirmation
+        self.automaticallyPresentsDeletionConfirmation = automaticallyPresentsDeletionConfirmation
         let resolvedDetailProvider = provider
             ?? ListenBrainzMediaDetailProvider(token: viewer.token)
         _model = State(initialValue: PlaylistDetailModel(
@@ -71,6 +81,13 @@ struct PlaylistDetailView: View {
             journal: removalJournal,
             mutationJournal: mutationJournal
         ))
+        _deletionModel = State(initialValue: PlaylistDeletionModel(
+            account: viewer,
+            detailProvider: resolvedDetailProvider,
+            provider: deletionProvider ?? ListenBrainzPlaylistDeletionProvider(token: viewer.token),
+            journal: deletionJournal,
+            mutationJournal: mutationJournal
+        ))
     }
 
     var body: some View {
@@ -78,6 +95,10 @@ struct PlaylistDetailView: View {
             LazyVStack(alignment: .leading, spacing: 24) {
                 if model.accessWasLost {
                     accessLostContent
+                    if let deletionMBID = playlist.playlistMBID,
+                       deletionModel.requiresReview(playlistMBID: deletionMBID) {
+                        deletionReviewNotice(deletionMBID)
+                    }
                 } else {
                     hero
                     loadNotice
@@ -86,6 +107,10 @@ struct PlaylistDetailView: View {
                     }
                     if let detail = model.detail, removalModel.requiresReview(playlistMBID: detail.mbid) {
                         removalReviewNotice(detail)
+                    }
+                    if let deletionMBID = playlist.playlistMBID ?? model.detail?.mbid,
+                       deletionModel.requiresReview(playlistMBID: deletionMBID) {
+                        deletionReviewNotice(deletionMBID)
                     }
                     if let detail = model.detail {
                         about(detail)
@@ -156,7 +181,7 @@ struct PlaylistDetailView: View {
                                 : "Refreshing playlist before duplication"
                         )
                 }
-                if canCopy || canCreateArtwork || actionURL != nil {
+                if canCopy || canCreateArtwork || canDelete || actionURL != nil {
                     Menu {
                         if canCreateArtwork {
                             Button {
@@ -175,6 +200,21 @@ struct PlaylistDetailView: View {
                                 copyModel.isCopying
                                     || isPreparingCopy
                                     || copyModel.requiresReconciliation
+                            )
+                        }
+                        if canDelete, let deletionMBID = model.detail?.mbid {
+                            Divider()
+                            Button(role: .destructive) {
+                                showsDeletionConfirmation = true
+                            } label: {
+                                Label("Delete playlist", systemImage: "trash")
+                            }
+                            .disabled(
+                                deletionModel.isDeleting
+                                    || deletionModel.isChecking
+                                    || deletionModel.requiresReview(
+                                        playlistMBID: deletionMBID
+                                    )
                             )
                         }
                         if let url = actionURL {
@@ -260,6 +300,37 @@ struct PlaylistDetailView: View {
             Button("Remove Track", role: .destructive) { Task { await removeSelectedTrack() } }
             Button("Cancel", role: .cancel) {}
         } message: { Text(removalConfirmationMessage) }
+        .confirmationDialog(
+            "Delete “\(displayTitle)”?",
+            isPresented: $showsDeletionConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete playlist", role: .destructive) { Task { await deletePlaylist() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes the playlist from ListenBrainz. It can’t be undone.")
+        }
+        .alert(item: deletionNoticeBinding) { notice in
+            switch notice {
+            case let .confirmed(outcome):
+                let message: String
+                switch outcome {
+                case let .deleted(title):
+                    message = "“\(title)” was permanently deleted from ListenBrainz."
+                case .noLongerAvailable:
+                    message = "This playlist is no longer available in ListenBrainz."
+                }
+                return Alert(
+                    title: Text("Playlist deleted"),
+                    message: Text(message),
+                    dismissButton: .default(Text("Done")) { dismiss() }
+                )
+            case let .needsReview(message):
+                return Alert(title: Text("Deletion needs review"), message: Text(message), dismissButton: .default(Text("OK")) { deletionModel.dismissNotice() })
+            case let .failed(message):
+                return Alert(title: Text("Couldn’t delete playlist"), message: Text(message), dismissButton: .default(Text("OK")) { deletionModel.dismissNotice() })
+            }
+        }
         .alert(item: removalNoticeBinding) { notice in
             switch notice {
             case .stale:
@@ -280,6 +351,24 @@ struct PlaylistDetailView: View {
             Button("Reset Record", role: .destructive) { if let detail = model.detail { _ = removalModel.resetSafetyRecord(playlistMBID: detail.mbid) } }
             Button("Cancel", role: .cancel) {}
         } message: { Text("Only reset it after reviewing the current track order. This affects this playlist and account only.") }
+        .confirmationDialog(
+            "Reset the deletion safety record?",
+            isPresented: $showsDeletionSafetyResetConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Reset Record", role: .destructive) {
+                if let playlistMBID = playlist.playlistMBID ?? model.detail?.mbid {
+                    Task {
+                        _ = await deletionModel.resetSafetyRecord(
+                            playlistMBID: playlistMBID
+                        )
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Only reset it after checking this playlist. The reset affects this account and playlist only.")
+        }
         .navigationDestination(item: $copyDestination) { copiedPlaylist in
             PlaylistDetailView(playlist: copiedPlaylist, viewer: viewer)
         }
@@ -302,6 +391,10 @@ struct PlaylistDetailView: View {
                 didAutomaticallyPresentRemovalConfirmation = true
                 trackPendingRemoval = firstTrack
                 showsRemovalConfirmation = true
+            }
+            if automaticallyPresentsDeletionConfirmation, canDelete, !didAutomaticallyPresentDeletionConfirmation {
+                didAutomaticallyPresentDeletionConfirmation = true
+                showsDeletionConfirmation = true
             }
         }
     }
@@ -492,6 +585,10 @@ struct PlaylistDetailView: View {
         !model.accessWasLost && removalModel.canAttemptRemoval(from: model.detail)
     }
 
+    private var canDelete: Bool {
+        !model.accessWasLost && deletionModel.canAttemptDelete(model.detail)
+    }
+
     @ViewBuilder private func removalAction(_ track: PlaylistTrack, detail: PlaylistDetail) -> some View {
         if canRemove {
             Button(role: .destructive) {
@@ -509,6 +606,60 @@ struct PlaylistDetailView: View {
                 .buttonStyle(.bordered).controlSize(.small).disabled(removalModel.isReconciling)
             if removalModel.canResetSafetyRecord(playlistMBID: detail.mbid) { Button("Reset Safety Record", role: .destructive) { showsSafetyResetConfirmation = true }.buttonStyle(.bordered).controlSize(.small) }
         }.frame(maxWidth: .infinity, alignment: .leading).padding(16).background(.orange.opacity(0.12), in: .rect(cornerRadius: 18, style: .continuous))
+    }
+
+    private func deletionReviewNotice(_ playlistMBID: UUID) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(
+                deletionModel.requiresRecovery(playlistMBID: playlistMBID)
+                    ? "Deletion paused"
+                    : "Deletion needs review",
+                systemImage: "exclamationmark.arrow.triangle.2.circlepath"
+            )
+            .font(.headline)
+            Text(
+                deletionModel.requiresRecovery(playlistMBID: playlistMBID)
+                    ? "Brainz can’t read this playlist’s deletion safety record. Check the playlist before resetting the record."
+                    : "We may not have received a response to your delete request. Check whether this playlist still exists before deleting it again."
+            )
+            .font(.subheadline)
+            .foregroundStyle(.primary)
+            Button {
+                Task {
+                    _ = await deletionModel.checkAgain(
+                        playlistMBID: playlistMBID
+                    )
+                    await discardDeletionAccessIfNeeded()
+                }
+            } label: {
+                if deletionModel.isChecking { HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Checking ListenBrainz…") } } else { Text("Check again") }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.primary)
+            .controlSize(.small)
+            .disabled(deletionModel.isChecking)
+            if deletionModel.canResetSafetyRecord(playlistMBID: playlistMBID) {
+                Button("Reset safety record", role: .destructive) {
+                    showsDeletionSafetyResetConfirmation = true
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(16).background(.orange.opacity(0.12), in: .rect(cornerRadius: 18, style: .continuous))
+    }
+
+    private var deletionNoticeBinding: Binding<PlaylistDeletionNotice?> { Binding(get: { deletionModel.notice }, set: { if $0 == nil { deletionModel.dismissNotice() } }) }
+    private func deletePlaylist() async {
+        guard let detail = model.detail else { return }
+        _ = await deletionModel.delete(detail)
+        await discardDeletionAccessIfNeeded()
+    }
+
+    private func discardDeletionAccessIfNeeded() async {
+        guard deletionModel.accessLossReason != nil,
+              let message = deletionModel.accessLossMessage
+        else { return }
+        await model.discardAfterAccessLoss(message: message)
     }
 
     private var removalConfirmationTitle: String { "Remove “\(trackPendingRemoval?.recording.title ?? "")”?" }
@@ -821,6 +972,30 @@ struct PlaylistRemovalVisualQAScreen: View {
     )
 }
 
+struct PlaylistDeletionVisualQAScreen: View {
+    enum Mode: Equatable { case confirmation, confirmed, needsReview }
+    let mode: Mode
+    private let account = Account(username: "visual-listener", token: "visual-token")
+    @State private var journal: PlaylistDeletionJournal
+    init(mode: Mode) {
+        self.mode = mode
+        let journal = PlaylistDeletionJournal()
+        if mode == .needsReview { _ = journal.begin(username: "visual-listener", playlistMBID: Self.playlistMBID) }
+        _journal = State(initialValue: journal)
+    }
+    var body: some View {
+        NavigationStack {
+            if mode == .confirmed {
+                ContentUnavailableView("Playlist deleted", systemImage: "checkmark.circle", description: Text("Your playlist was permanently deleted."))
+            } else {
+                PlaylistDetailView(playlist: Self.playlist, viewer: account, provider: VisualQAPlaylistDetailProvider(), cache: EntityDetailCache(), deletionProvider: VisualQAPlaylistDeletionProvider(), deletionJournal: journal, automaticallyPresentsDeletionConfirmation: mode == .confirmation)
+            }
+        }
+    }
+    private static let playlistMBID = UUID(uuidString: "44444444-4444-4444-8444-444444444444")!
+    private static let playlist = SearchPlaylist(title: "Soft Focus — late-night favorites", creator: "visual-listener", annotation: "Dream pop, ambient edges, and songs that make the room feel quieter.", identifier: "https://listenbrainz.org/playlist/\(playlistMBID.uuidString)", isPublic: false, lastModifiedAt: Date(timeIntervalSince1970: 1_789_689_600), createdAt: Date(timeIntervalSince1970: 1_700_000_000), durationMilliseconds: 694_000)
+}
+
 private struct VisualQAPlaylistDetailProvider: PlaylistDetailProviding {
     func playlist(mbid: UUID) async throws -> PlaylistDetail {
         PlaylistDetail(
@@ -844,6 +1019,8 @@ private struct VisualQAPlaylistCopyProvider: PlaylistCopyProviding {
         UUID(uuidString: "22222222-2222-4222-8222-222222222222")!
     }
 }
+
+private struct VisualQAPlaylistDeletionProvider: PlaylistDeletionProviding { func delete(mbid: UUID) async throws {} }
 
 private struct VisualQACopyPlaylistDetailProvider: PlaylistDetailProviding {
     func playlist(mbid: UUID) async throws -> PlaylistDetail {

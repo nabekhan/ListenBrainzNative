@@ -215,6 +215,22 @@ import Testing
         }
     }
 
+    @Test("Playlist deletion uses an empty creator-only POST")
+    func deleteRequest() async throws {
+        let mock = MockAPIClient(result: .success(PlaylistMutationResponse(status: "ok")))
+        try await LBCoreClient(mock).deletePlaylist(mbid: playlistMBID)
+        let request = try #require(mock.request as? DeletePlaylistRequest)
+        #expect(request.data.path == "/1/playlist/\(playlistMBID.uuidString)/delete")
+        #expect(request.data.method == .post)
+        #expect(request.data.body == nil)
+        #expect(request.data.statusErrors == deleteStatusErrors)
+
+        let unexpected = MockAPIClient(result: .success(PlaylistMutationResponse(status: "queued")))
+        await #expect(throws: LBError.invalidResponse) {
+            try await LBCoreClient(unexpected).deletePlaylist(mbid: playlistMBID)
+        }
+    }
+
     private func playlistJSON(_ body: PlaylistMutationBody?) throws -> [String: Any] {
         let body = try #require(body)
         let data = try JSONEncoder.ListenBrainz.encode(body)
@@ -252,6 +268,12 @@ import Testing
     ]
     private let removeStatusErrors: [Int: LBError] = [
         400: .invalidJSON,
+        401: .invalidAuth,
+        403: .forbidden,
+        404: .notFound,
+    ]
+    private let deleteStatusErrors: [Int: LBError] = [
+        400: .badRequest,
         401: .invalidAuth,
         403: .forbidden,
         404: .notFound,

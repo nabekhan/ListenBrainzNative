@@ -106,6 +106,11 @@ struct ConfirmedPlaylistCopy: Equatable, Sendable {
     let playlist: SearchPlaylist
 }
 
+struct ConfirmedPlaylistDeletion: Equatable, Sendable {
+    let ownerUsername: String
+    let playlistMBID: UUID
+}
+
 enum PlaylistAccessLossReason: Equatable, Sendable {
     case authentication
     case sourceVisibility
@@ -122,6 +127,7 @@ enum PlaylistJournalEvent: Equatable, Sendable {
     case edit(ConfirmedPlaylistMetadataEdit)
     case copy(ConfirmedPlaylistCopy)
     case accessLoss(PlaylistAccessLossEvent)
+    case deletion(ConfirmedPlaylistDeletion)
 }
 
 struct PlaylistJournalEntry: Equatable, Sendable {
@@ -164,6 +170,10 @@ final class PlaylistMutationJournal {
             ownerUsername: Self.usernameKey(ownerUsername),
             playlist: playlist
         )))
+    }
+
+    func recordConfirmedDeletion(mbid: UUID, ownerUsername: String) {
+        record(.deletion(.init(ownerUsername: Self.usernameKey(ownerUsername), playlistMBID: mbid)))
     }
 
     func recordAccessLoss(

@@ -533,6 +533,95 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         XCTAssertNotNil(state.refreshMessage)
     }
 
+    func testConfirmedDeletionRemovesOwnedRowAndKeepsPaginationAligned() async {
+        let deletedMBID = UUID()
+        let keptMBID = UUID()
+        let provider = PlaylistFixtureProvider(pages: [
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned,
+                offset: 0,
+                total: 3,
+                rows: [
+                    playlist(mbid: deletedMBID, title: "Delete me"),
+                    playlist(mbid: keptMBID, title: "Keep me"),
+                ]
+            )
+        ])
+        let cache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
+        let model = ProfilePlaylistsModel(
+            account: .init(username: "Listener", token: "token"),
+            provider: provider,
+            cache: cache
+        )
+        await model.load(category: .owned)
+
+        await model.reconcileAfterConfirmedDeletion(
+            .init(ownerUsername: "listener", playlistMBID: deletedMBID)
+        )
+
+        let state = model.state(for: .owned)
+        XCTAssertEqual(state.playlists.map(\.playlistMBID), [keptMBID])
+        XCTAssertEqual(state.totalCount, 2)
+        XCTAssertEqual(state.nextOffset, 1)
+        XCTAssertTrue(state.hasMore)
+        XCTAssertEqual(state.phase, .ready)
+        let cached = await cache.value(
+            for: .init(
+                username: "listener",
+                accessScope: .authenticatedViewer(
+                    .authenticated(token: "token")
+                ),
+                category: .owned,
+                offset: 0,
+                count: 20
+            )
+        )
+        XCTAssertNil(cached)
+    }
+
+    func testConfirmedDeletionInvalidatesOlderInFlightProfileResponse() async {
+        let deletedMBID = UUID()
+        let provider = AccessLossBlockingPlaylistProvider(
+            sourceMBID: deletedMBID
+        )
+        let model = makeModel(provider: provider)
+        let load = Task { await model.load(category: .owned) }
+        await provider.waitForRequest()
+
+        await model.reconcileAfterConfirmedDeletion(
+            .init(ownerUsername: "listener", playlistMBID: deletedMBID)
+        )
+        await provider.release()
+        await load.value
+
+        let state = model.state(for: .owned)
+        XCTAssertTrue(state.playlists.isEmpty)
+        XCTAssertEqual(state.phase, .ready)
+    }
+
+    func testConfirmedDeletionDoesNotCrossAccountBoundary() async {
+        let playlistMBID = UUID()
+        let provider = PlaylistFixtureProvider(pages: [
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned,
+                offset: 0,
+                total: 1,
+                rows: [playlist(mbid: playlistMBID, title: "Keep me")]
+            )
+        ])
+        let model = makeModel(provider: provider)
+        await model.load(category: .owned)
+
+        await model.reconcileAfterConfirmedDeletion(
+            .init(ownerUsername: "another-user", playlistMBID: playlistMBID)
+        )
+
+        XCTAssertEqual(
+            model.state(for: .owned).playlists.map(\.playlistMBID),
+            [playlistMBID]
+        )
+    }
+
     func testAccessLossCannotBeOverwrittenByLaterCopyOrEditEvents() async {
         let sourceMBID = UUID()
         let destinationMBID = UUID()

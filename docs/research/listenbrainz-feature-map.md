@@ -47,10 +47,10 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Fresh Releases | Y | Y | P | P | Y | — | P1 | Native Discover grid; personalized default and explicit sitewide scope |
 | Created For You/recommended playlists | Y | Y | Y | Y | Y | Y | P1 | Lazy native For You list uses server generator/expiry metadata and the shared playlist detail |
 | User/collaborator playlists | Y | Y | Y | Y | Y | Y | P1 | Native owned/collaborating Profile tabs landed with lazy server pagination, public browsing, and no row hydration |
-| Playlist detail/create/edit/delete | Y | Y | Y | P | P | Y | P2 | Native one-request detail, authenticated empty creation, and owner metadata/privacy editing landed; deletion remains staged |
+| Playlist detail/create/edit/delete | Y | Y | Y | P | P | Y | P2 | Native one-request detail, authenticated empty creation, owner metadata/privacy editing, and fail-closed creator-only deletion landed |
 | Add recording to playlist | Y | Y | Y | ? | Y | Y | P2 | Native append-only mapped-recording flow landed for owned/collaborating destinations, with best-effort duplicate preflight and no mutation replay |
 | Playlist copy/duplicate | Y | Y | Y | — | Y | Y | P2 | Native one-shot copy of any visible playlist landed with forced preflight, canonical returned-MBID navigation, and a persistent token-free ambiguous-result barrier |
-| Playlist remove/reorder | Y | Y | Y | ? | — | Y | P2 | Stage until stale-position and non-atomic move risks have a safe recovery design |
+| Playlist item remove/reorder | Y | Y | Y | ? | P | Y | P2 | Safe fresh-preflight single-item removal landed; multi-item removal and non-atomic reordering remain staged |
 | Playlist import/export/service sync | Y | Y | P | ? | — | P | P3 | Advanced feature |
 | LB Radio generation/tags/artist radio | Y | Y | P | — | Y | — | P2 | Native explicit recipe generation, ordered canonical-track private-playlist saves, and playlist browsing landed; playback/content resolution remains separate |
 | BrainzPlayer queue/content resolution | Y | Y | Y | P | — | P | P2 | Keep modular; viewing is not blocked |

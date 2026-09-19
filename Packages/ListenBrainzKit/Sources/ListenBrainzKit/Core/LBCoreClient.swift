@@ -311,6 +311,16 @@ public struct LBCoreClient: Sendable {
         return response.playlistMBID
     }
 
+    /// Permanently delete a playlist created by the authenticated user.
+    ///
+    /// The endpoint has no idempotency key. Callers must treat a lost response
+    /// as indeterminate and inspect the playlist before offering another
+    /// explicit deletion.
+    public func deletePlaylist(mbid: UUID) async throws {
+        let response = try await apiClient.execute(DeletePlaylistRequest(mbid: mbid))
+        guard response.status == "ok" else { throw LBError.invalidResponse }
+    }
+
     /// Get playlists created for the given user
     /// - Parameters:
     ///   - username: User the playlists are created for

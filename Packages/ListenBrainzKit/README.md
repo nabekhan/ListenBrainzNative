@@ -131,8 +131,8 @@ Running integration tests requires setting a ListenBrainz token in the environme
   - [x] POST /1/playlist/(playlist_mbid)/item/add
   - [ ] POST /1/playlist/(playlist_mbid)/item/add/(int: offset)
   - [ ] POST /1/playlist/(playlist_mbid)/item/move
-  - [ ] POST /1/playlist/(playlist_mbid)/item/delete
-  - [ ] POST /1/playlist/(playlist_mbid)/delete
+  - [x] POST /1/playlist/(playlist_mbid)/item/delete
+  - [x] POST /1/playlist/(playlist_mbid)/delete
   - [x] POST /1/playlist/(playlist_mbid)/copy
   - [ ] POST /1/playlist/(playlist_mbid)/export/(service)
   - [ ] GET  /1/playlist/import/(service)

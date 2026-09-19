@@ -78,6 +78,20 @@ struct CopyPlaylistRequest: APIRequest {
     }
 }
 
+struct DeletePlaylistRequest: APIRequest {
+    typealias Result = PlaylistMutationResponse
+
+    let data: APIRequestData<NoBody>
+
+    init(mbid: UUID) {
+        data = .init(
+            path: "/1/playlist/\(mbid.uuidString)/delete",
+            method: .post,
+            statusErrors: PlaylistMutationStatusErrors.delete
+        )
+    }
+}
+
 /// The strict JSPF subset accepted by ListenBrainz playlist create/edit APIs.
 /// The server intentionally ignores non-identity track metadata during create,
 /// so populated creates encode recording MBIDs only.
@@ -217,6 +231,13 @@ private enum PlaylistMutationStatusErrors {
     ]
 
     static let copy: [Int: LBError] = [
+        400: .badRequest,
+        401: .invalidAuth,
+        403: .forbidden,
+        404: .notFound,
+    ]
+
+    static let delete: [Int: LBError] = [
         400: .badRequest,
         401: .invalidAuth,
         403: .forbidden,
