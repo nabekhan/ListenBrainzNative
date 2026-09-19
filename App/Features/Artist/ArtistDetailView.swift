@@ -13,6 +13,7 @@ struct ArtistDetailView: View {
                 topListeners
                 reviews
                 topRecordings
+                similarArtists
                 recentListens
             }
             .padding(.horizontal, 18)
@@ -58,6 +59,13 @@ struct ArtistDetailView: View {
                     )
                 )
             }
+        }
+    }
+
+    @ViewBuilder
+    private var similarArtists: some View {
+        if let mbid = artist.mbid {
+            SimilarArtistsSummaryView(artistMBID: mbid)
         }
     }
 

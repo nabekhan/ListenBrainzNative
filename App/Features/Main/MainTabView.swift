@@ -74,6 +74,8 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-unavailable-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-failure-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-similar-artists-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-similar-artists-expanded-demo")
             {
                 let visualAccount = Account(username: "visual-popularity", token: "visual-popularity")
                 _model = State(
@@ -288,6 +290,26 @@ struct MainTabView: View {
                 }
                 .environment(pins)
                 .environment(\.topListenersProvider, VisualQATopListenersProvider())
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-similar-artists-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-similar-artists-expanded-demo")
+            {
+                NavigationStack {
+                    ScrollView {
+                        SimilarArtistsSummaryView(
+                            artistMBID: Self.popularityPreviewArtist.mbid!,
+                            initiallyExpanded: ProcessInfo.processInfo.arguments.contains(
+                                "-brainz-similar-artists-expanded-demo"
+                            )
+                        )
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                    }
+                    .navigationTitle("Alvvays")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .mediaDestinations(model: model)
+                }
+                .environment(pins)
+                .environment(\.similarArtistsProvider, VisualQASimilarArtistsProvider())
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-unavailable-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-failure-demo")
@@ -313,10 +335,12 @@ struct MainTabView: View {
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo") {
                 NavigationStack {
                     ArtistDetailView(artist: Self.popularityPreviewArtist, model: model)
+                        .mediaDestinations(model: model)
                 }
                 .task { await model.load() }
                 .environment(pins)
                 .environment(\.popularityProvider, VisualQAPopularityProvider())
+                .environment(\.similarArtistsProvider, VisualQASimilarArtistsProvider())
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo") {
                 NavigationStack {
                     if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-art-demo") {
@@ -734,6 +758,33 @@ struct MainTabView: View {
                     .init(username: "late_night_side_b", listenCount: 31),
                 ],
                 totalListenCount: 5_605
+            )
+        }
+    }
+
+    private struct VisualQASimilarArtistsProvider: SimilarArtistsProviding {
+        func similarArtists(to artistMBID: UUID) async throws -> SimilarArtists? {
+            await Task.yield()
+            let rows: [(String, String)] = [
+                ("39ad19e5-c0b0-454a-985b-201fb92898a0", "Japanese Breakfast"),
+                ("42d36a20-621a-4c34-b2fe-01c85447f9e8", "The Beths"),
+                ("9b84f25f-c7a4-4b60-8c59-0d5774f5d568", "Men I Trust"),
+                ("173fc72a-efb8-4e58-a15e-86eecf7ac58d", "Beach House"),
+                ("5a7d9f53-44d0-492c-9c63-dce87d467424", "Snail Mail"),
+                ("8348bd91-4b34-4bfc-bfaa-e9d958e5fc2f", "Mitski"),
+                ("25a575ec-570f-4a27-9bd6-634026add2a7", "Weyes Blood"),
+                ("4a779683-5404-4b90-a0d7-242495158265", "Japanese Breakfast With a Deliberately Long Name"),
+                ("3ea12c3c-8596-4d70-b327-208b0a459a97", "Soccer Mommy"),
+                ("1390f1b7-7851-48ae-983d-eb8a48f78048", "Slow Pulp"),
+                ("5fbea312-0b73-4e2d-9e42-e25f972f6041", "MUNA"),
+                ("eb8734c9-127d-495e-b908-9194cdbac45d", "Wednesday"),
+            ]
+            return SimilarArtists(
+                sourceArtistMBID: artistMBID,
+                artists: rows.enumerated().compactMap { index, row in
+                    guard let mbid = UUID(uuidString: row.0) else { return nil }
+                    return SimilarArtist(mbid: mbid, name: row.1, score: Double(100 - index))
+                }
             )
         }
     }

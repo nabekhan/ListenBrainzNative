@@ -6,6 +6,7 @@ Snapshot: 2026-09-18, Android checkout `3a0e4ef`.
 
 - `shared/src/commonMain` is substantial (278 files): Ktor/Ktorfit networking, serialization, repositories, models, resources/errors, Koin DI, Room/SQLite, DataStore, sockets, paging, metadata, listens, users, social/feed, playlists, recommendations, stats, pins, and some Compose code.
 - Service coverage includes recent/Playing Now/submit/delete, listen count and similarity, pins and feedback, user/sitewide activity, Created For You, followers/following, recommendations/reviews, full playlist mutation, feed actions, MusicBrainz search, CritiqueBrainz, Cover Art Archive, and larger artist/album payloads carrying popularity context.
+- `ArtistService` and `ArtistPayload` already model the public `POST artist/{artist_mbid}` page response, including ranked `similarArtists`. This confirms official-client behavior, but the response is a broad internal page contract rather than a small documented API and does not justify importing the KMP framework solely for one shelf.
 - `androidMain` (14 files) and `iosMain` (12 files) supply platform clients, persistence factories, file/image/log utilities, preferences, listen repository details, and remote-playback adapters.
 
 ## iOS target and export reality

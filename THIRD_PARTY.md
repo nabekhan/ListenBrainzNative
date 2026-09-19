@@ -23,6 +23,7 @@ All other application UI remains independently implemented from inspected behavi
 - Autohop: statistics/history interaction reference for the heatmap, era hierarchy, and artist-evolution information hierarchy; MIT overall with named MPL-2.0 exceptions. No Autohop UI file was copied.
 - The current ListenBrainz website plus first.fm and Autohop informed Artist Activity's independently written native statistics hierarchy and album-composition treatment. No website or donor UI source was copied.
 - The current ListenBrainz API/website and official Android client informed the independently written entity Top Listeners card and its bounded local expansion. No GPL source or UI was copied.
+- The current ListenBrainz server/website and official Android/KMP client informed the Similar Artists endpoint shape, ordering, cap, and five-item expansion behavior. Minidisc/Cassette shelves and Volta supplied visual concepts only. The app-local transport, cache, models, and adaptive SwiftUI shelf are independently written; no GPL or donor source was copied.
 - Following Pins UI/state/provider are independently written from current ListenBrainz API/server behavior and the app's existing native pin/feed hierarchy. The typed transport is a local MPL-2.0 ListenBrainzKit extension; no GPL source or UI was copied.
 - Beans Music, Bòcan Music, Finale, and Discrobble: secondary UI/architecture references.
 
