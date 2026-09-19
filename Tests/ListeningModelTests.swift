@@ -1891,6 +1891,377 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(successorValue, 3)
     }
 
+    nonisolated func testRequestGateRunsTwoIndependentReadsAndQueuesTheThird() async throws {
+        let gate = RequestGate(minimumInterval: .zero, maximumConcurrentReads: 2)
+        let probe = ReadGateProbe()
+        let scope = RequestGate.ReadScope.authenticated(token: "fixture-account")
+
+        let first = Task {
+            try await gate.read(for: .init(scope: scope, feature: .historyRecent, identityComponents: ["first"])) {
+                await probe.startAndWait()
+                return 1
+            }
+        }
+        let second = Task {
+            try await gate.read(for: .init(scope: scope, feature: .historyRecent, identityComponents: ["second"])) {
+                await probe.startAndWait()
+                return 2
+            }
+        }
+        let third = Task {
+            try await gate.read(for: .init(scope: scope, feature: .historyRecent, identityComponents: ["third"])) {
+                await probe.startAndWait()
+                return 3
+            }
+        }
+
+        try await waitForCondition { await probe.startedCount() >= 2 }
+        let activeReads = await gate.activeReadCountForTesting()
+        let queuedReads = await gate.queuedReadCountForTesting()
+        XCTAssertEqual(activeReads, 2)
+        XCTAssertEqual(queuedReads, 1)
+
+        await probe.releaseOne()
+        try await waitForCondition { await probe.startedCount() >= 3 }
+        await probe.releaseAll()
+        let firstValue = try await first.value
+        let secondValue = try await second.value
+        let thirdValue = try await third.value
+        XCTAssertEqual(firstValue, 1)
+        XCTAssertEqual(secondValue, 2)
+        XCTAssertEqual(thirdValue, 3)
+    }
+
+    nonisolated func testRequestGateCancelsQueuedReadWithoutStartingItsTransport() async throws {
+        let gate = RequestGate(minimumInterval: .zero, maximumConcurrentReads: 1)
+        let probe = ReadGateProbe()
+        let scope = RequestGate.ReadScope.authenticated(token: "fixture-account")
+        let active = Task {
+            try await gate.read(
+                for: .init(scope: scope, feature: .historyRecent, identityComponents: ["active"])
+            ) {
+                await probe.startAndWait()
+                return 1
+            }
+        }
+        try await waitForCondition { await probe.startedCount() == 1 }
+
+        let queued = Task {
+            try await gate.read(
+                for: .init(scope: scope, feature: .historyRecent, identityComponents: ["queued"])
+            ) {
+                await probe.startAndWait()
+                return 2
+            }
+        }
+        try await waitForCondition { await gate.queuedReadCountForTesting() == 1 }
+
+        queued.cancel()
+        do {
+            _ = try await queued.value
+            XCTFail("A cancelled queued read must not start its transport")
+        } catch is CancellationError {}
+        try await waitForCondition { await gate.queuedReadCountForTesting() == 0 }
+        let startsBeforeRelease = await probe.startedCount()
+        XCTAssertEqual(startsBeforeRelease, 1)
+
+        await probe.releaseAll()
+        let activeValue = try await active.value
+        XCTAssertEqual(activeValue, 1)
+    }
+
+    nonisolated func testRequestGateCoalescesIdenticalReadsIntoOneTransport() async throws {
+        let gate = RequestGate(minimumInterval: .zero)
+        let probe = ReadGateProbe()
+        let key = RequestGate.ReadKey(scope: .authenticated(token: "fixture-account"), feature: .profileSummary, identityComponents: ["private identity"])
+
+        let first = Task {
+            try await gate.read(for: key) {
+                await probe.startAndWait()
+                return "loaded"
+            }
+        }
+        try await waitForCondition { await probe.startedCount() >= 1 }
+        let second = Task { try await gate.read(for: key) { "should not run" } }
+        try await waitForCondition { await gate.readWaiterCountForTesting(key) == 2 }
+
+        let startedCount = await probe.startedCount()
+        XCTAssertEqual(startedCount, 1)
+        let telemetry = await gate.readTelemetryForTesting()
+        XCTAssertTrue(telemetry.contains { $0.feature == .profileSummary && $0.lifecycle == "coalesced" })
+        XCTAssertFalse(telemetry.description.contains("private identity"))
+
+        await probe.releaseAll()
+        let firstValue = try await first.value
+        let secondValue = try await second.value
+        XCTAssertEqual(firstValue, "loaded")
+        XCTAssertEqual(secondValue, "loaded")
+    }
+
+    nonisolated func testRequestGateCancelsOnlyOneCoalescedReadWaiter() async throws {
+        let gate = RequestGate(minimumInterval: .zero)
+        let probe = ReadGateProbe()
+        let key = RequestGate.ReadKey(scope: .authenticated(token: "fixture-account"), feature: .profileSummary, identityComponents: ["same"])
+
+        let first = Task {
+            try await gate.read(for: key) {
+                await probe.startAndWait()
+                return 1
+            }
+        }
+        try await waitForCondition { await probe.startedCount() >= 1 }
+        let second = Task { try await gate.read(for: key) { 2 } }
+        try await waitForCondition { await gate.readWaiterCountForTesting(key) == 2 }
+        first.cancel()
+
+        do {
+            _ = try await first.value
+            XCTFail("The cancelled waiter should not receive the shared result")
+        } catch is CancellationError {}
+        // The shared transport remains blocked: only this caller left.
+        let startsBeforeRelease = await probe.startedCount()
+        XCTAssertEqual(startsBeforeRelease, 1)
+        await probe.releaseAll()
+        let secondValue = try await second.value
+        let starts = await probe.startedCount()
+        XCTAssertEqual(secondValue, 1)
+        XCTAssertEqual(starts, 1)
+    }
+
+    nonisolated func testRequestGateCancelsUnderlyingReadAfterFinalWaiterLeaves() async throws {
+        let gate = RequestGate(minimumInterval: .zero)
+        let probe = ReadGateProbe()
+        let scope = RequestGate.ReadScope.authenticated(token: "fixture-account")
+        let task = Task {
+            try await gate.read(for: .init(scope: scope, feature: .searchResults, identityComponents: ["query"])) {
+                await probe.markStarted()
+                do {
+                    try await ContinuousClock().sleep(for: .seconds(1))
+                } catch {
+                    await probe.markCancelled()
+                    throw error
+                }
+                return 1
+            }
+        }
+        try await waitForCondition { await probe.startedCount() >= 1 }
+
+        task.cancel()
+        do {
+            _ = try await task.value
+            XCTFail("The final waiter cancellation should propagate")
+        } catch is CancellationError {}
+        try await waitForCondition { await probe.cancellationCount() >= 1 }
+        try await waitForCondition { await gate.activeReadCountForTesting() == 0 }
+        let activeReads = await gate.activeReadCountForTesting()
+        XCTAssertEqual(activeReads, 0)
+    }
+
+    nonisolated func testRequestGateDoesNotOverlapReplacementWhileCancelledReadDrains() async throws {
+        let gate = RequestGate(minimumInterval: .zero)
+        let probe = ReadGateProbe()
+        let key = RequestGate.ReadKey(scope: .authenticated(token: "fixture-account"), feature: .historyRecent, identityComponents: ["same"])
+        let first = Task {
+            try await gate.read(for: key) {
+                await probe.startAndWait()
+                return 1
+            }
+        }
+        try await waitForCondition { await probe.startedCount() >= 1 }
+
+        first.cancel()
+        do {
+            _ = try await first.value
+            XCTFail("The cancelled original waiter should return immediately")
+        } catch is CancellationError {}
+        let isDraining = await gate.isReadDrainingForTesting(key)
+        XCTAssertTrue(isDraining)
+
+        let replacement = Task {
+            try await gate.read(for: key) {
+                await probe.startAndWait()
+                return 2
+            }
+        }
+        try await waitForCondition { await gate.drainingWaiterCountForTesting(key) == 1 }
+        let startsBeforeRelease = await probe.startedCount()
+        XCTAssertEqual(startsBeforeRelease, 1)
+
+        replacement.cancel()
+        do {
+            _ = try await replacement.value
+            XCTFail("A stale replacement must not wait for a draining transport")
+        } catch is CancellationError {}
+        try await waitForCondition { await gate.drainingWaiterCountForTesting(key) == 0 }
+        let startsAfterReplacementCancellation = await probe.startedCount()
+        XCTAssertEqual(startsAfterReplacementCancellation, 1)
+
+        await probe.releaseOne()
+        let final = Task {
+            try await gate.read(for: key) {
+                await probe.startAndWait()
+                return 3
+            }
+        }
+        try await waitForCondition { await probe.startedCount() >= 2 }
+        await probe.releaseAll()
+        let finalValue = try await final.value
+        XCTAssertEqual(finalValue, 3)
+    }
+
+    nonisolated func testRequestGateDoesNotCoalesceAcrossAuthenticatedScopes() async throws {
+        let gate = RequestGate(minimumInterval: .zero)
+        let probe = ReadGateProbe()
+        let first = Task {
+            try await gate.read(
+                for: .init(
+                    scope: .authenticated(token: "fixture-account-a"),
+                    feature: .profileSummary,
+                    identityComponents: ["same"]
+                )
+            ) {
+                await probe.startAndWait()
+                return 1
+            }
+        }
+        let second = Task {
+            try await gate.read(
+                for: .init(
+                    scope: .authenticated(token: "fixture-account-b"),
+                    feature: .profileSummary,
+                    identityComponents: ["same"]
+                )
+            ) {
+                await probe.startAndWait()
+                return 2
+            }
+        }
+        try await waitForCondition { await probe.startedCount() >= 2 }
+        await probe.releaseAll()
+        let firstValue = try await first.value
+        let secondValue = try await second.value
+        XCTAssertEqual(firstValue, 1)
+        XCTAssertEqual(secondValue, 2)
+    }
+
+    nonisolated func testRequestGateRejectsMismatchedResultTypesForAnExistingReadKey() async throws {
+        let gate = RequestGate(minimumInterval: .zero)
+        let probe = ReadGateProbe()
+        let key = RequestGate.ReadKey(
+            scope: .authenticated(token: "fixture-account"),
+            feature: .metadataRecording,
+            identityComponents: ["same"]
+        )
+        let first = Task {
+            try await gate.read(for: key) {
+                await probe.startAndWait()
+                return 1
+            }
+        }
+        try await waitForCondition { await probe.startedCount() >= 1 }
+
+        do {
+            _ = try await gate.read(for: key) { "wrong type" }
+            XCTFail("A matching key must not bridge different result types")
+        } catch RequestGate.ReadError.incompatibleReadResultType {}
+        await probe.releaseAll()
+        let firstValue = try await first.value
+        XCTAssertEqual(firstValue, 1)
+    }
+
+    nonisolated func testReadRateLimitReschedulesAlreadyQueuedMutation() async throws {
+        let gate = RequestGate(minimumInterval: .zero)
+        let probe = ReadGateProbe()
+        let clock = ContinuousClock()
+        let activeMutation = Task {
+            try await gate.perform { await probe.startAndWait() }
+        }
+        try await waitForCondition { await probe.startedCount() >= 1 }
+        let queuedAt = clock.now
+        let queuedMutation = Task {
+            try await gate.perform { queuedAt.duration(to: clock.now) }
+        }
+        try await waitForCondition { await gate.queuedRequestCountForTesting() >= 1 }
+
+        let scope = RequestGate.ReadScope.authenticated(token: "fixture-account")
+        do {
+            _ = try await gate.read(
+                for: .init(scope: scope, feature: .historyRecent, identityComponents: ["limited"]),
+                { () async throws -> Int in throw GateTestError.rateLimited },
+                deferralForError: { error in
+                    error is GateTestError ? .milliseconds(60) : nil
+                }
+            )
+            XCTFail("The read should surface its rate-limit error")
+        } catch GateTestError.rateLimited {}
+
+        await probe.releaseAll()
+        _ = try await activeMutation.value
+        let elapsed = try await queuedMutation.value
+        XCTAssertGreaterThanOrEqual(Self.milliseconds(elapsed), 50)
+    }
+
+    nonisolated func testReadRateLimitReschedulesAlreadyQueuedRead() async throws {
+        let gate = RequestGate(minimumInterval: .zero, maximumConcurrentReads: 1)
+        let probe = ReadGateProbe()
+        let clock = ContinuousClock()
+        let scope = RequestGate.ReadScope.authenticated(token: "fixture-account")
+        let limited = Task {
+            try await gate.read(
+                for: .init(scope: scope, feature: .historyRecent, identityComponents: ["limited"]),
+                {
+                    await probe.startAndWait()
+                    throw GateTestError.rateLimited
+                },
+                deferralForError: { error in
+                    error is GateTestError ? .milliseconds(60) : nil
+                }
+            ) as Int
+        }
+        try await waitForCondition { await probe.startedCount() == 1 }
+
+        let queuedAt = clock.now
+        let queued = Task {
+            try await gate.read(
+                for: .init(scope: scope, feature: .historyRecent, identityComponents: ["queued"])
+            ) {
+                queuedAt.duration(to: clock.now)
+            }
+        }
+        try await waitForCondition { await gate.queuedReadCountForTesting() == 1 }
+
+        await probe.releaseAll()
+        do {
+            _ = try await limited.value
+            XCTFail("The first read should surface its rate-limit error")
+        } catch GateTestError.rateLimited {}
+        let elapsed = try await queued.value
+        XCTAssertGreaterThanOrEqual(Self.milliseconds(elapsed), 50)
+    }
+
+    nonisolated func testReadRateLimitDeferralDelaysFollowingMutation() async throws {
+        let gate = RequestGate(minimumInterval: .zero)
+        let clock = ContinuousClock()
+        let scope = RequestGate.ReadScope.authenticated(token: "fixture-account")
+        let limited = Task {
+            try await gate.read(
+                for: .init(scope: scope, feature: .historyRecent, identityComponents: ["limited"]),
+                { throw GateTestError.rateLimited },
+                deferralForError: { error in
+                    error is GateTestError ? .milliseconds(60) : nil
+                }
+            ) as Int
+        }
+        do {
+            _ = try await limited.value
+            XCTFail("The read should surface its rate-limit error")
+        } catch GateTestError.rateLimited {}
+
+        let start = clock.now
+        let elapsed = try await gate.perform { start.duration(to: clock.now) }
+        XCTAssertGreaterThanOrEqual(Self.milliseconds(elapsed), 50)
+    }
+
     private func recording(mbid: UUID?, msid: UUID?) -> Recording {
         Recording(
             identity: .init(mbid: mbid, msid: msid),
@@ -1911,10 +2282,28 @@ final class ListeningModelTests: XCTestCase {
         return Double(components.seconds) * 1_000
             + Double(components.attoseconds) / 1_000_000_000_000_000
     }
+
+    nonisolated private func waitForCondition(
+        timeout: Duration = .seconds(2),
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        _ condition: @escaping @Sendable () async -> Bool
+    ) async throws {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        while !(await condition()) {
+            guard clock.now < deadline else {
+                XCTFail("Timed out waiting for asynchronous test state.", file: file, line: line)
+                throw GateTestError.timeout
+            }
+            try await clock.sleep(for: .milliseconds(1))
+        }
+    }
 }
 
 private enum GateTestError: Error {
     case rateLimited
+    case timeout
 }
 
 private actor GateProbe {
@@ -1922,6 +2311,34 @@ private actor GateProbe {
 
     func markStarted() { started = true }
     func hasStarted() -> Bool { started }
+}
+
+private actor ReadGateProbe {
+    private var starts = 0
+    private var cancellations = 0
+    private var continuations: [CheckedContinuation<Void, Never>] = []
+
+    func markStarted() { starts += 1 }
+
+    func startAndWait() async {
+        starts += 1
+        await withCheckedContinuation { continuations.append($0) }
+    }
+
+    func markCancelled() { cancellations += 1 }
+    func startedCount() -> Int { starts }
+    func cancellationCount() -> Int { cancellations }
+
+    func releaseOne() {
+        guard !continuations.isEmpty else { return }
+        continuations.removeFirst().resume()
+    }
+
+    func releaseAll() {
+        let pending = continuations
+        continuations.removeAll()
+        pending.forEach { $0.resume() }
+    }
 }
 
 private actor SearchFixtureProvider: SearchProviding {

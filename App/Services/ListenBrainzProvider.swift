@@ -1,5 +1,6 @@
 import Foundation
 import ListenBrainzKit
+import CryptoKit
 
 struct ListenBrainzProvider: ListeningProvider {
     private let client: LBClient
@@ -401,9 +402,130 @@ private actor ListenDeletionAttemptState {
 actor RequestGate {
     static let shared = RequestGate()
 
+    /// An opaque process-local account boundary. Its digest is never persisted
+    /// or emitted in telemetry, and a new process receives a new key.
+    struct ReadScope: Hashable, Sendable {
+        private static let processKey = SymmetricKey(size: .bits256)
+        private let digest: Data
+
+        private init(digest: Data) {
+            self.digest = digest
+        }
+
+        static var anonymous: Self { .init(digest: Data()) }
+
+        static func authenticated(token: String) -> Self {
+            guard !token.isEmpty else { return .anonymous }
+            let digest = HMAC<SHA256>.authenticationCode(
+                for: Data(token.utf8),
+                using: processKey
+            )
+            return .init(digest: Data(digest))
+        }
+    }
+
+    enum ReadFeature: String, Sendable {
+        case coreTokenValidation
+        case historyRecent
+        case historyPlayingNow
+        case historyListenCount
+        case profileSummary
+        case statsTopArtists
+        case statsTopReleases
+        case statsTopRecordings
+        case statsListeningActivity
+        case statsDailyActivity
+        case searchResults
+        case discoveryFreshReleases
+        case feedPage
+        case playlistList
+        case playlistDetail
+        case metadataArtist
+        case metadataRelease
+        case metadataRecording
+        case artworkYearInMusic
+        case radioPlaylist
+        case radioMetadata
+        case socialUserSearch
+        case socialFollowers
+        case socialFollowing
+        case socialSimilarUsers
+        case socialCompatibility
+        case recommendationsRecordings
+        case recommendationsPlaylists
+        case recommendationsFeedback
+        case popularitySummary
+        case yearInMusicSummary
+    }
+
+    struct ReadKey: Hashable, Sendable {
+        /// A stable caller-supplied identity for an endpoint-specific read.
+        /// `feature` is intentionally the only part exposed by diagnostics;
+        /// identity components may include request-specific values and must
+        /// never be logged.
+        private let scope: ReadScope
+        let feature: ReadFeature
+        private let identityComponents: [String]
+
+        init(scope: ReadScope, feature: ReadFeature, identityComponents: [String]) {
+            self.scope = scope
+            self.feature = feature
+            self.identityComponents = identityComponents
+        }
+    }
+
+    enum ReadError: Swift.Error, Sendable {
+        /// The same read identity was requested with incompatible result
+        /// types. Do not cast or share the value in this case.
+        case incompatibleReadResultType
+    }
+
+    private enum ReadLifecycle: String, Sendable {
+        case started
+        case coalesced
+        case finished
+        case failed
+        case cancelled
+    }
+
+    #if DEBUG
+    struct ReadTelemetry: Sendable, Equatable {
+        /// A telemetry-safe feature label supplied by the caller. Read-key
+        /// identity components, tokens, payloads, and parameters are omitted.
+        let feature: ReadFeature
+        let lifecycle: String
+        let coalescedWaiterCount: Int
+        let inFlightReadCount: Int
+    }
+    #endif
+
     private struct Waiter {
         let id: UUID
         let continuation: CheckedContinuation<Bool, Never>
+    }
+
+    private struct ReadFlight {
+        let id: UUID
+        let resultType: ObjectIdentifier
+        let task: Task<Void, Never>
+        let feature: ReadFeature
+        var waiters: [UUID: CheckedContinuation<any Sendable, any Swift.Error>]
+    }
+
+    private struct ReadSlotWaiter {
+        let flightID: UUID
+        let continuation: CheckedContinuation<Bool, Never>
+    }
+
+    private struct ReadWaiterIdentity: Hashable {
+        let key: ReadKey
+        let flightID: UUID
+        let waiterID: UUID
+    }
+
+    private struct DrainingWaiterIdentity: Hashable {
+        let flightID: UUID
+        let waiterID: UUID
     }
 
     private let minimumInterval: Duration
@@ -411,9 +533,22 @@ actor RequestGate {
     private var deferredUntil = ContinuousClock.now
     private var requestInFlight = false
     private var waiters: [Waiter] = []
+    private let maximumConcurrentReads: Int
+    private var readFlights: [ReadKey: ReadFlight] = [:]
+    private var activeReadIDs: Set<UUID> = []
+    private var queuedReadWaiters: [ReadSlotWaiter] = []
+    private var preCancelledReadWaiters: Set<ReadWaiterIdentity> = []
+    private var drainingWaiters: [UUID: [UUID: CheckedContinuation<Void, any Swift.Error>]] = [:]
+    private var preCancelledDrainingWaiters: Set<DrainingWaiterIdentity> = []
 
-    init(minimumInterval: Duration = .seconds(1)) {
+    #if DEBUG
+    private var readTelemetry: [ReadTelemetry] = []
+    private let maximumTelemetryEventCount = 128
+    #endif
+
+    init(minimumInterval: Duration = .seconds(1), maximumConcurrentReads: Int = 2) {
         self.minimumInterval = minimumInterval
+        self.maximumConcurrentReads = max(1, maximumConcurrentReads)
     }
 
     func perform<Result: Sendable>(
@@ -443,8 +578,90 @@ actor RequestGate {
         applyDeferral(for: delay)
     }
 
+    /// Runs a read in the bounded, coalescing lane. This does not retry a
+    /// failed operation. Server deferrals are shared with `perform`, so a
+    /// read-side 429 also delays a following mutation.
+    func read<Result: Sendable>(
+        for key: ReadKey,
+        _ operation: @escaping @Sendable () async throws -> Result,
+        deferralForError: @escaping @Sendable (any Swift.Error) -> Duration? = { _ in nil }
+    ) async throws -> Result {
+        try Task.checkCancellation()
+        let requestedType = ObjectIdentifier(Result.self)
+        let flight: ReadFlight
+
+        if let existing = readFlights[key] {
+            if existing.waiters.isEmpty {
+                // A cancelled final waiter leaves the transport draining. Its
+                // key remains reserved until termination so a replacement
+                // caller cannot overlap an equivalent request.
+                try await waitForDrainingFlight(key: key, flightID: existing.id)
+                return try await read(for: key, operation, deferralForError: deferralForError)
+            }
+            guard existing.resultType == requestedType else {
+                throw ReadError.incompatibleReadResultType
+            }
+            recordReadTelemetry(
+                feature: existing.feature,
+                lifecycle: .coalesced,
+                coalescedWaiterCount: existing.waiters.count
+            )
+            flight = existing
+        } else {
+            let flightID = UUID()
+            let task = Task {
+                await self.executeRead(
+                    key: key,
+                    flightID: flightID,
+                    operation: operation,
+                    deferralForError: deferralForError
+                )
+            }
+            let created = ReadFlight(
+                id: flightID,
+                resultType: requestedType,
+                task: task,
+                feature: key.feature,
+                waiters: [:]
+            )
+            readFlights[key] = created
+            flight = created
+        }
+
+        do {
+            let waiterID = UUID()
+            let value = try await withTaskCancellationHandler(operation: {
+                try await withCheckedThrowingContinuation { continuation in
+                    registerReadWaiter(waiterID, for: key, flightID: flight.id, continuation: continuation)
+                }
+            }, onCancel: {
+                Task { await self.cancelReadWaiter(waiterID, for: key, flightID: flight.id) }
+            })
+            try Task.checkCancellation()
+            guard let typedValue = value as? Result else {
+                throw ReadError.incompatibleReadResultType
+            }
+            return typedValue
+        } catch is CancellationError {
+            throw CancellationError()
+        }
+    }
+
     #if DEBUG
     func queuedRequestCountForTesting() -> Int { waiters.count }
+    func readTelemetryForTesting() -> [ReadTelemetry] { readTelemetry }
+    func activeReadCountForTesting() -> Int { activeReadIDs.count }
+    func queuedReadCountForTesting() -> Int { queuedReadWaiters.count }
+    func readWaiterCountForTesting(_ key: ReadKey) -> Int {
+        readFlights[key]?.waiters.count ?? 0
+    }
+    func isReadDrainingForTesting(_ key: ReadKey) -> Bool {
+        readFlights[key]?.waiters.isEmpty == true
+    }
+    func drainingWaiterCountForTesting(_ key: ReadKey) -> Int {
+        guard let flightID = readFlights[key]?.id else { return 0 }
+        return drainingWaiters[flightID]?.count ?? 0
+    }
     #endif
 
     private func acquire() async throws {
@@ -482,6 +699,17 @@ actor RequestGate {
         }
     }
 
+    private func waitUntilReadAllowed() async throws {
+        let clock = ContinuousClock()
+        while true {
+            let now = clock.now
+            if now < deferredUntil {
+                try await clock.sleep(until: deferredUntil)
+            }
+            if clock.now >= deferredUntil { return }
+        }
+    }
+
     private func applyDeferral(for delay: Duration) {
         let deferredTime = ContinuousClock.now.advanced(by: delay)
         deferredUntil = max(deferredUntil, deferredTime)
@@ -505,5 +733,184 @@ actor RequestGate {
     private func cancelWaiter(id: UUID) {
         guard let index = waiters.firstIndex(where: { $0.id == id }) else { return }
         waiters.remove(at: index).continuation.resume(returning: false)
+    }
+
+    private func executeRead<Result: Sendable>(
+        key: ReadKey,
+        flightID: UUID,
+        operation: @escaping @Sendable () async throws -> Result,
+        deferralForError: @escaping @Sendable (any Swift.Error) -> Duration?
+    ) async {
+        do {
+            guard try await acquireReadSlot(for: flightID) else { throw CancellationError() }
+            try await waitUntilReadAllowed()
+            try Task.checkCancellation()
+            recordReadTelemetry(feature: key.feature, lifecycle: .started)
+            let result = try await operation()
+            completeRead(for: key, flightID: flightID, result: .success(result), lifecycle: .finished)
+        } catch {
+            if let delay = deferralForError(error) {
+                applyDeferral(for: delay)
+            }
+            completeRead(
+                for: key,
+                flightID: flightID,
+                result: .failure(error),
+                lifecycle: error is CancellationError ? .cancelled : .failed
+            )
+        }
+    }
+
+    private func acquireReadSlot(for flightID: UUID) async throws -> Bool {
+        try Task.checkCancellation()
+        if activeReadIDs.count < maximumConcurrentReads {
+            activeReadIDs.insert(flightID)
+            return true
+        }
+
+        let admitted = await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                queuedReadWaiters.append(.init(flightID: flightID, continuation: continuation))
+            }
+        } onCancel: {
+            Task { await self.cancelQueuedReadSlot(for: flightID) }
+        }
+        return admitted
+    }
+
+    private func completeRead(
+        for key: ReadKey,
+        flightID: UUID,
+        result: Result<any Sendable, any Swift.Error>,
+        lifecycle: ReadLifecycle
+    ) {
+        guard let flight = readFlights[key], flight.id == flightID else {
+            releaseReadSlot(for: flightID)
+            return
+        }
+        readFlights.removeValue(forKey: key)
+        preCancelledReadWaiters = preCancelledReadWaiters.filter {
+            !($0.key == key && $0.flightID == flightID)
+        }
+        releaseReadSlot(for: flightID)
+        recordReadTelemetry(feature: flight.feature, lifecycle: lifecycle)
+        for continuation in flight.waiters.values {
+            switch result {
+            case let .success(value): continuation.resume(returning: value)
+            case let .failure(error): continuation.resume(throwing: error)
+            }
+        }
+        let drainContinuations = drainingWaiters.removeValue(forKey: flightID).map { Array($0.values) } ?? []
+        preCancelledDrainingWaiters = preCancelledDrainingWaiters.filter { $0.flightID != flightID }
+        for continuation in drainContinuations { continuation.resume() }
+    }
+
+    private func releaseReadSlot(for flightID: UUID) {
+        guard activeReadIDs.remove(flightID) != nil else { return }
+        while !queuedReadWaiters.isEmpty, activeReadIDs.count < maximumConcurrentReads {
+            let waiter = queuedReadWaiters.removeFirst()
+            activeReadIDs.insert(waiter.flightID)
+            waiter.continuation.resume(returning: true)
+        }
+    }
+
+    private func cancelQueuedReadSlot(for flightID: UUID) {
+        guard let index = queuedReadWaiters.firstIndex(where: { $0.flightID == flightID }) else { return }
+        let waiter = queuedReadWaiters.remove(at: index)
+        waiter.continuation.resume(returning: false)
+    }
+
+    private func registerReadWaiter(
+        _ waiterID: UUID,
+        for key: ReadKey,
+        flightID: UUID,
+        continuation: CheckedContinuation<any Sendable, any Swift.Error>
+    ) {
+        guard var flight = readFlights[key], flight.id == flightID else {
+            continuation.resume(throwing: CancellationError())
+            return
+        }
+        let identity = ReadWaiterIdentity(key: key, flightID: flightID, waiterID: waiterID)
+        if preCancelledReadWaiters.remove(identity) != nil {
+            continuation.resume(throwing: CancellationError())
+            if flight.waiters.isEmpty {
+                readFlights[key] = flight
+                recordReadTelemetry(feature: flight.feature, lifecycle: .cancelled)
+                flight.task.cancel()
+            }
+            return
+        }
+        flight.waiters[waiterID] = continuation
+        readFlights[key] = flight
+    }
+
+    private func cancelReadWaiter(_ waiterID: UUID, for key: ReadKey, flightID: UUID) {
+        guard var flight = readFlights[key], flight.id == flightID else { return }
+        guard let continuation = flight.waiters.removeValue(forKey: waiterID) else {
+            preCancelledReadWaiters.insert(.init(key: key, flightID: flightID, waiterID: waiterID))
+            return
+        }
+        continuation.resume(throwing: CancellationError())
+        if flight.waiters.isEmpty {
+            // Keep a tombstone until the cancelled transport actually exits;
+            // otherwise a new equal key could start a duplicate transport.
+            readFlights[key] = flight
+            recordReadTelemetry(feature: flight.feature, lifecycle: .cancelled)
+            flight.task.cancel()
+        } else {
+            readFlights[key] = flight
+        }
+    }
+
+    private func waitForDrainingFlight(key: ReadKey, flightID: UUID) async throws {
+        let waiterID = UUID()
+        try await withTaskCancellationHandler(operation: {
+            try await withCheckedThrowingContinuation { continuation in
+                guard readFlights[key]?.id == flightID else {
+                    continuation.resume()
+                    return
+                }
+                let identity = DrainingWaiterIdentity(flightID: flightID, waiterID: waiterID)
+                if preCancelledDrainingWaiters.remove(identity) != nil {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                drainingWaiters[flightID, default: [:]][waiterID] = continuation
+            }
+        }, onCancel: {
+            Task { await self.cancelDrainingWaiter(waiterID, key: key, flightID: flightID) }
+        })
+    }
+
+    private func cancelDrainingWaiter(_ waiterID: UUID, key: ReadKey, flightID: UUID) {
+        guard readFlights[key]?.id == flightID else { return }
+        guard let continuation = drainingWaiters[flightID]?.removeValue(forKey: waiterID) else {
+            preCancelledDrainingWaiters.insert(.init(flightID: flightID, waiterID: waiterID))
+            return
+        }
+        if drainingWaiters[flightID]?.isEmpty == true {
+            drainingWaiters.removeValue(forKey: flightID)
+        }
+        continuation.resume(throwing: CancellationError())
+    }
+
+    private func recordReadTelemetry(
+        feature: ReadFeature,
+        lifecycle: ReadLifecycle,
+        coalescedWaiterCount: Int = 0
+    ) {
+        #if DEBUG
+        readTelemetry.append(
+            .init(
+                feature: feature,
+                lifecycle: lifecycle.rawValue,
+                coalescedWaiterCount: coalescedWaiterCount,
+                inFlightReadCount: activeReadIDs.count
+            )
+        )
+        if readTelemetry.count > maximumTelemetryEventCount {
+            readTelemetry.removeFirst(readTelemetry.count - maximumTelemetryEventCount)
+        }
+        #endif
     }
 }

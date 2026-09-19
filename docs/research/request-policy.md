@@ -24,9 +24,9 @@ The existing one-request-per-second gate remains in place until a tested replace
 2. coalesce identical in-flight reads by endpoint, normalized account, and parameters;
 3. retain feature-specific guards: one history/feed page at a time, debounced cancellable search, cached one-shot profile/stat loads, and realtime Playing Now where supported;
 4. cancel work whose view/model intent has ended and prevent stale results from publishing;
-5. apply server reset timing globally after 429 and permit only bounded retry of idempotent reads;
+5. apply server reset timing globally after 429 and surface read failures without automatic replay; any future bounded retry requires endpoint-specific proof and tests;
 6. keep mutations on one serialized lane with no automatic retry;
-7. record privacy-safe DEBUG/test telemetry for request key, feature reason, coalescing, cache result, cancellation, status, and in-flight count—never token or response payload;
+7. record privacy-safe DEBUG/test telemetry for closed endpoint category, coalescing, cancellation, status class, and in-flight count—never request identity, token, parameters, headers, error descriptions, or response payload;
 8. prove that repeated SwiftUI lifecycle events, duplicate page triggers, stale searches, and 429 responses cannot create request storms.
 
 Relaxation is complete only when those tests and telemetry demonstrate fewer unnecessary calls than the current implementation. Official iOS fan-out is product evidence, not the traffic-safety model.
