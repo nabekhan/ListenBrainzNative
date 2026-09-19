@@ -22,7 +22,12 @@ struct YearInMusicArtworkSheet: View {
         self.reportURL = reportURL
         _model = State(
             initialValue: YearInMusicArtworkModel(
-                options: .init(username: username, year: report.year),
+                options: .init(
+                    username: username,
+                    year: report.year,
+                    variant: report.year == 2022 ? .stats : .overview,
+                    legacy: report.source == .archive
+                ),
                 provider: provider
             )
         )
@@ -78,7 +83,7 @@ struct YearInMusicArtworkSheet: View {
                     VStack(spacing: 14) {
                         ProgressView()
                             .controlSize(.large)
-                        Text("Creating your overview…")
+                        Text("Creating your artwork…")
                             .font(.headline)
                     }
                     .foregroundStyle(.secondary)
@@ -116,14 +121,14 @@ struct YearInMusicArtworkSheet: View {
                     VStack(spacing: 8) {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.title2)
-                        Text("Official ListenBrainz overview")
+                        Text("Official ListenBrainz artwork")
                             .font(.headline)
                             .multilineTextAlignment(.center)
                     }
                     .foregroundStyle(AppTheme.accent)
                     .accessibilityElement(children: .combine)
                 } else {
-                    Label("Official ListenBrainz overview", systemImage: "checkmark.seal.fill")
+                    Label("Official ListenBrainz artwork", systemImage: "checkmark.seal.fill")
                         .font(.headline)
                         .foregroundStyle(AppTheme.accent)
                 }
@@ -206,7 +211,7 @@ struct YearInMusicArtworkSheet: View {
             ContentUnavailableView {
                 Label("Artwork unavailable", systemImage: "photo.badge.exclamationmark")
             } description: {
-                Text("ListenBrainz doesn’t have enough data to create this overview.")
+                Text("ListenBrainz doesn’t have enough data to create this artwork.")
             } actions: {
                 Button("Try again") { beginRetry() }
             }
@@ -244,7 +249,7 @@ struct YearInMusicArtworkSheet: View {
 
     private var artworkAccessibilityLabel: String {
         var parts = [
-            "Official ListenBrainz Year in Music \(String(report.year)) overview",
+            "Official ListenBrainz Year in Music \(String(report.year)) artwork",
             "\(report.totals.listenCount.formatted()) listens",
             "\(report.totals.artistCount.formatted()) artists",
         ]

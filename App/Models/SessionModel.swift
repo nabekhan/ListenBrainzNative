@@ -209,7 +209,9 @@ final class SessionModel {
                 state = .active(Account(username: "visual-popularity", token: "visual-popularity"))
                 return true
             }
-            if arguments.contains("-brainz-year-in-music-demo") {
+            if arguments.contains("-brainz-year-in-music-demo")
+                || arguments.contains("-brainz-year-in-music-2021-demo")
+                || arguments.contains("-brainz-year-in-music-2024-demo") {
                 state = .active(Account(username: "visual-taste", token: "visual-taste"))
                 return true
             }

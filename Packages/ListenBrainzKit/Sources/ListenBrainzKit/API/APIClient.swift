@@ -43,7 +43,35 @@ struct ListenBrainzAPIClient: APIClient {
 
     func execute<Request: APIRequest>(_ request: Request) async throws -> Request.Result {
         let req = try makeURLRequest(request)
-        let (data, resp) = try await Self.session.data(for: req)
+        let data: Data
+        let resp: URLResponse
+
+        if let maximumResponseBytes = request.data.maximumResponseBytes {
+            let (bytes, response) = try await Self.session.bytes(for: req)
+            if let httpResponse = response as? HTTPURLResponse,
+               let error = responseError(from: httpResponse, for: request) {
+                throw error
+            }
+            guard response.expectedContentLength <= Int64(maximumResponseBytes) else {
+                throw LBError.invalidResponse
+            }
+
+            var boundedData = Data()
+            if response.expectedContentLength > 0 {
+                boundedData.reserveCapacity(Int(response.expectedContentLength))
+            }
+            for try await byte in bytes {
+                try Task.checkCancellation()
+                boundedData.append(byte)
+                guard boundedData.count <= maximumResponseBytes else {
+                    throw LBError.invalidResponse
+                }
+            }
+            data = boundedData
+            resp = response
+        } else {
+            (data, resp) = try await Self.session.data(for: req)
+        }
 
         if let httpResp = resp as? HTTPURLResponse,
            let error = responseError(from: httpResp, for: request) {

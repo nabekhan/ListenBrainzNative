@@ -27,6 +27,12 @@ enum YearInMusicCaches {
         timeToLive: 30 * 60,
         maximumEntryCount: 20
     )
+    /// Frozen archives do not change, so retain them substantially longer than
+    /// the active current-year report.
+    static let archives = EntityDetailCache<YearInMusicCacheKey, YearInMusicReport>(
+        timeToLive: 24 * 60 * 60,
+        maximumEntryCount: 20
+    )
 }
 
 @MainActor
@@ -116,7 +122,7 @@ final class YearInMusicModel {
     private var cacheKey: YearInMusicCacheKey {
         YearInMusicCacheKey(
             username: account.username,
-            scope: .authenticated(token: account.token),
+            scope: (2021 ... 2024).contains(year) ? .anonymous : .authenticated(token: account.token),
             year: year
         )
     }

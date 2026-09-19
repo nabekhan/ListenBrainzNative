@@ -13,7 +13,8 @@ struct YearInMusicArtworkRequest: APIRequest {
         username: String,
         year: Int,
         variant: LBYearInMusicArtVariant,
-        anonymous: Bool?
+        anonymous: Bool?,
+        legacy: Bool = false
     ) {
         let allowed = CharacterSet.urlPathAllowed.subtracting(CharacterSet(charactersIn: "/?#%"))
         let encodedUsername = username.addingPercentEncoding(withAllowedCharacters: allowed) ?? username
@@ -21,6 +22,7 @@ struct YearInMusicArtworkRequest: APIRequest {
         if let anonymous {
             queryItems["anonymous"] = [anonymous ? "true" : "false"]
         }
+        if legacy { queryItems["legacy"] = ["true"] }
         data = .init(
             path: "/1/art/year-in-music/\(year)/\(encodedUsername)",
             method: .get,

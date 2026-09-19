@@ -67,6 +67,27 @@ final class YearInMusicModelTests: XCTestCase {
         XCTAssertNil(YearInMusicReport(source: source, requestedYear: 2025))
     }
 
+    func testArchiveMapsConcreteReleasesAndMissingTotalsTruthfully() throws {
+        let source = try yearInMusic("""
+        { "user_name": "listener", "year": 2021, "data": {
+          "total_listen_count": 9,
+          "top_artists": [{"artist_name":"Artist", "artist_mbids":["11111111-1111-1111-1111-111111111111"], "listen_count": 9}],
+          "top_releases": [{"release_name":"Edition", "release_mbid":"22222222-2222-2222-2222-222222222222", "artist_name":"Artist", "artist_credit_mbids":["11111111-1111-1111-1111-111111111111"], "listen_count":9}],
+          "top_releases_coverart": {"22222222-2222-2222-2222-222222222222":"https://archive.org/download/edition/cover.jpg"}
+        } }
+        """)
+        let mapped = try XCTUnwrap(YearInMusicReport(source: source, requestedYear: 2021, sourceKind: .archive))
+        XCTAssertEqual(mapped.source, .archive)
+        XCTAssertEqual(mapped.topArtists.first?.mbid?.uuidString, "11111111-1111-1111-1111-111111111111")
+        XCTAssertEqual(mapped.topReleases.count, 1)
+        XCTAssertEqual(mapped.topReleases.first?.seed?.mbid.uuidString, "22222222-2222-2222-2222-222222222222")
+        XCTAssertEqual(mapped.topReleases.first?.artworkURL?.absoluteString, "https://archive.org/download/edition/cover.jpg")
+        XCTAssertFalse(mapped.totals.hasArtistCount)
+        XCTAssertFalse(mapped.totals.hasRecordingCount)
+        XCTAssertFalse(mapped.totals.hasReleaseCount)
+        XCTAssertFalse(mapped.totals.hasListeningTime)
+    }
+
     func testProviderUsesExactlyOneTransportCallAndMapsUnavailableForms() async throws {
         let transport = CountingTransport(result: .report(try yearInMusic("{ \"user_name\": \"listener\", \"year\": 2025, \"data\": { \"total_listen_count\": 1 } }")))
         let provider = ListenBrainzYearInMusicProvider(transport: transport, gate: RequestGate(minimumInterval: .zero))
@@ -75,11 +96,15 @@ final class YearInMusicModelTests: XCTestCase {
 
         XCTAssertEqual(loaded?.totals.listenCount, 1)
         XCTAssertEqual(transport.callCount, 1)
+        XCTAssertEqual(transport.currentCallCount, 1)
+        XCTAssertEqual(transport.legacyCallCount, 0)
 
         transport.result = .notFound
         let unavailable404 = try await provider.report(username: "listener", year: 2024)
         XCTAssertNil(unavailable404)
         XCTAssertEqual(transport.callCount, 2)
+        XCTAssertEqual(transport.currentCallCount, 1)
+        XCTAssertEqual(transport.legacyCallCount, 1)
 
         transport.result = .noContent
         let unavailable204 = try await provider.report(username: "listener", year: 2024)
@@ -90,6 +115,8 @@ final class YearInMusicModelTests: XCTestCase {
         let unavailableEmpty = try await provider.report(username: "listener", year: 2024)
         XCTAssertNil(unavailableEmpty)
         XCTAssertEqual(transport.callCount, 4)
+        XCTAssertEqual(transport.currentCallCount, 1)
+        XCTAssertEqual(transport.legacyCallCount, 3)
     }
 
     func testProviderMapsRateLimitConsistently() async throws {
@@ -124,6 +151,16 @@ final class YearInMusicModelTests: XCTestCase {
         await otherYear.load()
         let otherYearCallCount = await provider.callCount()
         XCTAssertEqual(otherYearCallCount, 2)
+
+        let samePublicArchive = YearInMusicModel(account: .init(username: "listener", token: "another-token"), year: 2024, provider: provider, cache: cache)
+        await samePublicArchive.load()
+        let publicArchiveCallCount = await provider.callCount()
+        XCTAssertEqual(publicArchiveCallCount, 2, "Public archives should share their anonymous cache scope")
+
+        let otherAuthenticatedCurrent = YearInMusicModel(account: .init(username: "listener", token: "another-token"), year: 2025, provider: provider, cache: cache)
+        await otherAuthenticatedCurrent.load()
+        let authenticatedCurrentCallCount = await provider.callCount()
+        XCTAssertEqual(authenticatedCurrentCallCount, 3, "Current reports remain isolated by authenticated scope")
     }
 
     func testStaleReportRemainsVisibleOnRefreshFailure() async throws {
@@ -255,12 +292,23 @@ final class YearInMusicModelTests: XCTestCase {
 private final class CountingTransport: YearInMusicTransport, @unchecked Sendable {
     enum Result { case report(LBYearInMusic), notFound, noContent, rateLimited(Int) }
     var result: Result
-    private(set) var callCount = 0
+    private(set) var currentCallCount = 0
+    private(set) var legacyCallCount = 0
+    var callCount: Int { currentCallCount + legacyCallCount }
 
     init(result: Result) { self.result = result }
 
     func yearInMusic(username: String, year: Int) async throws -> LBYearInMusic? {
-        callCount += 1
+        currentCallCount += 1
+        return try resultValue()
+    }
+
+    func legacyYearInMusic(username: String, year: Int) async throws -> LBYearInMusic? {
+        legacyCallCount += 1
+        return try resultValue()
+    }
+
+    private func resultValue() throws -> LBYearInMusic? {
         switch result {
         case let .report(report): return report
         case .notFound: throw LBError.notFound
@@ -268,6 +316,7 @@ private final class CountingTransport: YearInMusicTransport, @unchecked Sendable
         case let .rateLimited(seconds): throw LBError.rateLimited(resetIn: seconds)
         }
     }
+
 }
 
 private actor YearInMusicFixtureProvider: YearInMusicProviding {

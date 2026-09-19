@@ -35,6 +35,8 @@ public struct LBYearInMusic: Decodable {
         public let topArtists: [Artist]
         public let topGenres: [Genre]
         public let topReleaseGroups: [ReleaseGroup]
+        public let topReleases: [Release]
+        public let topReleasesCoverArt: [String: String]
         public let topRecordings: [Recording]
         public let artistMap: [ArtistMapEntry]
         public let totalListenCount: Int?
@@ -43,30 +45,45 @@ public struct LBYearInMusic: Decodable {
         public let totalNewArtistsDiscovered: Int?
         public let totalRecordingsCount: Int?
         public let totalReleaseGroupsCount: Int?
+        public let totalReleasesCount: Int?
 
         public struct ListeningDay: Decodable {
             public let from: Date?
             public let to: Date?
             public let timeRange: String?
             public let listenCount: Int?
+            public let artistName: String?
+            public let artistMBIDs: [String]?
 
             enum CodingKeys: String, CodingKey {
                 case from = "fromTs"
                 case to = "toTs"
                 case timeRange
                 case listenCount
+                case artistName
+                case artistMBIDs = "artistMbids"
             }
         }
 
         public struct Artist: Decodable {
             public let mbid: String?
+            public let mbids: [String]?
             public let name: String?
             public let listenCount: Int?
 
             enum CodingKeys: String, CodingKey {
                 case mbid = "artistMbid"
+                case mbids = "artistMbids"
                 case name = "artistName"
                 case listenCount
+            }
+
+            public init(from decoder: Decoder) throws {
+                let values = try decoder.container(keyedBy: CodingKeys.self)
+                mbid = try values.decodeIfPresent(String.self, forKey: .mbid)
+                mbids = try values.decodeIfPresent([String].self, forKey: .mbids)
+                name = try values.decodeIfPresent(String.self, forKey: .name)
+                listenCount = try values.decodeIfPresent(Int.self, forKey: .listenCount)
             }
         }
 
@@ -118,6 +135,10 @@ public struct LBYearInMusic: Decodable {
 
         public struct Release: Decodable {
             public let title: String?
+            public let releaseMBID: String?
+            public let listenCount: Int?
+            public let artistName: String?
+            public let artistMBIDs: [String]?
             public let releaseGroupMBID: String?
             public let coverArtArchiveID: Int?
             public let coverArtArchiveReleaseMBID: String?
@@ -127,12 +148,33 @@ public struct LBYearInMusic: Decodable {
 
             enum CodingKeys: String, CodingKey {
                 case title
+                case releaseName
+                case releaseMBID = "releaseMbid"
+                case listenCount
+                case artistName
+                case artistMBIDs = "artistMbids"
                 case releaseGroupMBID = "releaseGroupMbid"
                 case coverArtArchiveID = "caaId"
                 case coverArtArchiveReleaseMBID = "caaReleaseMbid"
                 case artistCreditMBIDs = "artistCreditMbids"
                 case artistCreditName
                 case artists
+            }
+
+            public init(from decoder: Decoder) throws {
+                let values = try decoder.container(keyedBy: CodingKeys.self)
+                title = try values.decodeIfPresent(String.self, forKey: .title)
+                    ?? values.decodeIfPresent(String.self, forKey: .releaseName)
+                releaseMBID = try values.decodeIfPresent(String.self, forKey: .releaseMBID)
+                listenCount = try values.decodeIfPresent(Int.self, forKey: .listenCount)
+                artistName = try values.decodeIfPresent(String.self, forKey: .artistName)
+                artistMBIDs = try values.decodeIfPresent([String].self, forKey: .artistMBIDs)
+                releaseGroupMBID = try values.decodeIfPresent(String.self, forKey: .releaseGroupMBID)
+                coverArtArchiveID = try values.decodeIfPresent(Int.self, forKey: .coverArtArchiveID)
+                coverArtArchiveReleaseMBID = try values.decodeIfPresent(String.self, forKey: .coverArtArchiveReleaseMBID)
+                artistCreditMBIDs = try values.decodeIfPresent([String].self, forKey: .artistCreditMBIDs)
+                artistCreditName = try values.decodeIfPresent(String.self, forKey: .artistCreditName)
+                artists = try values.decodeIfPresent([ArtistCredit].self, forKey: .artists)
             }
         }
 
@@ -279,6 +321,8 @@ public struct LBYearInMusic: Decodable {
             case topArtists
             case topGenres
             case topReleaseGroups
+            case topReleases
+            case topReleasesCoverArt = "topReleasesCoverart"
             case topRecordings
             case artistMap
             case totalListenCount
@@ -287,6 +331,7 @@ public struct LBYearInMusic: Decodable {
             case totalNewArtistsDiscovered
             case totalRecordingsCount
             case totalReleaseGroupsCount
+            case totalReleasesCount
         }
 
         public init(from decoder: Decoder) throws {
@@ -309,6 +354,8 @@ public struct LBYearInMusic: Decodable {
             topArtists = try values.decodeIfPresent([Artist].self, forKey: .topArtists) ?? []
             topGenres = try values.decodeIfPresent([Genre].self, forKey: .topGenres) ?? []
             topReleaseGroups = try values.decodeIfPresent([ReleaseGroup].self, forKey: .topReleaseGroups) ?? []
+            topReleases = try values.decodeIfPresent([Release].self, forKey: .topReleases) ?? []
+            topReleasesCoverArt = (try? values.decode([String: String].self, forKey: .topReleasesCoverArt)) ?? [:]
             topRecordings = try values.decodeIfPresent([Recording].self, forKey: .topRecordings) ?? []
             artistMap = try values.decodeIfPresent([ArtistMapEntry].self, forKey: .artistMap) ?? []
             totalListenCount = try values.decodeIfPresent(Int.self, forKey: .totalListenCount)
@@ -317,6 +364,7 @@ public struct LBYearInMusic: Decodable {
             totalNewArtistsDiscovered = try values.decodeIfPresent(Int.self, forKey: .totalNewArtistsDiscovered)
             totalRecordingsCount = try values.decodeIfPresent(Int.self, forKey: .totalRecordingsCount)
             totalReleaseGroupsCount = try values.decodeIfPresent(Int.self, forKey: .totalReleaseGroupsCount)
+            totalReleasesCount = try values.decodeIfPresent(Int.self, forKey: .totalReleasesCount)
         }
     }
 

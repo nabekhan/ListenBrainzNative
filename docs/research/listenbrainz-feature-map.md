@@ -33,7 +33,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Sitewide statistics/context | Y | Y | P | ? | P | P | P2 | Use sparingly for context |
 | Entity popularity/listener counts | Y | Y | Y | ? | Y | P | P1 | Native global listens/listeners context landed on canonical artist, recording, release, and release-group details; daily cache and no row hydration |
 | Artist/release-group top listeners | Y | Y | Y | — | Y | P | P1 | Native all-time rankings landed on canonical artist and release-group details; one cached aggregate read, local expand, and no row hydration |
-| Year in Music (2021–2025) | Y | Y | Y | Y | Y | P | P1 | Native current-schema 2025 story plus explicit official overview-art preview/PNG sharing landed; legacy years remain staged |
+| Year in Music (2021–2025) | Y | Y | Y | Y | Y | P | P1 | Native 2025 current story and on-demand 2021–2024 archival picker; concrete historical releases retain release identity and artwork is explicit |
 | Similar users and compatibility | Y | Y | Y | Y | Y | Y | P1 | Native Social destination landed without row hydration |
 | Followers/following | Y | Y | Y | Y | Y | Y | P1 | Complete native lists; typed Kit extension |
 | Follow/unfollow | Y | Y | Y | ? | Y | Y | P1 | Optimistic serialized mutation with rollback |

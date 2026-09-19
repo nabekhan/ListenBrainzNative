@@ -116,14 +116,16 @@ public struct LBArtClient: Sendable {
         username: String,
         year: Int,
         variant: LBYearInMusicArtVariant = .overview,
-        anonymous: Bool? = nil
+        anonymous: Bool? = nil,
+        legacy: Bool = false
     ) async throws -> LBYearInMusicArtwork? {
         try await apiClient.execute(
             YearInMusicArtworkRequest(
                 username: username,
                 year: year,
                 variant: variant,
-                anonymous: anonymous
+                anonymous: anonymous,
+                legacy: legacy
             )
         )
     }

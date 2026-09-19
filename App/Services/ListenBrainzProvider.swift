@@ -691,7 +691,7 @@ actor RequestGate {
         static func radioMetadata(_ scope: ReadScope, mbids: [UUID]) -> Self { endpoint(scope, .radioMetadata, mbids.map(uuid)) }
         static func recommendationMetadata(_ scope: ReadScope, mbids: [UUID]) -> Self { endpoint(scope, .recommendationsMetadata, mbids.map(uuid)) }
         static func recommendationFeedback(_ scope: ReadScope, user: String, mbids: [UUID]) -> Self { endpoint(scope, .recommendationsFeedback, [userID(user)] + mbids.map(uuid)) }
-        static func yearInMusicArtwork(_ scope: ReadScope, user: String, year: Int, variant: String, anonymous: Bool?) -> Self { endpoint(scope, .artworkYearInMusic, [userID(user), String(year), variant, anonymous.map(String.init) ?? "nil"]) }
+        static func yearInMusicArtwork(_ scope: ReadScope, user: String, year: Int, variant: String, anonymous: Bool?, legacy: Bool = false) -> Self { endpoint(scope, .artworkYearInMusic, [userID(user), String(year), variant, anonymous.map(String.init) ?? "nil", String(legacy)]) }
         static func generatedArtwork(_ scope: ReadScope, request: GeneratedArtworkRequest) -> Self {
             switch request {
             case let .statistics(user, range, dimension, layout, imageSize, options): return endpoint(scope, .artworkGenerated, ["stats", userID(user), range.rawValue, String(dimension), String(layout.rawValue), String(imageSize)] + artOptions(options))

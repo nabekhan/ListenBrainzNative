@@ -16,17 +16,20 @@ final class YearInMusicArtworkProviderTests: XCTestCase {
         let first = YearInMusicArtworkOptions(username: " Listener ", year: 2025, variant: .overview, anonymous: false)
         let same = YearInMusicArtworkOptions(username: "listener", year: 2025, variant: .overview, anonymous: false)
         let otherOptions = YearInMusicArtworkOptions(username: "listener", year: 2025, variant: .tracks, anonymous: false)
+        let legacyOptions = YearInMusicArtworkOptions(username: "listener", year: 2024, variant: .overview, anonymous: false, legacy: true)
 
         _ = try await provider.artwork(for: first)
         _ = try await provider.artwork(for: same)
         _ = try await provider.artwork(for: otherOptions)
+        _ = try await provider.artwork(for: legacyOptions)
 
         let callCount = await transport.callCount()
         let calls = await transport.calls()
-        XCTAssertEqual(callCount, 2)
+        XCTAssertEqual(callCount, 3)
         XCTAssertEqual(calls, [
             .init(username: "listener", year: 2025, variant: .overview, anonymous: false),
             .init(username: "listener", year: 2025, variant: .tracks, anonymous: false),
+            .init(username: "listener", year: 2024, variant: .overview, anonymous: false, legacy: true),
         ])
     }
 
@@ -131,6 +134,12 @@ private actor ArtworkFixtureTransport: YearInMusicArtworkTransport {
         let year: Int
         let variant: LBYearInMusicArtVariant
         let anonymous: Bool?
+        let legacy: Bool
+
+        init(username: String, year: Int, variant: LBYearInMusicArtVariant, anonymous: Bool?, legacy: Bool = false) {
+            self.username = username; self.year = year; self.variant = variant
+            self.anonymous = anonymous; self.legacy = legacy
+        }
     }
 
     private let svg: String?
@@ -144,8 +153,8 @@ private actor ArtworkFixtureTransport: YearInMusicArtworkTransport {
         self.error = error
     }
 
-    func yearInMusic(username: String, year: Int, variant: LBYearInMusicArtVariant, anonymous: Bool?) async throws -> LBYearInMusicArtwork? {
-        recordedCalls.append(.init(username: username, year: year, variant: variant, anonymous: anonymous))
+    func yearInMusic(username: String, year: Int, variant: LBYearInMusicArtVariant, anonymous: Bool?, legacy: Bool) async throws -> LBYearInMusicArtwork? {
+        recordedCalls.append(.init(username: username, year: year, variant: variant, anonymous: anonymous, legacy: legacy))
         if delay > .zero { try await ContinuousClock().sleep(for: delay) }
         if let error { throw error }
         return svg.map(LBYearInMusicArtwork.init(svg:))

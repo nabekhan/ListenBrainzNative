@@ -34,6 +34,9 @@ struct APIRequestData<Body: Encodable> {
     let body: Body?
     let statusErrors: [Int: LBError]
     let preservesTrailingSlash: Bool
+    /// Optional hard ceiling applied while the response body is received.
+    /// Requests without a ceiling retain the normal URLSession data path.
+    let maximumResponseBytes: Int?
     /// `true` only when a request has already percent-encoded an individual
     /// path segment. This prevents `URL.appending(path:)` from escaping `%` a
     /// second time while keeping the default behavior unchanged for old calls.
@@ -46,6 +49,7 @@ struct APIRequestData<Body: Encodable> {
          body: Body? = nil,
          statusErrors: [Int: LBError] = [:],
          preservesTrailingSlash: Bool = false,
+         maximumResponseBytes: Int? = nil,
          pathIsPercentEncoded: Bool = false) {
         self.path = path
         self.method = method
@@ -54,6 +58,7 @@ struct APIRequestData<Body: Encodable> {
         self.body = body
         self.statusErrors = statusErrors
         self.preservesTrailingSlash = preservesTrailingSlash
+        self.maximumResponseBytes = maximumResponseBytes
         self.pathIsPercentEncoded = pathIsPercentEncoded
     }
 }

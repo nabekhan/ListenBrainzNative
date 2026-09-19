@@ -341,12 +341,16 @@ struct MainTabView: View {
                 .environment(pins)
                 .environment(\.popularityProvider, VisualQAPopularityProvider())
                 .environment(\.similarArtistsProvider, VisualQASimilarArtistsProvider())
-            } else if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo") {
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2021-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2024-demo") {
                 NavigationStack {
+                    let visualYear = ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2021-demo") ? 2021 : ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2024-demo") ? 2024 : 2025
                     if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-art-demo") {
                         YearInMusicView(
                             account: account,
                             listeningModel: model,
+                            year: visualYear,
                             provider: VisualQAYearInMusicProvider(),
                             artworkProvider: VisualQAYearInMusicArtworkProvider(),
                             cache: EntityDetailCache()
@@ -355,6 +359,7 @@ struct MainTabView: View {
                         YearInMusicView(
                             account: account,
                             listeningModel: model,
+                            year: visualYear,
                             provider: VisualQAYearInMusicProvider(),
                             cache: EntityDetailCache()
                         )

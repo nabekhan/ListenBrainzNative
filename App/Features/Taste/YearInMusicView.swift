@@ -13,8 +13,12 @@ struct YearInMusicView: View {
 
     let listeningModel: ListeningModel
     private let artworkProvider: any YearInMusicArtworkProviding
+    private let reportProvider: any YearInMusicProviding
+    private let currentReportCache: EntityDetailCache<YearInMusicCacheKey, YearInMusicReport>
+    private let archiveReportCache: EntityDetailCache<YearInMusicCacheKey, YearInMusicReport>
     private let automaticallyPresentsArtwork: Bool
     @State private var model: YearInMusicModel
+    @State private var selectedYear: Int
     @State private var showsArtwork = false
 
     init(
@@ -23,9 +27,14 @@ struct YearInMusicView: View {
         year: Int = Self.latestSupportedYear,
         provider: (any YearInMusicProviding)? = nil,
         artworkProvider: (any YearInMusicArtworkProviding)? = nil,
-        cache: EntityDetailCache<YearInMusicCacheKey, YearInMusicReport> = YearInMusicCaches.reports
+        cache: EntityDetailCache<YearInMusicCacheKey, YearInMusicReport>? = nil
     ) {
         self.listeningModel = listeningModel
+        reportProvider = provider ?? ListenBrainzYearInMusicProvider(token: account.token)
+        let currentCache = cache ?? YearInMusicCaches.reports
+        let archiveCache = cache ?? YearInMusicCaches.archives
+        currentReportCache = currentCache
+        archiveReportCache = archiveCache
         self.artworkProvider = artworkProvider ?? ListenBrainzYearInMusicArtworkProvider(token: "")
         #if DEBUG
         automaticallyPresentsArtwork = ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-art-demo")
@@ -36,10 +45,11 @@ struct YearInMusicView: View {
             initialValue: YearInMusicModel(
                 account: account,
                 year: year,
-                provider: provider,
-                cache: cache
+                provider: reportProvider,
+                cache: (2021 ... 2024).contains(year) ? archiveCache : currentCache
             )
         )
+        _selectedYear = State(initialValue: year)
     }
 
     var body: some View {
@@ -50,9 +60,21 @@ struct YearInMusicView: View {
                 stateContent
             }
         }
-        .navigationTitle("Year in Music \(String(model.year))")
+        .navigationTitle("Year in Music \(String(selectedYear))")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Menu {
+                    Picker("Year", selection: $selectedYear) {
+                        ForEach([2025, 2024, 2023, 2022, 2021], id: \.self) { year in
+                            Text(String(year)).tag(year)
+                        }
+                    }
+                } label: {
+                    Label("Choose year", systemImage: "calendar")
+                }
+                .accessibilityLabel("Choose Year in Music year")
+            }
             if let report = model.report,
                let url = reportURL(username: report.username ?? model.account.username) {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -65,10 +87,10 @@ struct YearInMusicView: View {
                             Label("Share report link", systemImage: "link")
                         }
 
-                        Button {
-                            showsArtwork = true
-                        } label: {
-                            Label("Preview official artwork…", systemImage: "photo.badge.arrow.down")
+                        if selectedYear != 2021 {
+                            Button { showsArtwork = true } label: {
+                                Label("Preview official artwork…", systemImage: "photo.badge.arrow.down")
+                            }
                         }
                     } label: {
                         Label("Share", systemImage: "square.and.arrow.up")
@@ -87,7 +109,16 @@ struct YearInMusicView: View {
                 )
             }
         }
-        .task { await model.load() }
+        .task(id: model.year) { await model.load() }
+        .onChange(of: selectedYear) { _, year in
+            showsArtwork = false
+            model = YearInMusicModel(
+                account: model.account,
+                year: year,
+                provider: reportProvider,
+                cache: (2021 ... 2024).contains(year) ? archiveReportCache : currentReportCache
+            )
+        }
         .onChange(of: model.report != nil, initial: true) { _, reportIsReady in
             guard automaticallyPresentsArtwork, reportIsReady else { return }
             showsArtwork = true
@@ -139,10 +170,7 @@ struct YearInMusicView: View {
                 allowsNavigation: allowsMediaNavigation
             )
         } else if arguments.contains("-brainz-year-in-music-albums-demo") {
-            YearInMusicAlbumsSection(
-                releases: report.topReleaseGroups,
-                allowsNavigation: allowsMediaNavigation
-            )
+            releaseSection(report)
         } else if arguments.contains("-brainz-year-in-music-tracks-demo") {
             YearInMusicTracksSection(
                 recordings: report.topRecordings,
@@ -155,10 +183,7 @@ struct YearInMusicView: View {
                 artists: report.topArtists,
                 allowsNavigation: allowsMediaNavigation
             )
-            YearInMusicAlbumsSection(
-                releases: report.topReleaseGroups,
-                allowsNavigation: allowsMediaNavigation
-            )
+            releaseSection(report)
             YearInMusicTracksSection(
                 recordings: report.topRecordings,
                 allowsNavigation: allowsMediaNavigation
@@ -166,11 +191,20 @@ struct YearInMusicView: View {
         }
         #else
         YearInMusicHero(report: report)
-        YearInMusicCalendarSection(report: report)
-        YearInMusicArtistsSection(artists: report.topArtists, allowsNavigation: true)
-        YearInMusicAlbumsSection(releases: report.topReleaseGroups, allowsNavigation: true)
-        YearInMusicTracksSection(recordings: report.topRecordings, allowsNavigation: true)
+        if !report.listeningDays.isEmpty { YearInMusicCalendarSection(report: report) }
+        if !report.topArtists.isEmpty { YearInMusicArtistsSection(artists: report.topArtists, allowsNavigation: true) }
+        releaseSection(report)
+        if !report.topRecordings.isEmpty { YearInMusicTracksSection(recordings: report.topRecordings, allowsNavigation: true) }
         #endif
+    }
+
+    @ViewBuilder
+    private func releaseSection(_ report: YearInMusicReport) -> some View {
+        if !report.topReleases.isEmpty {
+            YearInMusicReleasesSection(releases: report.topReleases, allowsNavigation: allowsMediaNavigation)
+        } else if !report.topReleaseGroups.isEmpty {
+            YearInMusicAlbumsSection(releases: report.topReleaseGroups, allowsNavigation: allowsMediaNavigation)
+        }
     }
 
     private var allowsMediaNavigation: Bool {
@@ -230,7 +264,8 @@ struct YearInMusicView: View {
         var components = URLComponents()
         components.scheme = "https"
         components.host = "listenbrainz.org"
-        components.path = "/user/\(username)/year-in-music/\(model.year)/"
+        let archivePath = model.report?.source == .archive ? "/legacy" : ""
+        components.path = "/user/\(username)/year-in-music\(archivePath)/\(model.year)/"
         return components.url
     }
 }
@@ -365,10 +400,8 @@ private struct YearInMusicHero: View {
     @ViewBuilder
     private var metrics: some View {
         heroMetric(report.totals.listenCount, label: "listens")
-        separator
-        heroMetric(report.totals.artistCount, label: "artists")
-        separator
-        heroMetric(report.totals.recordingCount, label: "tracks")
+        if report.totals.hasArtistCount { separator; heroMetric(report.totals.artistCount, label: "artists") }
+        if report.totals.hasRecordingCount { separator; heroMetric(report.totals.recordingCount, label: "tracks") }
     }
 
     private func heroMetric(_ value: Int, label: String) -> some View {
@@ -388,14 +421,14 @@ private struct YearInMusicHero: View {
     }
 
     private var heroValue: String {
-        guard report.totals.listeningTime > 0 else {
+        guard report.totals.hasListeningTime, report.totals.listeningTime > 0 else {
             return report.totals.listenCount.formatted(.number.notation(.compactName))
         }
         return listeningDuration.value.formatted(.number.notation(.compactName))
     }
 
     private var heroUnit: String {
-        guard report.totals.listeningTime > 0 else { return "listens in the year" }
+        guard report.totals.hasListeningTime, report.totals.listeningTime > 0 else { return "listens in the year" }
         let measurement = listeningDuration
         return "\(measurement.unit) with music"
     }
@@ -411,13 +444,17 @@ private struct YearInMusicHero: View {
 
     private var accessibilitySummary: String {
         let duration: String
-        if report.totals.listeningTime > 0 {
+        if report.totals.hasListeningTime, report.totals.listeningTime > 0 {
             let measurement = listeningDuration
             duration = "\(measurement.value.formatted()) \(measurement.unit) with music"
         } else {
             duration = "Listening duration unavailable"
         }
-        return "Year in Music \(report.year). \(duration). \(report.totals.listenCount.formatted()) listens, \(report.totals.artistCount.formatted()) artists, \(report.totals.releaseGroupCount.formatted()) albums, and \(report.totals.recordingCount.formatted()) tracks."
+        var summary = "Year in Music \(report.year). \(duration). \(report.totals.listenCount.formatted()) listens"
+        if report.totals.hasArtistCount { summary += ", \(report.totals.artistCount.formatted()) artists" }
+        if report.totals.hasReleaseCount { summary += ", \(report.totals.releaseGroupCount.formatted()) releases" }
+        if report.totals.hasRecordingCount { summary += ", and \(report.totals.recordingCount.formatted()) tracks" }
+        return summary + "."
     }
 }
 
@@ -780,6 +817,44 @@ private struct YearInMusicAlbumsSection: View {
     }
 }
 
+/// Archival 2021/22 reports rank concrete MusicBrainz releases, not release
+/// groups. Keep both the label and navigation truthful.
+private struct YearInMusicReleasesSection: View {
+    let releases: [YearInMusicReport.Release]
+    let allowsNavigation: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(title: "Top releases", subtitle: "The editions you returned to")
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 18) {
+                ForEach(Array(releases.prefix(6).enumerated()), id: \.offset) { index, release in
+                    Group {
+                        if allowsNavigation, let seed = release.seed {
+                            NavigationLink(value: seed) { card(release, rank: index + 1) }.buttonStyle(.plain)
+                        } else { card(release, rank: index + 1) }
+                    }
+                }
+            }
+        }
+    }
+
+    private func card(_ release: YearInMusicReport.Release, rank: Int) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ZStack(alignment: .topLeading) {
+                ArtworkView(url: release.artworkURL, title: release.title, cornerRadius: 14)
+                YearInMusicRankBadge(rank: rank).padding(8)
+            }
+            .aspectRatio(1, contentMode: .fit)
+            Text(release.title).font(.headline).lineLimit(2)
+            Text(release.artistName).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+            Text("\(release.listenCount.formatted()) listens").font(.caption).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Number \(rank), \(release.title) by \(release.artistName), \(release.listenCount.formatted()) listens")
+        .accessibilityHint(allowsNavigation && release.seed != nil ? "Opens release details" : "")
+    }
+}
+
 private struct YearInMusicTracksSection: View {
     let recordings: [YearInMusicReport.TopRecording]
     let allowsNavigation: Bool
@@ -985,20 +1060,36 @@ private extension YearInMusicReport {
             let count = 2 + ((offset * 17) % 31)
             return ListeningDay(day: date, listenCount: count, sourceTimeRange: nil)
         }
+        let archive = (2021 ... 2024).contains(year)
+        let concreteReleases = year <= 2022 ? releaseGroups.enumerated().map { index, group in
+            Release(
+                releaseMBID: visualUUID(index + 100), title: group.title,
+                artistName: group.artistName, artistMBIDs: group.artistMBIDs,
+                listenCount: group.listenCount, coverArtArchiveID: nil,
+                artworkReleaseMBID: visualUUID(index + 100),
+                providedArtworkURL: nil
+            )
+        } : []
         return YearInMusicReport(
             username: "visual-taste",
             year: year,
+            source: archive ? .archive : .current,
             totals: Totals(
                 listenCount: 18_742,
                 artistCount: 1_286,
                 recordingCount: 6_403,
                 releaseGroupCount: 2_138,
                 newArtistCount: 412,
-                listeningTime: 4_982 * 3_600
+                listeningTime: 4_982 * 3_600,
+                hasArtistCount: year != 2021,
+                hasRecordingCount: year != 2021,
+                hasReleaseCount: year != 2021,
+                hasListeningTime: year != 2021
             ),
             listeningDays: days,
             topArtists: artists,
-            topReleaseGroups: releaseGroups,
+            topReleaseGroups: year <= 2022 ? [] : releaseGroups,
+            topReleases: concreteReleases,
             topRecordings: tracks
         )
     }

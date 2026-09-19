@@ -8,13 +8,19 @@ protocol YearInMusicProviding: Sendable {
 
 protocol YearInMusicTransport: Sendable {
     func yearInMusic(username: String, year: Int) async throws -> LBYearInMusic?
+    func legacyYearInMusic(username: String, year: Int) async throws -> LBYearInMusic?
 }
 
 private struct LiveYearInMusicTransport: YearInMusicTransport {
     let client: LBClient
+    let anonymousClient: LBClient
 
     func yearInMusic(username: String, year: Int) async throws -> LBYearInMusic? {
         try await client.stats.yearInMusic(user: username, year: year)
+    }
+
+    func legacyYearInMusic(username: String, year: Int) async throws -> LBYearInMusic? {
+        try await anonymousClient.stats.legacyYearInMusic(user: username, year: year)
     }
 }
 
@@ -27,6 +33,10 @@ struct ListenBrainzYearInMusicProvider: YearInMusicProviding {
         transport = LiveYearInMusicTransport(
             client: LBClient(
                 token: token,
+                userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"
+            ),
+            anonymousClient: LBClient(
+                token: "",
                 userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"
             )
         )
@@ -46,9 +56,21 @@ struct ListenBrainzYearInMusicProvider: YearInMusicProviding {
 
     func report(username: String, year: Int) async throws -> YearInMusicReport? {
         do {
-            let report = try await gate.read(for: .yearInMusic(readScope, user: username, year: year)) {
-                let source = try await transport.yearInMusic(username: username, year: year)
-                return source.flatMap { YearInMusicReport(source: $0, requestedYear: year) }
+            let isArchive = (2021 ... 2024).contains(year)
+            let scope: RequestGate.ReadScope = isArchive ? .anonymous : readScope
+            let report = try await gate.read(for: .yearInMusic(scope, user: username, year: year)) {
+                let source = if isArchive {
+                    try await transport.legacyYearInMusic(username: username, year: year)
+                } else {
+                    try await transport.yearInMusic(username: username, year: year)
+                }
+                return source.flatMap {
+                    YearInMusicReport(
+                        source: $0,
+                        requestedYear: year,
+                        sourceKind: isArchive ? .archive : .current
+                    )
+                }
             } deferralForError: { error in
                 guard case let LBError.rateLimited(resetIn) = error else { return nil }
                 return .seconds(max(resetIn, 1))

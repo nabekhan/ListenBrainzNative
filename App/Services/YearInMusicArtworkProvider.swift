@@ -11,7 +11,8 @@ protocol YearInMusicArtworkTransport: Sendable {
         username: String,
         year: Int,
         variant: LBYearInMusicArtVariant,
-        anonymous: Bool?
+        anonymous: Bool?,
+        legacy: Bool
     ) async throws -> LBYearInMusicArtwork?
 }
 
@@ -22,13 +23,15 @@ private struct LiveYearInMusicArtworkTransport: YearInMusicArtworkTransport {
         username: String,
         year: Int,
         variant: LBYearInMusicArtVariant,
-        anonymous: Bool?
+        anonymous: Bool?,
+        legacy: Bool
     ) async throws -> LBYearInMusicArtwork? {
         try await client.art.yearInMusic(
             username: username,
             year: year,
             variant: variant,
-            anonymous: anonymous
+            anonymous: anonymous,
+            legacy: legacy
         )
     }
 }
@@ -70,12 +73,13 @@ struct ListenBrainzYearInMusicArtworkProvider: YearInMusicArtworkProviding {
     func artwork(for options: YearInMusicArtworkOptions) async throws -> YearInMusicArtwork? {
         try await cache.value(for: options, scope: readScope) {
             do {
-                let source = try await gate.read(for: .yearInMusicArtwork(readScope, user: options.username, year: options.year, variant: options.variant.rawValue, anonymous: options.anonymous)) {
+                let source = try await gate.read(for: .yearInMusicArtwork(readScope, user: options.username, year: options.year, variant: options.variant.rawValue, anonymous: options.anonymous, legacy: options.legacy)) {
                     try await transport.yearInMusic(
                         username: options.username,
                         year: options.year,
                         variant: options.variant,
-                        anonymous: options.anonymous
+                        anonymous: options.anonymous,
+                        legacy: options.legacy
                     )
                 } deferralForError: { error in
                     guard case let LBError.rateLimited(resetIn) = error else { return nil }

@@ -6,12 +6,16 @@ import ListenBrainzKit
 /// identities separate: a Year in Music "album" is a release group, while a
 /// recording may point at one concrete release for artwork.
 struct YearInMusicReport: Hashable, Sendable {
+    enum Source: Hashable, Sendable { case current, archive }
+
     let username: String?
     let year: Int
+    let source: Source
     let totals: Totals
     let listeningDays: [ListeningDay]
     let topArtists: [RankedArtist]
     let topReleaseGroups: [ReleaseGroup]
+    let topReleases: [Release]
     let topRecordings: [TopRecording]
 
     var isEmpty: Bool {
@@ -19,6 +23,7 @@ struct YearInMusicReport: Hashable, Sendable {
             && listeningDays.allSatisfy { $0.listenCount == 0 }
             && topArtists.isEmpty
             && topReleaseGroups.isEmpty
+            && topReleases.isEmpty
             && topRecordings.isEmpty
     }
 
@@ -30,6 +35,31 @@ struct YearInMusicReport: Hashable, Sendable {
         let newArtistCount: Int
         /// ListenBrainz reports seconds, potentially with fractional values.
         let listeningTime: TimeInterval
+        /// `false` means this archive did not provide the metric; its numeric
+        /// storage value must never be presented as a zero.
+        let hasArtistCount: Bool
+        let hasRecordingCount: Bool
+        let hasReleaseCount: Bool
+        let hasListeningTime: Bool
+
+        init(
+            listenCount: Int,
+            artistCount: Int,
+            recordingCount: Int,
+            releaseGroupCount: Int,
+            newArtistCount: Int,
+            listeningTime: TimeInterval,
+            hasArtistCount: Bool = true,
+            hasRecordingCount: Bool = true,
+            hasReleaseCount: Bool = true,
+            hasListeningTime: Bool = true
+        ) {
+            self.listenCount = listenCount; self.artistCount = artistCount
+            self.recordingCount = recordingCount; self.releaseGroupCount = releaseGroupCount
+            self.newArtistCount = newArtistCount; self.listeningTime = listeningTime
+            self.hasArtistCount = hasArtistCount; self.hasRecordingCount = hasRecordingCount
+            self.hasReleaseCount = hasReleaseCount; self.hasListeningTime = hasListeningTime
+        }
     }
 
     struct ListeningDay: Identifiable, Hashable, Sendable {
@@ -75,6 +105,27 @@ struct YearInMusicReport: Hashable, Sendable {
         }
     }
 
+    struct Release: Hashable, Sendable {
+        let releaseMBID: UUID?
+        let title: String
+        let artistName: String
+        let artistMBIDs: [UUID]
+        let listenCount: Int
+        let coverArtArchiveID: Int?
+        let artworkReleaseMBID: UUID?
+        let providedArtworkURL: URL?
+
+        var artworkURL: URL? {
+            providedArtworkURL
+                ?? artworkReleaseMBID.flatMap(CoverArtArchiveURL.release)
+                ?? releaseMBID.flatMap(CoverArtArchiveURL.release)
+        }
+        var seed: ReleaseSeed? {
+            guard let releaseMBID else { return nil }
+            return ReleaseSeed(mbid: releaseMBID, title: title, artistName: artistName, artistMBIDs: artistMBIDs, releaseGroupMBID: nil, releaseDate: nil, primaryType: nil, artworkReleaseMBID: artworkReleaseMBID ?? releaseMBID)
+        }
+    }
+
     struct TopRecording: Identifiable, Hashable, Sendable {
         let recording: Recording
         let listenCount: Int
@@ -89,40 +140,95 @@ struct YearInMusicReport: Hashable, Sendable {
     init(
         username: String?,
         year: Int,
+        source: Source = .current,
         totals: Totals,
         listeningDays: [ListeningDay],
         topArtists: [RankedArtist],
         topReleaseGroups: [ReleaseGroup],
+        topReleases: [Release] = [],
         topRecordings: [TopRecording]
     ) {
         self.username = username
         self.year = year
+        self.source = source
         self.totals = totals
         self.listeningDays = listeningDays
         self.topArtists = topArtists
         self.topReleaseGroups = topReleaseGroups
+        self.topReleases = topReleases
         self.topRecordings = topRecordings
     }
 
     /// Maps only a report the API says exists.  `nil` is intentionally
     /// distinct from a legitimate report containing zero listens.
-    init?(source: LBYearInMusic, requestedYear: Int) {
-        guard source.isAvailable else { return nil }
-        let data = source.data
-        username = source.userName?.trimmedNilIfEmpty
-        year = source.year ?? requestedYear
+    init?(source sourceData: LBYearInMusic, requestedYear: Int, sourceKind: Source = .current) {
+        guard sourceData.isAvailable else { return nil }
+        let data = sourceData.data
+        username = sourceData.userName?.trimmedNilIfEmpty
+        year = sourceData.year ?? requestedYear
+        source = sourceKind
         totals = .init(
             listenCount: Self.nonNegative(data.totalListenCount),
             artistCount: Self.nonNegative(data.totalArtistsCount),
             recordingCount: Self.nonNegative(data.totalRecordingsCount),
-            releaseGroupCount: Self.nonNegative(data.totalReleaseGroupsCount),
+            releaseGroupCount: Self.nonNegative(data.totalReleaseGroupsCount ?? data.totalReleasesCount),
             newArtistCount: Self.nonNegative(data.totalNewArtistsDiscovered),
-            listeningTime: Self.nonNegative(data.totalListeningTime)
+            listeningTime: Self.nonNegative(data.totalListeningTime),
+            hasArtistCount: data.totalArtistsCount != nil,
+            hasRecordingCount: data.totalRecordingsCount != nil,
+            hasReleaseCount: data.totalReleaseGroupsCount != nil || data.totalReleasesCount != nil,
+            hasListeningTime: data.totalListeningTime != nil
         )
         listeningDays = Self.mapListeningDays(data.listensPerDay, year: year)
         topArtists = Self.mapArtists(data.topArtists)
         topReleaseGroups = Self.mapReleaseGroups(data.topReleaseGroups)
+        topReleases = Self.mapReleases(data.topReleases, coverArtByReleaseMBID: data.topReleasesCoverArt)
         topRecordings = Self.mapRecordings(data.topRecordings)
+    }
+
+    private static func mapReleases(
+        _ source: [LBYearInMusic.Report.Release],
+        coverArtByReleaseMBID: [String: String]
+    ) -> [Release] {
+        var normalizedCoverArt: [UUID: URL] = [:]
+        for (identifier, rawURL) in coverArtByReleaseMBID {
+            guard let mbid = UUID(uuidString: identifier),
+                  let url = safeProvidedArtworkURL(rawURL) else { continue }
+            normalizedCoverArt[mbid] = url
+        }
+        var releases: [Release] = []
+        for row in source {
+            guard let title = row.title?.trimmedNilIfEmpty else { continue }
+            let artist = resolvedArtistName(row.artistName ?? row.artistCreditName, credits: row.artists)
+            let releaseMBID = row.releaseMBID.flatMap(UUID.init(uuidString:))
+            let artistMBIDs = normalizedUUIDs(row.artistMBIDs ?? row.artistCreditMBIDs)
+            let artworkReleaseMBID = row.coverArtArchiveReleaseMBID.flatMap(UUID.init(uuidString:)) ?? releaseMBID
+            releases.append(Release(
+                releaseMBID: releaseMBID,
+                title: title,
+                artistName: artist,
+                artistMBIDs: artistMBIDs,
+                listenCount: nonNegative(row.listenCount),
+                coverArtArchiveID: nonNegativeOptional(row.coverArtArchiveID),
+                artworkReleaseMBID: artworkReleaseMBID,
+                providedArtworkURL: releaseMBID.flatMap { normalizedCoverArt[$0] }
+            ))
+        }
+        return releases.sorted {
+            $0.listenCount == $1.listenCount
+                ? $0.title.normalizedIdentity < $1.title.normalizedIdentity
+                : $0.listenCount > $1.listenCount
+        }
+    }
+
+    private static func safeProvidedArtworkURL(_ rawValue: String) -> URL? {
+        guard let url = URL(string: rawValue),
+              url.scheme?.lowercased() == "https",
+              url.host?.isEmpty == false,
+              url.user == nil,
+              url.password == nil,
+              url.port == nil || url.port == 443 else { return nil }
+        return url
     }
 
     private static func mapListeningDays(
@@ -152,7 +258,7 @@ struct YearInMusicReport: Hashable, Sendable {
         var counts: [Key: Int] = [:]
         for row in source {
             guard let name = row.name?.trimmedNilIfEmpty else { continue }
-            let candidate = Candidate(mbid: row.mbid.flatMap(UUID.init(uuidString:)), name: name, count: nonNegative(row.listenCount))
+            let candidate = Candidate(mbid: (row.mbid.flatMap(UUID.init(uuidString:)) ?? row.mbids?.compactMap(UUID.init(uuidString:)).first), name: name, count: nonNegative(row.listenCount))
             let key: Key = candidate.mbid.map(Key.mbid) ?? .name(name.normalizedIdentity)
             counts[key] = saturatedSum(counts[key, default: 0], candidate.count)
             if let old = values[key], preferred(candidate.name, over: old.name) { values[key] = candidate }

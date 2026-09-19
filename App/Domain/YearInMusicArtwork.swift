@@ -9,17 +9,20 @@ struct YearInMusicArtworkOptions: Hashable, Sendable {
     let year: Int
     let variant: LBYearInMusicArtVariant
     let anonymous: Bool?
+    let legacy: Bool
 
     init(
         username: String,
         year: Int,
         variant: LBYearInMusicArtVariant = .overview,
-        anonymous: Bool? = nil
+        anonymous: Bool? = nil,
+        legacy: Bool = false
     ) {
         self.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         self.year = year
         self.variant = variant
         self.anonymous = anonymous
+        self.legacy = legacy
     }
 }
 

@@ -242,6 +242,14 @@ public struct LBStatisticsClient: Sendable {
         return try await (execNoContent(request))?.payload
     }
 
+    /// Get a frozen Year in Music archive from the historical pipeline.
+    /// Only 2021 through 2024 are accepted. Unlike the current endpoint this
+    /// response can contain large embedded playlists, so it is bounded at 16 MiB.
+    public func legacyYearInMusic(user: String, year: Int) async throws -> LBYearInMusic? {
+        let request = try StatsLegacyYearInMusicRequest(user: user, year: year)
+        return try await (execNoContent(request))?.payload
+    }
+
     // Get a result which might get a 204: No Content response and treat it as a nil result
     private func execNoContent<T: APIRequest>(_ request: T) async throws -> T.Result? {
         do {

@@ -551,7 +551,7 @@ struct LBStatisticsTests {
     @Test("Year in Music request uses optional year path and escaped user path")
     func yearInMusicRequestSemantics() throws {
         let current = StatsYearInMusicRequest(user: "test user", year: nil)
-        #expect(current.data.path == "/1/stats/user/test user/year-in-music")
+        #expect(current.data.path == "/1/stats/user/test%20user/year-in-music")
         #expect(current.data.queryItems.isEmpty)
         #expect(current.data.statusErrors[204] == .noContent)
         #expect(current.data.statusErrors[404] == .notFound)
@@ -567,6 +567,17 @@ struct LBStatisticsTests {
         let urlRequest = try apiClient.makeURLRequest(current)
         #expect(urlRequest.url?.path == "/1/stats/user/test user/year-in-music")
         #expect(urlRequest.url?.absoluteString.contains("test%20user") == true)
+
+        for (username, encoded) in [
+            ("a/b", "a%2Fb"),
+            ("..", "%2E%2E"),
+            ("50%?", "50%25%3F"),
+            ("Björk", "Bj%C3%B6rk"),
+        ] {
+            let hostile = StatsYearInMusicRequest(user: username, year: 2025)
+            let hostileURL = try #require(try apiClient.makeURLRequest(hostile).url)
+            #expect(hostileURL.absoluteString.contains("/user/\(encoded)/year-in-music/2025"))
+        }
     }
 
     @Test("Year in Music maps no content to nil and preserves not found")
@@ -579,6 +590,50 @@ struct LBStatisticsTests {
         await #expect(throws: LBError.notFound) {
             _ = try await missingClient.yearInMusic(user: "listener", year: 2025)
         }
+    }
+
+    @Test("Legacy Year in Music uses the archival route, bounds payloads, and preserves availability")
+    func legacyYearInMusic() async throws {
+        let request = try StatsLegacyYearInMusicRequest(user: "test user", year: 2021)
+        #expect(request.data.path == "/1/stats/user/test%20user/year-in-music/legacy/2021")
+        #expect(request.data.method == .get)
+        #expect(request.data.statusErrors[204] == .noContent)
+        #expect(request.data.statusErrors[404] == .notFound)
+        #expect(StatsLegacyYearInMusicRequest.maximumPayloadSize == 16 * 1_024 * 1_024)
+        #expect(request.data.maximumResponseBytes == StatsLegacyYearInMusicRequest.maximumPayloadSize)
+        #expect(throws: LBError.invalidParam) { _ = try StatsLegacyYearInMusicRequest(user: "listener", year: 2025) }
+
+        let apiClient = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+        let slashURL = try #require(try apiClient.makeURLRequest(StatsLegacyYearInMusicRequest(user: "a/b", year: 2021)).url)
+        #expect(slashURL.absoluteString.contains("/user/a%2Fb/year-in-music/legacy/2021"))
+        let dotURL = try #require(try apiClient.makeURLRequest(StatsLegacyYearInMusicRequest(user: "..", year: 2021)).url)
+        #expect(dotURL.absoluteString.contains("/user/%2E%2E/year-in-music/legacy/2021"))
+
+        let decoded = try request.decodeResponse(Data("""
+        { "payload": { "user_name": "listener", "year": 2021, "data": {
+          "total_listen_count": 12,
+          "top_artists": [{"artist_name":"Artist", "artist_mbids":["11111111-1111-1111-1111-111111111111"]}],
+          "top_releases": [{"release_name":"Edition", "release_mbid":"22222222-2222-2222-2222-222222222222", "artist_name":"Artist", "listen_count":4}],
+          "top_releases_coverart": {"22222222-2222-2222-2222-222222222222":"https://archive.org/cover.jpg"},
+          "total_releases_count": 3
+        } } }
+        """.utf8), response: nil)
+        #expect(decoded.payload.data.topArtists.first?.mbids?.count == 1)
+        #expect(decoded.payload.data.topReleases.first?.title == "Edition")
+        #expect(decoded.payload.data.topReleases.first?.releaseMBID != nil)
+        #expect(decoded.payload.data.topReleasesCoverArt.count == 1)
+        #expect(decoded.payload.data.totalReleasesCount == 3)
+        let oversized = Data(repeating: 0, count: StatsLegacyYearInMusicRequest.maximumPayloadSize + 1)
+        #expect(throws: LBError.invalidResponse) { _ = try request.decodeResponse(oversized, response: nil) }
+
+        let noContent = LBStatisticsClient(MockAPIClient(result: .failure(.noContent)))
+        #expect(try await noContent.legacyYearInMusic(user: "listener", year: 2024) == nil)
+        let missing = LBStatisticsClient(MockAPIClient(result: .failure(.notFound)))
+        await #expect(throws: LBError.notFound) { _ = try await missing.legacyYearInMusic(user: "listener", year: 2024) }
     }
 
     @Test("Deserialize user artists")
