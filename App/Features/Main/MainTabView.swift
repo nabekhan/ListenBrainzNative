@@ -68,6 +68,9 @@ struct MainTabView: View {
             if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-top-listeners-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-top-listeners-expanded-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-unavailable-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-failure-demo")
             {
                 let visualAccount = Account(username: "visual-popularity", token: "visual-popularity")
                 _model = State(
@@ -263,6 +266,28 @@ struct MainTabView: View {
                 }
                 .environment(pins)
                 .environment(\.topListenersProvider, VisualQATopListenersProvider())
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-unavailable-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-failure-demo")
+            {
+                NavigationStack {
+                    ScrollView {
+                        CritiqueBrainzReviewSummaryView(
+                            entity: .init(kind: .artist, mbid: Self.popularityPreviewArtist.mbid!)
+                        )
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                    }
+                    .navigationTitle("Alvvays")
+                }
+                .environment(pins)
+                .environment(\.critiqueBrainzReviewsProvider, VisualQACritiqueBrainzReviewsProvider(
+                    result: ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-unavailable-demo")
+                        ? .unavailable
+                        : ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-failure-demo")
+                            ? .failure
+                            : .populated
+                ))
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo") {
                 NavigationStack {
                     ArtistDetailView(artist: Self.popularityPreviewArtist, model: model)
@@ -669,6 +694,50 @@ struct MainTabView: View {
                 totalListenCount: 5_605
             )
         }
+    }
+
+    private struct VisualQACritiqueBrainzReviewsProvider: CritiqueBrainzReviewsProviding {
+        enum Result { case populated, unavailable, failure }
+        let result: Result
+
+        func reviews(for entity: CritiqueBrainzEntity) async throws -> CritiqueBrainzReviewSummary? {
+            await Task.yield()
+            switch result {
+            case .unavailable: return nil
+            case .failure: throw VisualQACritiqueBrainzError.unavailable
+            case .populated:
+                return CritiqueBrainzReviewSummary(
+                    entity: entity,
+                    reviews: [
+                        .init(
+                            id: UUID(uuidString: "a4c81c31-0e10-4ee0-bd37-842c5dcdf7ad")!,
+                            author: "Avery Chen",
+                            licenseID: "CC BY-SA 3.0",
+                            licenseURL: URL(string: "https://creativecommons.org/licenses/by-sa/3.0/"),
+                            rating: 5,
+                            text: "A sharply observed record that keeps opening up with each listen.",
+                            publishedAt: .now.addingTimeInterval(-14 * 86_400)
+                        ),
+                        .init(
+                            id: UUID(uuidString: "4602e98e-61f1-456b-85d0-a0fe0167d659")!,
+                            author: "Samira",
+                            licenseID: "CC BY-SA 3.0",
+                            licenseURL: URL(string: "https://creativecommons.org/licenses/by-sa/3.0/"),
+                            rating: 4,
+                            text: "Bright melodies, precise details, and a lovely sense of motion.",
+                            publishedAt: .now.addingTimeInterval(-93 * 86_400)
+                        ),
+                    ],
+                    averageRating: 4.6,
+                    ratingCount: 12
+                )
+            }
+        }
+    }
+
+    private enum VisualQACritiqueBrainzError: LocalizedError {
+        case unavailable
+        var errorDescription: String? { "Check your connection, then try again." }
     }
 
     private struct VisualQAPopularityListeningProvider: ListeningProvider {

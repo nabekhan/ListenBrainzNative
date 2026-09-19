@@ -37,6 +37,7 @@ struct RecordingDetailView: View {
                 pinControls
                 metadata
                 popularity
+                reviews
                 relatedListens
             }
             .padding(.horizontal, 20)
@@ -311,6 +312,13 @@ struct RecordingDetailView: View {
     private var popularity: some View {
         if let mbid = recording.identity.mbid {
             PopularitySummaryView(entity: PopularityEntity(kind: .recording, mbid: mbid))
+        }
+    }
+
+    @ViewBuilder
+    private var reviews: some View {
+        if let mbid = recording.identity.mbid {
+            CritiqueBrainzReviewSummaryView(entity: .init(kind: .recording, mbid: mbid))
         }
     }
 

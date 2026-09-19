@@ -191,6 +191,9 @@ final class SessionModel {
             if arguments.contains("-brainz-popularity-detail-demo")
                 || arguments.contains("-brainz-top-listeners-demo")
                 || arguments.contains("-brainz-top-listeners-expanded-demo")
+                || arguments.contains("-brainz-critiquebrainz-reviews-demo")
+                || arguments.contains("-brainz-critiquebrainz-reviews-unavailable-demo")
+                || arguments.contains("-brainz-critiquebrainz-reviews-failure-demo")
             {
                 state = .active(Account(username: "visual-popularity", token: "visual-popularity"))
                 return true

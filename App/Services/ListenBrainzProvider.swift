@@ -551,6 +551,7 @@ actor RequestGate {
         case recordingShareFollowers
         case searchListenBrainzUsers
         case searchListenBrainzPlaylists
+        case critiqueBrainzReviews
     }
 
     struct ReadKey: Hashable, Sendable {
@@ -627,6 +628,9 @@ actor RequestGate {
             case let .playlist(mbid, dimension, layout): return endpoint(scope, .artworkGenerated, ["playlist", uuid(mbid), String(dimension), String(layout.rawValue)])
             }
         }
+        static func critiqueBrainzReviews(_ scope: ReadScope, entity: CritiqueBrainzEntity) -> Self {
+            endpoint(scope, .critiqueBrainzReviews, [entity.kind.rawValue, uuid(entity.mbid), "5"])
+        }
         private static func uuid(_ id: UUID) -> String { id.uuidString.lowercased() }
         private static func artOptions(_ value: LBArtGridOptions) -> [String] { [String(value.captions), String(value.skipMissing), String(value.showRank), String(value.showListenCount), String(value.showRelease), String(value.showArtist)] }
         // Usernames stay byte-for-byte aligned with the value sent by the
@@ -690,7 +694,9 @@ actor RequestGate {
     }
 
     private let minimumInterval: Duration
+    private let pacesReadStarts: Bool
     private var nextRequestAt = ContinuousClock.now
+    private var nextReadAt = ContinuousClock.now
     private var deferredUntil = ContinuousClock.now
     private var requestInFlight = false
     private var waiters: [Waiter] = []
@@ -707,9 +713,14 @@ actor RequestGate {
     private let maximumTelemetryEventCount = 128
     #endif
 
-    init(minimumInterval: Duration = .seconds(1), maximumConcurrentReads: Int = 2) {
+    init(
+        minimumInterval: Duration = .seconds(1),
+        maximumConcurrentReads: Int = 2,
+        pacesReadStarts: Bool = false
+    ) {
         self.minimumInterval = minimumInterval
         self.maximumConcurrentReads = max(1, maximumConcurrentReads)
+        self.pacesReadStarts = pacesReadStarts
     }
 
     func perform<Result: Sendable>(
@@ -864,10 +875,17 @@ actor RequestGate {
         let clock = ContinuousClock()
         while true {
             let now = clock.now
-            if now < deferredUntil {
-                try await clock.sleep(until: deferredUntil)
+            let allowedTime = pacesReadStarts ? max(nextReadAt, deferredUntil) : deferredUntil
+            if now < allowedTime {
+                try await clock.sleep(until: allowedTime)
             }
-            if clock.now >= deferredUntil { return }
+            let currentAllowedTime = pacesReadStarts ? max(nextReadAt, deferredUntil) : deferredUntil
+            if clock.now >= currentAllowedTime {
+                if pacesReadStarts {
+                    nextReadAt = clock.now.advanced(by: minimumInterval)
+                }
+                return
+            }
         }
     }
 

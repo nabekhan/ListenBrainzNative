@@ -27,6 +27,7 @@ struct ReleaseGroupDetailView: View {
                 listenBrainzContext
                 popularity
                 topListeners
+                reviews
                 facts
             }
             .padding(.horizontal, 20)
@@ -189,6 +190,10 @@ struct ReleaseGroupDetailView: View {
             entity: TopListenersEntity(kind: .releaseGroup, mbid: group.mbid),
             viewer: viewer
         )
+    }
+
+    private var reviews: some View {
+        CritiqueBrainzReviewSummaryView(entity: .init(kind: .releaseGroup, mbid: group.mbid))
     }
 
     private var facts: some View {

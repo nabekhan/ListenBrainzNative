@@ -11,6 +11,7 @@ struct ArtistDetailView: View {
                 hero
                 popularity
                 topListeners
+                reviews
                 topRecordings
                 recentListens
             }
@@ -74,6 +75,13 @@ struct ArtistDetailView: View {
                 entity: TopListenersEntity(kind: .artist, mbid: mbid),
                 viewer: model.account
             )
+        }
+    }
+
+    @ViewBuilder
+    private var reviews: some View {
+        if let mbid = artist.mbid {
+            CritiqueBrainzReviewSummaryView(entity: .init(kind: .artist, mbid: mbid))
         }
     }
 

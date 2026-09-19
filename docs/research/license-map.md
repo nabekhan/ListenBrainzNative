@@ -47,3 +47,4 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 - The LB Radio screen/provider independently implement the inspected server and website behavior with app-owned SwiftUI/domain types while reusing MPL ListenBrainzKit JSPF models and existing app playlist components. No GPL server, web, Android, or iOS source was copied.
 - App UI is original code informed by donor behavior except for the explicitly tracked Year in Music and playlist-add adaptations. Any future copied/adapted Cassette, Minidisc, first.fm, Autohop, Beans, Bòcan, or Finale file must be entered in `THIRD_PARTY.md` before merge.
 - GPL and unlicensed projects remain reference-only.
+- CritiqueBrainz review highlights use current website request behavior and official Android/KMP response-field semantics as reference only. The KMP source is GPL/reference-only; the native client, decoder, cache, and UI are independently implemented.
