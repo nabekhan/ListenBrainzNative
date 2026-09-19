@@ -29,6 +29,7 @@ The tested replacement is active. It deliberately separates reads from mutations
 7. DEBUG/test telemetry records only a closed endpoint category, lifecycle, coalesced-waiter count, and in-flight count—never request identity, token, parameters, headers, error descriptions, or response payload;
 8. credential-derived scopes are process-local HMAC values. Raw tokens are never placed in request keys, telemetry, or cache keys.
 9. Year in Music makes one aggregate read only after a year is opened or selected. Frozen 2021–2024 reports use an empty-token client, an anonymous 24-hour cache, cancellation on selection replacement, and a 16 MiB receive/decode ceiling; no archive, artwork, or ranking row is preloaded.
+10. External service actions resolve only already-loaded `spotify_id` or `origin_url` locally. They perform zero ListenBrainz, metadata, search, or playback-resolution requests and accept only strict HTTPS provider destinations.
 
 This is intentionally stricter than copying the official clients' unconstrained fan-out. The conditional API allowance is used for selective concurrency, while coalescing, pagination guards, cancellation, caching, shared 429 deferral, and tests prevent erroneous traffic. Any future retry or concurrency increase requires endpoint-specific evidence and new tests first.
 

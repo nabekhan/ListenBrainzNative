@@ -21,6 +21,222 @@ struct RecordingIdentity: Hashable, Codable, Sendable {
     let msid: UUID?
 }
 
+/// A verified, web-only destination supplied in ListenBrainz metadata.
+///
+/// This deliberately recognizes a small allowlist rather than treating an
+/// arbitrary `origin_url` as a safe playback or browser destination. Resolving
+/// a link is local work only: it never searches, hydrates, or contacts a music
+/// service.
+struct ExternalMediaLink: Hashable, Codable, Sendable {
+    enum Service: String, Codable, Sendable {
+        case spotify
+        case youTube
+        case soundCloud
+        case appleMusic
+        case internetArchive
+        case bandcamp
+
+        var displayName: String {
+            switch self {
+            case .spotify: "Spotify"
+            case .youTube: "YouTube"
+            case .soundCloud: "SoundCloud"
+            case .appleMusic: "Apple Music"
+            case .internetArchive: "Internet Archive"
+            case .bandcamp: "Bandcamp"
+            }
+        }
+    }
+
+    let service: Service
+    let url: URL
+
+    private enum CodingKeys: String, CodingKey {
+        case service
+        case url
+    }
+
+    private init(service: Service, url: URL) {
+        self.service = service
+        self.url = url
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let decodedService = try container.decode(Service.self, forKey: .service)
+        let decodedURL = try container.decode(URL.self, forKey: .url)
+        guard let validated = Self.resolve(spotifyID: nil, originURL: decodedURL.absoluteString),
+              validated.service == decodedService,
+              validated.url.absoluteString == decodedURL.absoluteString
+        else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .url,
+                in: container,
+                debugDescription: "External media link is not a canonical supported destination."
+            )
+        }
+        self = validated
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(service, forKey: .service)
+        try container.encode(url, forKey: .url)
+    }
+
+    var actionTitle: String { "Open in \(service.displayName)" }
+    var accessibilityHint: String { "Opens \(service.displayName) in another app or browser" }
+
+    /// A valid Spotify ID is preferred because it is explicit recording
+    /// metadata. A recognized public origin is used only as a fallback.
+    static func resolve(spotifyID: String?, originURL: String?) -> ExternalMediaLink? {
+        spotify(spotifyID) ?? origin(originURL)
+    }
+
+    private static func spotify(_ value: String?) -> ExternalMediaLink? {
+        guard let value = normalizedInput(value) else { return nil }
+        if isSpotifyTrackID(value) {
+            return destination(.spotify, host: "open.spotify.com", path: ["track", value])
+        }
+        if value.hasPrefix("spotify:track:") {
+            let id = String(value.dropFirst("spotify:track:".count))
+            guard isSpotifyTrackID(id) else { return nil }
+            return destination(.spotify, host: "open.spotify.com", path: ["track", id])
+        }
+        guard let components = trustedHTTPSComponents(value),
+              components.host?.lowercased() == "open.spotify.com",
+              let segments = safePathSegments(components),
+              let id = spotifyTrackID(from: segments)
+        else { return nil }
+        return destination(.spotify, host: "open.spotify.com", path: ["track", id])
+    }
+
+    private static func origin(_ value: String?) -> ExternalMediaLink? {
+        guard let value = normalizedInput(value) else { return nil }
+        if let spotify = spotify(value) { return spotify }
+        guard let components = trustedHTTPSComponents(value),
+              let host = components.host?.lowercased(),
+              let path = safePathSegments(components)
+        else { return nil }
+
+        if ["youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be"].contains(host) {
+            let id: String?
+            if host == "youtu.be" {
+                id = path.count == 1 ? path[0] : nil
+            } else if path == ["watch"] {
+                let values = components.queryItems?.filter { $0.name == "v" }.compactMap(\.value) ?? []
+                id = values.count == 1 ? values[0] : nil
+            } else if path.count == 2, ["shorts", "embed", "live"].contains(path[0]) {
+                id = path[1]
+            } else {
+                id = nil
+            }
+            guard let id, isYouTubeVideoID(id) else { return nil }
+            return destination(.youTube, host: "www.youtube.com", path: ["watch"], query: [URLQueryItem(name: "v", value: id)])
+        }
+
+        if ["soundcloud.com", "www.soundcloud.com", "m.soundcloud.com", "on.soundcloud.com"].contains(host), !path.isEmpty {
+            let destinationHost = host == "on.soundcloud.com" ? host : "soundcloud.com"
+            return destination(.soundCloud, host: destinationHost, path: path)
+        }
+
+        if ["music.apple.com", "www.music.apple.com"].contains(host), isAppleMusicPath(path) {
+            let identifiers = components.queryItems?.filter { $0.name == "i" }.compactMap(\.value) ?? []
+            guard identifiers.count <= 1, identifiers.allSatisfy(isNumericIdentifier) else { return nil }
+            return destination(.appleMusic, host: "music.apple.com", path: path,
+                               query: identifiers.first.map { [URLQueryItem(name: "i", value: $0)] } ?? [])
+        }
+
+        if ["archive.org", "www.archive.org"].contains(host), path.count >= 2, path[0] == "details" {
+            return destination(.internetArchive, host: "archive.org", path: path)
+        }
+
+        if isBandcampHost(host), path.count >= 2, ["album", "track"].contains(path[0]) {
+            return destination(.bandcamp, host: host, path: path)
+        }
+        return nil
+    }
+
+    private static func normalizedInput(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.utf8.count <= 2_048,
+              trimmed.rangeOfCharacter(from: .whitespacesAndNewlines) == nil
+        else { return nil }
+        return trimmed
+    }
+
+    private static func trustedHTTPSComponents(_ value: String) -> URLComponents? {
+        guard let components = URLComponents(string: value),
+              components.scheme?.lowercased() == "https",
+              components.user == nil,
+              components.password == nil,
+              components.host?.isEmpty == false,
+              components.port == nil || components.port == 443
+        else { return nil }
+        return components
+    }
+
+    private static func safePathSegments(_ components: URLComponents) -> [String]? {
+        let path = components.percentEncodedPath
+        guard path.utf8.count <= 1_024 else { return nil }
+        let encodedSegments = path.split(separator: "/", omittingEmptySubsequences: true)
+        var decodedSegments: [String] = []
+        decodedSegments.reserveCapacity(encodedSegments.count)
+        for encodedSegment in encodedSegments {
+            guard encodedSegment.utf8.count <= 768,
+                  let segment = String(encodedSegment).removingPercentEncoding,
+                  isSafePathSegment(segment)
+            else { return nil }
+            decodedSegments.append(segment)
+        }
+        return decodedSegments
+    }
+
+    private static func destination(_ service: Service, host: String, path: [String], query: [URLQueryItem] = []) -> ExternalMediaLink? {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = host
+        components.path = "/" + path.joined(separator: "/")
+        components.queryItems = query.isEmpty ? nil : query
+        guard let url = components.url else { return nil }
+        return ExternalMediaLink(service: service, url: url)
+    }
+
+    private static func isSpotifyTrackID(_ value: String) -> Bool { matches(value, pattern: "^[A-Za-z0-9]{22}$") }
+    private static func spotifyTrackID(from path: [String]) -> String? {
+        if path.count == 2, path[0] == "track", isSpotifyTrackID(path[1]) {
+            return path[1]
+        }
+        if path.count == 3, matches(path[0], pattern: "^intl-[a-z]{2}$"),
+           path[1] == "track", isSpotifyTrackID(path[2]) {
+            return path[2]
+        }
+        return nil
+    }
+    private static func isYouTubeVideoID(_ value: String) -> Bool { matches(value, pattern: "^[A-Za-z0-9_-]{11}$") }
+    private static func isNumericIdentifier(_ value: String) -> Bool { matches(value, pattern: "^[0-9]{1,20}$") }
+    private static func isSafePathSegment(_ value: String) -> Bool {
+        guard !value.isEmpty, value.utf8.count <= 256, value != ".", value != "..",
+              !value.contains("/"), !value.contains("\\")
+        else { return false }
+        return value.unicodeScalars.allSatisfy { !CharacterSet.controlCharacters.contains($0) }
+    }
+    private static func isAppleMusicPath(_ path: [String]) -> Bool {
+        guard path.count >= 4, matches(path[0], pattern: "^[a-z]{2}$"), ["album", "song"].contains(path[1]), isNumericIdentifier(path.last ?? "") else { return false }
+        return true
+    }
+    private static func isBandcampHost(_ host: String) -> Bool {
+        guard !host.hasPrefix("."), !host.hasSuffix("."), !host.contains("..") else { return false }
+        let labels = host.split(separator: ".")
+        guard labels.count == 3, labels.dropFirst().joined(separator: ".") == "bandcamp.com" else { return false }
+        return matches(String(labels[0]), pattern: "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+    }
+    private static func matches(_ value: String, pattern: String) -> Bool {
+        value.range(of: pattern, options: .regularExpression) != nil
+    }
+}
+
 struct Recording: Identifiable, Hashable, Codable, Sendable {
     let identity: RecordingIdentity
     let title: String
@@ -32,6 +248,33 @@ struct Recording: Identifiable, Hashable, Codable, Sendable {
     let artworkReleaseMBID: UUID?
     let durationMilliseconds: Int?
     let source: String?
+    let externalLink: ExternalMediaLink?
+
+    init(
+        identity: RecordingIdentity,
+        title: String,
+        artistName: String,
+        artistMBIDs: [UUID],
+        releaseTitle: String?,
+        releaseMBID: UUID?,
+        releaseGroupMBID: UUID?,
+        artworkReleaseMBID: UUID?,
+        durationMilliseconds: Int?,
+        source: String?,
+        externalLink: ExternalMediaLink? = nil
+    ) {
+        self.identity = identity
+        self.title = title
+        self.artistName = artistName
+        self.artistMBIDs = artistMBIDs
+        self.releaseTitle = releaseTitle
+        self.releaseMBID = releaseMBID
+        self.releaseGroupMBID = releaseGroupMBID
+        self.artworkReleaseMBID = artworkReleaseMBID
+        self.durationMilliseconds = durationMilliseconds
+        self.source = source
+        self.externalLink = externalLink
+    }
 
     var id: String {
         if let mbid = identity.mbid { return "mbid:\(mbid.uuidString)" }
@@ -122,6 +365,8 @@ struct ListenInspection: Hashable, Codable, Sendable {
     let musicServiceName: String?
     let originURL: String?
     let durationMilliseconds: Int?
+    /// Optional so previously cached inspection snapshots remain decodable.
+    var externalLink: ExternalMediaLink? = nil
 
     var mappingStatus: MappingStatus {
         if resolvedRecordingMBID != nil || resolvedReleaseMBID != nil || resolvedReleaseGroupMBID != nil || !resolvedArtistMBIDs.isEmpty {

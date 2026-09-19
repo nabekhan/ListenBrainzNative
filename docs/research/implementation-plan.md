@@ -104,6 +104,10 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 - Account and cache isolation now bind every account-sensitive in-memory key to a process-local HMAC credential scope. Viewer-specific social state also includes normalized viewer and target identity. Authenticated username/token persistence is atomic in Keychain, legacy raw-token records validate and migrate before activation, and sign-in, public browsing, and sign-out purge username-keyed disk snapshots before changing observable identity. Independent correctness and security re-reviews report ready; the integrated suite passes 294 tests, including deterministic queued-read cancellation coverage.
 - Official KMP framework export was attempted and currently fails at the native Room KSP step; it remains a behavior reference rather than an app dependency.
 
+## External source links
+
+- Recording Detail, History/Playing Now context menus, and Listen details now expose only verified external destinations already present in a listen payload. The app prefers a valid Spotify track ID, otherwise accepts strict HTTPS Spotify, YouTube, SoundCloud, Apple Music, Internet Archive, or Bandcamp origins; arbitrary hosts, raw media URLs, schemes, user info, nonstandard ports, and tracking parameters are rejected or removed. This is a zero-request bridge, not playback, search, or content resolution. Playback SDKs and Spotify account support remain staged. The completed checkpoint passes 13 focused link/cache tests and the full 446-test app suite plus a universal Release simulator build. Independent correctness and security re-reviews report ready. Fixture-only QA covers light, dark, maximum accessibility text, and the smaller iPhone SE layout without a production request or real token.
+
 ## Rate-limit behavior decision
 
 - Public API guidance recommends that clients start no more than one request per second and honor server rate-limit timing. This project has direct permission to behave like the official clients provided traffic remains selective, intentional, and free of lifecycle or retry storms.

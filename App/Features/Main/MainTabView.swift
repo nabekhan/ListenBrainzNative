@@ -163,6 +163,20 @@ struct MainTabView: View {
                     ))
                 return
             }
+            if ProcessInfo.processInfo.arguments.contains("-brainz-external-source-demo") {
+                let visualAccount = Account(username: "visual-qa", token: "visual-qa")
+                _model = State(
+                    initialValue: ListeningModel(
+                        account: visualAccount,
+                        provider: VisualQAHistoryProvider()
+                    ))
+                _pins = State(
+                    initialValue: PinsModel(
+                        account: visualAccount,
+                        provider: VisualQAPinProvider()
+                    ))
+                return
+            }
             if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo") {
                 let visualAccount = Account(username: "visual-qa", token: "visual-qa")
                 _model = State(initialValue: ListeningModel(account: visualAccount))
@@ -424,6 +438,7 @@ struct MainTabView: View {
                 #if DEBUG
                     let arguments = ProcessInfo.processInfo.arguments
                     guard !arguments.contains("-brainz-recording-share-demo"),
+                        !arguments.contains("-brainz-external-source-demo"),
                         !arguments.contains("-brainz-feed-demo"),
                         !arguments.contains("-brainz-recommendations-demo")
                     else { return }
@@ -458,6 +473,11 @@ struct MainTabView: View {
                         presentedListen == nil
                     {
                         presentedListen = Self.recommendationPreviewListen
+                    }
+                    if ProcessInfo.processInfo.arguments.contains("-brainz-external-source-demo"),
+                        presentedListen == nil
+                    {
+                        presentedListen = Self.externalSourcePreviewListen
                     }
                 #endif
             }
@@ -558,6 +578,31 @@ struct MainTabView: View {
                 artworkReleaseMBID: nil,
                 durationMilliseconds: 196_000,
                 source: "ListenBrainz"
+            ),
+            listenedAt: .now,
+            insertedAt: .now,
+            isPlayingNow: false
+        )
+
+        private static let externalSourcePreviewListen = Listen(
+            recording: Recording(
+                identity: RecordingIdentity(
+                    mbid: nil,
+                    msid: UUID(uuidString: "70000000-0000-0000-0000-000000000001")
+                ),
+                title: "Dreams Tonite",
+                artistName: "Alvvays",
+                artistMBIDs: [],
+                releaseTitle: "Antisocialites",
+                releaseMBID: nil,
+                releaseGroupMBID: nil,
+                artworkReleaseMBID: nil,
+                durationMilliseconds: 196_000,
+                source: "Spotify",
+                externalLink: ExternalMediaLink.resolve(
+                    spotifyID: "4uLU6hMCjMI75M1A2tKUQC",
+                    originURL: nil
+                )
             ),
             listenedAt: .now,
             insertedAt: .now,
@@ -1282,5 +1327,13 @@ private struct MiniListenBar: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Playing now: \(listen.recording.title) by \(listen.recording.artistName)")
+        .contextMenu {
+            if let externalLink = listen.recording.externalLink ?? listen.inspection?.externalLink {
+                Link(destination: externalLink.url) {
+                    Label(externalLink.actionTitle, systemImage: "arrow.up.right.square")
+                }
+                .accessibilityHint(externalLink.accessibilityHint)
+            }
+        }
     }
 }

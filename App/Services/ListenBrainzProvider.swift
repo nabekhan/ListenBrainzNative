@@ -430,7 +430,11 @@ struct ListenBrainzProvider: ListeningProvider {
             source: additional?.musicServiceName
                 ?? additional?.musicService
                 ?? additional?.submissionClient
-                ?? additional?.mediaPlayer
+                ?? additional?.mediaPlayer,
+            externalLink: ExternalMediaLink.resolve(
+                spotifyID: additional?.spotifyId,
+                originURL: additional?.originUrl
+            )
         )
     }
 
@@ -471,7 +475,11 @@ struct ListenBrainzProvider: ListeningProvider {
             musicService: additional?.musicService,
             musicServiceName: additional?.musicServiceName,
             originURL: sanitizedOriginURL(additional?.originUrl),
-            durationMilliseconds: durationMilliseconds(from: additional)
+            durationMilliseconds: durationMilliseconds(from: additional),
+            externalLink: ExternalMediaLink.resolve(
+                spotifyID: additional?.spotifyId,
+                originURL: additional?.originUrl
+            )
         )
     }
 

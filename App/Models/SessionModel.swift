@@ -241,6 +241,12 @@ final class SessionModel {
                 state = .active(Account(username: "visual-inspection", token: "visual-inspection"))
                 return true
             }
+            if arguments.contains("-brainz-recording-share-demo")
+                || arguments.contains("-brainz-external-source-demo")
+            {
+                state = .active(Account(username: "visual-qa", token: "visual-qa"))
+                return true
+            }
             return false
         }
     #endif

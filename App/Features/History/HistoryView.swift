@@ -200,6 +200,7 @@ struct HistoryView: View {
                             } label: {
                                 Label("Listen details", systemImage: "text.magnifyingglass")
                             }
+                            externalLinkAction(for: playing)
                         }
                 }
             }
@@ -284,6 +285,7 @@ struct HistoryView: View {
             }
             Button { Task { await model.setFeedback(.love, for: listen.recording) } } label: { Label("Love", systemImage: "heart") }
             Button { Task { await model.setFeedback(.hate, for: listen.recording) } } label: { Label("Hate", systemImage: "hand.thumbsdown") }
+            externalLinkAction(for: listen)
             if model.account.isAuthenticated,
                !listen.isPlayingNow,
                listen.recording.identity.msid != nil {
@@ -304,6 +306,16 @@ struct HistoryView: View {
             if let mbid = listen.recording.identity.mbid {
                 Link(destination: URL(string: "https://musicbrainz.org/recording/\(mbid.uuidString)")!) { Label("Open in MusicBrainz", systemImage: "arrow.up.right.square") }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func externalLinkAction(for listen: Listen) -> some View {
+        if let externalLink = listen.recording.externalLink ?? listen.inspection?.externalLink {
+            Link(destination: externalLink.url) {
+                Label(externalLink.actionTitle, systemImage: "arrow.up.right.square")
+            }
+            .accessibilityHint(externalLink.accessibilityHint)
         }
     }
 

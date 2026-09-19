@@ -122,6 +122,129 @@ final class ListenInspectionTests: XCTestCase {
         XCTAssertEqual(listen.recording.title, "Track")
     }
 
+    func testSpotifyIDWinsOverOriginAndNormalizesToHTTPS() {
+        let link = ExternalMediaLink.resolve(
+            spotifyID: "spotify:track:4uLU6hMCjMI75M1A2tKUQC",
+            originURL: "https://youtu.be/dQw4w9WgXcQ?tracking=discarded"
+        )
+
+        XCTAssertEqual(link?.service, .spotify)
+        XCTAssertEqual(link?.url.absoluteString, "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC")
+        XCTAssertEqual(link?.actionTitle, "Open in Spotify")
+    }
+
+    func testRecognizedOriginsNormalizeIdentityCriticalValuesOnly() {
+        XCTAssertEqual(
+            ExternalMediaLink.resolve(spotifyID: nil, originURL: "https://www.youtube.com/watch?v=dQw4w9WgXcQ&utm_source=ignored#fragment")?.url.absoluteString,
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        )
+        XCTAssertEqual(
+            ExternalMediaLink.resolve(spotifyID: nil, originURL: "https://music.apple.com/us/album/example/123456789?i=987654321&utm=ignored")?.url.absoluteString,
+            "https://music.apple.com/us/album/example/123456789?i=987654321"
+        )
+        XCTAssertEqual(
+            ExternalMediaLink.resolve(spotifyID: nil, originURL: "https://www.soundcloud.com/artist/track?si=secret")?.url.absoluteString,
+            "https://soundcloud.com/artist/track"
+        )
+        XCTAssertEqual(
+            ExternalMediaLink.resolve(spotifyID: nil, originURL: "https://archive.org/details/example_item?ref=ignored")?.url.absoluteString,
+            "https://archive.org/details/example_item"
+        )
+        XCTAssertEqual(
+            ExternalMediaLink.resolve(spotifyID: nil, originURL: "https://artist.bandcamp.com/track/example-track?from=discover")?.url.absoluteString,
+            "https://artist.bandcamp.com/track/example-track"
+        )
+        XCTAssertEqual(
+            ExternalMediaLink.resolve(spotifyID: nil, originURL: "https://music.youtube.com/watch?v=dQw4w9WgXcQ&list=discarded")?.url.absoluteString,
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        )
+        XCTAssertEqual(
+            ExternalMediaLink.resolve(spotifyID: nil, originURL: "https://m.soundcloud.com/%E3%82%A2%E3%83%BC%E3%83%86%E3%82%A3%E3%82%B9%E3%83%88/%E6%9B%B2?si=discarded")?.url.absoluteString,
+            "https://soundcloud.com/%E3%82%A2%E3%83%BC%E3%83%86%E3%82%A3%E3%82%B9%E3%83%88/%E6%9B%B2"
+        )
+        XCTAssertEqual(
+            ExternalMediaLink.resolve(spotifyID: nil, originURL: "https://on.soundcloud.com/public-share?si=discarded")?.url.absoluteString,
+            "https://on.soundcloud.com/public-share"
+        )
+        XCTAssertEqual(
+            ExternalMediaLink.resolve(spotifyID: "https://open.spotify.com/intl-de/track/4uLU6hMCjMI75M1A2tKUQC?si=discarded", originURL: nil)?.url.absoluteString,
+            "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"
+        )
+        XCTAssertEqual(
+            ExternalMediaLink.resolve(spotifyID: nil, originURL: "https://open%2espotify.com/track/4uLU6hMCjMI75M1A2tKUQC")?.url.absoluteString,
+            "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"
+        )
+    }
+
+    func testExternalLinksRejectArbitraryAndUnsafeOrigins() {
+        let rejected = [
+            "http://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC",
+            "https://user:password@open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC",
+            "https://open.spotify.com:444/track/4uLU6hMCjMI75M1A2tKUQC",
+            "https://open.spotify.com.evil.example/track/4uLU6hMCjMI75M1A2tKUQC",
+            "https://open.spotify.com%2eevil.example/track/4uLU6hMCjMI75M1A2tKUQC",
+            "https://youtu.be.evil.example/dQw4w9WgXcQ",
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ&v=aaaaaaaaaaa",
+            "https://example.org/music.mp3",
+            "https://bandcamp.com/track/not-a-subdomain",
+            "https://.artist.bandcamp.com/track/example",
+            "https://artist..bandcamp.com/track/example",
+            "https://-artist.bandcamp.com/track/example",
+            "https://artist.bandcamp.com/settings/profile",
+            "https://artist.bandcamp.com/%2Ftrack%2Fexample",
+            "https://soundcloud.com/artist/../track",
+            "https://music.apple.com/us/album/example/123456789?i=111&i=222",
+        ]
+
+        for origin in rejected {
+            XCTAssertNil(ExternalMediaLink.resolve(spotifyID: nil, originURL: origin), origin)
+        }
+        XCTAssertNil(ExternalMediaLink.resolve(spotifyID: String(repeating: "a", count: 2_049), originURL: nil))
+    }
+
+    func testProviderMapsSameResolvedLinkToRecordingAndInspection() throws {
+        let metadata = try decodeMetadata("""
+        {"artist_name":"Artist","track_name":"Track","additional_info":{"spotify_id":"4uLU6hMCjMI75M1A2tKUQC","origin_url":"https://youtu.be/dQw4w9WgXcQ"}}
+        """)
+
+        let recording = ListenBrainzProvider.map(metadata, msid: nil)
+        let inspection = ListenBrainzProvider.inspection(metadata, msid: nil)
+
+        XCTAssertEqual(recording.externalLink?.url, URL(string: "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"))
+        XCTAssertEqual(inspection.externalLink, recording.externalLink)
+    }
+
+    func testOlderCachedRecordingAndInspectionDecodeWithoutExternalLink() throws {
+        let recordingJSON = """
+        {"identity":{"mbid":null,"msid":null},"title":"Track","artistName":"Artist","artistMBIDs":[],"releaseTitle":null,"releaseMBID":null,"releaseGroupMBID":null,"artworkReleaseMBID":null,"durationMilliseconds":null,"source":null}
+        """
+        let inspectionJSON = """
+        {"submittedArtist":"Artist","submittedTrack":"Track","submittedRelease":null,"recordingMSID":null,"submittedRecordingMSID":null,"submittedArtistMBIDs":[],"submittedRecordingMBID":null,"submittedReleaseMBID":null,"submittedReleaseGroupMBID":null,"submittedTrackMBID":null,"submittedWorkMBIDs":[],"resolvedArtistMBIDs":[],"resolvedRecordingMBID":null,"resolvedReleaseMBID":null,"resolvedReleaseGroupMBID":null,"resolvedRecordingName":null,"trackNumber":null,"isrc":null,"spotifyID":null,"tags":[],"mediaPlayer":null,"mediaPlayerVersion":null,"submissionClient":null,"submissionClientVersion":null,"musicService":null,"musicServiceName":null,"originURL":null,"durationMilliseconds":null}
+        """
+
+        XCTAssertNil(try JSONDecoder().decode(Recording.self, from: Data(recordingJSON.utf8)).externalLink)
+        XCTAssertNil(try JSONDecoder().decode(ListenInspection.self, from: Data(inspectionJSON.utf8)).externalLink)
+    }
+
+    func testCachedExternalLinkMustStillBeCanonicalAndMatchItsService() throws {
+        let valid = """
+        {"service":"spotify","url":"https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"}
+        """
+        let mismatched = """
+        {"service":"spotify","url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ"}
+        """
+        let arbitrary = """
+        {"service":"soundCloud","url":"https://example.org/track"}
+        """
+
+        XCTAssertEqual(
+            try JSONDecoder().decode(ExternalMediaLink.self, from: Data(valid.utf8)).actionTitle,
+            "Open in Spotify"
+        )
+        XCTAssertThrowsError(try JSONDecoder().decode(ExternalMediaLink.self, from: Data(mismatched.utf8)))
+        XCTAssertThrowsError(try JSONDecoder().decode(ExternalMediaLink.self, from: Data(arbitrary.utf8)))
+    }
+
     private func decodeMetadata(_ json: String) throws -> LBTrackMetadata {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
