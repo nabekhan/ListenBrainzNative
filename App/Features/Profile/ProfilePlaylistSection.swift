@@ -39,8 +39,7 @@ struct ProfilePlaylistSection: View {
             await model.load(category: selection)
         }
         .task(id: mutationJournal.revision) {
-            guard let edit = mutationJournal.latestConfirmedEdit else { return }
-            await model.reconcileAfterConfirmedEdit(edit)
+            await model.reconcileJournal()
         }
         .sheet(isPresented: $showsCreator) {
             PlaylistMetadataEditorSheet(

@@ -101,28 +101,94 @@ struct ConfirmedPlaylistMetadataEdit: Equatable, Sendable {
     let draft: PlaylistMetadataDraft
 }
 
+struct ConfirmedPlaylistCopy: Equatable, Sendable {
+    let ownerUsername: String
+    let playlist: SearchPlaylist
+}
+
+enum PlaylistAccessLossReason: Equatable, Sendable {
+    case authentication
+    case sourceVisibility
+}
+
+struct PlaylistAccessLossEvent: Equatable, Sendable {
+    let viewerUsername: String
+    let sourceMBID: UUID
+    let reason: PlaylistAccessLossReason
+    let message: String
+}
+
+enum PlaylistJournalEvent: Equatable, Sendable {
+    case edit(ConfirmedPlaylistMetadataEdit)
+    case copy(ConfirmedPlaylistCopy)
+    case accessLoss(PlaylistAccessLossEvent)
+}
+
+struct PlaylistJournalEntry: Equatable, Sendable {
+    let revision: Int
+    let event: PlaylistJournalEvent
+}
+
 /// A tiny process-local journal keeps already-loaded playlist lists coherent
-/// when an edit originates from Search, Discover, or another tab. It carries
-/// only confirmed metadata and never a token.
+/// when a mutation or access failure originates from Search, Discover, or
+/// another tab. It carries no token.
 @MainActor
 @Observable
 final class PlaylistMutationJournal {
     static let shared = PlaylistMutationJournal()
 
     private(set) var revision = 0
-    private(set) var latestConfirmedEdit: ConfirmedPlaylistMetadataEdit?
+    private(set) var events: [PlaylistJournalEntry] = []
+
+    func entries(after revision: Int) -> [PlaylistJournalEntry] {
+        events.filter { $0.revision > revision }
+    }
 
     func recordConfirmedEdit(
         mbid: UUID,
         ownerUsername: String,
         draft: PlaylistMetadataDraft
     ) {
-        latestConfirmedEdit = ConfirmedPlaylistMetadataEdit(
+        record(.edit(ConfirmedPlaylistMetadataEdit(
             mbid: mbid,
             ownerUsername: Self.usernameKey(ownerUsername),
             draft: draft
-        )
-        revision = revision == Int.max ? 1 : revision + 1
+        )))
+    }
+
+    func recordConfirmedCopy(
+        _ playlist: SearchPlaylist,
+        ownerUsername: String
+    ) {
+        record(.copy(ConfirmedPlaylistCopy(
+            ownerUsername: Self.usernameKey(ownerUsername),
+            playlist: playlist
+        )))
+    }
+
+    func recordAccessLoss(
+        sourceMBID: UUID,
+        viewerUsername: String,
+        reason: PlaylistAccessLossReason,
+        message: String,
+        profilePageCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage> = ProfilePlaylistCaches.pages
+    ) async {
+        // New Profile models intentionally start at the current journal
+        // revision instead of replaying historic events. Evict list snapshots
+        // before publishing so such a model cannot serve a freshly cached row
+        // whose visibility was just revoked.
+        await profilePageCache.removeAll()
+        record(.accessLoss(PlaylistAccessLossEvent(
+            viewerUsername: Self.usernameKey(viewerUsername),
+            sourceMBID: sourceMBID,
+            reason: reason,
+            message: message
+        )))
+    }
+
+    private func record(_ event: PlaylistJournalEvent) {
+        revision += 1
+        events.append(.init(revision: revision, event: event))
     }
 
     private static func usernameKey(_ value: String) -> String {

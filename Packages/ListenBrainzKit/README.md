@@ -120,20 +120,20 @@ Running integration tests requires setting a ListenBrainz token in the environme
   - [ ] POST /1/popularity/release
   - [ ] POST /1/popularity/release-group
 - Playlists
-  - [ ] GET  /1/user/(playlist_user_name)/playlists
-  - [ ] GET  /1/user/(playlist_user_name)/playlists/createdfor
-  - [ ] GET  /1/user/(playlist_user_name)/playlists/collaborator
-  - [ ] POST /1/playlist/create
-  - [ ] GET  /1/playlist/search
-  - [ ] POST /1/playlist/edit/(playlist_mbid)
-  - [ ] GET  /1/playlist/(playlist_mbid)
+  - [x] GET  /1/user/(playlist_user_name)/playlists
+  - [x] GET  /1/user/(playlist_user_name)/playlists/createdfor
+  - [x] GET  /1/user/(playlist_user_name)/playlists/collaborator
+  - [x] POST /1/playlist/create
+  - [x] GET  /1/playlist/search
+  - [x] POST /1/playlist/edit/(playlist_mbid)
+  - [x] GET  /1/playlist/(playlist_mbid)
   - [ ] GET  /1/playlist/(playlist_mbid)/xspf
-  - [ ] POST /1/playlist/(playlist_mbid)/item/add
+  - [x] POST /1/playlist/(playlist_mbid)/item/add
   - [ ] POST /1/playlist/(playlist_mbid)/item/add/(int: offset)
   - [ ] POST /1/playlist/(playlist_mbid)/item/move
   - [ ] POST /1/playlist/(playlist_mbid)/item/delete
   - [ ] POST /1/playlist/(playlist_mbid)/delete
-  - [ ] POST /1/playlist/(playlist_mbid)/copy
+  - [x] POST /1/playlist/(playlist_mbid)/copy
   - [ ] POST /1/playlist/(playlist_mbid)/export/(service)
   - [ ] GET  /1/playlist/import/(service)
   - [ ] GET  /1/playlist/(service)/(playlist_id)/tracks

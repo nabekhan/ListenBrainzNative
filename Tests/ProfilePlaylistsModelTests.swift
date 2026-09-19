@@ -347,6 +347,278 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         XCTAssertNil(cached)
     }
 
+    func testConfirmedCopyPrependsLoadedOwnedRowAndInvalidatesPageWithoutRefetching() async {
+        let originalMBID = UUID()
+        let copiedMBID = UUID()
+        let original = SearchPlaylist(
+            title: "Original",
+            creator: "listener",
+            annotation: nil,
+            identifier: "https://listenbrainz.org/playlist/\(originalMBID.uuidString)",
+            isPublic: true,
+            lastModifiedAt: nil
+        )
+        let copy = SearchPlaylist(
+            title: "Copy of Original",
+            creator: "listener",
+            annotation: nil,
+            identifier: "https://listenbrainz.org/playlist/\(copiedMBID.uuidString)",
+            isPublic: true,
+            lastModifiedAt: nil
+        )
+        let provider = PlaylistFixtureProvider(pages: [
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned,
+                offset: 0,
+                total: 1,
+                rows: [original]
+            ),
+        ])
+        let cache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
+        let model = ProfilePlaylistsModel(
+            account: .init(username: "Listener", token: "token"),
+            provider: provider,
+            cache: cache
+        )
+        await model.load(category: .owned)
+
+        await model.reconcileAfterConfirmedCopy(.init(
+            ownerUsername: "listener",
+            playlist: copy
+        ))
+
+        let state = model.state(for: .owned)
+        XCTAssertEqual(state.playlists.map(\.playlistMBID), [copiedMBID, originalMBID])
+        XCTAssertEqual(state.totalCount, 2)
+        let calls = await provider.calls
+        XCTAssertEqual(calls, [.init(category: .owned, offset: 0)])
+        let cached = await cache.value(for: .init(
+            username: "listener",
+            accessScope: .authenticatedViewer("listener"),
+            category: .owned,
+            offset: 0,
+            count: 20
+        ))
+        XCTAssertNil(cached)
+    }
+
+    func testSourceVisibilityLossRemovesOnlyMatchingRenderedRowsAndClearsPages() async {
+        let sourceMBID = UUID()
+        let otherMBID = UUID()
+        let source = playlist(mbid: sourceMBID, title: "Private source")
+        let other = playlist(mbid: otherMBID, title: "Keep me")
+        let provider = PlaylistFixtureProvider(pages: [
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned,
+                offset: 0,
+                total: 2,
+                rows: [source, other]
+            ),
+            .init(category: .collaborating, offset: 0): makePage(
+                category: .collaborating,
+                offset: 0,
+                total: 2,
+                rows: [source, other]
+            ),
+        ])
+        let cache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
+        let model = ProfilePlaylistsModel(
+            account: .init(username: "Listener", token: "token"),
+            provider: provider,
+            cache: cache
+        )
+        await model.load(category: .owned)
+        await model.load(category: .collaborating)
+
+        await model.reconcileAfterAccessLoss(.init(
+            viewerUsername: "listener",
+            sourceMBID: sourceMBID,
+            reason: .sourceVisibility,
+            message: "No longer visible"
+        ))
+
+        for category in ProfilePlaylistCategory.allCases {
+            let state = model.state(for: category)
+            XCTAssertEqual(state.playlists.map(\.playlistMBID), [otherMBID])
+            XCTAssertEqual(state.totalCount, 1)
+            XCTAssertEqual(state.nextOffset, 0)
+            XCTAssertFalse(state.hasMore)
+            XCTAssertFalse(state.isLoadingMore)
+            XCTAssertNotNil(state.refreshMessage)
+            let cached = await cache.value(for: .init(
+                username: "listener",
+                accessScope: .authenticatedViewer("listener"),
+                category: category,
+                offset: 0,
+                count: 20
+            ))
+            XCTAssertNil(cached)
+        }
+
+        await model.loadMore(category: .owned)
+        var calls = await provider.calls
+        XCTAssertEqual(calls, [
+            .init(category: .owned, offset: 0),
+            .init(category: .collaborating, offset: 0),
+        ])
+
+        await model.refresh(category: .owned)
+        calls = await provider.calls
+        XCTAssertEqual(calls.last, .init(category: .owned, offset: 0))
+    }
+
+    func testSourceVisibilityLossInvalidatesAnOlderInFlightProfileRequest() async {
+        let sourceMBID = UUID()
+        let provider = AccessLossBlockingPlaylistProvider(sourceMBID: sourceMBID)
+        let model = makeModel(provider: provider)
+        let load = Task { await model.load(category: .owned) }
+        await provider.waitForRequest()
+
+        await model.reconcileAfterAccessLoss(.init(
+            viewerUsername: "listener",
+            sourceMBID: sourceMBID,
+            reason: .sourceVisibility,
+            message: "No longer visible"
+        ))
+        await provider.release()
+        await load.value
+
+        let state = model.state(for: .owned)
+        XCTAssertTrue(state.playlists.isEmpty)
+        XCTAssertEqual(state.phase, .ready)
+        XCTAssertNotNil(state.refreshMessage)
+    }
+
+    func testAccessLossCannotBeOverwrittenByLaterCopyOrEditEvents() async {
+        let sourceMBID = UUID()
+        let destinationMBID = UUID()
+        let source = playlist(mbid: sourceMBID, title: "Private source")
+        let journal = PlaylistMutationJournal()
+        let journalCache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
+        let provider = PlaylistFixtureProvider(pages: [
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned,
+                offset: 0,
+                total: 1,
+                rows: [source]
+            ),
+        ])
+        let model = makeModel(provider: provider, mutationJournal: journal)
+        await model.load(category: .owned)
+        await journal.recordAccessLoss(
+            sourceMBID: sourceMBID,
+            viewerUsername: "listener",
+            reason: .sourceVisibility,
+            message: "No longer visible",
+            profilePageCache: journalCache
+        )
+        journal.recordConfirmedCopy(
+            playlist(mbid: destinationMBID, title: "Safe copy"),
+            ownerUsername: "listener"
+        )
+        journal.recordConfirmedEdit(
+            mbid: sourceMBID,
+            ownerUsername: "listener",
+            draft: .init(title: "Stale edit", isPublic: false)
+        )
+
+        await model.reconcileJournal()
+
+        let state = model.state(for: .owned)
+        XCTAssertEqual(state.playlists.map(\.playlistMBID), [destinationMBID])
+        XCTAssertNotNil(state.refreshMessage)
+    }
+
+    func testNewProfileModelDoesNotReplayHistoricAccessLossFromTheJournal() async {
+        let staleMBID = UUID()
+        let restoredMBID = UUID()
+        let journal = PlaylistMutationJournal()
+        let cache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
+        let key = ProfilePlaylistPageKey(
+            username: "listener",
+            accessScope: .authenticatedViewer("listener"),
+            category: .owned,
+            offset: 0,
+            count: 20
+        )
+        await cache.save(
+            makePage(
+                category: .owned,
+                offset: 0,
+                total: 1,
+                rows: [playlist(mbid: staleMBID, title: "Stale private row")]
+            ),
+            for: key
+        )
+        await journal.recordAccessLoss(
+            sourceMBID: staleMBID,
+            viewerUsername: "listener",
+            reason: .authentication,
+            message: "Old revoked session",
+            profilePageCache: cache
+        )
+        let provider = PlaylistFixtureProvider(pages: [
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned,
+                offset: 0,
+                total: 1,
+                rows: [playlist(mbid: restoredMBID, title: "Current server row")]
+            ),
+        ])
+        let model = ProfilePlaylistsModel(
+            account: .init(username: "listener", token: "new-token"),
+            provider: provider,
+            cache: cache,
+            mutationJournal: journal
+        )
+
+        await model.load(category: .owned)
+        await model.reconcileJournal()
+
+        let state = model.state(for: .owned)
+        XCTAssertEqual(state.phase, .ready)
+        XCTAssertEqual(state.playlists.map(\.playlistMBID), [restoredMBID])
+        XCTAssertNil(state.refreshMessage)
+        let calls = await provider.calls
+        XCTAssertEqual(calls, [.init(category: .owned, offset: 0)])
+    }
+
+    func testAuthenticationLossClearsEveryRenderedPlaylistCategory() async {
+        let provider = PlaylistFixtureProvider(pages: [
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned,
+                offset: 0,
+                total: 1,
+                rows: [playlist(mbid: UUID(), title: "Private")]
+            ),
+            .init(category: .collaborating, offset: 0): makePage(
+                category: .collaborating,
+                offset: 0,
+                total: 1,
+                rows: [playlist(mbid: UUID(), title: "Shared")]
+            ),
+        ])
+        let model = makeModel(provider: provider)
+        await model.load(category: .owned)
+        await model.load(category: .collaborating)
+
+        await model.reconcileAfterAccessLoss(.init(
+            viewerUsername: "LISTENER",
+            sourceMBID: UUID(),
+            reason: .authentication,
+            message: "Reconnect your token"
+        ))
+
+        for category in ProfilePlaylistCategory.allCases {
+            let state = model.state(for: category)
+            XCTAssertTrue(state.playlists.isEmpty)
+            guard case let .failed(message) = state.phase else {
+                return XCTFail("Expected \(category) to discard access-sensitive state")
+            }
+            XCTAssertEqual(message, "Reconnect your token")
+        }
+    }
+
     func testCancellationReturnsToIdle() async {
         let blocking = BlockingPlaylistProvider()
         let model = makeModel(provider: blocking)
@@ -428,13 +700,15 @@ final class ProfilePlaylistsModelTests: XCTestCase {
 
     private func makeModel(
         provider: some ProfilePlaylistsProviding,
-        pageSize: Int = 20
+        pageSize: Int = 20,
+        mutationJournal: PlaylistMutationJournal? = nil
     ) -> ProfilePlaylistsModel {
         .init(
             account: .init(username: "listener", token: "token"),
             provider: provider,
             cache: EntityDetailCache(),
-            pageSize: pageSize
+            pageSize: pageSize,
+            mutationJournal: mutationJournal
         )
     }
 }
@@ -530,6 +804,42 @@ private actor BlockingPlaylistProvider: ProfilePlaylistsProviding {
     func release() { continuation?.resume(); continuation = nil }
 }
 
+private actor AccessLossBlockingPlaylistProvider: ProfilePlaylistsProviding {
+    let sourceMBID: UUID
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var requested = false
+
+    init(sourceMBID: UUID) {
+        self.sourceMBID = sourceMBID
+    }
+
+    func page(
+        username: String,
+        category: ProfilePlaylistCategory,
+        offset: Int,
+        count: Int
+    ) async throws -> ProfilePlaylistPage {
+        requested = true
+        await withCheckedContinuation { continuation = $0 }
+        return makePage(
+            category: category,
+            offset: offset,
+            total: 1,
+            rows: [playlist(mbid: sourceMBID, title: "Private source")],
+            requestedCount: count
+        )
+    }
+
+    func waitForRequest() async {
+        while !requested { await Task.yield() }
+    }
+
+    func release() {
+        continuation?.resume()
+        continuation = nil
+    }
+}
+
 private actor CancellationRetryPlaylistProvider: ProfilePlaylistsProviding {
     private var continuation: CheckedContinuation<Void, Never>?
     private(set) var requestCount = 0
@@ -611,5 +921,16 @@ private func playlist(_ identifier: String) -> SearchPlaylist {
         durationMilliseconds: 123,
         createdFor: "listener",
         collaborators: ["friend"]
+    )
+}
+
+private func playlist(mbid: UUID, title: String) -> SearchPlaylist {
+    .init(
+        title: title,
+        creator: "listener",
+        annotation: nil,
+        identifier: "https://listenbrainz.org/playlist/\(mbid.uuidString)",
+        isPublic: false,
+        lastModifiedAt: nil
     )
 }

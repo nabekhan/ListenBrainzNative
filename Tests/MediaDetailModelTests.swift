@@ -353,6 +353,7 @@ final class MediaDetailModelTests: XCTestCase {
         await model.load()
 
         XCTAssertNil(model.detail)
+        XCTAssertTrue(model.accessWasLost)
         guard case .failed = model.phase else {
             return XCTFail("Expected revoked access to remove stale private detail")
         }

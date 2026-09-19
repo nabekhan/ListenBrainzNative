@@ -155,27 +155,30 @@ enum MediaDetailError: LocalizedError, Sendable {
 /// Access failures must not preserve previously cached private playlist data.
 /// Transport/offline/rate-limit failures remain eligible for stale display.
 enum PlaylistAccessFailurePolicy {
-    static func requiresPurge(_ error: any Error) -> Bool {
+    static func reason(for error: any Error) -> PlaylistAccessLossReason? {
         if let error = error as? MediaDetailError {
-            if case .playlistUnavailable = error { return true }
+            if case .playlistUnavailable = error { return .sourceVisibility }
         }
         if let error = error as? ProviderError {
-            if case .invalidToken = error { return true }
+            if case .invalidToken = error { return .authentication }
         }
         if let error = error as? ProfilePlaylistsProviderError {
             switch error {
-            case .invalidAuthentication, .profileUnavailable:
-                return true
+            case .invalidAuthentication: return .authentication
+            case .profileUnavailable: return .sourceVisibility
             }
         }
         if let error = error as? PlaylistMutationProviderError {
             switch error {
-            case .invalidAuthentication, .notCollaborator, .playlistUnavailable:
-                return true
-            default:
-                return false
+            case .invalidAuthentication: return .authentication
+            case .notCollaborator, .playlistUnavailable: return .sourceVisibility
+            default: return nil
             }
         }
-        return false
+        return nil
+    }
+
+    static func requiresPurge(_ error: any Error) -> Bool {
+        reason(for: error) != nil
     }
 }

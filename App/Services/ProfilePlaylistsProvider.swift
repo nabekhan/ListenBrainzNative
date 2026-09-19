@@ -123,6 +123,7 @@ struct ListenBrainzProfilePlaylistsProvider: ProfilePlaylistsProviding {
                     durationMilliseconds: $0.duration,
                     createdFor: $0.createdFor,
                     collaborators: $0.collaborators ?? [],
+                    copiedFrom: $0.copiedFrom,
                     recommendationType: $0.recommendationType,
                     expiresAt: $0.expiresAt
                 )

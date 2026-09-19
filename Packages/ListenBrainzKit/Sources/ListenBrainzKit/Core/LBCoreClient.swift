@@ -285,6 +285,21 @@ public struct LBCoreClient: Sendable {
         guard response.status == "ok" else { throw LBError.invalidResponse }
     }
 
+    /// Duplicate a visible ListenBrainz playlist into the authenticated user's
+    /// collection. The server preserves the source visibility and track order,
+    /// assigns the copy to the caller, and does not carry collaborators over.
+    ///
+    /// This mutation has no idempotency key. Callers must not automatically
+    /// replay it after an ambiguous transport result because each successful
+    /// request creates another playlist.
+    ///
+    /// - Returns: The UUID of the newly created copy.
+    public func copyPlaylist(mbid: UUID) async throws -> UUID {
+        let response = try await apiClient.execute(CopyPlaylistRequest(mbid: mbid))
+        guard response.status == "ok" else { throw LBError.invalidResponse }
+        return response.playlistMBID
+    }
+
     /// Get playlists created for the given user
     /// - Parameters:
     ///   - username: User the playlists are created for

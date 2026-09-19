@@ -159,6 +159,33 @@ import Testing
         }
     }
 
+    @Test("Playlist copy uses an empty one-shot POST and returns the new MBID")
+    func copyRequest() async throws {
+        let copiedMBID = UUID(uuidString: "dddddddd-dddd-4ddd-8ddd-dddddddddddd")!
+        let decoded = try JSONDecoder.ListenBrainz.decode(
+            PlaylistCopyResponse.self,
+            from: Data(#"{"status":"ok","playlist_mbid":"dddddddd-dddd-4ddd-8ddd-dddddddddddd"}"#.utf8)
+        )
+        #expect(decoded.playlistMBID == copiedMBID)
+
+        let mock = MockAPIClient(result: .success(decoded))
+        let result = try await LBCoreClient(mock).copyPlaylist(mbid: playlistMBID)
+
+        #expect(result == copiedMBID)
+        let request = try #require(mock.request as? CopyPlaylistRequest)
+        #expect(request.data.path == "/1/playlist/\(playlistMBID.uuidString)/copy")
+        #expect(request.data.method == .post)
+        #expect(request.data.body == nil)
+        #expect(request.data.statusErrors == copyStatusErrors)
+
+        let unexpectedStatus = MockAPIClient(result: .success(
+            PlaylistCopyResponse(status: "queued", playlistMBID: copiedMBID)
+        ))
+        await #expect(throws: LBError.invalidResponse) {
+            _ = try await LBCoreClient(unexpectedStatus).copyPlaylist(mbid: playlistMBID)
+        }
+    }
+
     private func playlistJSON(_ body: PlaylistMutationBody?) throws -> [String: Any] {
         let body = try #require(body)
         let data = try JSONEncoder.ListenBrainz.encode(body)
@@ -184,6 +211,12 @@ import Testing
     ]
     private let addStatusErrors: [Int: LBError] = [
         400: .invalidJSON,
+        401: .invalidAuth,
+        403: .forbidden,
+        404: .notFound,
+    ]
+    private let copyStatusErrors: [Int: LBError] = [
+        400: .badRequest,
         401: .invalidAuth,
         403: .forbidden,
         404: .notFound,

@@ -1182,6 +1182,8 @@ struct SearchPlaylist: Identifiable, Hashable, Sendable {
     let createdFor: String?
     /// Usernames that can collaborate on this playlist.
     let collaborators: [String]
+    /// Source playlist MBID when ListenBrainz reports this as a server-side copy.
+    let copiedFrom: String?
     let recommendationType: String?
     let expiresAt: Date?
 
@@ -1196,6 +1198,7 @@ struct SearchPlaylist: Identifiable, Hashable, Sendable {
         durationMilliseconds: Int? = nil,
         createdFor: String? = nil,
         collaborators: [String] = [],
+        copiedFrom: String? = nil,
         recommendationType: String? = nil,
         expiresAt: Date? = nil
     ) {
@@ -1209,6 +1212,7 @@ struct SearchPlaylist: Identifiable, Hashable, Sendable {
         self.lastModifiedAt = lastModifiedAt
         self.createdFor = createdFor
         self.collaborators = collaborators
+        self.copiedFrom = copiedFrom
         self.recommendationType = recommendationType
         self.expiresAt = expiresAt
     }
@@ -1235,6 +1239,11 @@ struct SearchPlaylist: Identifiable, Hashable, Sendable {
     var listenBrainzURL: URL? {
         guard let playlistMBID else { return nil }
         return URL(string: "https://listenbrainz.org/playlist/\(playlistMBID.uuidString)")
+    }
+
+    var copiedFromMBID: UUID? {
+        guard let copiedFrom else { return nil }
+        return UUID(uuidString: copiedFrom.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 }
 

@@ -23,7 +23,8 @@ struct MainTabView: View {
         if ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-edit-demo")
-            || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-add-demo") {
+            || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-add-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo") {
             let visualAccount = Account(username: "visual-listener", token: "visual-token")
             _model = State(initialValue: ListeningModel(
                 account: visualAccount,
@@ -131,7 +132,9 @@ struct MainTabView: View {
 
     var body: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-edit-demo") {
+        if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo") {
+            PlaylistCopyVisualQAScreen()
+        } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-edit-demo") {
             PlaylistMutationVisualQAScreen()
         } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-add-demo") {
             PlaylistAddVisualQAScreen()

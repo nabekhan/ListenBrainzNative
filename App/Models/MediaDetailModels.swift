@@ -173,6 +173,7 @@ final class PlaylistDetailModel {
     private(set) var detail: PlaylistDetail?
     private(set) var phase: EntityDetailPhase = .idle
     private(set) var refreshMessage: String?
+    private(set) var accessWasLost = false
     private var didLoad = false
     private var requestID = UUID()
 
@@ -228,6 +229,7 @@ final class PlaylistDetailModel {
             try Task.checkCancellation()
             guard requestID == id else { throw CancellationError() }
             detail = value
+            accessWasLost = false
             phase = .ready
             await removePublicCacheIfPrivate(value)
             await cache.save(value, for: cacheKey(mbid: mbid))
@@ -287,6 +289,7 @@ final class PlaylistDetailModel {
             tracks: current.tracks
         )
         detail = confirmed
+        accessWasLost = false
         phase = .ready
         refreshMessage = nil
         // A public-to-private edit must not leave any viewer scope with a
@@ -297,6 +300,16 @@ final class PlaylistDetailModel {
         await refresh()
     }
 
+    /// Authentication or visibility failures must also remove an already
+    /// rendered private snapshot, not merely evict its cached copy.
+    func discardAfterAccessLoss(message: String) async {
+        detail = nil
+        refreshMessage = nil
+        accessWasLost = true
+        phase = .failed(message)
+        await cache.removeAll()
+    }
+
     private func fetch(mbid: UUID) async {
         let id = UUID()
         requestID = id
@@ -305,6 +318,7 @@ final class PlaylistDetailModel {
             try Task.checkCancellation()
             guard requestID == id else { return }
             detail = value
+            accessWasLost = false
             refreshMessage = nil
             phase = .ready
             await removePublicCacheIfPrivate(value)
@@ -342,6 +356,7 @@ final class PlaylistDetailModel {
         guard PlaylistAccessFailurePolicy.requiresPurge(error) else { return false }
         detail = nil
         refreshMessage = nil
+        accessWasLost = true
         phase = .failed(error.localizedDescription)
         await cache.removeAll()
         return true

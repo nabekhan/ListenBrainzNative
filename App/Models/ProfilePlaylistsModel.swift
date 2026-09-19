@@ -49,8 +49,11 @@ final class ProfilePlaylistsModel {
     private let provider: any ProfilePlaylistsProviding
     private let cache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>
     private let pageSize: Int
+    @ObservationIgnored private let mutationJournal: PlaylistMutationJournal
     private var requestIDs: [ProfilePlaylistCategory: UUID] = [:]
     private var requestedOffsets: [ProfilePlaylistCategory: Set<Int>] = [:]
+    private var lastProcessedJournalRevision = 0
+    private var isReconcilingJournal = false
     private var loadWaiters: [
         ProfilePlaylistCategory: [UUID: CheckedContinuation<Void, Never>]
     ] = [:]
@@ -63,12 +66,16 @@ final class ProfilePlaylistsModel {
         account: Account,
         provider: (any ProfilePlaylistsProviding)? = nil,
         cache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage> = ProfilePlaylistCaches.pages,
-        pageSize: Int = 20
+        pageSize: Int = 20,
+        mutationJournal: PlaylistMutationJournal? = nil
     ) {
+        let resolvedJournal = mutationJournal ?? .shared
         self.account = account
         self.provider = provider ?? ListenBrainzProfilePlaylistsProvider(token: account.token)
         self.cache = cache
         self.pageSize = min(max(pageSize, 1), 100)
+        self.mutationJournal = resolvedJournal
+        lastProcessedJournalRevision = resolvedJournal.revision
     }
 
     func state(for category: ProfilePlaylistCategory) -> ProfilePlaylistCategoryState {
@@ -159,11 +166,105 @@ final class ProfilePlaylistsModel {
                     durationMilliseconds: playlist.durationMilliseconds,
                     createdFor: playlist.createdFor,
                     collaborators: draft.collaborators,
+                    copiedFrom: playlist.copiedFrom,
                     recommendationType: playlist.recommendationType,
                     expiresAt: playlist.expiresAt
                 )
             }
             states[category] = current
+        }
+    }
+
+    func reconcileAfterConfirmedCopy(_ copy: ConfirmedPlaylistCopy) async {
+        guard account.isAuthenticated,
+              Self.normalized(account.username) == Self.normalized(copy.ownerUsername)
+        else { return }
+
+        await cache.removeAll()
+        var owned = state(for: .owned)
+        // Preserve lazy loading: an unseen Owned tab will fetch the canonical
+        // server page later. An already-loaded tab receives the confirmed row
+        // immediately so navigating back cannot show a stale list.
+        guard owned.phase != .idle else { return }
+        if !owned.playlists.contains(where: { $0.playlistMBID == copy.playlist.playlistMBID }) {
+            owned.playlists.insert(copy.playlist, at: 0)
+            if let totalCount = owned.totalCount {
+                owned.totalCount = totalCount + 1
+            }
+        }
+        if case .failed = owned.phase {
+            owned.phase = .ready
+        }
+        states[.owned] = owned
+    }
+
+    func reconcileAfterJournalEvent(_ event: PlaylistJournalEvent) async {
+        switch event {
+        case let .edit(edit):
+            await reconcileAfterConfirmedEdit(edit)
+        case let .copy(copy):
+            await reconcileAfterConfirmedCopy(copy)
+        case let .accessLoss(accessLoss):
+            await reconcileAfterAccessLoss(accessLoss)
+        }
+    }
+
+    /// SwiftUI restarts revision-keyed tasks when another event arrives. Keep
+    /// draining in one model-owned loop so a cancelled predecessor cannot
+    /// replay an older copy event after a later access-loss purge.
+    func reconcileJournal() async {
+        guard !isReconcilingJournal else { return }
+        isReconcilingJournal = true
+        defer { isReconcilingJournal = false }
+
+        while true {
+            let pending = mutationJournal.entries(after: lastProcessedJournalRevision)
+            guard !pending.isEmpty else { return }
+            for entry in pending {
+                await reconcileAfterJournalEvent(entry.event)
+                lastProcessedJournalRevision = entry.revision
+            }
+        }
+    }
+
+    func reconcileAfterAccessLoss(_ event: PlaylistAccessLossEvent) async {
+        guard account.isAuthenticated,
+              Self.normalized(account.username) == Self.normalized(event.viewerUsername)
+        else { return }
+
+        switch event.reason {
+        case .authentication:
+            await discardAccessSensitiveState(message: event.message)
+        case .sourceVisibility:
+            // The source may have appeared in either category. Remove only
+            // that row from rendered state. Every in-flight request and page
+            // cursor is invalidated first: a server row may have shifted at
+            // any offset, and an older request must not restore private data.
+            for category in ProfilePlaylistCategory.allCases {
+                requestIDs[category] = UUID()
+                requestedOffsets[category] = []
+                var current = state(for: category)
+                let originalCount = current.playlists.count
+                current.playlists.removeAll { $0.playlistMBID == event.sourceMBID }
+                let removedCount = originalCount - current.playlists.count
+                if removedCount > 0, let totalCount = current.totalCount {
+                    current.totalCount = max(0, totalCount - removedCount)
+                } else if removedCount == 0, current.phase != .idle {
+                    current.totalCount = nil
+                }
+                if current.phase != .idle {
+                    current.phase = .ready
+                    current.nextOffset = 0
+                    current.hasMore = false
+                    current.isLoadingMore = false
+                    current.loadMoreError = nil
+                    current.loadMoreRetryOffset = nil
+                    current.refreshMessage = "Playlist access changed. Refresh to load the latest list."
+                }
+                states[category] = current
+                resumeLoadWaiters(category: category)
+            }
+            await cache.removeAll()
         }
     }
 

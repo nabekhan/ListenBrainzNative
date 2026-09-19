@@ -19,6 +19,14 @@ protocol PlaylistAppendTransport: Sendable {
     func append(recordingMBIDs: [UUID], to playlistMBID: UUID) async throws
 }
 
+protocol PlaylistCopyProviding: Sendable {
+    func copy(mbid: UUID) async throws -> UUID
+}
+
+protocol PlaylistCopyTransport: Sendable {
+    func copy(mbid: UUID) async throws -> UUID
+}
+
 private struct LivePlaylistMutationTransport: PlaylistMutationTransport {
     let client: LBClient
 
@@ -36,6 +44,101 @@ private struct LivePlaylistAppendTransport: PlaylistAppendTransport {
 
     func append(recordingMBIDs: [UUID], to playlistMBID: UUID) async throws {
         try await client.core.addPlaylistItems(mbid: playlistMBID, recordingMBIDs: recordingMBIDs)
+    }
+}
+
+private struct LivePlaylistCopyTransport: PlaylistCopyTransport {
+    let client: LBClient
+
+    func copy(mbid: UUID) async throws -> UUID {
+        try await client.core.copyPlaylist(mbid: mbid)
+    }
+}
+
+/// A one-shot copy boundary. ListenBrainz creates a distinct playlist for
+/// every successful POST and exposes no idempotency key, so a request that may
+/// have reached the server is never replayed automatically.
+struct ListenBrainzPlaylistCopyProvider: PlaylistCopyProviding {
+    private let transport: any PlaylistCopyTransport
+    private let gate: RequestGate
+    private let detailCache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>
+    private let profilePageCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>
+
+    init(
+        token: String,
+        gate: RequestGate = .shared,
+        detailCache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail> = EntityDetailCaches.playlists,
+        profilePageCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage> = ProfilePlaylistCaches.pages
+    ) {
+        transport = LivePlaylistCopyTransport(client: LBClient(
+            token: token,
+            userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"
+        ))
+        self.gate = gate
+        self.detailCache = detailCache
+        self.profilePageCache = profilePageCache
+    }
+
+    init(
+        transport: some PlaylistCopyTransport,
+        gate: RequestGate,
+        detailCache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail> = EntityDetailCaches.playlists,
+        profilePageCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage> = ProfilePlaylistCaches.pages
+    ) {
+        self.transport = transport
+        self.gate = gate
+        self.detailCache = detailCache
+        self.profilePageCache = profilePageCache
+    }
+
+    func copy(mbid: UUID) async throws -> UUID {
+        let attempt = MutationAttemptState()
+        do {
+            let copiedMBID = try await gate.perform({
+                await attempt.markTransportStarted()
+                return try await transport.copy(mbid: mbid)
+            }) { error in
+                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
+            await profilePageCache.removeAll()
+            return copiedMBID
+        } catch let LBError.rateLimited(resetIn) {
+            throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
+        } catch LBError.invalidAuth, LBError.noToken {
+            await invalidateAccessSensitiveCaches()
+            throw PlaylistMutationProviderError.invalidAuthentication
+        } catch LBError.forbidden, LBError.notFound {
+            await invalidateAccessSensitiveCaches()
+            throw PlaylistMutationProviderError.playlistUnavailable
+        } catch LBError.invalidJSON, LBError.badRequest, LBError.invalidParam {
+            throw PlaylistMutationProviderError.copyRejected
+        } catch LBError.invalidResponse, LBError.noContent, LBError.unknownError {
+            await profilePageCache.removeAll()
+            throw PlaylistMutationProviderError.indeterminateCopy
+        } catch is CancellationError {
+            guard await attempt.didStartTransport else { throw CancellationError() }
+            await profilePageCache.removeAll()
+            throw PlaylistMutationProviderError.indeterminateCopy
+        } catch {
+            // A connection failure after dispatch cannot prove that the server
+            // did not commit the copy. Clear list snapshots and prohibit replay.
+            await profilePageCache.removeAll()
+            throw PlaylistMutationProviderError.indeterminateCopy
+        }
+    }
+
+    private func invalidateAccessSensitiveCaches() async {
+        await detailCache.removeAll()
+        await profilePageCache.removeAll()
+    }
+
+    private actor MutationAttemptState {
+        private(set) var didStartTransport = false
+
+        func markTransportStarted() {
+            didStartTransport = true
+        }
     }
 }
 
@@ -292,13 +395,15 @@ enum PlaylistMutationProviderError: LocalizedError, Sendable {
     case notCollaborator
     case playlistUnavailable
     case rejected
+    case copyRejected
     case indeterminateCreation
     case indeterminateEdit
     case indeterminateAppend
+    case indeterminateCopy
 
     var isIndeterminate: Bool {
         switch self {
-        case .indeterminateCreation, .indeterminateEdit, .indeterminateAppend: true
+        case .indeterminateCreation, .indeterminateEdit, .indeterminateAppend, .indeterminateCopy: true
         default: false
         }
     }
@@ -315,12 +420,16 @@ enum PlaylistMutationProviderError: LocalizedError, Sendable {
             "This playlist was removed or is no longer available to your account."
         case .rejected:
             "ListenBrainz couldn’t save these playlist details. Check the name and try again."
+        case .copyRejected:
+            "ListenBrainz couldn’t duplicate this playlist. Reload it and try again."
         case .indeterminateCreation:
             "ListenBrainz may have created this playlist, but the response was lost. Check Owned Playlists before trying again so you don’t create a duplicate."
         case .indeterminateEdit:
             "ListenBrainz may have saved this edit, but the response was lost. Close this editor and reload the playlist before trying again."
         case .indeterminateAppend:
             "ListenBrainz may have added this recording, but the response was lost. Inspect the playlist before trying again so you don’t add a duplicate."
+        case .indeterminateCopy:
+            "ListenBrainz may have duplicated this playlist, but the response was lost. Check Owned Playlists before trying again so you don’t create another copy."
         }
     }
 }

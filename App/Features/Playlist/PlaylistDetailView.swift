@@ -6,19 +6,29 @@ struct PlaylistDetailView: View {
     private let mutationProvider: any PlaylistMutationProviding
     private let mutationJournal: PlaylistMutationJournal
     private let automaticallyPresentsEditor: Bool
+    private let automaticallyPresentsCopyConfirmation: Bool
     @State private var model: PlaylistDetailModel
+    @State private var copyModel: PlaylistCopyModel
     @State private var showsEditor = false
+    @State private var showsCopyConfirmation = false
+    @State private var copyDestination: SearchPlaylist?
     @State private var didAutomaticallyPresentEditor = false
+    @State private var didAutomaticallyPresentCopyConfirmation = false
     @State private var isPreparingEditor = false
+    @State private var isPreparingCopy = false
 
     init(
         playlist: SearchPlaylist,
         viewer: Account,
         provider: (any PlaylistDetailProviding)? = nil,
         mutationProvider: (any PlaylistMutationProviding)? = nil,
+        copyProvider: (any PlaylistCopyProviding)? = nil,
+        copyProfileProvider: (any ProfilePlaylistsProviding)? = nil,
         cache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail> = EntityDetailCaches.playlists,
         mutationJournal: PlaylistMutationJournal = .shared,
-        automaticallyPresentsEditor: Bool = false
+        copyReconciliationJournal: PlaylistCopyReconciliationJournal = .shared,
+        automaticallyPresentsEditor: Bool = false,
+        automaticallyPresentsCopyConfirmation: Bool = false
     ) {
         self.playlist = playlist
         self.viewer = viewer
@@ -26,23 +36,41 @@ struct PlaylistDetailView: View {
             ?? ListenBrainzPlaylistMutationProvider(token: viewer.token)
         self.mutationJournal = mutationJournal
         self.automaticallyPresentsEditor = automaticallyPresentsEditor
+        self.automaticallyPresentsCopyConfirmation = automaticallyPresentsCopyConfirmation
+        let resolvedDetailProvider = provider
+            ?? ListenBrainzMediaDetailProvider(token: viewer.token)
         _model = State(initialValue: PlaylistDetailModel(
             seed: playlist,
             account: viewer,
-            provider: provider,
+            provider: resolvedDetailProvider,
             cache: cache
+        ))
+        _copyModel = State(initialValue: PlaylistCopyModel(
+            account: viewer,
+            sourceMBID: playlist.playlistMBID,
+            provider: copyProvider,
+            detailProvider: resolvedDetailProvider,
+            profileProvider: copyProfileProvider,
+            reconciliationJournal: copyReconciliationJournal
         ))
     }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 24) {
-                hero
-                loadNotice
-                if let detail = model.detail {
-                    about(detail)
-                    playlistFacts(detail)
-                    tracks(detail)
+                if model.accessWasLost {
+                    accessLostContent
+                } else {
+                    hero
+                    loadNotice
+                    if copyModel.requiresReconciliation {
+                        copyReconciliationNotice
+                    }
+                    if let detail = model.detail {
+                        about(detail)
+                        playlistFacts(detail)
+                        tracks(detail)
+                    }
                 }
             }
             .padding(.horizontal, 20)
@@ -50,7 +78,7 @@ struct PlaylistDetailView: View {
         }
         .refreshable { await model.refresh() }
         .background {
-            AppTheme.artworkGradient(seed: displayTitle)
+            AppTheme.artworkGradient(seed: model.accessWasLost ? "Playlist" : displayTitle)
                 .opacity(0.1)
                 .ignoresSafeArea()
                 .mask(
@@ -61,7 +89,7 @@ struct PlaylistDetailView: View {
                     )
                 )
         }
-        .navigationTitle(displayTitle)
+        .navigationTitle(model.accessWasLost ? "Playlist Unavailable" : displayTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -79,11 +107,38 @@ struct PlaylistDetailView: View {
                     }
                     .disabled(isPreparingEditor)
                 }
-                if let url = model.detail?.listenBrainzURL ?? playlist.listenBrainzURL {
-                    Link(destination: url) {
-                        Image(systemName: "arrow.up.right.square")
+                if copyModel.isCopying || isPreparingCopy {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel(
+                            copyModel.isCopying
+                                ? "Duplicating playlist"
+                                : "Refreshing playlist before duplication"
+                        )
+                }
+                if canCopy || actionURL != nil {
+                    Menu {
+                        if canCopy {
+                            Button {
+                                Task { await presentCopyConfirmation() }
+                            } label: {
+                                Label("Duplicate Playlist", systemImage: "square.on.square")
+                            }
+                            .disabled(
+                                copyModel.isCopying
+                                    || isPreparingCopy
+                                    || copyModel.requiresReconciliation
+                            )
+                        }
+                        if let url = actionURL {
+                            Link(destination: url) {
+                                Label("Open in ListenBrainz", systemImage: "arrow.up.right.square")
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
                     }
-                    .accessibilityLabel("Open playlist in ListenBrainz")
+                    .accessibilityLabel("Playlist actions")
                 }
             }
         }
@@ -108,11 +163,62 @@ struct PlaylistDetailView: View {
                 }
             }
         }
+        .alert(
+            "Duplicate Playlist?",
+            isPresented: $showsCopyConfirmation
+        ) {
+            Button("Duplicate Playlist") {
+                Task { await duplicatePlaylist() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(copyConfirmationMessage)
+        }
+        .alert(item: copyNoticeBinding) { notice in
+            switch notice {
+            case let .confirmed(copiedPlaylist):
+                let visibility = copiedPlaylist.isPublic ? "public" : "private"
+                return Alert(
+                    title: Text("Playlist Duplicated"),
+                    message: Text(
+                        "“\(copiedPlaylist.title)” was created as a \(visibility) playlist and is now in Owned Playlists."
+                    ),
+                    primaryButton: .default(Text("Open Copy")) {
+                        copyModel.acknowledgeConfirmedCopy()
+                        copyDestination = copiedPlaylist
+                    },
+                    secondaryButton: .cancel(Text("Done")) {
+                        copyModel.acknowledgeConfirmedCopy()
+                    }
+                )
+            case let .failed(_, message):
+                return Alert(
+                    title: Text("Couldn’t Duplicate Playlist"),
+                    message: Text(message),
+                    dismissButton: .default(Text("OK")) { copyModel.dismissNotice() }
+                )
+            case let .verificationNeeded(_, _, message):
+                return Alert(
+                    title: Text("Copy Needs Verification"),
+                    message: Text(message),
+                    dismissButton: .default(Text("OK")) { copyModel.dismissNotice() }
+                )
+            }
+        }
+        .navigationDestination(item: $copyDestination) { copiedPlaylist in
+            PlaylistDetailView(playlist: copiedPlaylist, viewer: viewer)
+        }
         .task {
             await model.load()
             if automaticallyPresentsEditor, canEdit, !didAutomaticallyPresentEditor {
                 didAutomaticallyPresentEditor = true
                 await presentEditor()
+            }
+            if automaticallyPresentsCopyConfirmation,
+               canCopy,
+               !didAutomaticallyPresentCopyConfirmation {
+                didAutomaticallyPresentCopyConfirmation = true
+                await presentCopyConfirmation()
             }
         }
     }
@@ -293,6 +399,133 @@ struct PlaylistDetailView: View {
             .caseInsensitiveCompare(viewer.username.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
     }
 
+    private var canCopy: Bool {
+        !model.accessWasLost && PlaylistCopyModel.canCopy(account: viewer, detail: model.detail)
+    }
+
+    private var actionURL: URL? {
+        guard !model.accessWasLost else { return nil }
+        return model.detail?.listenBrainzURL ?? playlist.listenBrainzURL
+    }
+
+    private var copyConfirmationMessage: String {
+        "Copies current tracks, details, and privacy. You own it; no collaborators."
+    }
+
+    private var copyNoticeBinding: Binding<PlaylistCopyNotice?> {
+        Binding(
+            get: { copyModel.notice },
+            set: { if $0 == nil { copyModel.dismissNotice() } }
+        )
+    }
+
+    private var copyReconciliationNotice: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Copy status needs review", systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                .font(.headline)
+            Text(copyReconciliationMessage)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Button {
+                Task { await reconcileCopy() }
+            } label: {
+                if copyModel.isReconciling {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Checking ListenBrainz…")
+                    }
+                } else {
+                    Text("Check Again")
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(copyModel.isReconciling)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.orange.opacity(0.12), in: .rect(cornerRadius: 18, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var accessLostContent: some View {
+        ContentUnavailableView {
+            Label("Playlist Unavailable", systemImage: "lock.slash")
+        } description: {
+            Text("This playlist was removed or is no longer available to your account.")
+        } actions: {
+            Button("Try Again") { Task { await model.refresh() } }
+                .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 80)
+    }
+
+    private func duplicatePlaylist() async {
+        guard let detail = model.detail, canCopy else { return }
+        await copyModel.copy(detail)
+        await reconcileCopyOutcome()
+    }
+
+    private func reconcileCopy() async {
+        await copyModel.reconcileAfterOwnedPlaylistsRefresh()
+        await reconcileCopyOutcome()
+    }
+
+    private func reconcileCopyOutcome() async {
+        if case let .confirmed(copiedPlaylist) = copyModel.notice {
+            mutationJournal.recordConfirmedCopy(
+                copiedPlaylist,
+                ownerUsername: viewer.username
+            )
+        }
+        guard let reason = copyModel.sourceAccessLossReason,
+              let message = copyModel.sourceAccessMessage,
+              let sourceMBID = playlist.playlistMBID
+        else { return }
+        await mutationJournal.recordAccessLoss(
+            sourceMBID: sourceMBID,
+            viewerUsername: viewer.username,
+            reason: reason,
+            message: message
+        )
+        await model.discardAfterAccessLoss(message: message)
+    }
+
+    private func presentCopyConfirmation() async {
+        guard canCopy,
+              !isPreparingCopy,
+              !copyModel.isCopying,
+              !copyModel.requiresReconciliation
+        else { return }
+        isPreparingCopy = true
+        defer { isPreparingCopy = false }
+        do {
+            _ = try await model.revalidateForEditing()
+            try Task.checkCancellation()
+            showsCopyConfirmation = true
+        } catch is CancellationError {
+            return
+        } catch {
+            guard let reason = PlaylistAccessFailurePolicy.reason(for: error),
+                  let sourceMBID = playlist.playlistMBID
+            else { return }
+            await mutationJournal.recordAccessLoss(
+                sourceMBID: sourceMBID,
+                viewerUsername: viewer.username,
+                reason: reason,
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private var copyReconciliationMessage: String {
+        if copyModel.reconciliationRecord?.destinationMBID != nil {
+            return "ListenBrainz created a copy, but its current details still need verification. Another copy is disabled until the returned playlist loads."
+        }
+        return "The copy response was lost. A fresh Owned Playlists check is required; another copy stays disabled unless a matching destination is verified."
+    }
+
     private func presentEditor() async {
         guard canEdit, !isPreparingEditor else { return }
         isPreparingEditor = true
@@ -387,6 +620,36 @@ struct PlaylistMutationVisualQAScreen: View {
     )
 }
 
+struct PlaylistCopyVisualQAScreen: View {
+    private let account = Account(username: "visual-listener", token: "visual-token")
+
+    var body: some View {
+        NavigationStack {
+            PlaylistDetailView(
+                playlist: Self.playlist,
+                viewer: account,
+                provider: VisualQACopyPlaylistDetailProvider(),
+                copyProvider: VisualQAPlaylistCopyProvider(),
+                cache: EntityDetailCache(),
+                automaticallyPresentsCopyConfirmation: true
+            )
+        }
+    }
+
+    private static let playlistMBID = UUID(uuidString: "11111111-1111-4111-8111-111111111111")!
+    private static let playlist = SearchPlaylist(
+        title: "Soft Focus — late-night favorites",
+        creator: "cassetteclub",
+        annotation: "Dream pop, ambient edges, and songs that make the room feel quieter.",
+        identifier: "https://listenbrainz.org/playlist/\(playlistMBID.uuidString)",
+        isPublic: true,
+        lastModifiedAt: Date(timeIntervalSince1970: 1_789_689_600),
+        createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+        durationMilliseconds: 4_860_000,
+        collaborators: ["softstatic"]
+    )
+}
+
 private struct VisualQAPlaylistDetailProvider: PlaylistDetailProviding {
     func playlist(mbid: UUID) async throws -> PlaylistDetail {
         PlaylistDetail(
@@ -399,6 +662,30 @@ private struct VisualQAPlaylistDetailProvider: PlaylistDetailProviding {
             isPublic: false,
             createdFor: nil,
             collaborators: ["cassetteclub", "softstatic"],
+            copiedFrom: nil,
+            tracks: []
+        )
+    }
+}
+
+private struct VisualQAPlaylistCopyProvider: PlaylistCopyProviding {
+    func copy(mbid: UUID) async throws -> UUID {
+        UUID(uuidString: "22222222-2222-4222-8222-222222222222")!
+    }
+}
+
+private struct VisualQACopyPlaylistDetailProvider: PlaylistDetailProviding {
+    func playlist(mbid: UUID) async throws -> PlaylistDetail {
+        PlaylistDetail(
+            mbid: mbid,
+            title: "Soft Focus — late-night favorites",
+            creator: "cassetteclub",
+            annotation: "Dream pop, ambient edges, and songs that make the room feel quieter.",
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            lastModifiedAt: Date(timeIntervalSince1970: 1_789_689_600),
+            isPublic: true,
+            createdFor: nil,
+            collaborators: ["softstatic"],
             copiedFrom: nil,
             tracks: []
         )
