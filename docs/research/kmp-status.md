@@ -24,6 +24,7 @@ Snapshot: 2026-09-18, Android checkout `3a0e4ef`.
 - Foreground BrainzPlayer service, ExoPlayer, MediaSessionCompat, and notifications.
 - Spotify App Remote, YouTube intents, app updates, WorkManager/background scheduling, and Android permission flows.
 - Some Year in Music and app-update view models/services remain in the app module.
+- Shared KMP currently exposes authenticated playlist-art transport/repository logic, but no generic stats-grid or artist-grid domain API. The native app therefore keeps the smaller typed Swift extension behind its provider boundary; KMP remains a behavior reference for playlist art rather than an iOS dependency.
 
 ## UI migration status
 

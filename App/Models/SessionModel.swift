@@ -170,6 +170,9 @@ final class SessionModel {
                 || arguments.contains("-brainz-following-pins-demo")
                 || arguments.contains("-brainz-following-pins-empty-demo")
                 || arguments.contains("-brainz-following-pins-failure-demo")
+                || arguments.contains("-brainz-generic-art-demo")
+                || arguments.contains("-brainz-generic-art-unavailable-demo")
+                || arguments.contains("-brainz-generic-art-failure-demo")
             {
                 state = .active(Account(username: "visual-listener", token: "visual-token"))
                 return true

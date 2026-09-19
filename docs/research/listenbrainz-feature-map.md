@@ -56,7 +56,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | BrainzPlayer queue/content resolution | Y | Y | Y | P | — | P | P2 | Keep modular; viewing is not blocked |
 | Apple/Spotify/YouTube/etc. external play | Y/P | Y | P | P | — | P | P2 | Resolve/open externally before full player |
 | Linked music services | Y | Y | Y | ? | Y | Y | P2 | Settings visibility/connection handoff |
-| Shareable art/stat grids/YiM art | Y | Y | P | P | P | ? | P1 | YiM typed variants and explicit overview preview/PNG sharing landed; generic grids/custom/playlist art remain staged |
+| Shareable art/stat grids/YiM art | Y | Y | P | P | P | P | P1 | Explicit native stats, artist, playlist, and YiM SVG previews/PNG sharing landed; the generic custom-art creator remains staged |
 | HueSound/color exploration | Y | Y | — | — | — | — | P3 | Delightful but niche |
 | Music Neighborhood/similar artists | Y | Y | P | — | — | P | P2 | Discovery graph/list, not a heavy graph UI |
 | AI Brainz | Y | Y | — | — | — | — | P3 | Experimental; not first-release critical |
@@ -78,6 +78,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 - Artist Activity is a bounded ranked response derived from mapped release-group statistics: at most 15 leading artists, each with its album/release-group breakdown. The native destination makes one cached user/range read, merges MBID-first identities locally, and opens only identifiers already present in the response; expanding albums makes no request.
 - Artist and release-group listener rankings are public, server-computed samples capped at 10 rows. The native detail cards explicitly request `all_time`, cache both content and 204/empty results for five minutes, expand locally, and navigate with embedded usernames without profile hydration.
 - Following Pins is a separate public, newest-first aggregate of each followed user's active pin. The native destination makes one bounded request per page, preserves the server count/offset contract, deduplicates by owner plus row ID, caches pages for five minutes, and never hydrates rows individually.
+- Generic Art now uses typed public stats/artist reads and the authenticated playlist POST. Every image is created only after a user action, exact requests coalesce through the shared gate, public calls omit the token, private playlist cache entries stay credential-scoped, unavailable results are cached, and raw SVG retention is bounded by both age and 16 MiB total. The shared nonpersistent renderer validates every external SVG resource before loading, blocks all other WebKit traffic, and exports a native PNG; a single public artist smoke rendered the current Archive redirect and placeholder shapes without an account token.
 
 ## Evidence
 

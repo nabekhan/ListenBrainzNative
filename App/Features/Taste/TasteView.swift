@@ -14,6 +14,7 @@ struct TasteView: View {
     @AppStorage("taste.activityPeriod") private var activityPeriod: ListeningActivityPeriod = .thisWeek
     @State private var selectedDailyCellID: DailyActivity.Cell.ID?
     @State private var selectedEraDecade: Int?
+    @State private var showsStatsArtwork = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -99,6 +100,16 @@ struct TasteView: View {
                 }
             }
             #endif
+        }
+        .sheet(isPresented: $showsStatsArtwork) {
+            GeneratedArtworkSheet(
+                presentation: .statistics(
+                    username: model.account.username,
+                    period: activityPeriod
+                ),
+                request: .statistics(username: model.account.username, range: activityPeriod.artRange),
+                provider: ListenBrainzGeneratedArtworkProvider(token: model.account.token)
+            )
         }
     }
 
@@ -280,6 +291,11 @@ struct TasteView: View {
                 subtitle: "One range shapes every server-calculated view below"
             )
             activityPeriodPicker
+            Button { showsStatsArtwork = true } label: {
+                Label("Create stats artwork", systemImage: "photo.badge.plus")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
         }
     }
 

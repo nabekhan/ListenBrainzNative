@@ -5,7 +5,7 @@
 import Foundation
 
 struct YearInMusicArtworkRequest: APIRequest {
-    static let maximumPayloadSize = 4 * 1_024 * 1_024
+    static let maximumPayloadSize = ArtSVGResponseDecoder.maximumPayloadSize
 
     let data: APIRequestData<NoBody>
 
@@ -31,34 +31,6 @@ struct YearInMusicArtworkRequest: APIRequest {
     }
 
     func decodeResponse(_ data: Data, response: HTTPURLResponse?) throws -> LBYearInMusicArtwork? {
-        if response?.statusCode == 204 { return nil }
-        guard data.count <= Self.maximumPayloadSize,
-              !data.isEmpty,
-              let svg = String(data: data, encoding: .utf8),
-              isSVG(svg)
-        else { throw LBError.invalidResponse }
-
-        if let response {
-            guard let contentType = response.value(forHTTPHeaderField: "Content-Type"),
-                  contentType.split(separator: ";", maxSplits: 1).first?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "image/svg+xml"
-            else { throw LBError.invalidResponse }
-        }
-        return LBYearInMusicArtwork(svg: svg)
-    }
-
-    private func isSVG(_ value: String) -> Bool {
-        let trimmed = value
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "\u{FEFF}"))
-        if trimmed.range(of: "<svg", options: [.anchored, .caseInsensitive]) != nil {
-            return true
-        }
-
-        guard trimmed.range(of: "<?xml", options: [.anchored, .caseInsensitive]) != nil,
-              let declarationEnd = trimmed.range(of: "?>")?.upperBound
-        else { return false }
-
-        let root = trimmed[declarationEnd...].trimmingCharacters(in: .whitespacesAndNewlines)
-        return root.range(of: "<svg", options: [.anchored, .caseInsensitive]) != nil
+        try ArtSVGResponseDecoder.artwork(from: data, response: response).map { LBYearInMusicArtwork(svg: $0.svg) }
     }
 }

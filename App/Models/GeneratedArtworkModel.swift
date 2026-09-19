@@ -1,30 +1,30 @@
 import Foundation
 import Observation
-import ListenBrainzKit
 
-enum YearInMusicArtworkPhase: Equatable {
+enum GeneratedArtworkPhase: Equatable {
     case idle
     case loading
-    case ready(YearInMusicArtwork)
+    case ready(GeneratedArtworkDocument)
     case unavailable
     case failed(String)
 }
 
-/// An explicitly-triggered image generation model. It intentionally performs no
-/// fetch during construction or view appearance.
 @MainActor
 @Observable
-final class YearInMusicArtworkModel {
-    let options: YearInMusicArtworkOptions
+final class GeneratedArtworkModel {
+    let request: GeneratedArtworkRequest
 
-    private let provider: any YearInMusicArtworkProviding
-    private var activeTask: Task<YearInMusicArtwork?, any Error>?
+    private let provider: any GeneratedArtworkProviding
+    private var activeTask: Task<GeneratedArtworkDocument?, any Error>?
     private var requestID: UUID?
 
-    private(set) var phase: YearInMusicArtworkPhase = .idle
+    private(set) var phase: GeneratedArtworkPhase = .idle
 
-    init(options: YearInMusicArtworkOptions, provider: any YearInMusicArtworkProviding) {
-        self.options = options
+    init(
+        request: GeneratedArtworkRequest,
+        provider: any GeneratedArtworkProviding
+    ) {
+        self.request = request
         self.provider = provider
     }
 
@@ -42,7 +42,9 @@ final class YearInMusicArtworkModel {
         activeTask?.cancel()
         activeTask = nil
         requestID = nil
-        if phase == .loading { phase = .idle }
+        if phase == .loading {
+            phase = .idle
+        }
     }
 
     private func fetch() async {
@@ -51,12 +53,12 @@ final class YearInMusicArtworkModel {
         phase = .loading
 
         let task = Task {
-            try await provider.artwork(for: options)
+            try await provider.artwork(for: request)
         }
         activeTask = task
 
         do {
-            let artwork = try await withTaskCancellationHandler {
+            let value = try await withTaskCancellationHandler {
                 try await task.value
             } onCancel: {
                 task.cancel()
@@ -66,7 +68,7 @@ final class YearInMusicArtworkModel {
 
             activeTask = nil
             requestID = nil
-            phase = artwork.map(YearInMusicArtworkPhase.ready) ?? .unavailable
+            phase = value.map(GeneratedArtworkPhase.ready) ?? .unavailable
         } catch is CancellationError {
             guard requestID == id else { return }
             activeTask = nil

@@ -3,6 +3,7 @@ import SwiftUI
 struct ArtistDetailView: View {
     let artist: RankedArtist
     @Bindable var model: ListeningModel
+    @State private var showsArtwork = false
 
     var body: some View {
         ScrollView {
@@ -31,6 +32,12 @@ struct ArtistDetailView: View {
             UserDetailView(user: user, viewer: model.account)
         }
         .toolbar {
+            if artist.mbid != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showsArtwork = true } label: { Image(systemName: "photo") }
+                    .accessibilityLabel("Create artist artwork")
+                }
+            }
             if let mbid = artist.mbid {
                 ToolbarItem(placement: .topBarTrailing) {
                     Link(destination: URL(string: "https://musicbrainz.org/artist/\(mbid.uuidString)")!) {
@@ -38,6 +45,17 @@ struct ArtistDetailView: View {
                     }
                     .accessibilityLabel("Open artist in MusicBrainz")
                 }
+            }
+        }
+        .sheet(isPresented: $showsArtwork) {
+            if let mbid = artist.mbid {
+                GeneratedArtworkSheet(
+                    presentation: .artist(name: artist.name, mbid: mbid),
+                    request: .artist(mbid: mbid),
+                    provider: ListenBrainzGeneratedArtworkProvider(
+                        token: model.account.token
+                    )
+                )
             }
         }
     }

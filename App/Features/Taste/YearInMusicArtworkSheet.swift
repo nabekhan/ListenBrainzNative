@@ -1,39 +1,5 @@
-import CoreTransferable
 import ListenBrainzKit
-import OSLog
 import SwiftUI
-import UniformTypeIdentifiers
-import UIKit
-@preconcurrency import WebKit
-
-enum YearInMusicArtworkRenderingPolicy {
-    static let contentRuleList = #"""
-    [
-      {"trigger":{"url-filter":"^https?://.*"},"action":{"type":"block"}},
-      {"trigger":{"url-filter":"^https://archive\\.org/download/.*"},"action":{"type":"ignore-previous-rules"}},
-      {"trigger":{"url-filter":"^https://fonts\\.googleapis\\.com/.*"},"action":{"type":"ignore-previous-rules"}},
-      {"trigger":{"url-filter":"^https://fonts\\.gstatic\\.com/.*"},"action":{"type":"ignore-previous-rules"}}
-    ]
-    """#
-
-    static func permitsExternalResource(_ url: URL) -> Bool {
-        guard url.scheme?.lowercased() == "https" else { return false }
-        switch url.host?.lowercased() {
-        case "archive.org":
-            return url.path.hasPrefix("/download/")
-        case "fonts.googleapis.com", "fonts.gstatic.com":
-            return true
-        default:
-            return false
-        }
-    }
-}
-
-private enum YearInMusicArtworkSnapshotPhase {
-    case preparing
-    case ready(UIImage)
-    case failed(String)
-}
 
 struct YearInMusicArtworkSheet: View {
     let report: YearInMusicReport
@@ -42,8 +8,9 @@ struct YearInMusicArtworkSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var model: YearInMusicArtworkModel
-    @State private var snapshotPhase: YearInMusicArtworkSnapshotPhase = .preparing
+    @State private var snapshotPhase: SVGArtworkSnapshotPhase = .preparing
     @State private var snapshotReloadID = 0
+    @State private var retryTask: Task<Void, Never>?
 
     init(
         report: YearInMusicReport,
@@ -71,7 +38,7 @@ struct YearInMusicArtworkSheet: View {
                     .padding(.vertical, 24)
             }
             .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("Shareable Artwork")
+            .navigationTitle("Shareable artwork")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -82,7 +49,10 @@ struct YearInMusicArtworkSheet: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .task { await model.generate() }
-        .onDisappear { model.cancel() }
+        .onDisappear {
+            retryTask?.cancel()
+            model.cancel()
+        }
     }
 
     @ViewBuilder
@@ -123,7 +93,11 @@ struct YearInMusicArtworkSheet: View {
 
     private func readyContent(_ artwork: YearInMusicArtwork) -> some View {
         VStack(spacing: 20) {
-            YearInMusicSVGPreview(svg: artwork.svg, reloadID: snapshotReloadID) { phase in
+            SVGArtworkPreview(
+                svg: artwork.svg,
+                reloadID: snapshotReloadID,
+                accessibilityLabel: artworkAccessibilityLabel
+            ) { phase in
                 snapshotPhase = phase
             }
             .aspectRatio(1, contentMode: .fit)
@@ -181,7 +155,10 @@ struct YearInMusicArtworkSheet: View {
         case let .ready(shareImage):
             if let pngData = shareImage.pngData() {
                 ShareLink(
-                    item: YearInMusicPNGShareItem(data: pngData, year: report.year),
+                    item: SVGPNGShareItem(
+                        data: pngData,
+                        fileName: "ListenBrainz-Year-in-Music-\(report.year).png"
+                    ),
                     subject: Text("My \(String(report.year)) Year in Music"),
                     message: Text("My \(String(report.year)) listening story on ListenBrainz: \(reportURL.absoluteString)"),
                     preview: SharePreview(
@@ -189,7 +166,7 @@ struct YearInMusicArtworkSheet: View {
                         image: Image(uiImage: shareImage)
                     )
                 ) {
-                    Label("Share Artwork", systemImage: "square.and.arrow.up")
+                    Label("Share artwork", systemImage: "square.and.arrow.up")
                         .font(.headline)
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -199,7 +176,7 @@ struct YearInMusicArtworkSheet: View {
                 .tint(AppTheme.accent)
                 .accessibilityHint("Shares a PNG copy and the ListenBrainz report link")
             } else {
-                snapshotFailure("The rendered artwork could not be encoded as a PNG.")
+                snapshotFailure("Brainz couldn’t encode the artwork as a PNG.")
             }
         case let .failed(message):
             snapshotFailure(message)
@@ -214,7 +191,7 @@ struct YearInMusicArtworkSheet: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            Button("Prepare Again") {
+            Button("Prepare again") {
                 snapshotPhase = .preparing
                 snapshotReloadID += 1
             }
@@ -229,9 +206,9 @@ struct YearInMusicArtworkSheet: View {
             ContentUnavailableView {
                 Label("Artwork unavailable", systemImage: "photo.badge.exclamationmark")
             } description: {
-                Text("ListenBrainz does not have enough data to create this overview.")
+                Text("ListenBrainz doesn’t have enough data to create this overview.")
             } actions: {
-                Button("Try Again") { Task { await model.retry() } }
+                Button("Try again") { beginRetry() }
             }
             .frame(minHeight: 340)
 
@@ -246,7 +223,7 @@ struct YearInMusicArtworkSheet: View {
             } description: {
                 Text(message)
             } actions: {
-                Button("Try Again") { Task { await model.retry() } }
+                Button("Try again") { beginRetry() }
             }
             .frame(minHeight: 340)
 
@@ -258,7 +235,7 @@ struct YearInMusicArtworkSheet: View {
     }
 
     private var artworkExplanation: some View {
-        Text("ListenBrainz generates this artwork on demand. Once created, Brainz keeps it ready in memory for the rest of the day.")
+        Text("ListenBrainz creates this artwork on demand. Cover images and fonts load from ListenBrainz, Internet Archive, and Google Fonts. Brainz keeps the SVG in memory for the rest of the day.")
             .font(.footnote)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
@@ -276,205 +253,10 @@ struct YearInMusicArtworkSheet: View {
         }
         return parts.joined(separator: ", ")
     }
-}
 
-private struct YearInMusicSVGPreview: UIViewRepresentable {
-    let svg: String
-    let reloadID: Int
-    let onSnapshot: @MainActor (YearInMusicArtworkSnapshotPhase) -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onSnapshot: onSnapshot)
-    }
-
-    func makeUIView(context: Context) -> WKWebView {
-        let configuration = WKWebViewConfiguration()
-        configuration.websiteDataStore = .nonPersistent()
-        configuration.defaultWebpagePreferences.allowsContentJavaScript = false
-        configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
-
-        let webView = WKWebView(frame: .zero, configuration: configuration)
-        webView.navigationDelegate = context.coordinator
-        webView.isOpaque = false
-        webView.backgroundColor = .clear
-        webView.underPageBackgroundColor = .clear
-        webView.scrollView.backgroundColor = .clear
-        webView.scrollView.isScrollEnabled = false
-        webView.scrollView.bounces = false
-        webView.allowsLinkPreview = false
-        webView.isUserInteractionEnabled = false
-        return webView
-    }
-
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        context.coordinator.onSnapshot = onSnapshot
-        guard context.coordinator.loadedSVG != svg
-                || context.coordinator.loadedReloadID != reloadID,
-              let data = svg.data(using: .utf8)
-        else { return }
-
-        let generation = context.coordinator.prepareToLoad(svg, reloadID: reloadID)
-        let encodedSVG = data.base64EncodedString()
-        let document = """
-        <!doctype html>
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; object-src data:; img-src data: https:; font-src data: https:; style-src 'unsafe-inline' https:; form-action 'none'; base-uri 'none'">
-            <style>
-              html, body, object { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
-              body { background: transparent; }
-              object { display: block; border: 0; }
-            </style>
-          </head>
-          <body>
-            <object type="image/svg+xml" data="data:image/svg+xml;base64,\(encodedSVG)" aria-label="ListenBrainz Year in Music artwork"></object>
-          </body>
-        </html>
-        """
-        context.coordinator.load(
-            document: document,
-            in: webView,
-            generation: generation
-        )
-    }
-
-    @MainActor
-    final class Coordinator: NSObject, WKNavigationDelegate {
-        private static let logger = Logger(subsystem: "dev.nabekhan.listenbrainznative", category: "YearInMusicArtwork")
-        private static let ruleListIdentifier = "Brainz-YearInMusicArtworkResources-v1"
-
-        var onSnapshot: @MainActor (YearInMusicArtworkSnapshotPhase) -> Void
-        private(set) var loadedSVG: String?
-        private(set) var loadedReloadID: Int?
-        private var generation = 0
-
-        init(onSnapshot: @escaping @MainActor (YearInMusicArtworkSnapshotPhase) -> Void) {
-            self.onSnapshot = onSnapshot
-        }
-
-        func prepareToLoad(_ svg: String, reloadID: Int) -> Int {
-            loadedSVG = svg
-            loadedReloadID = reloadID
-            generation += 1
-            return generation
-        }
-
-        func load(document: String, in webView: WKWebView, generation requestedGeneration: Int) {
-            Task { @MainActor [weak self, weak webView] in
-                guard let self, let webView else { return }
-                do {
-                    let rules = try await Self.compileContentRules()
-                    guard generation == requestedGeneration else { return }
-                    webView.configuration.userContentController.removeAllContentRuleLists()
-                    webView.configuration.userContentController.add(rules)
-                    webView.loadHTMLString(
-                        document,
-                        baseURL: URL(string: "https://api.listenbrainz.org/")
-                    )
-                    captureWhenReady(webView, generation: requestedGeneration)
-                } catch {
-                    guard generation == requestedGeneration else { return }
-                    Self.logger.error("Year in Music resource policy failed: \(error.localizedDescription, privacy: .public)")
-                    onSnapshot(.failed("Brainz couldn’t prepare the secure artwork renderer."))
-                }
-            }
-        }
-
-        private static func compileContentRules() async throws -> WKContentRuleList {
-            try await withCheckedThrowingContinuation { continuation in
-                WKContentRuleListStore.default().compileContentRuleList(
-                    forIdentifier: ruleListIdentifier,
-                    encodedContentRuleList: YearInMusicArtworkRenderingPolicy.contentRuleList
-                ) { rules, error in
-                    if let rules {
-                        continuation.resume(returning: rules)
-                    } else {
-                        continuation.resume(throwing: error ?? CocoaError(.coderInvalidValue))
-                    }
-                }
-            }
-        }
-
-        func webView(
-            _ webView: WKWebView,
-            decidePolicyFor navigationAction: WKNavigationAction
-        ) async -> WKNavigationActionPolicy {
-            switch navigationAction.navigationType {
-            case .linkActivated, .formSubmitted, .formResubmitted:
-                return .cancel
-            default:
-                return .allow
-            }
-        }
-
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            Self.logger.debug("Year in Music SVG document finished loading")
-        }
-
-        func captureWhenReady(_ webView: WKWebView, generation requestedGeneration: Int) {
-            Task { @MainActor [weak self, weak webView] in
-                try? await Task.sleep(for: .milliseconds(750))
-                guard let self,
-                      let webView,
-                      generation == requestedGeneration
-                else { return }
-
-                for _ in 0 ..< 30 where webView.isLoading {
-                    try? await Task.sleep(for: .milliseconds(100))
-                    guard generation == requestedGeneration else { return }
-                }
-                try? await Task.sleep(for: .milliseconds(350))
-
-                let configuration = WKSnapshotConfiguration()
-                configuration.snapshotWidth = 924
-                webView.takeSnapshot(with: configuration) { [weak self] image, error in
-                    guard let self, generation == requestedGeneration else { return }
-                    if let error {
-                        Self.logger.error("Year in Music snapshot failed: \(error.localizedDescription, privacy: .public)")
-                        onSnapshot(.failed("The high-resolution copy could not be rendered."))
-                    } else if let image {
-                        Self.logger.debug("Year in Music PNG snapshot is ready")
-                        onSnapshot(.ready(image))
-                    } else {
-                        Self.logger.error("Year in Music snapshot returned no image")
-                        onSnapshot(.failed("The high-resolution copy could not be rendered."))
-                    }
-                }
-            }
-        }
-
-        func webView(
-            _ webView: WKWebView,
-            didFail navigation: WKNavigation!,
-            withError error: any Error
-        ) {
-            Self.logger.error("Year in Music SVG navigation failed: \(error.localizedDescription, privacy: .public)")
-        }
-
-        func webView(
-            _ webView: WKWebView,
-            didFailProvisionalNavigation navigation: WKNavigation!,
-            withError error: any Error
-        ) {
-            Self.logger.error("Year in Music SVG provisional navigation failed: \(error.localizedDescription, privacy: .public)")
-        }
-    }
-}
-
-private struct YearInMusicPNGShareItem: Transferable, Sendable {
-    let data: Data
-    let year: Int
-
-    static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(exportedContentType: .png) { item in
-            let directory = FileManager.default.temporaryDirectory
-                .appending(path: "Brainz-Shared-Artwork", directoryHint: .isDirectory)
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let url = directory.appending(path: "ListenBrainz-Year-in-Music-\(item.year).png")
-            try item.data.write(to: url, options: .atomic)
-            return SentTransferredFile(url)
-        }
+    private func beginRetry() {
+        retryTask?.cancel()
+        retryTask = Task { await model.retry() }
     }
 }
 

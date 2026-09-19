@@ -166,7 +166,13 @@ struct MainTabView: View {
 
     var body: some View {
         #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo") {
+            if ProcessInfo.processInfo.arguments.contains("-brainz-generic-art-demo") {
+                GenericArtVisualQAScreen(fixture: .populated)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-generic-art-unavailable-demo") {
+                GenericArtVisualQAScreen(fixture: .unavailable)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-generic-art-failure-demo") {
+                GenericArtVisualQAScreen(fixture: .failure)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo") {
                 PlaylistCopyVisualQAScreen()
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-remove-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-remove-review-demo")

@@ -50,6 +50,8 @@ final class YearInMusicArtworkModelTests: XCTestCase {
         cancellable.cancel()
         await task.value
         XCTAssertEqual(cancellable.phase, .idle)
+        let cancellationCount = await delayed.cancellationCount()
+        XCTAssertEqual(cancellationCount, 1)
     }
 
     func testDuplicateTapDoesNotBeginAnotherRequest() async throws {
@@ -72,6 +74,7 @@ private actor ArtworkModelFixtureProvider: YearInMusicArtworkProviding {
     private let results: [Result]
     private let delay: Duration
     private var calls = 0
+    private var cancellations = 0
 
     init(results: [Result], delay: Duration = .zero) {
         self.results = results
@@ -81,7 +84,14 @@ private actor ArtworkModelFixtureProvider: YearInMusicArtworkProviding {
     func artwork(for options: YearInMusicArtworkOptions) async throws -> YearInMusicArtwork? {
         let index = calls
         calls += 1
-        if delay > .zero { try await ContinuousClock().sleep(for: delay) }
+        if delay > .zero {
+            do {
+                try await ContinuousClock().sleep(for: delay)
+            } catch is CancellationError {
+                cancellations += 1
+                throw CancellationError()
+            }
+        }
         switch results.indices.contains(index) ? results[index] : results.last ?? .unavailable {
         case let .success(svg):
             return YearInMusicArtwork(options: options, source: LBYearInMusicArtwork(svg: svg))
@@ -91,4 +101,6 @@ private actor ArtworkModelFixtureProvider: YearInMusicArtworkProviding {
     }
 
     func callCount() -> Int { calls }
+
+    func cancellationCount() -> Int { cancellations }
 }

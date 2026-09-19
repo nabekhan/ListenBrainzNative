@@ -22,6 +22,7 @@ struct PlaylistDetailView: View {
     @State private var trackPendingRemoval: PlaylistTrack?
     @State private var showsRemovalConfirmation = false
     @State private var showsSafetyResetConfirmation = false
+    @State private var showsArtwork = false
 
     init(
         playlist: SearchPlaylist,
@@ -111,6 +112,25 @@ struct PlaylistDetailView: View {
         }
         .navigationTitle(model.accessWasLost ? "Playlist Unavailable" : displayTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showsArtwork) {
+            if let detail = model.detail,
+               let request = playlistArtworkRequest(
+                   mbid: detail.mbid,
+                   trackCount: detail.tracks.count
+               ) {
+                GeneratedArtworkSheet(
+                    presentation: .playlist(
+                        title: detail.title,
+                        mbid: detail.mbid,
+                        sourceURL: detail.listenBrainzURL
+                    ),
+                    request: request,
+                    provider: ListenBrainzGeneratedArtworkProvider(
+                        token: viewer.token
+                    )
+                )
+            }
+        }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if canEdit {
@@ -136,8 +156,15 @@ struct PlaylistDetailView: View {
                                 : "Refreshing playlist before duplication"
                         )
                 }
-                if canCopy || actionURL != nil {
+                if canCopy || canCreateArtwork || actionURL != nil {
                     Menu {
+                        if canCreateArtwork {
+                            Button {
+                                showsArtwork = true
+                            } label: {
+                                Label("Create artwork", systemImage: "photo.badge.plus")
+                            }
+                        }
                         if canCopy {
                             Button {
                                 Task { await presentCopyConfirmation() }
@@ -502,6 +529,10 @@ struct PlaylistDetailView: View {
     private var actionURL: URL? {
         guard !model.accessWasLost else { return nil }
         return model.detail?.listenBrainzURL ?? playlist.listenBrainzURL
+    }
+
+    private var canCreateArtwork: Bool {
+        viewer.isAuthenticated && model.detail?.tracks.isEmpty == false
     }
 
     private var copyConfirmationMessage: String {
