@@ -5,6 +5,7 @@ struct TasteView: View {
     enum Ranking: String, CaseIterable, Identifiable {
         case artists = "Artists"
         case releases = "Albums"
+        case releaseGroups = "Release groups"
         case recordings = "Tracks"
         var id: Self { self }
     }
@@ -31,6 +32,8 @@ struct TasteView: View {
                     } else if isEraVisualQA {
                         periodControls
                         musicByDecade
+                    } else if isReleaseGroupsVisualQA {
+                        rankings
                     } else {
                         overview
                         yearInMusic
@@ -73,6 +76,7 @@ struct TasteView: View {
                     await model.loadDailyActivity(for: activityPeriod, retrying: true)
                     await model.loadEraActivity(for: activityPeriod, retrying: true)
                     await model.loadListeningActivity(for: activityPeriod, retrying: true)
+                    await model.refreshReleaseGroupRankingIfLoaded()
                 }
             }
             .navigationTitle("Taste")
@@ -89,6 +93,10 @@ struct TasteView: View {
                     await model.loadListeningActivity(for: activityPeriod)
                 }
             }
+            .task(id: ranking) {
+                guard ranking == .releaseGroups else { return }
+                await model.loadReleaseGroupRanking()
+            }
             .onChange(of: activityPeriod) { _, _ in
                 selectedDailyCellID = nil
                 selectedEraDecade = nil
@@ -97,6 +105,9 @@ struct TasteView: View {
             .onAppear {
                 if isEraZoomVisualQA {
                     selectedEraDecade = 2020
+                }
+                if isReleaseGroupsVisualQA {
+                    ranking = .releaseGroups
                 }
             }
             #endif
@@ -119,6 +130,7 @@ struct TasteView: View {
             || isHeatmapVisualQA
             || isYearInMusicTeaserVisualQA
             || isEraVisualQA
+            || isReleaseGroupsVisualQA
         #else
         false
         #endif
@@ -167,7 +179,15 @@ struct TasteView: View {
     }
 
     private var isFocusedVisualQA: Bool {
-        isYearInMusicTeaserVisualQA || isHeatmapVisualQA || isEraVisualQA
+        isYearInMusicTeaserVisualQA || isHeatmapVisualQA || isEraVisualQA || isReleaseGroupsVisualQA
+    }
+
+    private var isReleaseGroupsVisualQA: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-brainz-taste-release-groups-demo")
+        #else
+        false
+        #endif
     }
 
     private var overview: some View {
@@ -1189,41 +1209,129 @@ struct TasteView: View {
     private var rankings: some View {
         VStack(alignment: .leading, spacing: 16) {
             SectionHeader(title: "Rankings")
-            Picker("Ranking", selection: $ranking) {
-                ForEach(Ranking.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
+            rankingPicker
 
             switch ranking {
             case .artists:
-                ForEach(Array(model.snapshot.topArtists.prefix(20).enumerated()), id: \.element.id) { index, artist in
-                    if let destination = artist.detailDestination() {
-                        NavigationLink(value: destination) {
-                            rankedArtistRow(index: index, artist: artist, showsDisclosure: true)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Opens artist details")
-                    } else {
-                        rankedArtistRow(index: index, artist: artist, showsDisclosure: false)
-                    }
-                }
+                artistRankings
             case .releases:
-                ForEach(Array(model.snapshot.topReleases.prefix(20).enumerated()), id: \.element.id) { index, release in
-                    if let seed = release.releaseSeed {
-                        NavigationLink(value: seed) {
-                            rankedReleaseRow(index: index, release: release)
+                releaseRankings
+            case .releaseGroups:
+                releaseGroupRankings
+            case .recordings:
+                recordingRankings
+            }
+        }
+    }
+
+    private var rankingPicker: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: dynamicTypeSize.isAccessibilitySize) {
+                HStack(spacing: 8) {
+                    ForEach(Ranking.allCases) { value in
+                        Button {
+                            ranking = value
+                        } label: {
+                            Text(value.rawValue)
+                                .font(.subheadline.weight(ranking == value ? .semibold : .regular))
+                                .foregroundStyle(ranking == value ? .white : .primary)
+                                .padding(.horizontal, 13)
+                                .padding(.vertical, 9)
+                                .background(ranking == value ? AppTheme.accent : Color.secondary.opacity(0.12), in: .capsule)
                         }
+                        .id(value)
                         .buttonStyle(.plain)
-                    } else {
-                        rankedReleaseRow(index: index, release: release)
+                        .accessibilityLabel(value.rawValue)
+                        .accessibilityAddTraits(ranking == value ? .isSelected : [])
                     }
                 }
-            case .recordings:
-                ForEach(Array(model.snapshot.topRecordings.prefix(20).enumerated()), id: \.element.id) { index, recording in
-                    NavigationLink(value: recording.recording) {
-                        rankedRecordingRow(index: index, recording: recording)
+            }
+            .onAppear { proxy.scrollTo(ranking, anchor: .center) }
+            .onChange(of: ranking) { _, value in
+                withAnimation(.snappy) { proxy.scrollTo(value, anchor: .center) }
+            }
+        }
+        .accessibilityLabel("Ranking type")
+    }
+
+    private var artistRankings: some View {
+        ForEach(Array(model.snapshot.topArtists.prefix(20).enumerated()), id: \.element.id) { index, artist in
+            if let destination = artist.detailDestination() {
+                NavigationLink(value: destination) {
+                    rankedArtistRow(index: index, artist: artist, showsDisclosure: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens artist details")
+            } else {
+                rankedArtistRow(index: index, artist: artist, showsDisclosure: false)
+            }
+        }
+    }
+
+    private var releaseRankings: some View {
+        ForEach(Array(model.snapshot.topReleases.prefix(20).enumerated()), id: \.element.id) { index, release in
+            if let seed = release.releaseSeed {
+                NavigationLink(value: seed) {
+                    rankedReleaseRow(index: index, release: release)
+                }
+                .buttonStyle(.plain)
+            } else {
+                rankedReleaseRow(index: index, release: release)
+            }
+        }
+    }
+
+    private var recordingRankings: some View {
+        ForEach(Array(model.snapshot.topRecordings.prefix(20).enumerated()), id: \.element.id) { index, recording in
+            NavigationLink(value: recording.recording) {
+                rankedRecordingRow(index: index, recording: recording)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder
+    private var releaseGroupRankings: some View {
+        switch model.releaseGroupRankingState {
+        case .idle, .loading:
+            ProgressView("Loading release groups…")
+                .frame(maxWidth: .infinity, minHeight: 180)
+        case let .failed(message):
+            VStack(spacing: 12) {
+                ContentUnavailableView(
+                    "Release groups couldn’t load",
+                    systemImage: "square.stack.3d.up",
+                    description: Text("Check your connection, then try again.\n\n\(message)")
+                )
+                Button("Try again") {
+                    Task { await model.loadReleaseGroupRanking(retrying: true) }
+                }
+                .buttonStyle(.bordered)
+            }
+        case let .loaded(groups):
+            if groups.isEmpty {
+                ContentUnavailableView(
+                    "No release groups yet",
+                    systemImage: "square.stack.3d.up",
+                    description: Text("ListenBrainz has not calculated this ranking yet.")
+                )
+            } else {
+                if let message = model.releaseGroupRankingRefreshMessage {
+                    Label("Showing saved rankings. \(message)", systemImage: "arrow.clockwise")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                ForEach(Array(groups.prefix(20).enumerated()), id: \.element.id) { index, group in
+                    if let destination = group.detailDestination {
+                        NavigationLink(value: destination) {
+                            rankedReleaseGroupRow(index: index, group: group, showsDisclosure: true)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens release group details")
+                    } else {
+                        rankedReleaseGroupRow(index: index, group: group, showsDisclosure: false)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
@@ -1262,6 +1370,77 @@ struct TasteView: View {
             }
             Spacer()
         }
+    }
+
+    private func rankedReleaseGroupRow(index: Int, group: RankedReleaseGroup, showsDisclosure: Bool) -> some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 12) {
+                        rank(index)
+                        releaseGroupArtwork(group, size: 76, cornerRadius: 12)
+                        Spacer(minLength: 12)
+                        if showsDisclosure {
+                            Image(systemName: "chevron.right")
+                                .font(.body.bold())
+                                .foregroundStyle(.tertiary)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    Text(group.name)
+                        .font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(group.artistName)
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(listenCountLabel(group.listenCount))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                HStack(spacing: 12) {
+                    rank(index)
+                    releaseGroupArtwork(group, size: 50, cornerRadius: 8)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(group.name)
+                            .font(.body.weight(.semibold))
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("\(group.artistName) · \(listenCountLabel(group.listenCount))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    Spacer(minLength: 8)
+                    if showsDisclosure {
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .accessibilityHidden(true)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 8 : 0)
+        .contentShape(.rect)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "Rank \(index + 1), \(group.name), \(group.artistName), \(listenCountLabel(group.listenCount))"
+        )
+    }
+
+    private func releaseGroupArtwork(_ group: RankedReleaseGroup, size: CGFloat, cornerRadius: CGFloat) -> some View {
+        ArtworkView(
+            url: isReleaseGroupsVisualQA ? nil : group.artworkURL,
+            title: group.name,
+            cornerRadius: cornerRadius
+        )
+        .frame(width: size, height: size)
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        "\(count.formatted()) \(count == 1 ? "listen" : "listens")"
     }
 
     private func rankedRecordingRow(index: Int, recording: RankedRecording) -> some View {

@@ -7,6 +7,7 @@ protocol ListeningProvider: Sendable {
     func listenCount(username: String) async throws -> Int
     func topArtists(username: String, count: Int) async throws -> [RankedArtist]
     func topReleases(username: String, count: Int) async throws -> [RankedRelease]
+    func topReleaseGroups(username: String, count: Int) async throws -> [RankedReleaseGroup]
     func topRecordings(username: String, count: Int) async throws -> [RankedRecording]
     func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity
     func dailyActivity(username: String, period: ListeningActivityPeriod) async throws -> DailyActivity?
@@ -23,6 +24,8 @@ protocol ListeningProvider: Sendable {
 }
 
 extension ListeningProvider {
+    func topReleaseGroups(username: String, count: Int) async throws -> [RankedReleaseGroup] { [] }
+
     func recentListens(username: String, before: Date?, count: Int) async throws -> [Listen] {
         try await recentListens(username: username, before: before, after: nil, count: count)
     }

@@ -21,7 +21,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Pins/current pin/pin history/blurb | Y | Y | Y | Y | Y | Y | P1 | Native current/history, owner mutations, and Following Pins landed; the public Following Pins page stays aggregate and non-hydrating |
 | Top artists | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
 | Top releases/albums | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
-| Top release groups | Y | Y | Y | P | Y | P | P1 | Preserve release/release-group distinction |
+| Top release groups | Y | Y | Y | Y | Y | P | P1 | Lazy native Taste ranking; one cached aggregate read, canonical group routing, no row hydration, and no release-identity conflation |
 | Top recordings/tracks | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
 | Listening activity | Y | Y | Y | Y | Y | Y | P0 | Native Swift Charts |
 | Daily/hour-of-day activity | Y | Y | Y | Y | Y | — | P1 | Native cached, selectable 7×24 UTC heatmap across the seven server periods |

@@ -47,6 +47,170 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(model.snapshot.topRecordings.first?.title, "Fixture Track")
     }
 
+    func testReleaseGroupRankingIsLazyAndCoalescesRepeatedRequests() async throws {
+        let provider = ReleaseGroupRankingProvider(delay: .milliseconds(80))
+        let model = ListeningModel(
+            account: Account(username: "listener", token: "token"),
+            provider: provider,
+            cache: SnapshotCache(
+                rootDirectory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+            ),
+            releaseGroupRankingCache: EntityDetailCache()
+        )
+
+        await model.load()
+        let beforeRequests = await provider.requestCount()
+        XCTAssertEqual(beforeRequests, 0)
+        async let first: Void = model.loadReleaseGroupRanking()
+        async let second: Void = model.loadReleaseGroupRanking()
+        _ = await (first, second)
+
+        let requests = await provider.requestCount()
+        XCTAssertEqual(requests, 1)
+        guard case let .loaded(groups) = model.releaseGroupRankingState else {
+            return XCTFail("Expected the lazy ranking to load")
+        }
+        XCTAssertEqual(groups.count, 2)
+        XCTAssertNotNil(groups.first?.detailDestination)
+        XCTAssertNil(groups.last?.detailDestination)
+    }
+
+    func testReleaseGroupRankingReopenJoinsTheCancelledViewsFlight() async {
+        let provider = ReleaseGroupRankingProvider(delay: .milliseconds(80))
+        let model = ListeningModel(
+            account: Account(username: "listener", token: "token"),
+            provider: provider,
+            releaseGroupRankingCache: EntityDetailCache()
+        )
+
+        let firstConsumer = Task { await model.loadReleaseGroupRanking() }
+        while await provider.requestCount() == 0 { await Task.yield() }
+        firstConsumer.cancel()
+        let replacementConsumer = Task { await model.loadReleaseGroupRanking() }
+        await firstConsumer.value
+        await replacementConsumer.value
+
+        let requests = await provider.requestCount()
+        XCTAssertEqual(requests, 1)
+        guard case .loaded = model.releaseGroupRankingState else {
+            return XCTFail("The replacement consumer should receive the original request")
+        }
+    }
+
+    func testReleaseGroupRankingStaleRefreshJoinsExistingFlight() async {
+        let cache = EntityDetailCache<ReleaseGroupRankingCacheKey, [RankedReleaseGroup]>(timeToLive: -1)
+        let key = ReleaseGroupRankingCacheKey(
+            username: "listener",
+            scope: .authenticated(token: "token")
+        )
+        await cache.save(
+            [.init(mbid: UUID(), name: "Saved group", artistName: "Artist", artistMBIDs: [], listenCount: 3)],
+            for: key
+        )
+        let provider = ReleaseGroupRankingProvider(delay: .milliseconds(80))
+        let model = ListeningModel(
+            account: Account(username: "listener", token: "token"),
+            provider: provider,
+            releaseGroupRankingCache: cache
+        )
+
+        let revalidation = Task { await model.loadReleaseGroupRanking() }
+        while await provider.requestCount() == 0 { await Task.yield() }
+        async let pullToRefresh: Void = model.refreshReleaseGroupRankingIfLoaded()
+        async let explicitRefresh: Void = model.loadReleaseGroupRanking(retrying: true)
+        _ = await (pullToRefresh, explicitRefresh)
+        await revalidation.value
+
+        let requests = await provider.requestCount()
+        XCTAssertEqual(requests, 1)
+    }
+
+    func testReleaseGroupRankingFailureRequiresExplicitRetry() async {
+        let provider = ReleaseGroupRankingProvider(fails: true)
+        let model = ListeningModel(
+            account: Account(username: "listener", token: "token"),
+            provider: provider,
+            releaseGroupRankingCache: EntityDetailCache()
+        )
+
+        await model.loadReleaseGroupRanking()
+        await model.loadReleaseGroupRanking()
+        var requests = await provider.requestCount()
+        XCTAssertEqual(requests, 1)
+
+        await model.loadReleaseGroupRanking(retrying: true)
+        requests = await provider.requestCount()
+        XCTAssertEqual(requests, 2)
+    }
+
+    func testCancellingReleaseGroupRankingAtSessionTeardownStopsTheFlight() async {
+        let provider = ReleaseGroupRankingProvider(delay: .seconds(30))
+        let model = ListeningModel(
+            account: Account(username: "listener", token: "token"),
+            provider: provider,
+            releaseGroupRankingCache: EntityDetailCache()
+        )
+
+        let consumer = Task { await model.loadReleaseGroupRanking() }
+        while await provider.requestCount() == 0 { await Task.yield() }
+        model.cancelReleaseGroupRankingLoad()
+        await consumer.value
+
+        XCTAssertEqual(model.releaseGroupRankingState, .idle)
+        let cancellations = await provider.cancellationCount()
+        XCTAssertEqual(cancellations, 1)
+    }
+
+    func testReleaseGroupRankingFreshCacheAvoidsNetworkAndIsCredentialIsolated() async {
+        let cache = EntityDetailCache<ReleaseGroupRankingCacheKey, [RankedReleaseGroup]>()
+        let provider = ReleaseGroupRankingProvider()
+        let first = ListeningModel(
+            account: Account(username: " Listener ", token: "first-token"),
+            provider: provider,
+            releaseGroupRankingCache: cache
+        )
+        await first.loadReleaseGroupRanking()
+        let firstRequests = await provider.requestCount()
+        XCTAssertEqual(firstRequests, 1)
+
+        let sameScope = ListeningModel(
+            account: Account(username: "listener", token: "first-token"),
+            provider: provider,
+            releaseGroupRankingCache: cache
+        )
+        await sameScope.loadReleaseGroupRanking()
+        let sameScopeRequests = await provider.requestCount()
+        XCTAssertEqual(sameScopeRequests, 1)
+
+        let otherScope = ListeningModel(
+            account: Account(username: "listener", token: "second-token"),
+            provider: provider,
+            releaseGroupRankingCache: cache
+        )
+        await otherScope.loadReleaseGroupRanking()
+        let otherScopeRequests = await provider.requestCount()
+        XCTAssertEqual(otherScopeRequests, 2)
+    }
+
+    func testStaleReleaseGroupRankingStaysVisibleWhenRefreshFails() async throws {
+        let cache = EntityDetailCache<ReleaseGroupRankingCacheKey, [RankedReleaseGroup]>(timeToLive: -1)
+        let stale = [RankedReleaseGroup(mbid: UUID(), name: "Saved group", artistName: "Artist", artistMBIDs: [], listenCount: 3)]
+        await cache.save(stale, for: .init(username: "listener", scope: .authenticated(token: "token")))
+        let provider = ReleaseGroupRankingProvider(fails: true)
+        let model = ListeningModel(
+            account: Account(username: "listener", token: "token"),
+            provider: provider,
+            releaseGroupRankingCache: cache
+        )
+
+        await model.loadReleaseGroupRanking()
+        guard case let .loaded(groups) = model.releaseGroupRankingState else {
+            return XCTFail("Stale release groups should remain visible")
+        }
+        XCTAssertEqual(groups, stale)
+        XCTAssertNotNil(model.releaseGroupRankingRefreshMessage)
+    }
+
     func testArtistFilteringUsesMBIDsBeforeDisplayNames() async {
         let provider = FixtureProvider()
         let model = ListeningModel(
@@ -3173,6 +3337,51 @@ private actor BoundaryProvider: ListeningProvider {
             isPlayingNow: false
         )
     }
+}
+
+private actor ReleaseGroupRankingProvider: ListeningProvider {
+    private let delay: Duration?
+    private let fails: Bool
+    private var requests = 0
+    private var cancellations = 0
+
+    init(delay: Duration? = nil, fails: Bool = false) {
+        self.delay = delay
+        self.fails = fails
+    }
+
+    func validateToken() async throws -> String { "fixture-user" }
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] { [] }
+    func playingNow(username: String) async throws -> Listen? { nil }
+    func listenCount(username: String) async throws -> Int { 0 }
+    func topArtists(username: String, count: Int) async throws -> [RankedArtist] { [] }
+    func topReleases(username: String, count: Int) async throws -> [RankedRelease] { [] }
+    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] { [] }
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        .init(period: period, from: .distantPast, to: .distantPast, lastUpdated: .distantPast, buckets: [])
+    }
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+    func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+
+    func topReleaseGroups(username: String, count: Int) async throws -> [RankedReleaseGroup] {
+        requests += 1
+        if let delay {
+            do {
+                try await ContinuousClock().sleep(for: delay)
+            } catch is CancellationError {
+                cancellations += 1
+                throw CancellationError()
+            }
+        }
+        if fails { throw URLError(.notConnectedToInternet) }
+        return [
+            .init(mbid: UUID(), name: "Mapped group", artistName: "Artist", artistMBIDs: [], listenCount: 9),
+            .init(mbid: nil, name: "Unmapped group", artistName: "Artist", artistMBIDs: [], listenCount: 4),
+        ]
+    }
+
+    func requestCount() -> Int { requests }
+    func cancellationCount() -> Int { cancellations }
 }
 
 private actor DayHistoryProvider: ListeningProvider {

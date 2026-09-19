@@ -84,4 +84,7 @@ enum EntityDetailCaches {
     static let artistActivity = EntityDetailCache<ArtistActivityCacheKey, ArtistActivity>(
         timeToLive: 10 * 60, maximumEntryCount: 28
     )
+    static let releaseGroupRankings = EntityDetailCache<ReleaseGroupRankingCacheKey, [RankedReleaseGroup]>(
+        timeToLive: 10 * 60, maximumEntryCount: 28
+    )
 }

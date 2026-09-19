@@ -458,6 +458,35 @@ struct RankedRelease: Identifiable, Hashable, Codable, Sendable {
     }
 }
 
+/// A ListenBrainz release-group ranking. A release group describes the album
+/// work; it is deliberately not a concrete release and must navigate through
+/// the release-group detail route.
+struct RankedReleaseGroup: Identifiable, Hashable, Codable, Sendable {
+    let mbid: UUID?
+    let name: String
+    let artistName: String
+    let artistMBIDs: [UUID]
+    let listenCount: Int
+
+    var id: String { mbid?.uuidString ?? "release-group:\(artistName):\(name)" }
+
+    var artworkURL: URL? {
+        guard let mbid else { return nil }
+        return CoverArtArchiveURL.releaseGroup(mbid)
+    }
+
+    var detailDestination: SearchReleaseGroup? {
+        guard let mbid else { return nil }
+        return SearchReleaseGroup(
+            mbid: mbid,
+            title: name,
+            artistName: artistName,
+            primaryType: nil,
+            firstReleaseDate: nil
+        )
+    }
+}
+
 struct RankedRecording: Identifiable, Hashable, Codable, Sendable {
     let mbid: UUID?
     let releaseMBID: UUID?
@@ -693,6 +722,23 @@ enum DailyActivityLoadState: Equatable {
     case loaded(DailyActivity)
     case unavailable
     case failed(String)
+}
+
+enum ReleaseGroupRankingLoadState: Equatable {
+    case idle
+    case loading
+    case loaded([RankedReleaseGroup])
+    case failed(String)
+}
+
+struct ReleaseGroupRankingCacheKey: Hashable, Sendable {
+    let username: String
+    let scope: RequestGate.ReadScope
+
+    init(username: String, scope: RequestGate.ReadScope) {
+        self.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        self.scope = scope
+    }
 }
 
 struct DailyActivityCacheKey: Hashable, Sendable {

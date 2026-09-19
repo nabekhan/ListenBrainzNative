@@ -234,6 +234,7 @@ final class SessionModel {
             }
             if arguments.contains("-brainz-taste-demo")
                 || arguments.contains("-brainz-taste-heatmap-demo")
+                || arguments.contains("-brainz-taste-release-groups-demo")
                 || arguments.contains("-brainz-year-in-music-teaser-demo")
                 || arguments.contains("-brainz-taste-era-demo")
                 || arguments.contains("-brainz-taste-era-zoom-demo")

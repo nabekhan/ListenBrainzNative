@@ -10,6 +10,11 @@ final class ListeningModel {
         let task: Task<Void, Never>
     }
 
+    private struct ReleaseGroupRankingFlight {
+        let id: UUID
+        let task: Task<Void, Never>
+    }
+
     private struct ListenDeletionKey: Hashable, Sendable {
         let listenedAt: Int
         let recordingMSID: UUID
@@ -39,6 +44,7 @@ final class ListeningModel {
     private let genreActivityCache: EntityDetailCache<GenreActivityCacheKey, GenreActivity>
     private let artistOriginsCache: EntityDetailCache<ArtistOriginsCacheKey, ArtistOrigins>
     private let artistActivityCache: EntityDetailCache<ArtistActivityCacheKey, ArtistActivity>
+    private let releaseGroupRankingCache: EntityDetailCache<ReleaseGroupRankingCacheKey, [RankedReleaseGroup]>
     private let deletionJournal: ListenDeletionSafetyJournal
 
     private(set) var snapshot = ListeningSnapshot.empty
@@ -71,6 +77,9 @@ final class ListeningModel {
     private(set) var artistActivity: [ListeningActivityPeriod: ArtistActivityLoadState] = [:]
     private(set) var artistActivityRefreshMessages: [ListeningActivityPeriod: String] = [:]
     private var artistActivityFlights: [ListeningActivityPeriod: ArtistActivityFlight] = [:]
+    private(set) var releaseGroupRankingState: ReleaseGroupRankingLoadState = .idle
+    private(set) var releaseGroupRankingRefreshMessage: String?
+    private var releaseGroupRankingFlight: ReleaseGroupRankingFlight?
     var feedback: [String: RecordingFeedback] = [:]
     var actionError: String?
     var deletionNotice: String?
@@ -90,6 +99,7 @@ final class ListeningModel {
         genreActivityCache: EntityDetailCache<GenreActivityCacheKey, GenreActivity> = EntityDetailCaches.genreActivity,
         artistOriginsCache: EntityDetailCache<ArtistOriginsCacheKey, ArtistOrigins> = EntityDetailCaches.artistOrigins,
         artistActivityCache: EntityDetailCache<ArtistActivityCacheKey, ArtistActivity> = EntityDetailCaches.artistActivity,
+        releaseGroupRankingCache: EntityDetailCache<ReleaseGroupRankingCacheKey, [RankedReleaseGroup]> = EntityDetailCaches.releaseGroupRankings,
         deletionJournal: ListenDeletionSafetyJournal = .shared
     ) {
         self.account = account
@@ -102,6 +112,7 @@ final class ListeningModel {
         self.genreActivityCache = genreActivityCache
         self.artistOriginsCache = artistOriginsCache
         self.artistActivityCache = artistActivityCache
+        self.releaseGroupRankingCache = releaseGroupRankingCache
         self.deletionJournal = deletionJournal
     }
 
@@ -906,6 +917,99 @@ final class ListeningModel {
         snapshot.topRecordings.filter { recording in
             if let mbid = artist.mbid, recording.artistMBIDs.contains(mbid) { return true }
             return recording.artistName.localizedCaseInsensitiveCompare(artist.name) == .orderedSame
+        }
+    }
+
+    /// Loads the all-time release-group ranking only after it is requested by
+    /// Taste. Cached values stay visible while an explicit refresh validates
+    /// them, and repeated selection joins one model-owned provider read.
+    func loadReleaseGroupRanking(retrying: Bool = false) async {
+        let key = ReleaseGroupRankingCacheKey(username: account.username, scope: cacheScope)
+        var hasVisibleValue = false
+        var shouldRevalidateCachedValue = false
+
+        if let cached = await releaseGroupRankingCache.value(for: key) {
+            releaseGroupRankingState = .loaded(cached.value)
+            hasVisibleValue = true
+            if cached.isFresh, !retrying { return }
+            shouldRevalidateCachedValue = true
+        } else if case .loaded = releaseGroupRankingState {
+            hasVisibleValue = true
+        }
+
+        if let flight = releaseGroupRankingFlight {
+            await flight.task.value
+            return
+        }
+
+        if !retrying, !shouldRevalidateCachedValue {
+            switch releaseGroupRankingState {
+            case .loaded, .failed:
+                return
+            case .idle, .loading:
+                break
+            }
+        }
+        if !hasVisibleValue {
+            releaseGroupRankingState = .loading
+        }
+
+        releaseGroupRankingRefreshMessage = nil
+        let flightID = UUID()
+        let provider = self.provider
+        let username = account.username
+        let cache = releaseGroupRankingCache
+        let task = Task { @MainActor [weak self] in
+            let outcome: Result<[RankedReleaseGroup], Error>
+            do {
+                outcome = .success(try await provider.topReleaseGroups(username: username, count: 20))
+            } catch {
+                outcome = .failure(error)
+            }
+
+            guard let self else { return }
+            defer {
+                if self.releaseGroupRankingFlight?.id == flightID {
+                    self.releaseGroupRankingFlight = nil
+                }
+            }
+            guard self.releaseGroupRankingFlight?.id == flightID else { return }
+
+            switch outcome {
+            case let .success(groups):
+                self.releaseGroupRankingState = .loaded(groups)
+                await cache.save(groups, for: key)
+            case let .failure(error) where error is CancellationError:
+                if case .loading = self.releaseGroupRankingState {
+                    self.releaseGroupRankingState = .idle
+                }
+            case let .failure(error):
+                if case .loaded = self.releaseGroupRankingState {
+                    self.releaseGroupRankingRefreshMessage = error.localizedDescription
+                } else {
+                    self.releaseGroupRankingState = .failed(error.localizedDescription)
+                }
+            }
+        }
+        releaseGroupRankingFlight = ReleaseGroupRankingFlight(id: flightID, task: task)
+        await task.value
+    }
+
+    /// Taste refreshes this optional ranking only after the user has opened it.
+    func refreshReleaseGroupRankingIfLoaded() async {
+        guard case .loaded = releaseGroupRankingState else { return }
+        await loadReleaseGroupRanking(retrying: true)
+    }
+
+    /// Cancels the model-owned read when the authenticated app surface ends.
+    /// Switching ranking choices does not call this, allowing a quick return
+    /// to join the same intentional request.
+    func cancelReleaseGroupRankingLoad() {
+        let flight = releaseGroupRankingFlight
+        releaseGroupRankingFlight = nil
+        flight?.task.cancel()
+        if case .loading = releaseGroupRankingState {
+            releaseGroupRankingState = .idle
         }
     }
 

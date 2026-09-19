@@ -97,6 +97,22 @@ struct ListenBrainzProvider: ListeningProvider {
         }
     }
 
+    func topReleaseGroups(username: String, count: Int) async throws -> [RankedReleaseGroup] {
+        let safeCount = max(count, 1)
+        return try await read(.topReleaseGroups(readScope, user: username, count: safeCount)) {
+            let value = try await client.stats.topReleaseGroups(user: username, count: safeCount, range: .allTime)
+            return value?.releaseGroups.map {
+                RankedReleaseGroup(
+                    mbid: $0.releaseGroupMbid,
+                    name: $0.releaseGroupName,
+                    artistName: $0.artistName,
+                    artistMBIDs: $0.artistMbids ?? [],
+                    listenCount: $0.listenCount
+                )
+            } ?? []
+        }
+    }
+
     func topRecordings(username: String, count: Int) async throws -> [RankedRecording] {
         let safeCount = max(count, 1)
         return try await read(.topRecordings(readScope, user: username, count: safeCount)) {
@@ -589,6 +605,7 @@ actor RequestGate {
         case profileSummary
         case statsTopArtists
         case statsTopReleases
+        case statsTopReleaseGroups
         case statsTopRecordings
         case statsListeningActivity
         case statsDailyActivity
@@ -658,6 +675,7 @@ actor RequestGate {
         static func listenCount(_ scope: ReadScope, user: String) -> Self { endpoint(scope, .historyListenCount, [userID(user)]) }
         static func topArtists(_ scope: ReadScope, user: String, count: Int) -> Self { endpoint(scope, .statsTopArtists, [userID(user), String(count), "all-time"]) }
         static func topReleases(_ scope: ReadScope, user: String, count: Int) -> Self { endpoint(scope, .statsTopReleases, [userID(user), String(count), "all-time"]) }
+        static func topReleaseGroups(_ scope: ReadScope, user: String, count: Int) -> Self { endpoint(scope, .statsTopReleaseGroups, [userID(user), String(count), "all-time"]) }
         static func topRecordings(_ scope: ReadScope, user: String, count: Int) -> Self { endpoint(scope, .statsTopRecordings, [userID(user), String(count), "all-time"]) }
         static func listeningActivity(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsListeningActivity, [userID(user), period]) }
         static func dailyActivity(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsDailyActivity, [userID(user), period]) }

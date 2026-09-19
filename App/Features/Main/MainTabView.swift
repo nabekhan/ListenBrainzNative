@@ -158,6 +158,7 @@ struct MainTabView: View {
             }
             if ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-taste-release-groups-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-teaser-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-zoom-demo")
@@ -260,6 +261,7 @@ struct MainTabView: View {
                 )
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-taste-release-groups-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-teaser-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-zoom-demo")
@@ -554,6 +556,7 @@ struct MainTabView: View {
             }
             .onDisappear {
                 model.cancelArtistActivityLoads()
+                model.cancelReleaseGroupRankingLoad()
             }
             .environment(pins)
             .sheet(item: $presentedListen) { listen in
@@ -1334,6 +1337,24 @@ struct MainTabView: View {
                 .init(
                     mbid: nil, name: "Jubilee", artistName: "Japanese Breakfast", artistMBIDs: [Self.artistMBIDs[1]],
                     listenCount: 287),
+            ]
+        }
+        func topReleaseGroups(username: String, count: Int) async throws -> [RankedReleaseGroup] {
+            [
+                .init(
+                    mbid: UUID(uuidString: "a2b2d7d1-2d17-4c1d-b736-2fba43f0f609")!,
+                    name: "Blue Rev: The Anniversary Collection",
+                    artistName: "Alvvays",
+                    artistMBIDs: [Self.artistMBIDs[0]],
+                    listenCount: 423
+                ),
+                .init(
+                    mbid: nil,
+                    name: "Jubilee (Expanded Edition)",
+                    artistName: "Japanese Breakfast",
+                    artistMBIDs: [Self.artistMBIDs[1]],
+                    listenCount: 287
+                ),
             ]
         }
         func topRecordings(username: String, count: Int) async throws -> [RankedRecording] {
