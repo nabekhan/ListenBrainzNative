@@ -55,7 +55,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | LB Radio generation/tags/artist radio | Y | Y | P | — | Y | — | P2 | Native explicit recipe generation, ordered canonical-track private-playlist saves, and playlist browsing landed; playback/content resolution remains separate |
 | BrainzPlayer queue/content resolution | Y | Y | Y | P | — | P | P2 | Keep modular; viewing is not blocked |
 | Apple/Spotify/YouTube/etc. external play | Y/P | Y | P | P | — | P | P2 | Resolve/open externally before full player |
-| Linked music services | Y | Y | Y | ? | Y | Y | P2 | Settings visibility/connection handoff |
+| Linked music services | Y (own authenticated account) | Y | Y | P | Y | P | P2 | Lazy native status list and canonical settings handoff; endpoint has no permission detail |
 | Shareable art/stat grids/YiM art | Y | Y | P | P | P | P | P1 | Explicit native stats, artist, playlist, and YiM SVG previews/PNG sharing landed; the generic custom-art creator remains staged |
 | HueSound/color exploration | Y | Y | — | — | — | — | P3 | Delightful but niche |
 | Music Neighborhood/similar artists | Y | Y | P | — | — | P | P2 | Discovery graph/list, not a heavy graph UI |

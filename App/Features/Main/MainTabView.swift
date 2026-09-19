@@ -30,6 +30,9 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-following-pins-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-following-pins-empty-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-following-pins-failure-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-connected-services-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-connected-services-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-connected-services-failure-demo")
             {
                 let visualAccount = Account(username: "visual-listener", token: "visual-token")
                 _model = State(
@@ -349,6 +352,24 @@ struct MainTabView: View {
             {
                 NavigationStack {
                     FollowingPinsView(account: model.account, listeningModel: model)
+                }
+                .environment(pins)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-connected-services-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-connected-services-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-connected-services-failure-demo")
+            {
+                NavigationStack {
+                    ConnectedServicesView(
+                        account: model.account,
+                        provider: VisualQAConnectedServicesProvider(
+                            result: ProcessInfo.processInfo.arguments.contains("-brainz-connected-services-empty-demo")
+                                ? .empty
+                                : ProcessInfo.processInfo.arguments.contains("-brainz-connected-services-failure-demo")
+                                    ? .failure
+                                    : .populated
+                        ),
+                        cache: EntityDetailCache()
+                    )
                 }
                 .environment(pins)
             } else {
@@ -745,6 +766,33 @@ struct MainTabView: View {
                 )
             }
         }
+    }
+
+    private struct VisualQAConnectedServicesProvider: ConnectedServicesProviding {
+        enum Result {
+            case populated
+            case empty
+            case failure
+        }
+
+        let result: Result
+
+        func connectedServices(username: String) async throws -> ConnectedServices {
+            switch result {
+            case .populated:
+                return ConnectedServices(identifiers: ["spotify", "musicbrainz-prod", "unlisted-service"])
+            case .empty:
+                return ConnectedServices(identifiers: [])
+            case .failure:
+                throw VisualQAConnectedServicesError.unavailable
+            }
+        }
+    }
+
+    private enum VisualQAConnectedServicesError: LocalizedError {
+        case unavailable
+
+        var errorDescription: String? { "The preview service is unavailable." }
     }
 
     private enum VisualQACritiqueBrainzError: LocalizedError {

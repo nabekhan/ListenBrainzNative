@@ -173,6 +173,9 @@ final class SessionModel {
                 || arguments.contains("-brainz-generic-art-demo")
                 || arguments.contains("-brainz-generic-art-unavailable-demo")
                 || arguments.contains("-brainz-generic-art-failure-demo")
+                || arguments.contains("-brainz-connected-services-demo")
+                || arguments.contains("-brainz-connected-services-empty-demo")
+                || arguments.contains("-brainz-connected-services-failure-demo")
             {
                 state = .active(Account(username: "visual-listener", token: "visual-token"))
                 return true

@@ -6,12 +6,16 @@ struct ProfileView: View {
     @Environment(PinsModel.self) private var pins
     @State private var playlistModel: ProfilePlaylistsModel
     @State private var selectedPlaylistCategory: ProfilePlaylistCategory
+    private let connectedServicesProvider: (any ConnectedServicesProviding)?
+    private let connectedServicesCache: EntityDetailCache<ConnectedServicesCacheKey, ConnectedServices>
 
     init(
         model: ListeningModel,
         session: SessionModel,
         playlistProvider: (any ProfilePlaylistsProviding)? = nil,
         playlistCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage> = ProfilePlaylistCaches.pages,
+        connectedServicesProvider: (any ConnectedServicesProviding)? = nil,
+        connectedServicesCache: EntityDetailCache<ConnectedServicesCacheKey, ConnectedServices> = ConnectedServicesCaches.values,
         initialPlaylistCategory: ProfilePlaylistCategory = .owned
     ) {
         _model = Bindable(wrappedValue: model)
@@ -22,6 +26,8 @@ struct ProfileView: View {
             cache: playlistCache
         ))
         _selectedPlaylistCategory = State(initialValue: initialPlaylistCategory)
+        self.connectedServicesProvider = connectedServicesProvider
+        self.connectedServicesCache = connectedServicesCache
     }
 
     var body: some View {
@@ -166,7 +172,22 @@ struct ProfileView: View {
     private var accountSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             SectionHeader(title: "Account")
-            Link(destination: URL(string: "https://listenbrainz.org/user/\(model.account.username.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? model.account.username)/")!) {
+            if model.account.isAuthenticated {
+                NavigationLink {
+                    ConnectedServicesView(
+                        account: model.account,
+                        provider: connectedServicesProvider,
+                        cache: connectedServicesCache
+                    )
+                } label: {
+                    Label("Connected services", systemImage: "link")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                        .background(.thinMaterial, in: .rect(cornerRadius: 14, style: .continuous))
+                }
+                .accessibilityHint("View services linked to this account")
+            }
+            Link(destination: Self.listenBrainzProfileURL(for: model.account.username)) {
                 Label("Open profile on ListenBrainz", systemImage: "arrow.up.right.square")
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(14)
@@ -181,5 +202,11 @@ struct ProfileView: View {
                     .background(.thinMaterial, in: .rect(cornerRadius: 14, style: .continuous))
             }
         }
+    }
+
+    private static func listenBrainzProfileURL(for username: String) -> URL {
+        let allowed = CharacterSet.urlPathAllowed.subtracting(CharacterSet(charactersIn: "/?#%"))
+        let encodedUsername = username.addingPercentEncoding(withAllowedCharacters: allowed) ?? username
+        return URL(string: "https://listenbrainz.org/user/\(encodedUsername)/")!
     }
 }

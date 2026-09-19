@@ -7,6 +7,20 @@ import Foundation
 import Testing
 
 @Suite struct LBCoreTests {
+    @Test("User services encodes a username as one path segment")
+    func userServicesEncodesUsernamePathSegment() async throws {
+        let mock = MockAPIClient(result: .success(UserServicesRequest.Result(
+            userName: "listener/name",
+            services: []
+        )))
+
+        _ = try await LBCoreClient(mock).userServices(username: "listener/name")
+
+        let request = try #require(mock.request as? UserServicesRequest)
+        #expect(request.data.path == "/1/user/listener%2Fname/services")
+        #expect(request.data.pathIsPercentEncoded)
+    }
+
     @Test("searchUser gets a list of users")
     func searchUser() async throws {
         let mockRes = SearchUserRequest

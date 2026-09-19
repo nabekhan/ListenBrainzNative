@@ -621,6 +621,7 @@ actor RequestGate {
         case searchListenBrainzUsers
         case searchListenBrainzPlaylists
         case critiqueBrainzReviews
+        case connectedServices
     }
 
     struct ReadKey: Hashable, Sendable {
@@ -699,6 +700,9 @@ actor RequestGate {
         }
         static func critiqueBrainzReviews(_ scope: ReadScope, entity: CritiqueBrainzEntity) -> Self {
             endpoint(scope, .critiqueBrainzReviews, [entity.kind.rawValue, uuid(entity.mbid), "5"])
+        }
+        static func connectedServices(_ scope: ReadScope, user: String) -> Self {
+            endpoint(scope, .connectedServices, [userID(user)])
         }
         private static func uuid(_ id: UUID) -> String { id.uuidString.lowercased() }
         private static func artOptions(_ value: LBArtGridOptions) -> [String] { [String(value.captions), String(value.skipMissing), String(value.showRank), String(value.showListenCount), String(value.showRelease), String(value.showArtist)] }

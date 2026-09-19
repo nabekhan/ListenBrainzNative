@@ -55,6 +55,7 @@ Snapshot: 2026-09-19. Repository/source inspection, Xcode 27 builds, simulator r
 | Caching | Cassette/Minidisc + URLCache | Actor/service patterns | Small stale-while-revalidate cache boundary |
 | Scrobbling/offline retry | FastScrobbler behavior + Cassette/Minidisc | MPL queue code only if later adopted | Deferred capture module |
 | CritiqueBrainz review highlights | Current ListenBrainz web + official KMP service/models | Current `limit=5` request shape, five-minute stale policy, entity semantics, and tolerant response fields were referenced only; GPL KMP code was not copied | Native summary card, strict entity validation, ephemeral bounded transport, cache, links, accessibility, and retry state |
+| Connected services | Current ListenBrainz server/frontend + Android/KMP behavior + ListenBrainzKit | Own-account authorization, service identifiers, and canonical web-management route; GPL KMP was behavior reference only | Native private Account destination, credential-scoped five-minute cache/gate, honest known labels, unknown identifier fallback, and small MPL Kit path-safety repair |
 
 ## Additional discovery verdict
 
