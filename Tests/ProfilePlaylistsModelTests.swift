@@ -1,6 +1,7 @@
 import Foundation
 import ListenBrainzKit
 import XCTest
+
 @testable import Brainz
 
 @MainActor
@@ -26,8 +27,10 @@ final class ProfilePlaylistsModelTests: XCTestCase {
 
     func testCategoriesLoadLazilyAndIndependently() async {
         let provider = PlaylistFixtureProvider(pages: [
-            .init(category: .owned, offset: 0): makePage(category: .owned, offset: 0, total: 1, rows: [playlist("owned")]),
-            .init(category: .collaborating, offset: 0): makePage(category: .collaborating, offset: 0, total: 1, rows: [playlist("shared")]),
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned, offset: 0, total: 1, rows: [playlist("owned")]),
+            .init(category: .collaborating, offset: 0): makePage(
+                category: .collaborating, offset: 0, total: 1, rows: [playlist("shared")]),
         ])
         let model = makeModel(provider: provider)
 
@@ -40,17 +43,21 @@ final class ProfilePlaylistsModelTests: XCTestCase {
 
         await model.load(category: .collaborating)
         let allCalls = await provider.calls
-        XCTAssertEqual(allCalls, [
-            .init(category: .owned, offset: 0),
-            .init(category: .collaborating, offset: 0),
-        ])
+        XCTAssertEqual(
+            allCalls,
+            [
+                .init(category: .owned, offset: 0),
+                .init(category: .collaborating, offset: 0),
+            ])
     }
 
     func testPaginationUsesServerOffsetDeduplicatesAndTerminatesAtTotal() async {
         let duplicate = playlist("a")
         let provider = PlaylistFixtureProvider(pages: [
-            .init(category: .owned, offset: 0): makePage(category: .owned, offset: 0, total: 3, rows: [duplicate, playlist("b")]),
-            .init(category: .owned, offset: 2): makePage(category: .owned, offset: 2, total: 3, rows: [duplicate, playlist("c")]),
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned, offset: 0, total: 3, rows: [duplicate, playlist("b")]),
+            .init(category: .owned, offset: 2): makePage(
+                category: .owned, offset: 2, total: 3, rows: [duplicate, playlist("c")]),
         ])
         let model = makeModel(provider: provider, pageSize: 2)
 
@@ -66,17 +73,21 @@ final class ProfilePlaylistsModelTests: XCTestCase {
 
         await model.loadMore(category: .owned)
         let calls = await provider.calls
-        XCTAssertEqual(calls, [
-            .init(category: .owned, offset: 0),
-            .init(category: .owned, offset: 2),
-        ])
+        XCTAssertEqual(
+            calls,
+            [
+                .init(category: .owned, offset: 0),
+                .init(category: .owned, offset: 2),
+            ])
     }
 
     func testMalformedPageCannotCauseOffsetRepeatLoop() async {
         let provider = PlaylistFixtureProvider(pages: [
-            .init(category: .owned, offset: 0): makePage(category: .owned, offset: 0, total: 20, rows: [playlist("one")]),
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned, offset: 0, total: 20, rows: [playlist("one")]),
             // The second response incorrectly claims it starts at zero again.
-            .init(category: .owned, offset: 1): makePage(category: .owned, offset: 0, total: 20, rows: [playlist("two")]),
+            .init(category: .owned, offset: 1): makePage(
+                category: .owned, offset: 0, total: 20, rows: [playlist("two")]),
         ])
         let model = makeModel(provider: provider)
 
@@ -86,15 +97,17 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         XCTAssertFalse(model.state(for: .owned).hasMore)
         await model.loadMore(category: .owned)
         let calls = await provider.calls
-        XCTAssertEqual(calls, [
-            .init(category: .owned, offset: 0),
-            .init(category: .owned, offset: 1),
-        ])
+        XCTAssertEqual(
+            calls,
+            [
+                .init(category: .owned, offset: 0),
+                .init(category: .owned, offset: 1),
+            ])
     }
 
     func testEmptyPageTerminatesEvenWhenServerReportsMoreRows() async {
         let provider = PlaylistFixtureProvider(pages: [
-            .init(category: .owned, offset: 0): makePage(category: .owned, offset: 0, total: 99, rows: []),
+            .init(category: .owned, offset: 0): makePage(category: .owned, offset: 0, total: 99, rows: [])
         ])
         let model = makeModel(provider: provider)
 
@@ -108,7 +121,8 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         let cache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
         let account = Account(username: "Listener", token: "token")
         let firstProvider = PlaylistFixtureProvider(pages: [
-            .init(category: .owned, offset: 0): makePage(category: .owned, offset: 0, total: 1, rows: [playlist("cached")]),
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned, offset: 0, total: 1, rows: [playlist("cached")])
         ])
         let first = ProfilePlaylistsModel(account: account, provider: firstProvider, cache: cache)
         await first.load(category: .owned)
@@ -305,10 +319,12 @@ final class ProfilePlaylistsModelTests: XCTestCase {
 
         XCTAssertEqual(model.state(for: .owned).playlists.map(\.title), ["after"])
         let requests = await provider.requests
-        XCTAssertEqual(requests, [
-            .init(category: .owned, offset: 0),
-            .init(category: .owned, offset: 0),
-        ])
+        XCTAssertEqual(
+            requests,
+            [
+                .init(category: .owned, offset: 0),
+                .init(category: .owned, offset: 0),
+            ])
     }
 
     func testConfirmedEditUpdatesLoadedRowAndInvalidatesPageWithoutRefetching() async {
@@ -328,7 +344,7 @@ final class ProfilePlaylistsModelTests: XCTestCase {
                 offset: 0,
                 total: 1,
                 rows: [source]
-            ),
+            )
         ])
         let cache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
         let model = ProfilePlaylistsModel(
@@ -338,16 +354,17 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         )
         await model.load(category: .owned)
 
-        await model.reconcileAfterConfirmedEdit(.init(
-            mbid: mbid,
-            ownerUsername: "listener",
-            draft: .init(
-                title: "After",
-                annotation: "New note",
-                isPublic: false,
-                collaborators: ["Alice", "Bob"]
-            )
-        ))
+        await model.reconcileAfterConfirmedEdit(
+            .init(
+                mbid: mbid,
+                ownerUsername: "listener",
+                draft: .init(
+                    title: "After",
+                    annotation: "New note",
+                    isPublic: false,
+                    collaborators: ["Alice", "Bob"]
+                )
+            ))
 
         let row = model.state(for: .owned).playlists.first
         XCTAssertEqual(row?.title, "After")
@@ -356,13 +373,14 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         XCTAssertEqual(row?.collaborators, ["Alice", "Bob"])
         let calls = await provider.calls
         XCTAssertEqual(calls, [.init(category: .owned, offset: 0)])
-        let cached = await cache.value(for: .init(
-            username: "listener",
-            accessScope: .authenticatedViewer(.authenticated(token: "listener")),
-            category: .owned,
-            offset: 0,
-            count: 20
-        ))
+        let cached = await cache.value(
+            for: .init(
+                username: "listener",
+                accessScope: .authenticatedViewer(.authenticated(token: "listener")),
+                category: .owned,
+                offset: 0,
+                count: 20
+            ))
         XCTAssertNil(cached)
     }
 
@@ -391,7 +409,7 @@ final class ProfilePlaylistsModelTests: XCTestCase {
                 offset: 0,
                 total: 1,
                 rows: [original]
-            ),
+            )
         ])
         let cache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
         let model = ProfilePlaylistsModel(
@@ -401,23 +419,25 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         )
         await model.load(category: .owned)
 
-        await model.reconcileAfterConfirmedCopy(.init(
-            ownerUsername: "listener",
-            playlist: copy
-        ))
+        await model.reconcileAfterConfirmedCopy(
+            .init(
+                ownerUsername: "listener",
+                playlist: copy
+            ))
 
         let state = model.state(for: .owned)
         XCTAssertEqual(state.playlists.map(\.playlistMBID), [copiedMBID, originalMBID])
         XCTAssertEqual(state.totalCount, 2)
         let calls = await provider.calls
         XCTAssertEqual(calls, [.init(category: .owned, offset: 0)])
-        let cached = await cache.value(for: .init(
-            username: "listener",
-            accessScope: .authenticatedViewer(.authenticated(token: "listener")),
-            category: .owned,
-            offset: 0,
-            count: 20
-        ))
+        let cached = await cache.value(
+            for: .init(
+                username: "listener",
+                accessScope: .authenticatedViewer(.authenticated(token: "listener")),
+                category: .owned,
+                offset: 0,
+                count: 20
+            ))
         XCTAssertNil(cached)
     }
 
@@ -449,12 +469,13 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         await model.load(category: .owned)
         await model.load(category: .collaborating)
 
-        await model.reconcileAfterAccessLoss(.init(
-            viewerUsername: "listener",
-            sourceMBID: sourceMBID,
-            reason: .sourceVisibility,
-            message: "No longer visible"
-        ))
+        await model.reconcileAfterAccessLoss(
+            .init(
+                viewerUsername: "listener",
+                sourceMBID: sourceMBID,
+                reason: .sourceVisibility,
+                message: "No longer visible"
+            ))
 
         for category in ProfilePlaylistCategory.allCases {
             let state = model.state(for: category)
@@ -464,22 +485,25 @@ final class ProfilePlaylistsModelTests: XCTestCase {
             XCTAssertFalse(state.hasMore)
             XCTAssertFalse(state.isLoadingMore)
             XCTAssertNotNil(state.refreshMessage)
-            let cached = await cache.value(for: .init(
-                username: "listener",
-                accessScope: .authenticatedViewer(.authenticated(token: "listener")),
-                category: category,
-                offset: 0,
-                count: 20
-            ))
+            let cached = await cache.value(
+                for: .init(
+                    username: "listener",
+                    accessScope: .authenticatedViewer(.authenticated(token: "listener")),
+                    category: category,
+                    offset: 0,
+                    count: 20
+                ))
             XCTAssertNil(cached)
         }
 
         await model.loadMore(category: .owned)
         var calls = await provider.calls
-        XCTAssertEqual(calls, [
-            .init(category: .owned, offset: 0),
-            .init(category: .collaborating, offset: 0),
-        ])
+        XCTAssertEqual(
+            calls,
+            [
+                .init(category: .owned, offset: 0),
+                .init(category: .collaborating, offset: 0),
+            ])
 
         await model.refresh(category: .owned)
         calls = await provider.calls
@@ -493,12 +517,13 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         let load = Task { await model.load(category: .owned) }
         await provider.waitForRequest()
 
-        await model.reconcileAfterAccessLoss(.init(
-            viewerUsername: "listener",
-            sourceMBID: sourceMBID,
-            reason: .sourceVisibility,
-            message: "No longer visible"
-        ))
+        await model.reconcileAfterAccessLoss(
+            .init(
+                viewerUsername: "listener",
+                sourceMBID: sourceMBID,
+                reason: .sourceVisibility,
+                message: "No longer visible"
+            ))
         await provider.release()
         await load.value
 
@@ -520,7 +545,7 @@ final class ProfilePlaylistsModelTests: XCTestCase {
                 offset: 0,
                 total: 1,
                 rows: [source]
-            ),
+            )
         ])
         let model = makeModel(provider: provider, mutationJournal: journal)
         await model.load(category: .owned)
@@ -582,7 +607,7 @@ final class ProfilePlaylistsModelTests: XCTestCase {
                 offset: 0,
                 total: 1,
                 rows: [playlist(mbid: restoredMBID, title: "Current server row")]
-            ),
+            )
         ])
         let model = ProfilePlaylistsModel(
             account: .init(username: "listener", token: "new-token"),
@@ -621,17 +646,18 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         await model.load(category: .owned)
         await model.load(category: .collaborating)
 
-        await model.reconcileAfterAccessLoss(.init(
-            viewerUsername: "LISTENER",
-            sourceMBID: UUID(),
-            reason: .authentication,
-            message: "Reconnect your token"
-        ))
+        await model.reconcileAfterAccessLoss(
+            .init(
+                viewerUsername: "LISTENER",
+                sourceMBID: UUID(),
+                reason: .authentication,
+                message: "Reconnect your token"
+            ))
 
         for category in ProfilePlaylistCategory.allCases {
             let state = model.state(for: category)
             XCTAssertTrue(state.playlists.isEmpty)
-            guard case let .failed(message) = state.phase else {
+            guard case .failed(let message) = state.phase else {
                 return XCTFail("Expected \(category) to discard access-sensitive state")
             }
             XCTAssertEqual(message, "Reconnect your token")
@@ -652,7 +678,8 @@ final class ProfilePlaylistsModelTests: XCTestCase {
     func testPublicPlaylistsLoadWithoutAuthenticationAndCacheIsVisibilityScoped() async {
         let cache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
         let authenticatedProvider = PlaylistFixtureProvider(pages: [
-            .init(category: .owned, offset: 0): makePage(category: .owned, offset: 0, total: 1, rows: [playlist("private")]),
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned, offset: 0, total: 1, rows: [playlist("private")])
         ])
         let authenticated = ProfilePlaylistsModel(
             account: .init(username: "listener", token: "token"),
@@ -662,7 +689,8 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         await authenticated.load(category: .owned)
 
         let publicProvider = PlaylistFixtureProvider(pages: [
-            .init(category: .owned, offset: 0): makePage(category: .owned, offset: 0, total: 1, rows: [playlist("public")]),
+            .init(category: .owned, offset: 0): makePage(
+                category: .owned, offset: 0, total: 1, rows: [playlist("public")])
         ])
         let unauthenticated = ProfilePlaylistsModel(
             account: .init(username: "listener", token: ""),
@@ -688,6 +716,32 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         XCTAssertEqual(result.playlists, [])
         let calls = await transport.calls
         XCTAssertEqual(calls, [.init(category: .collaborating, offset: 5)])
+    }
+
+    func testFreshProviderReadDoesNotJoinAnOlderEquivalentRead() async throws {
+        let transport = BlockingPlaylistTransport()
+        let provider = ListenBrainzProfilePlaylistsProvider(
+            transport: transport,
+            gate: RequestGate(minimumInterval: .zero)
+        )
+        let olderRead = Task {
+            try await provider.page(username: "listener", category: .owned, offset: 0, count: 100)
+        }
+        while await transport.callCount() < 1 { await Task.yield() }
+
+        let recoveryRead = Task {
+            try await provider.freshPage(username: "listener", category: .owned, offset: 0, count: 100)
+        }
+        for _ in 0..<1_000 {
+            if await transport.callCount() >= 2 { break }
+            await Task.yield()
+        }
+        let callsBeforeRelease = await transport.callCount()
+        await transport.releaseAll()
+        _ = try await olderRead.value
+        _ = try await recoveryRead.value
+
+        XCTAssertEqual(callsBeforeRelease, 2)
     }
 
     func testProviderMapsAuthenticationRateLimitAndNotFoundErrors() async {
@@ -747,11 +801,15 @@ private actor PlaylistFixtureProvider: ProfilePlaylistsProviding {
         self.shouldFail = shouldFail
     }
 
-    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws -> ProfilePlaylistPage {
+    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws
+        -> ProfilePlaylistPage
+    {
         calls.append(.init(category: category, offset: offset))
         if shouldFail { throw FixtureError.offline }
         return pages[.init(category: category, offset: offset)]
-            ?? ProfilePlaylistPage(username: username, category: category, playlists: [], requestedCount: count, offset: offset, totalCount: 0)
+            ?? ProfilePlaylistPage(
+                username: username, category: category, playlists: [], requestedCount: count, offset: offset,
+                totalCount: 0)
     }
 }
 
@@ -770,7 +828,9 @@ private actor RefreshBlockingPlaylistProvider: ProfilePlaylistsProviding {
     private var continuation: CheckedContinuation<Void, Never>?
     private(set) var requestCount = 0
 
-    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws -> ProfilePlaylistPage {
+    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws
+        -> ProfilePlaylistPage
+    {
         requestCount += 1
         if requestCount == 1 {
             return makePage(category: category, offset: offset, total: 1, rows: [playlist("old")])
@@ -780,7 +840,10 @@ private actor RefreshBlockingPlaylistProvider: ProfilePlaylistsProviding {
     }
 
     func waitForRefreshRequest() async { while requestCount < 2 { await Task.yield() } }
-    func releaseRefresh() { continuation?.resume(); continuation = nil }
+    func releaseRefresh() {
+        continuation?.resume()
+        continuation = nil
+    }
 }
 
 private actor SequencedProfilePlaylistProvider: ProfilePlaylistsProviding {
@@ -809,18 +872,24 @@ private actor BlockingPlaylistProvider: ProfilePlaylistsProviding {
     private var requested = false
     private(set) var requestCount = 0
 
-    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws -> ProfilePlaylistPage {
+    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws
+        -> ProfilePlaylistPage
+    {
         requested = true
         requestCount += 1
         await withTaskCancellationHandler {
             await withCheckedContinuation { continuation = $0 }
-        } onCancel: {}
+        } onCancel: {
+        }
         try Task.checkCancellation()
         return makePage(category: category, offset: offset, total: 0, rows: [])
     }
 
     func waitForRequest() async { while !requested { await Task.yield() } }
-    func release() { continuation?.resume(); continuation = nil }
+    func release() {
+        continuation?.resume()
+        continuation = nil
+    }
 }
 
 private actor AccessLossBlockingPlaylistProvider: ProfilePlaylistsProviding {
@@ -863,7 +932,9 @@ private actor CancellationRetryPlaylistProvider: ProfilePlaylistsProviding {
     private var continuation: CheckedContinuation<Void, Never>?
     private(set) var requestCount = 0
 
-    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws -> ProfilePlaylistPage {
+    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws
+        -> ProfilePlaylistPage
+    {
         requestCount += 1
         if requestCount == 1 {
             await withCheckedContinuation { continuation = $0 }
@@ -873,14 +944,19 @@ private actor CancellationRetryPlaylistProvider: ProfilePlaylistsProviding {
     }
 
     func waitForFirstRequest() async { while requestCount < 1 { await Task.yield() } }
-    func releaseFirstRequest() { continuation?.resume(); continuation = nil }
+    func releaseFirstRequest() {
+        continuation?.resume()
+        continuation = nil
+    }
 }
 
 private actor RetryingPlaylistProvider: ProfilePlaylistsProviding {
     private(set) var offsets: [Int] = []
     private var shouldFailOffsetTwo = true
 
-    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws -> ProfilePlaylistPage {
+    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws
+        -> ProfilePlaylistPage
+    {
         offsets.append(offset)
         switch offset {
         case 0:
@@ -899,16 +975,40 @@ private actor RetryingPlaylistProvider: ProfilePlaylistsProviding {
 private actor PlaylistTransportSpy: ProfilePlaylistsTransport {
     private(set) var calls: [PlaylistRequest] = []
 
-    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws -> LBPlaylistPage {
+    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws
+        -> LBPlaylistPage
+    {
         calls.append(.init(category: category, offset: offset))
         return .init(playlists: [], requestedCount: count, offset: offset, playlistCount: 0)
+    }
+}
+
+private actor BlockingPlaylistTransport: ProfilePlaylistsTransport {
+    private var calls = 0
+    private var continuations: [CheckedContinuation<Void, Never>] = []
+
+    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws
+        -> LBPlaylistPage
+    {
+        calls += 1
+        await withCheckedContinuation { continuations.append($0) }
+        return .init(playlists: [], requestedCount: count, offset: offset, playlistCount: 0)
+    }
+
+    func callCount() -> Int { calls }
+
+    func releaseAll() {
+        continuations.forEach { $0.resume() }
+        continuations.removeAll()
     }
 }
 
 private struct ThrowingPlaylistTransport: ProfilePlaylistsTransport {
     let error: LBError
 
-    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws -> LBPlaylistPage {
+    func page(username: String, category: ProfilePlaylistCategory, offset: Int, count: Int) async throws
+        -> LBPlaylistPage
+    {
         throw error
     }
 }
@@ -925,7 +1025,9 @@ private func makePage(
     rows: [SearchPlaylist],
     requestedCount: Int? = 20
 ) -> ProfilePlaylistPage {
-    .init(username: "listener", category: category, playlists: rows, requestedCount: requestedCount, offset: offset, totalCount: total)
+    .init(
+        username: "listener", category: category, playlists: rows, requestedCount: requestedCount, offset: offset,
+        totalCount: total)
 }
 
 private func playlist(_ identifier: String) -> SearchPlaylist {

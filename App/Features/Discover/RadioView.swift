@@ -1,28 +1,42 @@
-import SwiftUI
 import ListenBrainzKit
+import SwiftUI
 
 struct RadioView: View {
     let account: Account
     @Bindable var listeningModel: ListeningModel
     @State private var model: RadioModel
+    @State private var playlistSaveModel: RadioPlaylistSaveModel
     @State private var source: RadioPromptSource = .listening
     @State private var mode: LBRadioMode = .easy
     @State private var artistInput = ""
     @State private var tagInput = ""
     @State private var advancedInput = ""
     @State private var generationTask: Task<Void, Never>?
+    @State private var showsSaveConfirmation = false
+    @State private var savedPlaylist: SearchPlaylist?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(
         account: Account,
         listeningModel: ListeningModel,
-        provider: (any RadioProviding)? = nil
+        provider: (any RadioProviding)? = nil,
+        playlistSaveProvider: (any RadioPlaylistSaveProviding)? = nil,
+        ownedPlaylistsProvider: (any ProfilePlaylistsProviding)? = nil,
+        playlistSaveJournal: RadioPlaylistSaveJournal = .shared
     ) {
         self.account = account
         _listeningModel = Bindable(wrappedValue: listeningModel)
-        _model = State(initialValue: RadioModel(
-            provider: provider ?? ListenBrainzRadioProvider(token: account.token)
-        ))
+        _model = State(
+            initialValue: RadioModel(
+                provider: provider ?? ListenBrainzRadioProvider(token: account.token)
+            ))
+        _playlistSaveModel = State(
+            initialValue: RadioPlaylistSaveModel(
+                account: account,
+                provider: playlistSaveProvider,
+                profileProvider: ownedPlaylistsProvider,
+                journal: playlistSaveJournal
+            ))
     }
 
     var body: some View {
@@ -53,10 +67,24 @@ struct RadioView: View {
             }
             .onChange(of: model.mix?.generatedAt) { _, generatedAt in
                 #if DEBUG
-                if generatedAt != nil,
-                   ProcessInfo.processInfo.arguments.contains("-brainz-radio-results-demo") {
-                    withAnimation(.snappy) { proxy.scrollTo("radio-mix", anchor: .top) }
-                }
+                    if generatedAt != nil,
+                        ProcessInfo.processInfo.arguments.contains("-brainz-radio-results-demo")
+                    {
+                        withAnimation(.snappy) { proxy.scrollTo("radio-mix", anchor: .top) }
+                    }
+                    if generatedAt != nil,
+                        ProcessInfo.processInfo.arguments.contains("-brainz-radio-save-card-demo")
+                    {
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(250))
+                            withAnimation(.snappy) { proxy.scrollTo("radio-save", anchor: .center) }
+                        }
+                    }
+                    if generatedAt != nil,
+                        ProcessInfo.processInfo.arguments.contains("-brainz-radio-save-confirmation-demo")
+                    {
+                        showsSaveConfirmation = true
+                    }
                 #endif
             }
         }
@@ -64,13 +92,38 @@ struct RadioView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { shareToolbar }
         .mediaDestinations(model: listeningModel)
+        .navigationDestination(item: $savedPlaylist) { playlist in
+            PlaylistDetailView(playlist: playlist, viewer: account)
+        }
+        .confirmationDialog(
+            "Save privately?",
+            isPresented: $showsSaveConfirmation,
+            titleVisibility: .visible,
+            presenting: model.mix
+        ) { mix in
+            Button("Save playlist") {
+                Task { await playlistSaveModel.save(mix) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { mix in
+            Text(saveConfirmationMessage(for: mix))
+        }
+        .alert(
+            item: Binding(
+                get: { playlistSaveModel.notice },
+                set: { if $0 == nil { playlistSaveModel.dismissNotice() } }
+            )
+        ) { notice in
+            playlistSaveAlert(notice)
+        }
         .task {
             #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("-brainz-radio-demo"),
-               model.mix == nil,
-               let options = resolvedOptions {
-                await model.generate(options: options)
-            }
+                if ProcessInfo.processInfo.arguments.contains("-brainz-radio-demo"),
+                    model.mix == nil,
+                    let options = resolvedOptions
+                {
+                    await model.generate(options: options)
+                }
             #endif
         }
         .onDisappear {
@@ -132,11 +185,13 @@ struct RadioView: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text("Start with")
                     .font(.title3.bold())
-                Text(dynamicTypeSize.isAccessibilitySize
-                    ? "One source makes one LB Radio recipe."
-                    : "Each source becomes one server-side LB Radio recipe.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Text(
+                    dynamicTypeSize.isAccessibilitySize
+                        ? "One source makes one LB Radio recipe."
+                        : "Each source becomes one server-side LB Radio recipe."
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
             }
 
             LazyVGrid(columns: sourceColumns, spacing: 10) {
@@ -192,10 +247,12 @@ struct RadioView: View {
                     } else {
                         Image(systemName: "sparkles")
                     }
-                    Text(model.isGenerating
-                        ? "Generating mix…"
-                        : model.mix == nil ? "Generate mix" : "Generate a new mix")
-                        .fontWeight(.semibold)
+                    Text(
+                        model.isGenerating
+                            ? "Generating mix…"
+                            : model.mix == nil ? "Generate mix" : "Generate a new mix"
+                    )
+                    .fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -203,7 +260,9 @@ struct RadioView: View {
             .controlSize(.large)
             .tint(AppTheme.accent)
             .disabled(resolvedOptions == nil || model.isGenerating)
-            .accessibilityHint("Makes one authenticated ListenBrainz Radio request, then one batched metadata request when mapped recordings are present")
+            .accessibilityHint(
+                "Makes one authenticated ListenBrainz Radio request, then one batched metadata request when mapped recordings are present"
+            )
         }
         .padding(18)
         .background(.thinMaterial, in: .rect(cornerRadius: 22, style: .continuous))
@@ -216,7 +275,8 @@ struct RadioView: View {
             sourceExplanation(
                 icon: "chart.bar.fill",
                 title: "Your all-time listening",
-                text: "Pulls from your ListenBrainz statistics. Familiarity still changes which part of that ranked history is sampled."
+                text:
+                    "Pulls from your ListenBrainz statistics. Familiarity still changes which part of that ranked history is sampled."
             )
         case .recommendations:
             sourceExplanation(
@@ -243,14 +303,17 @@ struct RadioView: View {
                 text: $advancedInput,
                 axis: .vertical
             )
-            .lineLimit(3 ... 6)
+            .lineLimit(3...6)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .font(.body.monospaced())
             .padding(13)
             .background(.quaternary.opacity(0.6), in: .rect(cornerRadius: 13, style: .continuous))
-            Link("Open the LB Radio prompt reference", destination: URL(string: "https://troi.readthedocs.io/en/latest/lb_radio.html")!)
-                .font(.caption)
+            Link(
+                "Open the LB Radio prompt reference",
+                destination: URL(string: "https://troi.readthedocs.io/en/latest/lb_radio.html")!
+            )
+            .font(.caption)
         }
     }
 
@@ -286,6 +349,8 @@ struct RadioView: View {
             if !mix.feedback.isEmpty {
                 feedbackCard(mix.feedback)
             }
+            savePlaylistSection(mix)
+                .id("radio-save")
             if mix.metadataEnrichmentFailed {
                 Label(
                     "The mix was generated, but optional artwork and detail enrichment did not finish. The original radio tracks are still shown.",
@@ -302,7 +367,8 @@ struct RadioView: View {
                 ContentUnavailableView(
                     "No mix this time",
                     systemImage: "radio",
-                    description: Text("ListenBrainz returned no recordings. Try another source, tag, or listening distance.")
+                    description: Text(
+                        "ListenBrainz returned no recordings. Try another source, tag, or listening distance.")
                 )
                 .frame(maxWidth: .infinity, minHeight: 220)
             } else {
@@ -398,6 +464,209 @@ struct RadioView: View {
         .background(AppTheme.accent.opacity(0.08), in: .rect(cornerRadius: 14, style: .continuous))
     }
 
+    @ViewBuilder
+    private func savePlaylistSection(_ mix: RadioMix) -> some View {
+        let included = RadioPlaylistSaveModel.recordingMBIDs(in: mix).count
+        let excluded = RadioPlaylistSaveModel.excludedTrackCount(in: mix)
+        if playlistSaveModel.requiresReview {
+            VStack(alignment: .leading, spacing: 10) {
+                Label(
+                    playlistSaveModel.requiresStorageRecovery
+                        ? "Playlist saving is paused"
+                        : "Check Owned Playlists first",
+                    systemImage: "exclamationmark.shield.fill"
+                )
+                .font(.headline)
+                .foregroundStyle(.orange)
+                Text(
+                    playlistSaveModel.requiresStorageRecovery
+                        ? "Brainz can’t verify its duplicate-prevention record. Load your newest Owned Playlists before resetting it."
+                        : "A previous save may have reached ListenBrainz without a response. Load your newest Owned Playlists before trying again."
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                Button {
+                    Task { await playlistSaveModel.reviewOwnedPlaylists() }
+                } label: {
+                    Label(
+                        playlistSaveModel.isReviewing ? "Loading newest playlists…" : "Load newest playlists",
+                        systemImage: "list.bullet.rectangle"
+                    )
+                }
+                .buttonStyle(.bordered)
+                .disabled(playlistSaveModel.isReviewing)
+                if playlistSaveModel.canResetAfterReview {
+                    reviewedPlaylistList
+                    Button("The previous mix isn’t listed — allow one new save") {
+                        playlistSaveModel.resetAfterReview()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.orange.opacity(0.12), in: .rect(cornerRadius: 14, style: .continuous))
+        } else if included > 0 {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    Label("Keep this mix", systemImage: "plus.rectangle.on.folder")
+                        .font(.headline)
+                    Spacer()
+                    Text("Private")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                Text(saveSummary(included: included, excluded: excluded))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button {
+                    showsSaveConfirmation = true
+                } label: {
+                    Label(
+                        playlistSaveModel.isSaving ? "Saving playlist…" : "Save as playlist",
+                        systemImage: "plus"
+                    )
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(playlistSaveModel.isSaving)
+                .accessibilityHint("Creates one private ListenBrainz playlist")
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AppTheme.accent.opacity(0.08), in: .rect(cornerRadius: 14, style: .continuous))
+        } else {
+            Label(
+                "This mix has no canonical recording IDs, so it can’t be saved as a ListenBrainz playlist.",
+                systemImage: "music.note.slash"
+            )
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.6), in: .rect(cornerRadius: 14, style: .continuous))
+        }
+    }
+
+    @ViewBuilder
+    private var reviewedPlaylistList: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Newest Owned Playlists")
+                .font(.subheadline.weight(.semibold))
+            if playlistSaveModel.reviewedPlaylists.isEmpty {
+                Text("ListenBrainz returned no owned playlists.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(playlistSaveModel.reviewedPlaylists) { playlist in
+                    if playlist.playlistMBID != nil {
+                        NavigationLink {
+                            PlaylistDetailView(playlist: playlist, viewer: account)
+                        } label: {
+                            reviewedPlaylistRow(playlist)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        reviewedPlaylistRow(playlist)
+                    }
+                }
+            }
+            Text(
+                "These \(playlistSaveModel.reviewedPlaylists.count.formatted()) playlists are newest first. Open a likely match to inspect it, and reset only if the previous mix is not here."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func reviewedPlaylistRow(_ playlist: SearchPlaylist) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: playlist.isPublic ? "globe" : "lock.fill")
+                .foregroundStyle(AppTheme.accent)
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(playlist.title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
+                if let createdAt = playlist.createdAt {
+                    Text("Created \(createdAt.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 4)
+            if playlist.playlistMBID != nil {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(10)
+        .background(.thinMaterial, in: .rect(cornerRadius: 12, style: .continuous))
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func saveSummary(included: Int, excluded: Int) -> String {
+        if excluded == 0 {
+            "Saves \(included.formatted()) \(included == 1 ? "track" : "tracks") in this order."
+        } else {
+            "Saves \(included.formatted()) \(included == 1 ? "track" : "tracks") in this order. \(excluded.formatted()) \(excluded == 1 ? "unmapped track is" : "unmapped tracks are") left out."
+        }
+    }
+
+    private func saveConfirmationMessage(for mix: RadioMix) -> String {
+        let included = RadioPlaylistSaveModel.recordingMBIDs(in: mix).count
+        let excluded = RadioPlaylistSaveModel.excludedTrackCount(in: mix)
+        var lines = [
+            "“\(mix.title)”",
+            "\(included.formatted()) \(included == 1 ? "track" : "tracks") included in order.",
+        ]
+        if excluded > 0 {
+            lines.append(
+                "\(excluded.formatted()) unmapped \(excluded == 1 ? "track" : "tracks") left out."
+            )
+        }
+        lines.append("One request to ListenBrainz.")
+        return lines.joined(separator: "\n")
+    }
+
+    private func playlistSaveAlert(_ notice: RadioPlaylistSaveNotice) -> Alert {
+        switch notice {
+        case .saved(let playlist):
+            Alert(
+                title: Text("Playlist saved"),
+                message: Text("Your private playlist is ready."),
+                primaryButton: .default(Text("Open playlist")) { savedPlaylist = playlist },
+                secondaryButton: .cancel(Text("Done")) { playlistSaveModel.dismissNotice() }
+            )
+        case .failed(let message):
+            Alert(
+                title: Text("Playlist not saved"),
+                message: Text(message),
+                dismissButton: .default(Text("Done")) { playlistSaveModel.dismissNotice() }
+            )
+        case .needsReview(let message):
+            Alert(
+                title: Text("Check Owned Playlists"),
+                message: Text(message),
+                dismissButton: .default(Text("Done")) { playlistSaveModel.dismissNotice() }
+            )
+        case .reviewed:
+            Alert(
+                title: Text("Owned Playlists checked"),
+                message: Text("Review the newest playlists below. Reset only if the previous mix is not there."),
+                dismissButton: .default(Text("Done")) { playlistSaveModel.dismissNotice() }
+            )
+        }
+    }
+
     private var beforeGeneration: some View {
         Label(
             "A generation is explicit and may take a moment. Changing the controls does not make a network request.",
@@ -429,7 +698,9 @@ struct RadioView: View {
         ContentUnavailableView {
             Label("Sign in to tune LB Radio", systemImage: "lock.fill")
         } description: {
-            Text("ListenBrainz protects this expensive generator with an account token. Connect one from Profile, then come back to build a mix.")
+            Text(
+                "ListenBrainz protects this expensive generator with an account token. Connect one from Profile, then come back to build a mix."
+            )
         }
         .frame(maxWidth: .infinity, minHeight: 300)
         .background(.thinMaterial, in: .rect(cornerRadius: 22, style: .continuous))
@@ -585,8 +856,8 @@ private struct RadioSourceCard: View {
     }
 }
 
-private extension RadioPromptSource {
-    var title: String {
+extension RadioPromptSource {
+    fileprivate var title: String {
         switch self {
         case .listening: "My listening"
         case .recommendations: "New for me"
@@ -596,7 +867,7 @@ private extension RadioPromptSource {
         }
     }
 
-    var subtitle: String {
+    fileprivate var subtitle: String {
         switch self {
         case .listening: "All-time stats"
         case .recommendations: "Unheard picks"
@@ -606,7 +877,7 @@ private extension RadioPromptSource {
         }
     }
 
-    var icon: String {
+    fileprivate var icon: String {
         switch self {
         case .listening: "chart.bar.fill"
         case .recommendations: "sparkles"
@@ -617,8 +888,8 @@ private extension RadioPromptSource {
     }
 }
 
-private extension LBRadioMode {
-    var displayTitle: String {
+extension LBRadioMode {
+    fileprivate var displayTitle: String {
         switch self {
         case .easy: "Familiar"
         case .medium: "Balanced"
@@ -626,7 +897,7 @@ private extension LBRadioMode {
         }
     }
 
-    var shortExplanation: String {
+    fileprivate var shortExplanation: String {
         switch self {
         case .easy: "Easy"
         case .medium: "Medium"
@@ -634,7 +905,7 @@ private extension LBRadioMode {
         }
     }
 
-    var longExplanation: String {
+    fileprivate var longExplanation: String {
         switch self {
         case .easy:
             "Leans toward the most relevant and recognizable recordings."

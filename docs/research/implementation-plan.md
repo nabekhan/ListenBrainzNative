@@ -22,6 +22,7 @@ App-owned provider boundaries
   ├─ ProfilePlaylistsProviding → typed owned/collaborator playlist pages
   ├─ PopularityProviding → typed global entity counts
   ├─ RadioProviding → typed LB Radio generation + one batch metadata lookup
+  ├─ RadioPlaylistSaveProviding → typed private populated-playlist creation
   ├─ ReleaseDetailProviding/PlaylistDetailProviding → typed LB metadata/JSPF reads
   ├─ ConcreteReleaseDetailProviding → gated MusicBrainz edition/media lookup
   └─ Feature models → staged reads + bounded section/entity caches
@@ -52,11 +53,11 @@ ListenBrainz / MusicBrainz / Cover Art Archive
 ## Staging after the slice
 
 - Phase 3: server-efficient full History/date navigation and safe single-listen deletion are now implemented alongside native recommendation feedback, My Feed/Following/Similar with supported feed mutations, public/personal recording sharing, Statistics with a UTC listening-hours heatmap, local-daypart Genre Activity, Music by Decade, and Artist Evolution, Fresh Releases, scoped search, Pins, visited-user/social profiles, lazy owned/collaborating Profile playlists, release-group/playlist details, authenticated empty-playlist creation, owner metadata/privacy editing, safe one-recording playlist append, safe visible-playlist duplication, safe single-item playlist removal, For You recommendations, and global entity popularity context. Reordering and playlist deletion remain staged.
-- Phase 4: the first native current-schema Year in Music story, explicit official-artwork preview/PNG sharing, and native LB Radio generation/browsing are now implemented. Legacy reports, remaining playlist mutations, playback/content resolution, MusicKit-scoped capture, offline submit queue, and inspect/mapping tools remain staged. Spotify-linked playback through a libspot/librespot-family implementation is deferred until the core product is complete and may be investigated only on a separate branch after exact project identity, licensing, Spotify policy, authentication, maintenance, and App Store constraints are audited.
+- Phase 4: the first native current-schema Year in Music story, explicit official-artwork preview/PNG sharing, and native LB Radio generation/browsing/save-as-private-playlist are now implemented. Legacy reports, remaining playlist mutations, playback/content resolution, MusicKit-scoped capture, offline submit queue, and inspect/mapping tools remain staged. Spotify-linked playback through a libspot/librespot-family implementation is deferred until the core product is complete and may be investigated only on a separate branch after exact project identity, licensing, Spotify policy, authentication, maintenance, and App Store constraints are audited.
 
 ## Next implementation sequence
 
-1. Evaluate single-item movement only after removal remains stable in real use. Keep multi-item removal, drag reordering, and creator-only playlist deletion separate because the current server API has no revision/idempotency token and movement is not transactional.
+1. Evaluate read-first Artist Activity, following Pins, legacy Year in Music, or generic official shareable art before any positional playlist operation. Keep multi-item removal, drag reordering, and creator-only playlist deletion separate because the current server API has no revision/idempotency token and movement is not transactional.
 
 ## Constraints recorded
 

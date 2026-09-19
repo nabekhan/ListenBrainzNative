@@ -25,6 +25,27 @@ protocol ProfilePlaylistsProviding: Sendable {
         offset: Int,
         count: Int
     ) async throws -> ProfilePlaylistPage
+
+    /// A canonical read that must start after the caller requests it. Mutation
+    /// recovery uses this instead of joining an equivalent read that may have
+    /// begun before the mutation was dispatched.
+    func freshPage(
+        username: String,
+        category: ProfilePlaylistCategory,
+        offset: Int,
+        count: Int
+    ) async throws -> ProfilePlaylistPage
+}
+
+extension ProfilePlaylistsProviding {
+    func freshPage(
+        username: String,
+        category: ProfilePlaylistCategory,
+        offset: Int,
+        count: Int
+    ) async throws -> ProfilePlaylistPage {
+        try await page(username: username, category: category, offset: offset, count: count)
+    }
 }
 
 protocol ProfilePlaylistsTransport: Sendable {
@@ -89,7 +110,10 @@ struct ListenBrainzProfilePlaylistsProvider: ProfilePlaylistsProviding {
         let safeOffset = max(offset, 0)
         let safeCount = min(max(count, 1), 100)
         do {
-            return try await gate.read(for: .profilePlaylists(readScope, user: username, category: category.rawValue, offset: safeOffset, count: safeCount)) {
+            return try await gate.read(
+                for: .profilePlaylists(
+                    readScope, user: username, category: category.rawValue, offset: safeOffset, count: safeCount)
+            ) {
                 let source = try await transport.page(
                     username: username,
                     category: category,
@@ -98,7 +122,37 @@ struct ListenBrainzProfilePlaylistsProvider: ProfilePlaylistsProviding {
                 )
                 return Self.map(source, username: username, category: category)
             } deferralForError: { error in
-                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                guard case LBError.rateLimited(let resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
+        } catch let LBError.rateLimited(resetIn) {
+            throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
+        } catch LBError.invalidAuth, LBError.forbidden, LBError.noToken {
+            throw ProfilePlaylistsProviderError.invalidAuthentication
+        } catch LBError.notFound {
+            throw ProfilePlaylistsProviderError.profileUnavailable
+        }
+    }
+
+    func freshPage(
+        username: String,
+        category: ProfilePlaylistCategory,
+        offset: Int,
+        count: Int
+    ) async throws -> ProfilePlaylistPage {
+        let safeOffset = max(offset, 0)
+        let safeCount = min(max(count, 1), 100)
+        do {
+            return try await gate.perform {
+                let source = try await transport.page(
+                    username: username,
+                    category: category,
+                    offset: safeOffset,
+                    count: safeCount
+                )
+                return Self.map(source, username: username, category: category)
+            } deferralForError: { error in
+                guard case LBError.rateLimited(let resetIn) = error else { return nil }
                 return .seconds(max(resetIn, 1))
             }
         } catch let LBError.rateLimited(resetIn) {

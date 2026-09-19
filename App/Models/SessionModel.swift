@@ -39,16 +39,16 @@ final class SessionModel {
         guard !didRestore else { return }
         didRestore = true
         #if DEBUG
-        if restoreFixtureAccount() { return }
+            if restoreFixtureAccount() { return }
         #endif
         let legacyUsername = publicUsername()
         do {
             switch try await credentialStore.load() {
-            case let .account(credential):
+            case .account(let credential):
                 // An atomic record wins over the old public-browsing value.
                 defaults.removeObject(forKey: Self.publicUsernameKey)
                 state = .active(Account(username: credential.username, token: credential.token))
-            case let .legacyToken(token):
+            case .legacyToken(let token):
                 let username = try canonicalUsername(try await validateToken(token))
                 try await invalidateSnapshots(usernames: [legacyUsername, username])
                 try await credentialStore.save(StoredCredential(username: username, token: token))
@@ -129,7 +129,7 @@ final class SessionModel {
     }
 
     private var activeUsername: String? {
-        guard case let .active(account) = state else { return nil }
+        guard case .active(let account) = state else { return nil }
         return account.username
     }
 
@@ -146,58 +146,67 @@ final class SessionModel {
     }
 
     private func invalidateSnapshots(usernames: [String?]) async throws {
-        let candidates: Set<String> = Set(usernames.compactMap { username -> String? in
-            guard let username else { return nil }
-            let trimmed = username.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed.isEmpty ? nil : trimmed
-        })
+        let candidates: Set<String> = Set(
+            usernames.compactMap { username -> String? in
+                guard let username else { return nil }
+                let trimmed = username.trimmingCharacters(in: .whitespacesAndNewlines)
+                return trimmed.isEmpty ? nil : trimmed
+            })
         for username in candidates {
             try await snapshotCache.invalidate(username: username)
         }
     }
 
     #if DEBUG
-    private func restoreFixtureAccount() -> Bool {
-        let arguments = ProcessInfo.processInfo.arguments
-        if arguments.contains("-brainz-profile-playlists-demo")
-            || arguments.contains("-brainz-profile-playlists-collab-demo")
-            || arguments.contains("-brainz-playlist-edit-demo")
-            || arguments.contains("-brainz-playlist-add-demo")
-            || arguments.contains("-brainz-playlist-copy-demo")
-            || arguments.contains("-brainz-playlist-remove-demo")
-            || arguments.contains("-brainz-playlist-remove-review-demo") {
-            state = .active(Account(username: "visual-listener", token: "visual-token"))
-            return true
+        private func restoreFixtureAccount() -> Bool {
+            let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("-brainz-profile-playlists-demo")
+                || arguments.contains("-brainz-profile-playlists-collab-demo")
+                || arguments.contains("-brainz-playlist-edit-demo")
+                || arguments.contains("-brainz-playlist-add-demo")
+                || arguments.contains("-brainz-playlist-copy-demo")
+                || arguments.contains("-brainz-playlist-remove-demo")
+                || arguments.contains("-brainz-playlist-remove-review-demo")
+            {
+                state = .active(Account(username: "visual-listener", token: "visual-token"))
+                return true
+            }
+            if arguments.contains("-brainz-artist-evolution-demo")
+                || arguments.contains("-brainz-artist-evolution-all-time-demo")
+                || arguments.contains("-brainz-genre-activity-demo")
+            {
+                state = .active(Account(username: "visual-taste", token: "visual-taste"))
+                return true
+            }
+            if arguments.contains("-brainz-popularity-detail-demo") {
+                state = .active(Account(username: "visual-popularity", token: "visual-popularity"))
+                return true
+            }
+            if arguments.contains("-brainz-year-in-music-demo") {
+                state = .active(Account(username: "visual-taste", token: "visual-taste"))
+                return true
+            }
+            if arguments.contains("-brainz-radio-demo") {
+                state = .active(Account(username: "visual-radio", token: "visual-radio"))
+                return true
+            }
+            if arguments.contains("-brainz-taste-demo")
+                || arguments.contains("-brainz-taste-heatmap-demo")
+                || arguments.contains("-brainz-year-in-music-teaser-demo")
+                || arguments.contains("-brainz-taste-era-demo")
+                || arguments.contains("-brainz-taste-era-zoom-demo")
+                || arguments.contains("-brainz-taste-era-card-demo")
+            {
+                state = .active(Account(username: "visual-taste", token: "visual-taste"))
+                return true
+            }
+            if arguments.contains("-brainz-history-demo")
+                || arguments.contains("-brainz-history-day-demo")
+            {
+                state = .active(Account(username: "visual-history", token: "visual-history"))
+                return true
+            }
+            return false
         }
-        if arguments.contains("-brainz-artist-evolution-demo")
-            || arguments.contains("-brainz-artist-evolution-all-time-demo")
-            || arguments.contains("-brainz-genre-activity-demo") {
-            state = .active(Account(username: "visual-taste", token: "visual-taste"))
-            return true
-        }
-        if arguments.contains("-brainz-popularity-detail-demo") {
-            state = .active(Account(username: "visual-popularity", token: "visual-popularity"))
-            return true
-        }
-        if arguments.contains("-brainz-year-in-music-demo") {
-            state = .active(Account(username: "visual-taste", token: "visual-taste"))
-            return true
-        }
-        if arguments.contains("-brainz-taste-demo")
-            || arguments.contains("-brainz-taste-heatmap-demo")
-            || arguments.contains("-brainz-year-in-music-teaser-demo")
-            || arguments.contains("-brainz-taste-era-demo")
-            || arguments.contains("-brainz-taste-era-zoom-demo")
-            || arguments.contains("-brainz-taste-era-card-demo") {
-            state = .active(Account(username: "visual-taste", token: "visual-taste"))
-            return true
-        }
-        if arguments.contains("-brainz-history-demo")
-            || arguments.contains("-brainz-history-day-demo") {
-            state = .active(Account(username: "visual-history", token: "visual-history"))
-            return true
-        }
-        return false
-    }
     #endif
 }
