@@ -129,7 +129,14 @@ final class YearInMusicModelTests: XCTestCase {
     func testStaleReportRemainsVisibleOnRefreshFailure() async throws {
         let cache = EntityDetailCache<YearInMusicCacheKey, YearInMusicReport>(timeToLive: -1)
         let stale = try mappedReport(listens: 7)
-        await cache.save(stale, for: .init(username: "listener", year: 2025))
+        await cache.save(
+            stale,
+            for: .init(
+                username: "listener",
+                scope: .authenticated(token: ""),
+                year: 2025
+            )
+        )
         let provider = YearInMusicFixtureProvider(result: .failure, delay: .milliseconds(30))
         let model = YearInMusicModel(account: .init(username: "listener", token: ""), year: 2025, provider: provider, cache: cache)
 

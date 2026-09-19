@@ -5,6 +5,20 @@ import XCTest
 
 @MainActor
 final class RecommendationsModelTests: XCTestCase {
+    func testRecommendationCacheKeysDoNotCrossCredentialBoundary() {
+        let firstScope = RequestGate.ReadScope.authenticated(token: "first-token")
+        let secondScope = RequestGate.ReadScope.authenticated(token: "second-token")
+
+        XCTAssertNotEqual(
+            RecommendationPageKey(username: "listener", scope: firstScope, offset: 0, count: 25),
+            RecommendationPageKey(username: "listener", scope: secondScope, offset: 0, count: 25)
+        )
+        XCTAssertNotEqual(
+            RecommendationPlaylistCacheKey(username: "listener", scope: firstScope),
+            RecommendationPlaylistCacheKey(username: "listener", scope: secondScope)
+        )
+    }
+
     func testSuccessfulEmptyPageSkipsMetadataHydration() async throws {
         let transport = RecommendationTransportSpy(source: try emptySource())
         let provider = ListenBrainzRecommendationsProvider(
@@ -177,7 +191,12 @@ final class RecommendationsModelTests: XCTestCase {
 
     func testStaleRecommendationsSurviveRefreshFailure() async {
         let cache = EntityDetailCache<RecommendationPageKey, RecordingRecommendationPage>(timeToLive: -1)
-        let key = RecommendationPageKey(username: "listener", offset: 0, count: 25)
+        let key = RecommendationPageKey(
+            username: "listener",
+            scope: .authenticated(token: ""),
+            offset: 0,
+            count: 25
+        )
         await cache.save(page(offset: 0, count: 2, total: 2), for: key)
         let provider = RecommendationFixtureProvider(error: RecommendationFixtureError.failed)
         let model = RecommendationsModel(

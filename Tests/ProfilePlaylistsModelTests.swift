@@ -5,6 +5,25 @@ import XCTest
 
 @MainActor
 final class ProfilePlaylistsModelTests: XCTestCase {
+    func testPlaylistAccessScopesSeparatePublicAndCredentialBoundPages() {
+        let publicKey = ProfilePlaylistPageKey(
+            username: "listener",
+            accessScope: .publicOnly,
+            category: .owned,
+            offset: 0,
+            count: 20
+        )
+        let authenticated = ProfilePlaylistPageKey(
+            username: "listener",
+            accessScope: .authenticatedViewer(.authenticated(token: "token")),
+            category: .owned,
+            offset: 0,
+            count: 20
+        )
+
+        XCTAssertNotEqual(publicKey, authenticated)
+    }
+
     func testCategoriesLoadLazilyAndIndependently() async {
         let provider = PlaylistFixtureProvider(pages: [
             .init(category: .owned, offset: 0): makePage(category: .owned, offset: 0, total: 1, rows: [playlist("owned")]),
@@ -106,7 +125,7 @@ final class ProfilePlaylistsModelTests: XCTestCase {
             makePage(category: .owned, offset: 0, total: 1, rows: [playlist("stale")]),
             for: .init(
                 username: "listener",
-                accessScope: .authenticatedViewer("listener"),
+                accessScope: .authenticatedViewer(.authenticated(token: "token")),
                 category: .owned,
                 offset: 0,
                 count: 20
@@ -124,7 +143,7 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         let cache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>(timeToLive: -1)
         let key = ProfilePlaylistPageKey(
             username: "listener",
-            accessScope: .authenticatedViewer("listener"),
+            accessScope: .authenticatedViewer(.authenticated(token: "listener")),
             category: .owned,
             offset: 0,
             count: 20
@@ -169,7 +188,7 @@ final class ProfilePlaylistsModelTests: XCTestCase {
             makePage(category: .owned, offset: 2, total: 3, rows: [playlist("stale-c")], requestedCount: 2),
             for: .init(
                 username: "listener",
-                accessScope: .authenticatedViewer("listener"),
+                accessScope: .authenticatedViewer(.authenticated(token: "listener")),
                 category: .owned,
                 offset: 2,
                 count: 2
@@ -339,7 +358,7 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         XCTAssertEqual(calls, [.init(category: .owned, offset: 0)])
         let cached = await cache.value(for: .init(
             username: "listener",
-            accessScope: .authenticatedViewer("listener"),
+            accessScope: .authenticatedViewer(.authenticated(token: "listener")),
             category: .owned,
             offset: 0,
             count: 20
@@ -394,7 +413,7 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         XCTAssertEqual(calls, [.init(category: .owned, offset: 0)])
         let cached = await cache.value(for: .init(
             username: "listener",
-            accessScope: .authenticatedViewer("listener"),
+            accessScope: .authenticatedViewer(.authenticated(token: "listener")),
             category: .owned,
             offset: 0,
             count: 20
@@ -447,7 +466,7 @@ final class ProfilePlaylistsModelTests: XCTestCase {
             XCTAssertNotNil(state.refreshMessage)
             let cached = await cache.value(for: .init(
                 username: "listener",
-                accessScope: .authenticatedViewer("listener"),
+                accessScope: .authenticatedViewer(.authenticated(token: "listener")),
                 category: category,
                 offset: 0,
                 count: 20
@@ -536,7 +555,7 @@ final class ProfilePlaylistsModelTests: XCTestCase {
         let cache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
         let key = ProfilePlaylistPageKey(
             username: "listener",
-            accessScope: .authenticatedViewer("listener"),
+            accessScope: .authenticatedViewer(.authenticated(token: "listener")),
             category: .owned,
             offset: 0,
             count: 20

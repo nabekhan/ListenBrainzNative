@@ -37,7 +37,11 @@ final class UserDetailModelTests: XCTestCase {
         cached.listenCount = 99
         cached.hasLoadedOverview = true
         cached.savedAt = .now
-        await cache.save(cached, for: "  MixedCase  ")
+        await cache.save(
+            cached,
+            for: "  MixedCase  ",
+            scope: .authenticated(token: "")
+        )
         let provider = UserDetailFixtureProvider()
         let model = UserDetailModel(
             user: SearchUser(username: "mixedcase"),
@@ -95,10 +99,10 @@ final class UserDetailModelTests: XCTestCase {
         var snapshot = UserProfileSnapshot.empty
         snapshot.hasLoadedOverview = true
         let savedAt = Date(timeIntervalSince1970: 1_000)
-        await cache.save(snapshot, for: "Listener", now: savedAt)
+        await cache.save(snapshot, for: "Listener", scope: .authenticated(token: ""), now: savedAt)
 
-        let fresh = await cache.value(for: "listener", now: savedAt.addingTimeInterval(299))
-        let stale = await cache.value(for: "LISTENER", now: savedAt.addingTimeInterval(301))
+        let fresh = await cache.value(for: "listener", scope: .authenticated(token: ""), now: savedAt.addingTimeInterval(299))
+        let stale = await cache.value(for: "LISTENER", scope: .authenticated(token: ""), now: savedAt.addingTimeInterval(301))
 
         XCTAssertEqual(fresh?.isFresh, true)
         XCTAssertEqual(stale?.isFresh, false)
@@ -114,8 +118,18 @@ final class UserDetailModelTests: XCTestCase {
         cached.hasLoadedOverview = true
         cached.hasLoadedTopArtists = true
         let now = Date.now
-        await cache.save(cached, for: "target-user", now: now.addingTimeInterval(-301))
-        await cache.saveOverview(cached, for: "target-user", now: now)
+        await cache.save(
+            cached,
+            for: "target-user",
+            scope: .authenticated(token: ""),
+            now: now.addingTimeInterval(-301)
+        )
+        await cache.saveOverview(
+            cached,
+            for: "target-user",
+            scope: .authenticated(token: ""),
+            now: now
+        )
         let provider = UserDetailFixtureProvider()
         let model = UserDetailModel(
             user: SearchUser(username: "target-user"),
@@ -154,17 +168,42 @@ final class UserDetailModelTests: XCTestCase {
     func testCacheEvictsLeastRecentlyUsedEntryAtCapacity() async {
         let cache = UserProfileCache(maximumEntryCount: 2)
         let start = Date(timeIntervalSince1970: 1_000)
-        await cache.save(.empty, for: "first", now: start)
-        await cache.save(.empty, for: "second", now: start.addingTimeInterval(1))
-        await cache.save(.empty, for: "third", now: start.addingTimeInterval(2))
+        await cache.save(.empty, for: "first", scope: .authenticated(token: ""), now: start)
+        await cache.save(.empty, for: "second", scope: .authenticated(token: ""), now: start.addingTimeInterval(1))
+        await cache.save(.empty, for: "third", scope: .authenticated(token: ""), now: start.addingTimeInterval(2))
 
-        let first = await cache.value(for: "first", now: start.addingTimeInterval(3))
-        let second = await cache.value(for: "second", now: start.addingTimeInterval(3))
-        let third = await cache.value(for: "third", now: start.addingTimeInterval(3))
+        let first = await cache.value(for: "first", scope: .authenticated(token: ""), now: start.addingTimeInterval(3))
+        let second = await cache.value(for: "second", scope: .authenticated(token: ""), now: start.addingTimeInterval(3))
+        let third = await cache.value(for: "third", scope: .authenticated(token: ""), now: start.addingTimeInterval(3))
 
         XCTAssertNil(first)
         XCTAssertNotNil(second)
         XCTAssertNotNil(third)
+    }
+
+    func testSameUserDifferentCredentialsDoNotReuseCachedProfile() async {
+        let cache = UserProfileCache()
+        var cached = UserProfileSnapshot.empty
+        cached.recentListens = [UserDetailFixtureProvider.listen(title: "First credential")]
+        cached.hasLoadedOverview = true
+        await cache.save(
+            cached,
+            for: "listener",
+            scope: .authenticated(token: "first-token")
+        )
+
+        let provider = UserDetailFixtureProvider()
+        let model = UserDetailModel(
+            user: SearchUser(username: "LISTENER"),
+            token: "second-token",
+            provider: provider,
+            cache: cache
+        )
+        await model.load()
+
+        XCTAssertEqual(model.snapshot.recentListens.first?.recording.title, "Recent track")
+        let calls = await provider.callNames
+        XCTAssertEqual(calls, ["recent:LISTENER", "playing:LISTENER", "count:LISTENER"])
     }
 }
 

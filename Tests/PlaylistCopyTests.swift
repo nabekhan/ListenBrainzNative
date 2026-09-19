@@ -12,7 +12,7 @@ final class PlaylistCopyTests: XCTestCase {
         let pageCache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
         let detailKey = PlaylistDetailCacheKey(
             mbid: sourceMBID,
-            accessScope: .authenticatedViewer("listener")
+            accessScope: .authenticatedViewer(.authenticated(token: "listener"))
         )
         let pageKey = profilePageKey()
         await detailCache.save(playlistDetail(mbid: sourceMBID), for: detailKey)
@@ -87,7 +87,7 @@ final class PlaylistCopyTests: XCTestCase {
             let pageCache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
             let detailKey = PlaylistDetailCacheKey(
                 mbid: sourceMBID,
-                accessScope: .authenticatedViewer("listener")
+                accessScope: .authenticatedViewer(.authenticated(token: "listener"))
             )
             let pageKey = profilePageKey()
             await detailCache.save(
@@ -662,7 +662,7 @@ final class PlaylistCopyTests: XCTestCase {
     private func profilePageKey() -> ProfilePlaylistPageKey {
         ProfilePlaylistPageKey(
             username: "listener",
-            accessScope: .authenticatedViewer("listener"),
+            accessScope: .authenticatedViewer(.authenticated(token: "listener")),
             category: .owned,
             offset: 0,
             count: 20

@@ -15,6 +15,7 @@ final class UserSocialModel {
     let viewer: Account
     private let provider: any SocialProviding
     private let cache: UserSocialCache
+    private let viewerScope: RequestGate.ReadScope
 
     private(set) var followers: [SearchUser] = []
     private(set) var following: [SearchUser] = []
@@ -50,6 +51,7 @@ final class UserSocialModel {
         self.viewer = viewer
         self.provider = provider ?? ListenBrainzSocialProvider(token: viewer.token)
         self.cache = cache
+        self.viewerScope = .authenticated(token: viewer.token)
     }
 
     var isSelf: Bool {
@@ -119,6 +121,7 @@ final class UserSocialModel {
             await cache.saveIsFollowing(
                 newState,
                 viewer: viewer.username,
+                scope: viewerScope,
                 target: target.username
             )
             if followersPhase == .ready {
@@ -157,7 +160,11 @@ final class UserSocialModel {
         }
 
         if canFollow,
-           let value = await cache.viewerValue(viewer: viewer.username, target: target.username) {
+           let value = await cache.viewerValue(
+               viewer: viewer.username,
+               scope: viewerScope,
+               target: target.username
+           ) {
             if let cached = value.isFollowing {
                 isFollowing = cached.value
                 relationshipIsFresh = cached.isFresh
@@ -176,6 +183,7 @@ final class UserSocialModel {
                 await cache.saveIsFollowing(
                     isFollowing ?? false,
                     viewer: viewer.username,
+                    scope: viewerScope,
                     target: target.username
                 )
             }
@@ -204,6 +212,7 @@ final class UserSocialModel {
                 await cache.saveIsFollowing(
                     isFollowing ?? false,
                     viewer: viewer.username,
+                    scope: viewerScope,
                     target: target.username
                 )
             }
@@ -277,6 +286,7 @@ final class UserSocialModel {
             await cache.saveCompatibility(
                 value,
                 viewer: viewer.username,
+                scope: viewerScope,
                 target: target.username
             )
         } catch is CancellationError {

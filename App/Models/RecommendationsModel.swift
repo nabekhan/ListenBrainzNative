@@ -12,8 +12,26 @@ enum RecommendationsPhase: Equatable {
 
 struct RecommendationPageKey: Hashable, Sendable {
     let username: String
+    let scope: RequestGate.ReadScope
     let offset: Int
     let count: Int
+
+    init(
+        username: String,
+        scope: RequestGate.ReadScope,
+        offset: Int,
+        count: Int
+    ) {
+        self.username = username
+        self.scope = scope
+        self.offset = offset
+        self.count = count
+    }
+}
+
+struct RecommendationPlaylistCacheKey: Hashable, Sendable {
+    let username: String
+    let scope: RequestGate.ReadScope
 }
 
 enum RecommendationCaches {
@@ -21,7 +39,7 @@ enum RecommendationCaches {
         timeToLive: 10 * 60,
         maximumEntryCount: 40
     )
-    static let playlists = EntityDetailCache<String, [SearchPlaylist]>(
+    static let playlists = EntityDetailCache<RecommendationPlaylistCacheKey, [SearchPlaylist]>(
         timeToLive: 10 * 60,
         maximumEntryCount: 40
     )
@@ -34,7 +52,7 @@ final class RecommendationsModel {
 
     private let provider: any RecommendationsProviding
     private let recordingCache: EntityDetailCache<RecommendationPageKey, RecordingRecommendationPage>
-    private let playlistCache: EntityDetailCache<String, [SearchPlaylist]>
+    private let playlistCache: EntityDetailCache<RecommendationPlaylistCacheKey, [SearchPlaylist]>
     private let pageSize: Int
 
     private(set) var recommendations: [RecommendedRecording] = []
@@ -59,7 +77,7 @@ final class RecommendationsModel {
         account: Account,
         provider: (any RecommendationsProviding)? = nil,
         recordingCache: EntityDetailCache<RecommendationPageKey, RecordingRecommendationPage> = RecommendationCaches.recordingPages,
-        playlistCache: EntityDetailCache<String, [SearchPlaylist]> = RecommendationCaches.playlists,
+        playlistCache: EntityDetailCache<RecommendationPlaylistCacheKey, [SearchPlaylist]> = RecommendationCaches.playlists,
         pageSize: Int = 25
     ) {
         self.account = account
@@ -157,6 +175,7 @@ final class RecommendationsModel {
     ) async {
         let key = RecommendationPageKey(
             username: account.username.lowercased(),
+            scope: .authenticated(token: account.token),
             offset: offset,
             count: pageSize
         )
@@ -255,7 +274,10 @@ final class RecommendationsModel {
     }
 
     private func fetchPlaylists(force: Bool) async {
-        let key = account.username.lowercased()
+        let key = RecommendationPlaylistCacheKey(
+            username: account.username.lowercased(),
+            scope: .authenticated(token: account.token)
+        )
         if !force, let cached = await playlistCache.value(for: key) {
             playlists = cached.value
             if cached.isFresh {

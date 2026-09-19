@@ -77,7 +77,7 @@ final class UserSocialModelTests: XCTestCase {
         let secondProvider = SocialFixtureProvider(compatibility: nil)
         let second = UserSocialModel(
             target: SearchUser(username: "TARGET"),
-            viewer: Account(username: "secondviewer", token: "token"),
+            viewer: Account(username: "secondviewer", token: "second-token"),
             provider: secondProvider,
             cache: cache
         )
@@ -86,6 +86,59 @@ final class UserSocialModelTests: XCTestCase {
         XCTAssertNil(second.compatibility)
         let secondCalls = await secondProvider.calls
         XCTAssertEqual(secondCalls, ["compatibility:secondviewer:TARGET"])
+    }
+
+    func testPublicGraphReusesAcrossCredentialsButViewerStateDoesNot() async {
+        let cache = UserSocialCache()
+        let first = UserSocialModel(
+            target: SearchUser(username: "target"),
+            viewer: Account(username: "viewer", token: "first-token"),
+            provider: SocialFixtureProvider(
+                followers: [SearchUser(username: "viewer")],
+                compatibility: 0.8
+            ),
+            cache: cache
+        )
+        await first.load()
+
+        let secondProvider = SocialFixtureProvider(compatibility: 0.1)
+        let second = UserSocialModel(
+            target: SearchUser(username: "TARGET"),
+            viewer: Account(username: "viewer", token: "second-token"),
+            provider: secondProvider,
+            cache: cache
+        )
+        await second.load()
+
+        let calls = await secondProvider.calls
+        XCTAssertEqual(calls, ["compatibility:viewer:TARGET"])
+        XCTAssertEqual(second.isFollowing, true)
+        XCTAssertEqual(second.compatibility, 0.1)
+    }
+
+    func testViewerCacheDoesNotReuseStateAcrossViewerNamesWithSameScope() async {
+        let cache = UserSocialCache()
+        let scope = RequestGate.ReadScope.authenticated(token: "shared-token")
+        await cache.saveIsFollowing(
+            true,
+            viewer: "first-viewer",
+            scope: scope,
+            target: "target"
+        )
+
+        let first = await cache.viewerValue(
+            viewer: "FIRST-VIEWER",
+            scope: scope,
+            target: "TARGET"
+        )
+        let second = await cache.viewerValue(
+            viewer: "second-viewer",
+            scope: scope,
+            target: "target"
+        )
+
+        XCTAssertEqual(first?.isFollowing?.value, true)
+        XCTAssertNil(second?.isFollowing)
     }
 
     func testFollowIsOptimisticSerializedAndRollsBackOnFailure() async throws {

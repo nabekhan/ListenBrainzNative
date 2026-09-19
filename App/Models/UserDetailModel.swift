@@ -31,6 +31,7 @@ final class UserDetailModel {
     private var topArtistsNeedRefresh = false
     private var overviewRequestID = UUID()
     private var topArtistsRequestID = UUID()
+    private let cacheScope: RequestGate.ReadScope
 
     init(
         user: SearchUser,
@@ -41,6 +42,7 @@ final class UserDetailModel {
         self.user = user
         self.provider = provider ?? ListenBrainzProvider(token: token)
         self.cache = cache
+        self.cacheScope = .authenticated(token: token)
     }
 
     var featuredListen: Listen? { snapshot.playingNow ?? snapshot.recentListens.first }
@@ -49,7 +51,7 @@ final class UserDetailModel {
         guard !didLoadOverview else { return }
         didLoadOverview = true
 
-        if let cached = await cache.value(for: user.username) {
+        if let cached = await cache.value(for: user.username, scope: cacheScope) {
             snapshot = cached.snapshot
             if snapshot.hasLoadedTopArtists {
                 didLoadTopArtists = cached.isTopArtistsFresh
@@ -100,7 +102,7 @@ final class UserDetailModel {
             snapshot.savedAt = .now
             topArtistsNeedRefresh = false
             topArtistsPhase = .ready
-            await cache.saveTopArtists(snapshot, for: user.username)
+            await cache.saveTopArtists(snapshot, for: user.username, scope: cacheScope)
         } catch is CancellationError {
             guard topArtistsRequestID == requestID else { return }
             didLoadTopArtists = false
@@ -130,7 +132,7 @@ final class UserDetailModel {
             snapshot.recentListens = listens
             snapshot.savedAt = .now
             phase = .ready
-            await cache.saveOverview(snapshot, for: user.username)
+            await cache.saveOverview(snapshot, for: user.username, scope: cacheScope)
 
             do {
                 let playingNow = try await provider.playingNow(username: user.username)
@@ -158,7 +160,7 @@ final class UserDetailModel {
             snapshot.hasLoadedOverview = true
             snapshot.savedAt = .now
             phase = .ready
-            await cache.saveOverview(snapshot, for: user.username)
+            await cache.saveOverview(snapshot, for: user.username, scope: cacheScope)
         } catch is CancellationError {
             guard overviewRequestID == requestID else { return }
             didLoadOverview = false

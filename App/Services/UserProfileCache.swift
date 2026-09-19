@@ -20,15 +20,24 @@ actor UserProfileCache {
 
     private let timeToLive: TimeInterval
     private let maximumEntryCount: Int
-    private var entries: [String: Entry] = [:]
+    private struct Key: Hashable, Sendable {
+        let username: String
+        let scope: RequestGate.ReadScope
+    }
+
+    private var entries: [Key: Entry] = [:]
 
     init(timeToLive: TimeInterval = 5 * 60, maximumEntryCount: Int = 100) {
         self.timeToLive = timeToLive
         self.maximumEntryCount = max(1, maximumEntryCount)
     }
 
-    func value(for username: String, now: Date = .now) -> CachedValue? {
-        let key = Self.key(for: username)
+    func value(
+        for username: String,
+        scope: RequestGate.ReadScope,
+        now: Date = .now
+    ) -> CachedValue? {
+        let key = Self.key(for: username, scope: scope)
         guard var entry = entries[key] else { return nil }
         entry.lastAccessedAt = now
         entries[key] = entry
@@ -47,8 +56,13 @@ actor UserProfileCache {
         )
     }
 
-    func save(_ snapshot: UserProfileSnapshot, for username: String, now: Date = .now) {
-        entries[Self.key(for: username)] = Entry(
+    func save(
+        _ snapshot: UserProfileSnapshot,
+        for username: String,
+        scope: RequestGate.ReadScope,
+        now: Date = .now
+    ) {
+        entries[Self.key(for: username, scope: scope)] = Entry(
             snapshot: snapshot,
             overviewSavedAt: snapshot.hasLoadedOverview ? now : nil,
             topArtistsSavedAt: snapshot.hasLoadedTopArtists ? now : nil,
@@ -57,8 +71,13 @@ actor UserProfileCache {
         trimIfNeeded()
     }
 
-    func saveOverview(_ snapshot: UserProfileSnapshot, for username: String, now: Date = .now) {
-        let key = Self.key(for: username)
+    func saveOverview(
+        _ snapshot: UserProfileSnapshot,
+        for username: String,
+        scope: RequestGate.ReadScope,
+        now: Date = .now
+    ) {
+        let key = Self.key(for: username, scope: scope)
         var entry = entries[key] ?? Entry(
             snapshot: .empty,
             overviewSavedAt: nil,
@@ -78,8 +97,13 @@ actor UserProfileCache {
         trimIfNeeded()
     }
 
-    func saveTopArtists(_ snapshot: UserProfileSnapshot, for username: String, now: Date = .now) {
-        let key = Self.key(for: username)
+    func saveTopArtists(
+        _ snapshot: UserProfileSnapshot,
+        for username: String,
+        scope: RequestGate.ReadScope,
+        now: Date = .now
+    ) {
+        let key = Self.key(for: username, scope: scope)
         var entry = entries[key] ?? Entry(
             snapshot: .empty,
             overviewSavedAt: nil,
@@ -101,8 +125,11 @@ actor UserProfileCache {
         entries.removeAll()
     }
 
-    private static func key(for username: String) -> String {
-        username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    private static func key(for username: String, scope: RequestGate.ReadScope) -> Key {
+        Key(
+            username: username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+            scope: scope
+        )
     }
 
     private static func isFresh(

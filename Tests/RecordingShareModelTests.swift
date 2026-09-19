@@ -45,7 +45,7 @@ final class RecordingShareModelTests: XCTestCase {
             followers: [SearchUser(username: "Zoe"), SearchUser(username: "maya")]
         )
         let feedCache = EntityDetailCache<FeedPageKey, FeedPage>()
-        let key = FeedPageKey(username: "listener", mode: .activity, beforeTimestamp: nil, count: 25)
+        let key = FeedPageKey(username: "listener", scope: .authenticated(token: "token"), mode: .activity, beforeTimestamp: nil, count: 25)
         await feedCache.save(FeedPage(username: "listener", serverCount: 0, events: []), for: key)
         let model = makeModel(provider: provider, feedCache: feedCache)
         await model.loadFollowers()

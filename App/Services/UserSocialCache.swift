@@ -39,6 +39,7 @@ actor UserSocialCache {
 
     private struct ViewerKey: Hashable, Sendable {
         let viewer: String
+        let scope: RequestGate.ReadScope
         let target: String
     }
 
@@ -70,8 +71,17 @@ actor UserSocialCache {
         )
     }
 
-    func viewerValue(viewer: String, target: String, now: Date = .now) -> ViewerValue? {
-        let key = ViewerKey(viewer: Self.normalized(viewer), target: Self.normalized(target))
+    func viewerValue(
+        viewer: String,
+        scope: RequestGate.ReadScope,
+        target: String,
+        now: Date = .now
+    ) -> ViewerValue? {
+        let key = ViewerKey(
+            viewer: Self.normalized(viewer),
+            scope: scope,
+            target: Self.normalized(target)
+        )
         guard var entry = viewerEntries[key] else { return nil }
         entry.lastAccessedAt = now
         viewerEntries[key] = entry
@@ -93,14 +103,26 @@ actor UserSocialCache {
         updatePublic(username: username, now: now) { $0.similarUsers = Timed(value: users, savedAt: now) }
     }
 
-    func saveIsFollowing(_ value: Bool, viewer: String, target: String, now: Date = .now) {
-        updateViewer(viewer: viewer, target: target, now: now) {
+    func saveIsFollowing(
+        _ value: Bool,
+        viewer: String,
+        scope: RequestGate.ReadScope,
+        target: String,
+        now: Date = .now
+    ) {
+        updateViewer(viewer: viewer, scope: scope, target: target, now: now) {
             $0.isFollowing = Timed(value: value, savedAt: now)
         }
     }
 
-    func saveCompatibility(_ value: Double?, viewer: String, target: String, now: Date = .now) {
-        updateViewer(viewer: viewer, target: target, now: now) {
+    func saveCompatibility(
+        _ value: Double?,
+        viewer: String,
+        scope: RequestGate.ReadScope,
+        target: String,
+        now: Date = .now
+    ) {
+        updateViewer(viewer: viewer, scope: scope, target: target, now: now) {
             $0.compatibility = Timed(value: value, savedAt: now)
         }
     }
@@ -136,11 +158,16 @@ actor UserSocialCache {
 
     private func updateViewer(
         viewer: String,
+        scope: RequestGate.ReadScope,
         target: String,
         now: Date,
         update: (inout ViewerEntry) -> Void
     ) {
-        let key = ViewerKey(viewer: Self.normalized(viewer), target: Self.normalized(target))
+        let key = ViewerKey(
+            viewer: Self.normalized(viewer),
+            scope: scope,
+            target: Self.normalized(target)
+        )
         var entry = viewerEntries[key] ?? ViewerEntry(lastAccessedAt: now)
         update(&entry)
         entry.lastAccessedAt = now

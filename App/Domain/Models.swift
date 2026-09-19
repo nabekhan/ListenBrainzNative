@@ -359,10 +359,12 @@ enum DailyActivityLoadState: Equatable {
 
 struct DailyActivityCacheKey: Hashable, Sendable {
     let username: String
+    let scope: RequestGate.ReadScope
     let period: ListeningActivityPeriod
 
-    init(username: String, period: ListeningActivityPeriod) {
+    init(username: String, scope: RequestGate.ReadScope, period: ListeningActivityPeriod) {
         self.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        self.scope = scope
         self.period = period
     }
 }
@@ -487,10 +489,12 @@ enum EraActivityLoadState: Equatable {
 
 struct EraActivityCacheKey: Hashable, Sendable {
     let username: String
+    let scope: RequestGate.ReadScope
     let period: ListeningActivityPeriod
 
-    init(username: String, period: ListeningActivityPeriod) {
+    init(username: String, scope: RequestGate.ReadScope, period: ListeningActivityPeriod) {
         self.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        self.scope = scope
         self.period = period
     }
 }
@@ -723,10 +727,12 @@ enum ArtistEvolutionLoadState: Equatable {
 
 struct ArtistEvolutionActivityCacheKey: Hashable, Sendable {
     let username: String
+    let scope: RequestGate.ReadScope
     let period: ListeningActivityPeriod
 
-    init(username: String, period: ListeningActivityPeriod) {
+    init(username: String, scope: RequestGate.ReadScope, period: ListeningActivityPeriod) {
         self.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        self.scope = scope
         self.period = period
     }
 }
@@ -863,10 +869,12 @@ enum GenreActivityLoadState: Equatable {
 
 struct GenreActivityCacheKey: Hashable, Sendable {
     let username: String
+    let scope: RequestGate.ReadScope
     let period: ListeningActivityPeriod
 
-    init(username: String, period: ListeningActivityPeriod) {
+    init(username: String, scope: RequestGate.ReadScope, period: ListeningActivityPeriod) {
         self.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        self.scope = scope
         self.period = period
     }
 }

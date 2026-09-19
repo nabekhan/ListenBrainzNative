@@ -104,7 +104,7 @@ final class PlaylistMutationTests: XCTestCase {
         let publicKey = PlaylistDetailCacheKey(mbid: mbid, accessScope: .publicOnly)
         let authenticatedKey = PlaylistDetailCacheKey(
             mbid: mbid,
-            accessScope: .authenticatedViewer("listener")
+            accessScope: .authenticatedViewer(.authenticated(token: "listener"))
         )
         let pageKey = ProfilePlaylistPageKey(
             username: "listener",
@@ -152,7 +152,7 @@ final class PlaylistMutationTests: XCTestCase {
         let pageCache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
         let key = ProfilePlaylistPageKey(
             username: "listener",
-            accessScope: .authenticatedViewer("listener"),
+            accessScope: .authenticatedViewer(.authenticated(token: "listener")),
             category: .owned,
             offset: 0,
             count: 20
@@ -202,7 +202,7 @@ final class PlaylistMutationTests: XCTestCase {
         let pageCache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
         let key = ProfilePlaylistPageKey(
             username: "listener",
-            accessScope: .authenticatedViewer("listener"),
+            accessScope: .authenticatedViewer(.authenticated(token: "listener")),
             category: .owned,
             offset: 0,
             count: 20
@@ -289,11 +289,11 @@ final class PlaylistMutationTests: XCTestCase {
         let publicKey = PlaylistDetailCacheKey(mbid: playlistMBID, accessScope: .publicOnly)
         let authenticatedKey = PlaylistDetailCacheKey(
             mbid: playlistMBID,
-            accessScope: .authenticatedViewer("listener")
+            accessScope: .authenticatedViewer(.authenticated(token: "listener"))
         )
         let pageKey = ProfilePlaylistPageKey(
             username: "listener",
-            accessScope: .authenticatedViewer("listener"),
+            accessScope: .authenticatedViewer(.authenticated(token: "listener")),
             category: .collaborating,
             offset: 0,
             count: 20
@@ -361,11 +361,11 @@ final class PlaylistMutationTests: XCTestCase {
             let pageCache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
             let detailKey = PlaylistDetailCacheKey(
                 mbid: playlistMBID,
-                accessScope: .authenticatedViewer("listener")
+                accessScope: .authenticatedViewer(.authenticated(token: "listener"))
             )
             let pageKey = ProfilePlaylistPageKey(
                 username: "listener",
-                accessScope: .authenticatedViewer("listener"),
+                accessScope: .authenticatedViewer(.authenticated(token: "listener")),
                 category: .collaborating,
                 offset: 0,
                 count: 20

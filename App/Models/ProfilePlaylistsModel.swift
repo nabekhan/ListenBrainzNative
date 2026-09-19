@@ -23,7 +23,10 @@ struct ProfilePlaylistCategoryState: Equatable {
 
 enum ProfilePlaylistAccessScope: Hashable, Sendable {
     case publicOnly
-    case authenticatedViewer(String)
+    case authenticatedViewer(RequestGate.ReadScope)
+
+    /// Test and fixture convenience. Production callers must derive this from
+    /// the credential, never from an account name.
 }
 
 struct ProfilePlaylistPageKey: Hashable, Sendable {
@@ -427,7 +430,7 @@ final class ProfilePlaylistsModel {
 
     private var accessScope: ProfilePlaylistAccessScope {
         guard account.isAuthenticated else { return .publicOnly }
-        return .authenticatedViewer(Self.normalized(account.username))
+        return .authenticatedViewer(.authenticated(token: account.token))
     }
 
     private func waitForLoadToSettle(category: ProfilePlaylistCategory) async {

@@ -26,6 +26,7 @@ final class ListeningModel {
 
     let account: Account
     private let provider: any ListeningProvider
+    private let cacheScope: RequestGate.ReadScope
     private let cache: SnapshotCache
     private let dailyActivityCache: EntityDetailCache<DailyActivityCacheKey, DailyActivity>
     private let eraActivityCache: EntityDetailCache<EraActivityCacheKey, EraActivity>
@@ -78,6 +79,7 @@ final class ListeningModel {
     ) {
         self.account = account
         self.provider = provider ?? ListenBrainzProvider(token: account.token)
+        self.cacheScope = .authenticated(token: account.token)
         self.cache = cache
         self.dailyActivityCache = dailyActivityCache
         self.eraActivityCache = eraActivityCache
@@ -457,7 +459,7 @@ final class ListeningModel {
     /// Loads only the selected server range. A stale cached matrix remains
     /// visible during revalidation, and any refresh failure leaves it usable.
     func loadDailyActivity(for period: ListeningActivityPeriod, retrying: Bool = false) async {
-        let key = DailyActivityCacheKey(username: account.username, period: period)
+        let key = DailyActivityCacheKey(username: account.username, scope: cacheScope, period: period)
         if !retrying, dailyActivityRequestIDs[period] != nil {
             return
         }
@@ -523,7 +525,7 @@ final class ListeningModel {
     /// Loads one server-calculated release-year distribution for the selected
     /// range. Stale data remains usable while ListenBrainz is revalidating it.
     func loadEraActivity(for period: ListeningActivityPeriod, retrying: Bool = false) async {
-        let key = EraActivityCacheKey(username: account.username, period: period)
+        let key = EraActivityCacheKey(username: account.username, scope: cacheScope, period: period)
         if !retrying, eraActivityRequestIDs[period] != nil {
             return
         }
@@ -589,7 +591,7 @@ final class ListeningModel {
     /// Loads a single server-calculated range only after the dedicated detail
     /// screen is opened. Stale chart data remains visible during revalidation.
     func loadArtistEvolution(for period: ListeningActivityPeriod, retrying: Bool = false) async {
-        let key = ArtistEvolutionActivityCacheKey(username: account.username, period: period)
+        let key = ArtistEvolutionActivityCacheKey(username: account.username, scope: cacheScope, period: period)
         if !retrying, artistEvolutionRequestIDs[period] != nil {
             return
         }
@@ -658,7 +660,7 @@ final class ListeningModel {
     /// Loads one server-calculated UTC-hour genre aggregate. A stale response
     /// stays visible while it is revalidated, including if that refresh fails.
     func loadGenreActivity(for period: ListeningActivityPeriod, retrying: Bool = false) async {
-        let key = GenreActivityCacheKey(username: account.username, period: period)
+        let key = GenreActivityCacheKey(username: account.username, scope: cacheScope, period: period)
         if !retrying, genreActivityRequestIDs[period] != nil {
             return
         }

@@ -123,7 +123,7 @@ final class PlaylistAddSheetModelTests: XCTestCase {
         )
         let detailKey = PlaylistDetailCacheKey(
             mbid: playlistMBID,
-            accessScope: .authenticatedViewer("listener")
+            accessScope: .authenticatedViewer(.authenticated(token: "listener"))
         )
         await detailCache.save(playlist(recordings: [recordingMBID]), for: detailKey)
         let model = PlaylistAddSheetModel(
@@ -158,7 +158,7 @@ final class PlaylistAddSheetModelTests: XCTestCase {
         )
         let detailKey = PlaylistDetailCacheKey(
             mbid: playlistMBID,
-            accessScope: .authenticatedViewer("listener")
+            accessScope: .authenticatedViewer(.authenticated(token: "listener"))
         )
         await detailCache.save(playlist(recordings: [recordingMBID]), for: detailKey)
         let model = PlaylistAddSheetModel(

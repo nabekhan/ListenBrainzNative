@@ -12,10 +12,25 @@ enum FeedPhase: Equatable {
 
 struct FeedPageKey: Hashable, Sendable {
     let username: String
+    let scope: RequestGate.ReadScope
     let mode: FeedMode
     /// Feed timestamps are server-side Unix seconds, so cache at that precision.
     let beforeTimestamp: Int?
     let count: Int
+
+    init(
+        username: String,
+        scope: RequestGate.ReadScope,
+        mode: FeedMode,
+        beforeTimestamp: Int?,
+        count: Int
+    ) {
+        self.username = username
+        self.scope = scope
+        self.mode = mode
+        self.beforeTimestamp = beforeTimestamp
+        self.count = count
+    }
 }
 
 struct FeedModeState: Equatable {
@@ -225,6 +240,7 @@ final class FeedModel {
         )
         let key = FeedPageKey(
             username: Self.normalized(account.username),
+            scope: .authenticated(token: account.token),
             mode: mode,
             beforeTimestamp: before.map { Int($0.timeIntervalSince1970) },
             count: count

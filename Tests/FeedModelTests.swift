@@ -10,6 +10,7 @@ final class FeedModelTests: XCTestCase {
         let cache = EntityDetailCache<FeedPageKey, FeedPage>()
         let cachedKey = FeedPageKey(
             username: "listener",
+            scope: .authenticated(token: ""),
             mode: .activity,
             beforeTimestamp: nil,
             count: 2
@@ -171,7 +172,13 @@ final class FeedModelTests: XCTestCase {
         let initialCalls = await provider.calls
         XCTAssertEqual(initialCalls.map(\.mode), [.activity, .following])
 
-        let key = FeedPageKey(username: "listener", mode: .similar, beforeTimestamp: nil, count: 2)
+        let key = FeedPageKey(
+            username: "listener",
+            scope: .authenticated(token: "token"),
+            mode: .similar,
+            beforeTimestamp: nil,
+            count: 2
+        )
         await cache.save(page(mode: .similar, position: 20, count: 2), for: key)
         let cached = FeedModel(
             account: .init(username: "LISTENER", token: "token"),
@@ -328,7 +335,13 @@ final class FeedModelTests: XCTestCase {
 
     func testStaleCachedContentSurvivesRefreshFailure() async {
         let cache = EntityDetailCache<FeedPageKey, FeedPage>(timeToLive: -1)
-        let key = FeedPageKey(username: "listener", mode: .activity, beforeTimestamp: nil, count: 2)
+        let key = FeedPageKey(
+            username: "listener",
+            scope: .authenticated(token: "token"),
+            mode: .activity,
+            beforeTimestamp: nil,
+            count: 2
+        )
         await cache.save(page(mode: .activity, position: 0, count: 2), for: key)
         let provider = FeedFixtureProvider(pages: [:], error: FeedFixtureError.failed)
         let model = FeedModel(
@@ -424,7 +437,7 @@ final class FeedModelTests: XCTestCase {
         let cache = EntityDetailCache<FeedPageKey, FeedPage>()
         let model = FeedModel(account: .init(username: "listener", token: "token"), provider: provider, cache: cache, activityPageSize: 2)
         await model.load(mode: .activity)
-        let cacheKey = FeedPageKey(username: "listener", mode: .activity, beforeTimestamp: nil, count: 2)
+        let cacheKey = FeedPageKey(username: "listener", scope: .authenticated(token: "token"), mode: .activity, beforeTimestamp: nil, count: 2)
         await cache.save(page, for: cacheKey)
 
         await model.setHidden(event, in: .activity, hidden: true)
@@ -457,7 +470,7 @@ final class FeedModelTests: XCTestCase {
         let cache = EntityDetailCache<FeedPageKey, FeedPage>()
         let model = FeedModel(account: .init(username: "listener", token: "token"), provider: provider, cache: cache, activityPageSize: 2)
         await model.load(mode: .activity)
-        let cacheKey = FeedPageKey(username: "listener", mode: .activity, beforeTimestamp: nil, count: 2)
+        let cacheKey = FeedPageKey(username: "listener", scope: .authenticated(token: "token"), mode: .activity, beforeTimestamp: nil, count: 2)
         await cache.save(page, for: cacheKey)
 
         await model.delete(event, in: .activity)

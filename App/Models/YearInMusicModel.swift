@@ -12,10 +12,12 @@ enum YearInMusicLoadState: Equatable {
 
 struct YearInMusicCacheKey: Hashable, Sendable {
     let username: String
+    let scope: RequestGate.ReadScope
     let year: Int
 
-    init(username: String, year: Int) {
+    init(username: String, scope: RequestGate.ReadScope, year: Int) {
         self.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        self.scope = scope
         self.year = year
     }
 }
@@ -112,6 +114,10 @@ final class YearInMusicModel {
     }
 
     private var cacheKey: YearInMusicCacheKey {
-        YearInMusicCacheKey(username: account.username, year: year)
+        YearInMusicCacheKey(
+            username: account.username,
+            scope: .authenticated(token: account.token),
+            year: year
+        )
     }
 }

@@ -365,13 +365,13 @@ final class PlaylistDetailModel {
 
 enum PlaylistDetailAccessScope: Hashable, Sendable {
     case publicOnly
-    case authenticatedViewer(String)
+    case authenticatedViewer(RequestGate.ReadScope)
 
+    /// Test and fixture convenience. Production callers must derive this from
+    /// the credential, never from an account name.
     init(account: Account) {
         if account.isAuthenticated {
-            self = .authenticatedViewer(
-                account.username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            )
+            self = .authenticatedViewer(.authenticated(token: account.token))
         } else {
             self = .publicOnly
         }

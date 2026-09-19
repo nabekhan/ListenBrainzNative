@@ -6,6 +6,28 @@ import ListenBrainzKit
 
 @MainActor
 final class ListeningModelTests: XCTestCase {
+    func testActivityCacheKeysDoNotCrossCredentialBoundary() {
+        let firstScope = RequestGate.ReadScope.authenticated(token: "first-token")
+        let secondScope = RequestGate.ReadScope.authenticated(token: "second-token")
+
+        XCTAssertNotEqual(
+            DailyActivityCacheKey(username: "listener", scope: firstScope, period: .thisWeek),
+            DailyActivityCacheKey(username: "listener", scope: secondScope, period: .thisWeek)
+        )
+        XCTAssertNotEqual(
+            EraActivityCacheKey(username: "listener", scope: firstScope, period: .thisWeek),
+            EraActivityCacheKey(username: "listener", scope: secondScope, period: .thisWeek)
+        )
+        XCTAssertNotEqual(
+            ArtistEvolutionActivityCacheKey(username: "listener", scope: firstScope, period: .thisWeek),
+            ArtistEvolutionActivityCacheKey(username: "listener", scope: secondScope, period: .thisWeek)
+        )
+        XCTAssertNotEqual(
+            GenreActivityCacheKey(username: "listener", scope: firstScope, period: .thisWeek),
+            GenreActivityCacheKey(username: "listener", scope: secondScope, period: .thisWeek)
+        )
+    }
+
     func testLoadBuildsARealSnapshotFromProviderData() async {
         let provider = FixtureProvider()
         let username = "fixture-\(UUID().uuidString)"
@@ -856,7 +878,14 @@ final class ListeningModelTests: XCTestCase {
     func testStaleDailyActivityStaysVisibleDuringRefreshAndOnFailure() async throws {
         let cache = EntityDetailCache<DailyActivityCacheKey, DailyActivity>(timeToLive: -1)
         let stale = DailyActivity.fixture(period: .thisWeek, listenCount: 3)
-        await cache.save(stale, for: .init(username: "listener", period: .thisWeek))
+        await cache.save(
+            stale,
+            for: .init(
+                username: "listener",
+                scope: .authenticated(token: ""),
+                period: .thisWeek
+            )
+        )
         let provider = DailyActivityProvider(result: .failure, delay: .seconds(1))
         let model = ListeningModel(
             account: Account(username: "listener", token: ""),
@@ -1016,7 +1045,10 @@ final class ListeningModelTests: XCTestCase {
     func testStaleEraActivityStaysVisibleDuringRefreshAndOnFailure() async throws {
         let cache = EntityDetailCache<EraActivityCacheKey, EraActivity>(timeToLive: -1)
         let stale = EraActivity.fixture(period: .thisYear, year: 1997, listenCount: 3)
-        await cache.save(stale, for: .init(username: "listener", period: .thisYear))
+        await cache.save(
+            stale,
+            for: .init(username: "listener", scope: .authenticated(token: ""), period: .thisYear)
+        )
         let provider = EraActivityProvider(result: .failure, delay: .seconds(1))
         let model = ListeningModel(
             account: Account(username: "listener", token: ""),
@@ -1209,7 +1241,10 @@ final class ListeningModelTests: XCTestCase {
     func testStaleArtistEvolutionStaysVisibleDuringRefreshAndOnFailure() async throws {
         let cache = EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity>(timeToLive: -1)
         let stale = ArtistEvolutionActivity.fixture(period: .thisYear, listenCount: 3)
-        await cache.save(stale, for: .init(username: "listener", period: .thisYear))
+        await cache.save(
+            stale,
+            for: .init(username: "listener", scope: .authenticated(token: ""), period: .thisYear)
+        )
         let provider = ArtistEvolutionProvider(result: .failure, delay: .seconds(1))
         let model = ListeningModel(
             account: Account(username: "listener", token: ""),
@@ -1359,7 +1394,10 @@ final class ListeningModelTests: XCTestCase {
     func testStaleGenreActivityStaysVisibleDuringRefreshFailure() async throws {
         let cache = EntityDetailCache<GenreActivityCacheKey, GenreActivity>(timeToLive: -1)
         let stale = GenreActivity.fixture(period: .thisYear, listenCount: 3)
-        await cache.save(stale, for: .init(username: "listener", period: .thisYear))
+        await cache.save(
+            stale,
+            for: .init(username: "listener", scope: .authenticated(token: ""), period: .thisYear)
+        )
         let provider = GenreActivityProvider(result: .failure, delay: .seconds(1))
         let model = ListeningModel(
             account: Account(username: "listener", token: ""),
