@@ -15,7 +15,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Playlist search | Y | Y | Y | — | Y | Y | P1 | Public search added to LBKit and native scoped search |
 | Recording/release-group/artist metadata | Y | Y | Y | P | Y | Y | P0 | MBIDs are canonical identities |
 | Release/release-group detail and track listing | Y/P | Y | Y | P | P | Y | P0 | Native group pages plus one-request MusicBrainz edition pages with ordered media/tracks; identities stay distinct |
-| Inspect raw listen/mapping state | Y | Y | P | ? | P | P | P2 | Advanced detail sheet |
+| Inspect raw listen/mapping state | Y | Y | P | ? | P | P | P2 | Native read-only Listen details sheet preserves returned submitted metadata, MSID, mapping and source fields without a follow-up request |
 | Manual metadata mapping | Y | Y | ? | ? | Y | ? | P3 | Advanced workflow only |
 | Recording love/hate/clear feedback | Y | Y | P | P | Y | P | P1 | Optimistic action with rollback |
 | Pins/current pin/pin history/blurb | Y | Y | Y | Y | Y | Y | P1 | Native current/history, owner mutations, and Following Pins landed; the public Following Pins page stays aggregate and non-hydrating |

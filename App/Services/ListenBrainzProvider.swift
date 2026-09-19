@@ -61,7 +61,8 @@ struct ListenBrainzProvider: ListeningProvider {
                 recording: Self.map(value.trackMetadata, msid: nil),
                 listenedAt: .now,
                 insertedAt: nil,
-                isPlayingNow: value.playingNow
+                isPlayingNow: value.playingNow,
+                inspection: Self.inspection(value.trackMetadata, msid: nil)
             )
         }
     }
@@ -383,7 +384,8 @@ struct ListenBrainzProvider: ListeningProvider {
             recording: map(listen.trackMetadata, msid: listen.recordingMsid),
             listenedAt: listen.listenedAt,
             insertedAt: listen.insertedAt,
-            isPlayingNow: false
+            isPlayingNow: false,
+            inspection: inspection(listen.trackMetadata, msid: listen.recordingMsid)
         )
     }
 
@@ -430,6 +432,73 @@ struct ListenBrainzProvider: ListeningProvider {
                 ?? additional?.submissionClient
                 ?? additional?.mediaPlayer
         )
+    }
+
+    static func inspection(_ metadata: LBTrackMetadata, msid: UUID?) -> ListenInspection {
+        let additional = metadata.additionalInfo
+        let mapped = metadata.mbidMapping
+        let mappedArtistMBIDs = (mapped?.artistMbids ?? [])
+            + (mapped?.artists?.compactMap(\.mbid) ?? [])
+        let resolvedArtistMBIDs = mappedArtistMBIDs.reduce(into: [UUID]()) { result, mbid in
+            guard !result.contains(mbid) else { return }
+            result.append(mbid)
+        }
+        return ListenInspection(
+            submittedArtist: metadata.artist,
+            submittedTrack: metadata.track,
+            submittedRelease: metadata.release,
+            recordingMSID: msid,
+            submittedRecordingMSID: additional?.recordingMsid,
+            submittedArtistMBIDs: additional?.artistMbids ?? [],
+            submittedRecordingMBID: additional?.recordingMbid,
+            submittedReleaseMBID: additional?.releaseMbid,
+            submittedReleaseGroupMBID: additional?.releaseGroupMbid,
+            submittedTrackMBID: additional?.trackMbid,
+            submittedWorkMBIDs: additional?.workMbids ?? [],
+            resolvedArtistMBIDs: resolvedArtistMBIDs,
+            resolvedRecordingMBID: mapped?.recordingMbid,
+            resolvedReleaseMBID: mapped?.releaseMbid,
+            resolvedReleaseGroupMBID: mapped?.releaseGroupMbid,
+            resolvedRecordingName: mapped?.recordingName,
+            trackNumber: additional?.tracknumber,
+            isrc: additional?.isrc,
+            spotifyID: additional?.spotifyId,
+            tags: additional?.tags ?? [],
+            mediaPlayer: additional?.mediaPlayer,
+            mediaPlayerVersion: additional?.mediaPlayerVersion,
+            submissionClient: additional?.submissionClient,
+            submissionClientVersion: additional?.submissionClientVersion,
+            musicService: additional?.musicService,
+            musicServiceName: additional?.musicServiceName,
+            originURL: sanitizedOriginURL(additional?.originUrl),
+            durationMilliseconds: durationMilliseconds(from: additional)
+        )
+    }
+
+    private static func sanitizedOriginURL(_ rawValue: String?) -> String? {
+        guard let rawValue else { return nil }
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard var components = URLComponents(string: trimmed),
+              let scheme = components.scheme?.lowercased(),
+              scheme == "https" || scheme == "http",
+              components.host?.isEmpty == false
+        else { return nil }
+
+        components.scheme = scheme
+        components.user = nil
+        components.password = nil
+        components.query = nil
+        components.fragment = nil
+        return components.string
+    }
+
+    private static func durationMilliseconds(from additional: LBAdditionalInfo?) -> Int? {
+        if let milliseconds = additional?.durationMs, milliseconds >= 0 {
+            return milliseconds
+        }
+        guard let seconds = additional?.duration, seconds >= 0 else { return nil }
+        let result = seconds.multipliedReportingOverflow(by: 1_000)
+        return result.overflow ? nil : result.partialValue
     }
 
     private static func map(_ release: LBFreshReleases.Release, sourcePosition: Int) -> FreshRelease {

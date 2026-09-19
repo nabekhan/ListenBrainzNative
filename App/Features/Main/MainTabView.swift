@@ -118,8 +118,14 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-long-title-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-recovery-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-unmapped-demo")
             {
-                let visualAccount = Account(username: "visual-history", token: "visual-history")
+                let isInspectionDemo = ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-demo")
+                    || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-unmapped-demo")
+                let visualAccount = isInspectionDemo
+                    ? Account(username: "visual-inspection", token: "visual-inspection")
+                    : Account(username: "visual-history", token: "visual-history")
                 _model = State(
                     initialValue: ListeningModel(
                         account: visualAccount,
@@ -169,7 +175,11 @@ struct MainTabView: View {
 
     var body: some View {
         #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("-brainz-generic-art-demo") {
+            if ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-unmapped-demo")
+            {
+                ListenInspectionVisualQAScreen(listen: VisualQAHistoryProvider.inspectionPreview())
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-generic-art-demo") {
                 GenericArtVisualQAScreen(fixture: .populated)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-generic-art-unavailable-demo") {
                 GenericArtVisualQAScreen(fixture: .unavailable)
@@ -380,6 +390,8 @@ struct MainTabView: View {
                         || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-demo")
                         || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-long-title-demo")
                         || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-recovery-demo")
+                        || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-demo")
+                        || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-unmapped-demo")
                     {
                         selectedTab = .history
                     }
@@ -811,6 +823,10 @@ struct MainTabView: View {
         func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
         func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
 
+        static func inspectionPreview() -> Listen {
+            makeListen(index: 0, listenedAt: .now.addingTimeInterval(-2_400))
+        }
+
         private static func makeListens(around newest: Date, count: Int) -> [Listen] {
             (0..<count).map { index in
                 let dayOffset = index < 7 ? 0 : (index < 15 ? 1 : 2)
@@ -830,7 +846,7 @@ struct MainTabView: View {
             let artist = artists[index % artists.count]
             return Listen(
                 recording: Recording(
-                    identity: .init(mbid: nil, msid: msid),
+                    identity: .init(mbid: nil, msid: isPlayingNow ? nil : msid),
                     title: titles[index % titles.count],
                     artistName: artist,
                     artistMBIDs: [],
@@ -843,7 +859,45 @@ struct MainTabView: View {
                 ),
                 listenedAt: listenedAt,
                 insertedAt: listenedAt.addingTimeInterval(3),
-                isPlayingNow: isPlayingNow
+                isPlayingNow: isPlayingNow,
+                inspection: fixtureInspection(
+                    mapped: !ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-unmapped-demo"),
+                    listenMSID: isPlayingNow ? nil : msid,
+                    submittedMSID: msid
+                )
+            )
+        }
+
+        private static func fixtureInspection(mapped: Bool, listenMSID: UUID?, submittedMSID: UUID?) -> ListenInspection {
+            ListenInspection(
+                submittedArtist: "The Marías",
+                submittedTrack: "Night Drive",
+                submittedRelease: "Listening Room",
+                recordingMSID: listenMSID,
+                submittedRecordingMSID: submittedMSID,
+                submittedArtistMBIDs: [],
+                submittedRecordingMBID: nil,
+                submittedReleaseMBID: nil,
+                submittedReleaseGroupMBID: nil,
+                submittedTrackMBID: nil,
+                submittedWorkMBIDs: [],
+                resolvedArtistMBIDs: mapped ? [UUID(uuidString: "934c97a5-3d4d-4c8b-a4ea-7bde1bd6f4cc")!] : [],
+                resolvedRecordingMBID: mapped ? UUID(uuidString: "4262dc8a-97b3-4db7-8ea0-e4fbba9264bb")! : nil,
+                resolvedReleaseMBID: mapped ? artworkReleaseMBID : nil,
+                resolvedReleaseGroupMBID: nil,
+                resolvedRecordingName: mapped ? "Night Drive" : nil,
+                trackNumber: 2,
+                isrc: "USXXX2600001",
+                spotifyID: "4uLU6hMCjMI75M1A2tKUQC",
+                tags: ["indie pop", "dream pop"],
+                mediaPlayer: "Apple Music",
+                mediaPlayerVersion: "1.0",
+                submissionClient: "Brainz",
+                submissionClientVersion: "0.1",
+                musicService: "apple_music",
+                musicServiceName: "Apple Music",
+                originURL: "https://example.invalid/listen/fixture",
+                durationMilliseconds: 243_000
             )
         }
     }

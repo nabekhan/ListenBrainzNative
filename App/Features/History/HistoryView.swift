@@ -30,6 +30,7 @@ struct HistoryView: View {
     @State private var draftDay = Date()
     @State private var dayLoadTask: Task<Void, Never>?
     @State private var historyAlert: HistoryAlert?
+    @State private var inspectedListen: Listen?
     #if DEBUG
     @State private var didPresentDeleteDemo = false
     #endif
@@ -59,6 +60,9 @@ struct HistoryView: View {
             .mediaDestinations(model: model)
         }
         .sheet(isPresented: $isDatePickerPresented) { historyDatePicker }
+        .sheet(item: $inspectedListen) { listen in
+            ListenInspectionSheet(listen: listen)
+        }
         .alert(item: historyAlertBinding) { alert in
             switch alert {
             case let .deletionConfirmation(confirmation):
@@ -190,6 +194,13 @@ struct HistoryView: View {
             } else if let playing = model.snapshot.playingNow {
                 Section("Playing now") {
                     NavigationLink(value: playing.recording) { ListenRow(listen: playing) }
+                        .contextMenu {
+                            Button {
+                                inspectedListen = playing
+                            } label: {
+                                Label("Listen details", systemImage: "text.magnifyingglass")
+                            }
+                        }
                 }
             }
 
@@ -266,6 +277,11 @@ struct HistoryView: View {
                 }
         }
         .contextMenu {
+            Button {
+                inspectedListen = listen
+            } label: {
+                Label("Listen details", systemImage: "text.magnifyingglass")
+            }
             Button { Task { await model.setFeedback(.love, for: listen.recording) } } label: { Label("Love", systemImage: "heart") }
             Button { Task { await model.setFeedback(.hate, for: listen.recording) } } label: { Label("Hate", systemImage: "hand.thumbsdown") }
             if model.account.isAuthenticated,

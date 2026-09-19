@@ -222,6 +222,12 @@ final class SessionModel {
                 state = .active(Account(username: "visual-history", token: "visual-history"))
                 return true
             }
+            if arguments.contains("-brainz-inspect-listen-demo")
+                || arguments.contains("-brainz-inspect-listen-unmapped-demo")
+            {
+                state = .active(Account(username: "visual-inspection", token: "visual-inspection"))
+                return true
+            }
             return false
         }
     #endif

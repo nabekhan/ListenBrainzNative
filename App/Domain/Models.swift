@@ -50,6 +50,23 @@ struct Listen: Identifiable, Hashable, Codable, Sendable {
     let listenedAt: Date
     let insertedAt: Date?
     let isPlayingNow: Bool
+    /// The original submitted metadata and resolved identifiers included with
+    /// this listen. It is optional so older cached snapshots remain readable.
+    let inspection: ListenInspection?
+
+    init(
+        recording: Recording,
+        listenedAt: Date,
+        insertedAt: Date?,
+        isPlayingNow: Bool,
+        inspection: ListenInspection? = nil
+    ) {
+        self.recording = recording
+        self.listenedAt = listenedAt
+        self.insertedAt = insertedAt
+        self.isPlayingNow = isPlayingNow
+        self.inspection = inspection
+    }
 
     // A mapped recording can legitimately have more than one MSID at the same
     // second. Keep that source identity in the listen key so overlapping pages
@@ -57,6 +74,69 @@ struct Listen: Identifiable, Hashable, Codable, Sendable {
     var id: String {
         let sourceIdentity = recording.identity.msid?.uuidString ?? recording.id
         return "\(sourceIdentity):\(listenedAt.timeIntervalSince1970):\(isPlayingNow)"
+    }
+}
+
+/// Read-only details already returned alongside a listen. These values retain
+/// submitted metadata separately from the app's canonical display mapping.
+struct ListenInspection: Hashable, Codable, Sendable {
+    enum MappingStatus: String, Codable, Sendable {
+        case matchedByListenBrainz
+        case musicBrainzIDsSubmitted
+        case noMusicBrainzMatch
+
+        var title: String {
+            switch self {
+            case .matchedByListenBrainz: "Matched by ListenBrainz"
+            case .musicBrainzIDsSubmitted: "MusicBrainz IDs in submitted metadata"
+            case .noMusicBrainzMatch: "No MusicBrainz match"
+            }
+        }
+    }
+
+    let submittedArtist: String
+    let submittedTrack: String
+    let submittedRelease: String?
+    let recordingMSID: UUID?
+    let submittedRecordingMSID: UUID?
+    let submittedArtistMBIDs: [UUID]
+    let submittedRecordingMBID: UUID?
+    let submittedReleaseMBID: UUID?
+    let submittedReleaseGroupMBID: UUID?
+    let submittedTrackMBID: UUID?
+    let submittedWorkMBIDs: [UUID]
+    let resolvedArtistMBIDs: [UUID]
+    let resolvedRecordingMBID: UUID?
+    let resolvedReleaseMBID: UUID?
+    let resolvedReleaseGroupMBID: UUID?
+    let resolvedRecordingName: String?
+    let trackNumber: Int?
+    let isrc: String?
+    let spotifyID: String?
+    let tags: [String]
+    let mediaPlayer: String?
+    let mediaPlayerVersion: String?
+    let submissionClient: String?
+    let submissionClientVersion: String?
+    let musicService: String?
+    let musicServiceName: String?
+    let originURL: String?
+    let durationMilliseconds: Int?
+
+    var mappingStatus: MappingStatus {
+        if resolvedRecordingMBID != nil || resolvedReleaseMBID != nil || resolvedReleaseGroupMBID != nil || !resolvedArtistMBIDs.isEmpty {
+            return .matchedByListenBrainz
+        }
+        if submittedRecordingMBID != nil
+            || submittedReleaseMBID != nil
+            || submittedReleaseGroupMBID != nil
+            || submittedTrackMBID != nil
+            || !submittedArtistMBIDs.isEmpty
+            || !submittedWorkMBIDs.isEmpty
+        {
+            return .musicBrainzIDsSubmitted
+        }
+        return .noMusicBrainzMatch
     }
 }
 
