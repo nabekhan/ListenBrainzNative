@@ -117,6 +117,7 @@ struct UserDetailView: View {
 
         recentListens
         topArtists
+        topReleases
     }
 
     private var socialLink: some View {
@@ -204,6 +205,35 @@ struct UserDetailView: View {
         .task { await model.loadTopArtists() }
     }
 
+    private var topReleases: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Most played albums",
+                subtitle: "Albums this listener returns to most"
+            )
+            switch model.topReleasesPhase {
+            case .idle, .loading:
+                HStack { Spacer(); ProgressView("Loading albums…"); Spacer() }
+                    .frame(minHeight: 116)
+            case let .failed(message):
+                ContentUnavailableView {
+                    Label("Albums unavailable", systemImage: "opticaldisc")
+                } description: {
+                    Text(message)
+                } actions: {
+                    Button("Try Again") { Task { await model.loadTopReleases(retrying: true) } }
+                }
+                .frame(maxWidth: .infinity, minHeight: 150)
+            case .ready where model.snapshot.topReleases.isEmpty:
+                ContentUnavailableView("No album stats yet", systemImage: "opticaldisc")
+                    .frame(maxWidth: .infinity, minHeight: 130)
+            case .ready:
+                UserProfileTopReleasesList(releases: Array(model.snapshot.topReleases.prefix(6)))
+            }
+        }
+        .task { await model.loadTopReleases() }
+    }
+
     private func metric(_ value: String, label: String) -> some View {
         VStack(spacing: 3) {
             Text(value)
@@ -221,6 +251,109 @@ struct UserDetailView: View {
         if model.snapshot.playingNow != nil { return "Now" }
         guard let date = model.snapshot.recentListens.first?.listenedAt else { return "—" }
         return date.formatted(.relative(presentation: .named))
+    }
+}
+
+private struct UserProfileTopReleasesList: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let releases: [RankedRelease]
+    var loadsArtwork = true
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ForEach(releases) { release in
+                releaseRow(release)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func releaseRow(_ release: RankedRelease) -> some View {
+        if let seed = release.releaseSeed {
+            NavigationLink(value: seed) {
+                releaseRowContents(release, showsDisclosure: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens album details")
+        } else {
+            releaseRowContents(release, showsDisclosure: false)
+        }
+    }
+
+    @ViewBuilder
+    private func releaseRowContents(_ release: RankedRelease, showsDisclosure: Bool) -> some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top) {
+                        ArtworkView(
+                            url: loadsArtwork ? release.artworkURL : nil,
+                            title: release.name,
+                            cornerRadius: 12
+                        )
+                        .frame(width: 76, height: 76)
+                        Spacer(minLength: 12)
+                        if showsDisclosure {
+                            Image(systemName: "chevron.right")
+                                .font(.body.bold())
+                                .foregroundStyle(.tertiary)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    Text(release.name)
+                        .font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(release.artistName)
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(listenCountLabel(release.listenCount))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                HStack(spacing: 13) {
+                    ArtworkView(
+                        url: loadsArtwork ? release.artworkURL : nil,
+                        title: release.name,
+                        cornerRadius: 10
+                    )
+                    .frame(width: 60, height: 60)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(release.name)
+                            .font(.body.weight(.semibold))
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(release.artistName)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Text(listenCountLabel(release.listenCount))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    if showsDisclosure {
+                        Image(systemName: "chevron.right")
+                            .font(.caption.bold())
+                            .foregroundStyle(.tertiary)
+                            .accessibilityHidden(true)
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(.thinMaterial, in: .rect(cornerRadius: 16, style: .continuous))
+        .contentShape(.rect)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(release.name), \(release.artistName), \(listenCountLabel(release.listenCount))"
+        )
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        "\(count.formatted()) \(count == 1 ? "listen" : "listens")"
     }
 }
 
@@ -352,6 +485,46 @@ struct UserDefiningArtistsVisualQAScreen: View {
                         artists: artists,
                         includesListenCountInDestination: false
                     )
+                }
+                .padding(18)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("music-friend")
+            .navigationBarTitleDisplayMode(.inline)
+            .mediaDestinations(model: model)
+        }
+    }
+}
+
+struct UserProfileAlbumsVisualQAScreen: View {
+    @Bindable var model: ListeningModel
+
+    private let releases = [
+        RankedRelease(
+            mbid: nil,
+            name: "A Very Long Unmapped Album Title for Layout Inspection",
+            artistName: "Japanese Breakfast",
+            artistMBIDs: [],
+            listenCount: 587
+        ),
+        RankedRelease(
+            mbid: UUID(uuidString: "1390f1b7-7851-48ae-983d-eb8a48f78048"),
+            name: "Blue Rev",
+            artistName: "Alvvays",
+            artistMBIDs: [UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab")!],
+            listenCount: 423
+        ),
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    SectionHeader(
+                        title: "Most played albums",
+                        subtitle: "Albums this listener returns to most"
+                    )
+                    UserProfileTopReleasesList(releases: releases, loadsArtwork: false)
                 }
                 .padding(18)
             }

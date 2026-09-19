@@ -26,11 +26,17 @@ final class UserDetailModel {
     private(set) var snapshot = UserProfileSnapshot.empty
     private(set) var phase: Phase = .idle
     private(set) var topArtistsPhase: SectionPhase = .idle
+    private(set) var topReleasesPhase: SectionPhase = .idle
     private var didLoadOverview = false
     private var didLoadTopArtists = false
     private var topArtistsNeedRefresh = false
+    private var isLoadingTopArtists = false
+    private var didLoadTopReleases = false
+    private var topReleasesNeedRefresh = false
+    private var isLoadingTopReleases = false
     private var overviewRequestID = UUID()
     private var topArtistsRequestID = UUID()
+    private var topReleasesRequestID = UUID()
     private let cacheScope: RequestGate.ReadScope
 
     init(
@@ -58,6 +64,11 @@ final class UserDetailModel {
                 topArtistsNeedRefresh = !cached.isTopArtistsFresh
                 topArtistsPhase = .ready
             }
+            if snapshot.hasLoadedTopReleases {
+                didLoadTopReleases = cached.isTopReleasesFresh
+                topReleasesNeedRefresh = !cached.isTopReleasesFresh
+                topReleasesPhase = .ready
+            }
             if cached.isOverviewFresh {
                 phase = .ready
                 return
@@ -71,15 +82,27 @@ final class UserDetailModel {
     }
 
     func refresh() async {
-        let shouldRefreshTopArtists = snapshot.hasLoadedTopArtists || didLoadTopArtists
+        let shouldRefreshTopArtists = snapshot.hasLoadedTopArtists && !isLoadingTopArtists
+        let shouldRefreshTopReleases = snapshot.hasLoadedTopReleases && !isLoadingTopReleases
         overviewRequestID = UUID()
-        topArtistsRequestID = UUID()
-        didLoadTopArtists = false
-        topArtistsNeedRefresh = shouldRefreshTopArtists
+        if shouldRefreshTopArtists {
+            topArtistsRequestID = UUID()
+            didLoadTopArtists = false
+            topArtistsNeedRefresh = true
+        }
+        if shouldRefreshTopReleases {
+            topReleasesRequestID = UUID()
+            didLoadTopReleases = false
+            topReleasesNeedRefresh = true
+        }
         phase = snapshot.recentListens.isEmpty ? .loading : .refreshing
         await refreshOverview()
-        guard !Task.isCancelled, shouldRefreshTopArtists else { return }
-        await loadTopArtists(retrying: true)
+        if !Task.isCancelled, shouldRefreshTopArtists {
+            await loadTopArtists(retrying: true)
+        }
+        if !Task.isCancelled, shouldRefreshTopReleases {
+            await loadTopReleases(retrying: true)
+        }
     }
 
     func loadTopArtists(retrying: Bool = false) async {
@@ -88,11 +111,18 @@ final class UserDetailModel {
             topArtistsPhase = .ready
             return
         }
+        guard !isLoadingTopArtists else { return }
         guard !didLoadTopArtists || retrying else { return }
         didLoadTopArtists = true
+        isLoadingTopArtists = true
         topArtistsPhase = snapshot.topArtists.isEmpty ? .loading : .ready
         let requestID = UUID()
         topArtistsRequestID = requestID
+        defer {
+            if topArtistsRequestID == requestID {
+                isLoadingTopArtists = false
+            }
+        }
 
         do {
             let artists = try await provider.topArtists(username: user.username, count: 12)
@@ -111,6 +141,47 @@ final class UserDetailModel {
             guard topArtistsRequestID == requestID else { return }
             didLoadTopArtists = false
             topArtistsPhase = snapshot.topArtists.isEmpty
+                ? .failed(error.localizedDescription)
+                : .ready
+        }
+    }
+
+    func loadTopReleases(retrying: Bool = false) async {
+        let needsNetworkLoad = retrying || topReleasesNeedRefresh || !snapshot.hasLoadedTopReleases
+        if !needsNetworkLoad {
+            topReleasesPhase = .ready
+            return
+        }
+        guard !isLoadingTopReleases else { return }
+        guard !didLoadTopReleases || retrying else { return }
+        didLoadTopReleases = true
+        isLoadingTopReleases = true
+        topReleasesPhase = snapshot.topReleases.isEmpty ? .loading : .ready
+        let requestID = UUID()
+        topReleasesRequestID = requestID
+        defer {
+            if topReleasesRequestID == requestID {
+                isLoadingTopReleases = false
+            }
+        }
+
+        do {
+            let releases = try await provider.topReleases(username: user.username, count: 6)
+            guard topReleasesRequestID == requestID else { return }
+            snapshot.topReleases = releases
+            snapshot.hasLoadedTopReleases = true
+            snapshot.savedAt = .now
+            topReleasesNeedRefresh = false
+            topReleasesPhase = .ready
+            await cache.saveTopReleases(snapshot, for: user.username, scope: cacheScope)
+        } catch is CancellationError {
+            guard topReleasesRequestID == requestID else { return }
+            didLoadTopReleases = false
+            topReleasesPhase = snapshot.hasLoadedTopReleases ? .ready : .idle
+        } catch {
+            guard topReleasesRequestID == requestID else { return }
+            didLoadTopReleases = false
+            topReleasesPhase = snapshot.topReleases.isEmpty
                 ? .failed(error.localizedDescription)
                 : .ready
         }

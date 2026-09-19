@@ -10,7 +10,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Listen count | Y | Y | Y | Y | Y | Y | P0 | Profile/home summary |
 | Delete a listen | Y | Y | Y | — | Y | Y | P1 | Native authenticated History action landed with track-specific confirmation, exact timestamp/MSID identity, durable ambiguous-outcome protection, and no automatic replay |
 | Submit/batch-submit/Playing Now | Y | Y | Y | ? | Y | Y | P2 | Separate capture layer; do not block viewer |
-| User search and visited-user profiles | Y | Y | Y | Y | Y | Y | P1 | Native scoped search/profile landed with staged reads, bounded cache, and no N+1 hydration |
+| User search and visited-user profiles | Y | Y | Y | Y | Y | Y | P1 | Native scoped search/profile landed with staged overview, independently lazy all-time artist and release sections, bounded cache, canonical navigation, and no N+1 hydration |
 | Artist/release/recording search | Y* | Y | Y | — | — | Y | P1 | Native MusicBrainz scopes landed; `*` adjacent MB APIs |
 | Playlist search | Y | Y | Y | — | Y | Y | P1 | Public search added to LBKit and native scoped search |
 | Recording/release-group/artist metadata | Y | Y | Y | P | Y | Y | P0 | MBIDs are canonical identities |

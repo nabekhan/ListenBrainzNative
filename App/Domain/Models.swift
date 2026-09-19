@@ -509,8 +509,10 @@ struct UserProfileSnapshot: Sendable {
     var playingNow: Listen?
     var listenCount: Int?
     var topArtists: [RankedArtist]
+    var topReleases: [RankedRelease]
     var hasLoadedOverview: Bool
     var hasLoadedTopArtists: Bool
+    var hasLoadedTopReleases: Bool
     var savedAt: Date
 
     static let empty = UserProfileSnapshot(
@@ -518,8 +520,10 @@ struct UserProfileSnapshot: Sendable {
         playingNow: nil,
         listenCount: nil,
         topArtists: [],
+        topReleases: [],
         hasLoadedOverview: false,
         hasLoadedTopArtists: false,
+        hasLoadedTopReleases: false,
         savedAt: .distantPast
     )
 }
