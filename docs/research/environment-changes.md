@@ -91,6 +91,7 @@ All clones are shallow and ignored by Git. Remove `References/` to delete them.
 - `~/.gradle/`: Gradle 9.4.1 wrapper distribution and dependency caches created while checking the official KMP module. This directory may be shared with other projects; inspect before removing or use Gradle's supported cache cleanup.
 - `~/.konan/kotlin-native-prebuilt-macos-aarch64-2.3.10/` and `~/.konan/dependencies/`: Kotlin/Native compiler and LLVM/libffi dependencies downloaded by the official KMP build. These may be shared; inspect before removing.
 - `References/listenbrainz-android/.gradle/`, `build/`, and `shared/build/`: ignored Gradle configuration/build output from the KMP framework experiment. Cleanup: remove only these exact directories under the reference clone, or remove the whole ignored reference clone.
+- `.derived-data/artist-context-*`, `/tmp/brainz-artist-context-*.log`, and `/tmp/brainz-artist-context-*.png`: Artist Detail context focused/full tests, Debug/Release simulator builds, and populated/failure visual checkpoints in light, dark, accessibility, and smaller-device layouts. Cleanup: remove only those matching artifacts; repository-local derived data is also covered by the general `.derived-data/` rule. Fixture routes use local providers, make no production request, and use no real token. Both disposable QA simulators were shut down after acceptance. No package, host application, or additional skill was installed; the existing UX Writing skill guided copy.
 
 ## System changes
 

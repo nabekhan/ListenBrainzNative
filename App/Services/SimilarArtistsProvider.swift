@@ -12,6 +12,68 @@ protocol ArtistPageContextProviding: Sendable {
     func context(for artistMBID: UUID, forceRefresh: Bool) async throws -> ArtistPageContext?
 }
 
+enum ArtistPageContextCacheValue: Sendable {
+    case response(ArtistPageContext?)
+    case failure(SimilarArtistsProviderError)
+}
+
+/// Artist Detail already needs the broad public artist-page response for its
+/// highlights. These adapters project its community fields into the existing
+/// reusable components without adding authenticated fallback requests.
+struct ArtistPageContextPopularityProvider: PopularityProviding {
+    private let contextProvider: any ArtistPageContextProviding
+
+    init(contextProvider: some ArtistPageContextProviding) {
+        self.contextProvider = contextProvider
+    }
+
+    func popularity(for entity: PopularityEntity) async throws -> GlobalPopularity {
+        guard entity.kind == .artist else {
+            return GlobalPopularity(entity: entity, totalListenCount: nil, totalUserCount: nil)
+        }
+        do {
+            return try await contextProvider.context(
+                for: entity.mbid,
+                forceRefresh: false
+            )?.popularity ?? GlobalPopularity(
+                entity: entity,
+                totalListenCount: nil,
+                totalUserCount: nil
+            )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // Artist Detail owns the page-level retry UI. A transport failure must
+            // not fan out into a hidden call to the dedicated popularity API.
+            return GlobalPopularity(entity: entity, totalListenCount: nil, totalUserCount: nil)
+        }
+    }
+}
+
+struct ArtistPageContextTopListenersProvider: TopListenersProviding {
+    private let contextProvider: any ArtistPageContextProviding
+
+    init(contextProvider: some ArtistPageContextProviding) {
+        self.contextProvider = contextProvider
+    }
+
+    func topListeners(for entity: TopListenersEntity) async throws -> TopListeners? {
+        guard entity.kind == .artist else { return nil }
+        do {
+            return try await contextProvider.context(
+                for: entity.mbid,
+                forceRefresh: false
+            )?.topListeners
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // Do not turn one failed page read into an automatic endpoint
+            // fallback. The rest of Artist Detail remains usable.
+            return nil
+        }
+    }
+}
+
 enum SimilarArtistsProviderError: LocalizedError, Sendable {
     case invalidResponse
     case responseTooLarge
@@ -153,12 +215,12 @@ enum SimilarArtistsTransport {
 
 struct ListenBrainzArtistPageContextProvider: ArtistPageContextProviding {
     private let gate: RequestGate
-    private let cache: EntityDetailCache<UUID, ArtistPageContext?>
+    private let cache: EntityDetailCache<UUID, ArtistPageContextCacheValue>
     private let transport: @Sendable (UUID) async throws -> Data?
 
     init(
         gate: RequestGate = .shared,
-        cache: EntityDetailCache<UUID, ArtistPageContext?> = ArtistPageContextCaches.values
+        cache: EntityDetailCache<UUID, ArtistPageContextCacheValue> = ArtistPageContextCaches.values
     ) {
         self.gate = gate
         self.cache = cache
@@ -167,7 +229,7 @@ struct ListenBrainzArtistPageContextProvider: ArtistPageContextProviding {
 
     init(
         gate: RequestGate,
-        cache: EntityDetailCache<UUID, ArtistPageContext?> = .init(timeToLive: 2 * 60),
+        cache: EntityDetailCache<UUID, ArtistPageContextCacheValue> = .init(timeToLive: 2 * 60),
         transport: @escaping @Sendable (UUID) async throws -> Data?
     ) {
         self.gate = gate
@@ -179,45 +241,82 @@ struct ListenBrainzArtistPageContextProvider: ArtistPageContextProviding {
         if forceRefresh {
             await cache.removeValue(for: artistMBID)
         } else if let cached = await cache.value(for: artistMBID), cached.isFresh {
-            return cached.value
+            switch cached.value {
+            case let .response(value): return value
+            case let .failure(error): throw error
+            }
         }
 
-        let stale = forceRefresh ? nil : await cache.value(for: artistMBID)?.value
-        do {
-            let data: Data? = try await gate.read(
-                for: .artistPageContext(.anonymous, artistMBID: artistMBID)
-            ) {
-                try await transport(artistMBID)
-            } deferralForError: { error in
-                switch error {
-                case let SimilarArtistsProviderError.rateLimited(seconds): .seconds(max(seconds, 1))
-                case let SimilarArtistsProviderError.unavailable(seconds): .seconds(max(seconds, 1))
-                default: nil
+        return try await gate.read(
+            for: .artistPageContext(.anonymous, artistMBID: artistMBID)
+        ) {
+            // A caller can miss the fast-path cache and reach this closure just
+            // after an earlier flight completes. Recheck here, and publish the
+            // result before the request key drains, so that race cannot start a
+            // duplicate transport.
+            if !forceRefresh,
+               let cached = await cache.value(for: artistMBID),
+               cached.isFresh
+            {
+                switch cached.value {
+                case let .response(value): return value
+                case let .failure(error): throw error
                 }
             }
 
-            let value = try data.map {
-                try ArtistPageContextDecoder.decode($0, sourceArtistMBID: artistMBID)
+            let stale: ArtistPageContext?
+            if !forceRefresh,
+               let cached = await cache.value(for: artistMBID),
+               case let .response(value) = cached.value
+            {
+                stale = value
+            } else {
+                stale = nil
             }
-            await cache.save(value, for: artistMBID)
-            return value
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            // A brief shared negative cache prevents independently mounted
-            // artist sections from amplifying the same failing page request.
-            await cache.save(stale, for: artistMBID)
-            if let stale { return stale }
-            throw error
+
+            do {
+                let value: ArtistPageContext?
+                if let data = try await transport(artistMBID) {
+                    value = try ArtistPageContextDecoder.decode(
+                        data,
+                        sourceArtistMBID: artistMBID
+                    )
+                } else {
+                    value = nil
+                }
+                await cache.save(.response(value), for: artistMBID)
+                return value
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                if let stale {
+                    await cache.save(.response(stale), for: artistMBID)
+                    return stale
+                }
+                // Preserve failure as failure so the page owner always presents
+                // its retry control, even when a child awaited the request first.
+                let cachedError = error as? SimilarArtistsProviderError
+                    ?? .server(status: 0)
+                await cache.save(.failure(cachedError), for: artistMBID)
+                throw error
+            }
+        } deferralForError: { error in
+            switch error {
+            case let SimilarArtistsProviderError.rateLimited(seconds): .seconds(max(seconds, 1))
+            case let SimilarArtistsProviderError.unavailable(seconds): .seconds(max(seconds, 1))
+            default: nil
+            }
         }
     }
 }
 
 struct ListenBrainzSimilarArtistsProvider: SimilarArtistsProviding {
     private let contextProvider: any ArtistPageContextProviding
+    private let suppressesErrors: Bool
 
     init(gate: RequestGate = .shared) {
         contextProvider = ListenBrainzArtistPageContextProvider(gate: gate)
+        suppressesErrors = false
     }
 
     init(
@@ -228,51 +327,81 @@ struct ListenBrainzSimilarArtistsProvider: SimilarArtistsProviding {
             gate: gate,
             transport: transport
         )
+        suppressesErrors = false
     }
 
-    init(contextProvider: some ArtistPageContextProviding) {
+    init(
+        contextProvider: some ArtistPageContextProviding,
+        suppressesErrors: Bool = false
+    ) {
         self.contextProvider = contextProvider
+        self.suppressesErrors = suppressesErrors
     }
 
     func similarArtists(to artistMBID: UUID) async throws -> SimilarArtists? {
-        try await contextProvider.context(for: artistMBID, forceRefresh: false)?.similarArtists
+        do {
+            return try await contextProvider.context(
+                for: artistMBID,
+                forceRefresh: false
+            )?.similarArtists
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            if suppressesErrors { return nil }
+            throw error
+        }
     }
 }
 
 struct ListenBrainzArtistHighlightsProvider: ArtistHighlightsProviding {
     private let contextProvider: any ArtistPageContextProviding
+    private let suppressesErrors: Bool
 
     init(gate: RequestGate = .shared) {
         contextProvider = ListenBrainzArtistPageContextProvider(gate: gate)
+        suppressesErrors = false
     }
 
-    init(contextProvider: some ArtistPageContextProviding) {
+    init(
+        contextProvider: some ArtistPageContextProviding,
+        suppressesErrors: Bool = false
+    ) {
         self.contextProvider = contextProvider
+        self.suppressesErrors = suppressesErrors
     }
 
     func highlights(for artistMBID: UUID, forceRefresh: Bool = false) async throws -> ArtistHighlights? {
-        let highlights = try await contextProvider.context(
-            for: artistMBID,
-            forceRefresh: forceRefresh
-        )?.highlights
-        return highlights?.hasVisibleContent == true ? highlights : nil
+        do {
+            let highlights = try await contextProvider.context(
+                for: artistMBID,
+                forceRefresh: forceRefresh
+            )?.highlights
+            return highlights?.hasVisibleContent == true ? highlights : nil
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            if suppressesErrors { return nil }
+            throw error
+        }
     }
 }
 
 enum ArtistPageContextDecoder {
+    static let maximumCoverArtBytes = 512 * 1_024
+    static let maximumTopListenerCount = 10
+
     static func decode(_ data: Data, sourceArtistMBID: UUID) throws -> ArtistPageContext {
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw SimilarArtistsProviderError.invalidResponse
         }
 
-        if let echoedIdentifier = (root["artist"] as? [String: Any])?["artist_mbid"] {
-            guard uuid(echoedIdentifier) == sourceArtistMBID else {
-                throw SimilarArtistsProviderError.invalidResponse
-            }
-        }
-
-        let rootArtistName = ((root["artist"] as? [String: Any])?["name"] as? String)
-            .flatMap(displayText)
+        let rawArtist = root["artist"] as? [String: Any]
+        try validateIdentity(
+            values: [rawArtist?["artist_mbid"], rawArtist?["mbid"]],
+            sourceArtistMBID: sourceArtistMBID
+        )
+        let identity = decodeIdentity(rawArtist, sourceArtistMBID: sourceArtistMBID)
+        let rootArtistName = identity?.name
         let recordings = decodeRecordings(
             root["popularRecordings"],
             sourceArtistMBID: sourceArtistMBID,
@@ -286,9 +415,17 @@ enum ArtistPageContextDecoder {
             root["similarArtists"],
             sourceArtistMBID: sourceArtistMBID
         )
+        let community = try decodeCommunityContext(
+            root["listeningStats"],
+            sourceArtistMBID: sourceArtistMBID
+        )
 
         return ArtistPageContext(
             artistMBID: sourceArtistMBID,
+            identity: identity,
+            coverArtSVG: decodeCoverArt(root["coverArt"]),
+            popularity: community.popularity,
+            topListeners: community.topListeners,
             highlights: ArtistHighlights(
                 artistMBID: sourceArtistMBID,
                 recordings: recordings,
@@ -296,6 +433,112 @@ enum ArtistPageContextDecoder {
             ),
             similarArtists: similarArtists
         )
+    }
+
+    private static func validateIdentity(
+        values: [Any?],
+        sourceArtistMBID: UUID
+    ) throws {
+        for value in values.compactMap({ $0 }) where !(value is NSNull) {
+            guard uuid(value) == sourceArtistMBID else {
+                throw SimilarArtistsProviderError.invalidResponse
+            }
+        }
+    }
+
+    private static func decodeIdentity(
+        _ value: [String: Any]?,
+        sourceArtistMBID: UUID
+    ) -> ArtistPageIdentity? {
+        guard let value else { return nil }
+        let identity = ArtistPageIdentity(
+            artistMBID: sourceArtistMBID,
+            name: displayText(value["name"]),
+            type: displayText(value["type"]),
+            area: displayText(value["area"]),
+            beginYear: year(value["begin_year"]),
+            endYear: year(value["end_year"])
+        )
+        guard identity.name != nil
+                || identity.type != nil
+                || identity.area != nil
+                || identity.beginYear != nil
+                || identity.endYear != nil
+        else { return nil }
+        return identity
+    }
+
+    private static func decodeCommunityContext(
+        _ value: Any?,
+        sourceArtistMBID: UUID
+    ) throws -> (popularity: GlobalPopularity?, topListeners: TopListeners?) {
+        guard let value = value as? [String: Any] else { return (nil, nil) }
+        try validateIdentity(
+            values: [value["artist_mbid"]],
+            sourceArtistMBID: sourceArtistMBID
+        )
+
+        if let range = displayText(value["range"] ?? value["stats_range"]),
+           range != "all_time"
+        {
+            return (nil, nil)
+        }
+
+        let entity = PopularityEntity(kind: .artist, mbid: sourceArtistMBID)
+        let totalListenCount = nonnegativeInteger(value["total_listen_count"])
+        let totalUserCount = nonnegativeInteger(value["total_user_count"])
+        let popularity = totalListenCount == nil && totalUserCount == nil
+            ? nil
+            : GlobalPopularity(
+                entity: entity,
+                totalListenCount: totalListenCount,
+                totalUserCount: totalUserCount
+            )
+
+        let listenerRows = (value["listeners"] as? [Any]) ?? []
+        var listeners: [TopListener] = []
+        listeners.reserveCapacity(min(listenerRows.count, maximumTopListenerCount))
+        for raw in listenerRows {
+            guard listeners.count < maximumTopListenerCount else { break }
+            guard let row = raw as? [String: Any],
+                  let username = displayText(row["user_name"], maximumLength: 255),
+                  let listenCount = nonnegativeInteger(row["listen_count"])
+            else { continue }
+            listeners.append(TopListener(username: username, listenCount: listenCount))
+        }
+        let topListeners = listeners.isEmpty
+            ? nil
+            : TopListeners(
+                entity: TopListenersEntity(kind: .artist, mbid: sourceArtistMBID),
+                listeners: listeners,
+                totalListenCount: totalListenCount
+            )
+        return (popularity, topListeners)
+    }
+
+    private static func decodeCoverArt(_ value: Any?) -> String? {
+        guard let value = value as? String,
+              !value.isEmpty,
+              value.utf8.count <= maximumCoverArtBytes,
+              isSVG(value),
+              SVGArtworkRenderingPolicy.permitsExternalResources(in: value)
+        else { return nil }
+        return value
+    }
+
+    private static func isSVG(_ value: String) -> Bool {
+        let trimmed = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\u{FEFF}"))
+        if trimmed.range(of: "<svg", options: [.anchored, .caseInsensitive]) != nil {
+            return true
+        }
+        guard trimmed.range(of: "<?xml", options: [.anchored, .caseInsensitive]) != nil,
+              let declarationEnd = trimmed.range(of: "?>")?.upperBound
+        else { return false }
+        return trimmed[declarationEnd...]
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .range(of: "<svg", options: [.anchored, .caseInsensitive]) != nil
     }
 
     private static func decodeRecordings(
@@ -427,14 +670,21 @@ enum ArtistPageContextDecoder {
         return result
     }
 
-    private static func displayText(_ value: Any?) -> String? {
+    private static func year(_ value: Any?) -> Int? {
+        nonnegativeInteger(value).flatMap { (1 ... 9_999).contains($0) ? $0 : nil }
+    }
+
+    private static func displayText(
+        _ value: Any?,
+        maximumLength: Int = 500
+    ) -> String? {
         guard let value = value as? String else { return nil }
         let normalized = value
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
         guard !normalized.isEmpty else { return nil }
-        return String(normalized.prefix(500))
+        return String(normalized.prefix(maximumLength))
     }
 }
 
@@ -454,9 +704,10 @@ enum SimilarArtistsCaches {
 
 enum ArtistPageContextCaches {
     /// Mirrors the public artist page's current `s-maxage=120` cache policy.
-    /// Optional values also form a brief negative cache for missing/failed
-    /// responses, preventing independently mounted sections from retrying.
-    static let values = EntityDetailCache<UUID, ArtistPageContext?>(
+    /// Missing responses and failures remain distinguishable while both form
+    /// a brief negative cache, preventing independently mounted sections from
+    /// retrying or hiding the page-owned recovery action.
+    static let values = EntityDetailCache<UUID, ArtistPageContextCacheValue>(
         timeToLive: 2 * 60,
         maximumEntryCount: 100
     )

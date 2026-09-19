@@ -198,6 +198,8 @@ final class SessionModel {
                 return true
             }
             if arguments.contains("-brainz-popularity-detail-demo")
+                || arguments.contains("-brainz-artist-context-demo")
+                || arguments.contains("-brainz-artist-context-failure-demo")
                 || arguments.contains("-brainz-artist-highlights-demo")
                 || arguments.contains("-brainz-artist-highlights-releases-demo")
                 || arguments.contains("-brainz-artist-highlights-failure-demo")

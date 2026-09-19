@@ -69,6 +69,8 @@ struct MainTabView: View {
                 return
             }
             if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-context-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-context-failure-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-artist-highlights-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-artist-highlights-releases-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-artist-highlights-failure-demo")
@@ -367,16 +369,28 @@ struct MainTabView: View {
                 .environment(\.artistHighlightsProvider, VisualQAArtistHighlightsProvider(
                     fails: ProcessInfo.processInfo.arguments.contains("-brainz-artist-highlights-failure-demo")
                 ))
-            } else if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo") {
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-context-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-context-failure-demo")
+            {
                 NavigationStack {
-                    ArtistDetailView(artist: Self.popularityPreviewArtist, model: model)
+                    ArtistDetailView(
+                        artist: Self.popularityPreviewArtist,
+                        model: model,
+                        pageContextProvider: VisualQAArtistPageContextProvider(
+                            fails: ProcessInfo.processInfo.arguments.contains(
+                                "-brainz-artist-context-failure-demo"
+                            )
+                        )
+                    )
                         .mediaDestinations(model: model)
                 }
                 .task { await model.load() }
                 .environment(pins)
-                .environment(\.popularityProvider, VisualQAPopularityProvider())
-                .environment(\.similarArtistsProvider, VisualQASimilarArtistsProvider())
-                .environment(\.artistHighlightsProvider, VisualQAArtistHighlightsProvider())
+                .environment(
+                    \.critiqueBrainzReviewsProvider,
+                    VisualQACritiqueBrainzReviewsProvider(result: .populated)
+                )
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2021-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2024-demo") {
@@ -811,6 +825,57 @@ struct MainTabView: View {
                 entity: entity,
                 totalListenCount: 2_418_731,
                 totalUserCount: 148_206
+            )
+        }
+    }
+
+    private struct VisualQAArtistPageContextProvider: ArtistPageContextProviding {
+        let fails: Bool
+
+        init(fails: Bool = false) {
+            self.fails = fails
+        }
+
+        func context(for artistMBID: UUID, forceRefresh: Bool) async throws -> ArtistPageContext? {
+            await Task.yield()
+            if fails { throw VisualQAArtistHighlightsError.unavailable }
+            let highlights = try await VisualQAArtistHighlightsProvider()
+                .highlights(for: artistMBID, forceRefresh: forceRefresh)
+                ?? ArtistHighlights(artistMBID: artistMBID, recordings: [], releaseGroups: [])
+            let similarArtists = try await VisualQASimilarArtistsProvider()
+                .similarArtists(to: artistMBID)
+            let popularity = try await VisualQAPopularityProvider().popularity(
+                for: PopularityEntity(kind: .artist, mbid: artistMBID)
+            )
+            let topListeners = try await VisualQATopListenersProvider().topListeners(
+                for: TopListenersEntity(kind: .artist, mbid: artistMBID)
+            )
+            return ArtistPageContext(
+                artistMBID: artistMBID,
+                identity: ArtistPageIdentity(
+                    artistMBID: artistMBID,
+                    name: "Alvvays",
+                    type: "Group",
+                    area: "Toronto, Ontario, Canada",
+                    beginYear: 2011,
+                    endYear: nil
+                ),
+                coverArtSVG: """
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+                  <rect width="200" height="200" fill="#274060"/>
+                  <rect x="200" width="200" height="200" fill="#d9a5b3"/>
+                  <rect y="200" width="200" height="200" fill="#f3c969"/>
+                  <rect x="200" y="200" width="200" height="200" fill="#6a7f5b"/>
+                  <circle cx="100" cy="100" r="58" fill="#f7f4ed" opacity=".76"/>
+                  <path d="M225 42h150v116H225z" fill="#192231" opacity=".38"/>
+                  <path d="M25 360 105 230l70 130z" fill="#37505c" opacity=".58"/>
+                  <circle cx="300" cy="300" r="70" fill="#eef0e8" opacity=".42"/>
+                </svg>
+                """,
+                popularity: popularity,
+                topListeners: topListeners,
+                highlights: highlights,
+                similarArtists: similarArtists
             )
         }
     }

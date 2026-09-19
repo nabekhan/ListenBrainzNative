@@ -4,8 +4,21 @@ import Foundation
 /// website/official-client artist response.
 struct ArtistPageContext: Hashable, Sendable {
     let artistMBID: UUID
+    let identity: ArtistPageIdentity?
+    let coverArtSVG: String?
+    let popularity: GlobalPopularity?
+    let topListeners: TopListeners?
     let highlights: ArtistHighlights
     let similarArtists: SimilarArtists?
+}
+
+struct ArtistPageIdentity: Hashable, Sendable {
+    let artistMBID: UUID
+    let name: String?
+    let type: String?
+    let area: String?
+    let beginYear: Int?
+    let endYear: Int?
 }
 
 struct ArtistHighlights: Hashable, Sendable {

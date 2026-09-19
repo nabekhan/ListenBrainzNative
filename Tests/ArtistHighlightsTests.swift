@@ -89,10 +89,14 @@ final class ArtistPageContextDecoderTests: XCTestCase {
         let recording = UUID()
         let data = Data("""
         {
-          "artist": { "name": "Source Artist" },
+          "artist": { "artist_mbid": null, "mbid": null, "name": "Source Artist" },
           "popularRecordings": [
             { "recording_mbid": "\(recording)", "recording_name": "Track", "artist_mbids": [] }
-          ]
+          ],
+          "listeningStats": {
+            "artist_mbid": null,
+            "total_listen_count": 9
+          }
         }
         """.utf8)
 
@@ -102,6 +106,7 @@ final class ArtistPageContextDecoderTests: XCTestCase {
         XCTAssertEqual(value.highlights.recordings.first?.artistMBIDs, [artist])
         XCTAssertTrue(value.highlights.releaseGroups.isEmpty)
         XCTAssertNil(value.similarArtists)
+        XCTAssertEqual(value.popularity?.totalListenCount, 9)
     }
 
     func testDecoderRejectsANonObjectRoot() {
@@ -128,6 +133,96 @@ final class ArtistPageContextDecoderTests: XCTestCase {
                 return XCTFail("Expected invalid response")
             }
         }
+    }
+
+    func testDecoderPreservesBoundedIdentityArtworkAndAllTimeCommunityContext() throws {
+        let artist = UUID()
+        let svg = """
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+          <rect width="400" height="400" fill="#334455"/>
+        </svg>
+        """
+        let listeners = (0..<14).map { index in
+            [
+                "user_name": index == 0 ? "  listener zero  " : "listener-\(index)",
+                "listen_count": 1_000 - index,
+            ] as [String: Any]
+        }
+        let data = try JSONSerialization.data(withJSONObject: [
+            "artist": [
+                "artist_mbid": artist.uuidString,
+                "mbid": artist.uuidString,
+                "name": "  Alvvays  ",
+                "type": "Group",
+                "area": "Toronto, Ontario, Canada",
+                "begin_year": 2011,
+                "end_year": NSNull(),
+            ],
+            "coverArt": svg,
+            "listeningStats": [
+                "artist_mbid": artist.uuidString,
+                "range": "all_time",
+                "total_listen_count": "2418731",
+                "total_user_count": 148_206,
+                "listeners": listeners,
+            ],
+        ])
+
+        let value = try ArtistPageContextDecoder.decode(data, sourceArtistMBID: artist)
+
+        XCTAssertEqual(value.identity?.artistMBID, artist)
+        XCTAssertEqual(value.identity?.name, "Alvvays")
+        XCTAssertEqual(value.identity?.type, "Group")
+        XCTAssertEqual(value.identity?.area, "Toronto, Ontario, Canada")
+        XCTAssertEqual(value.identity?.beginYear, 2011)
+        XCTAssertNil(value.identity?.endYear)
+        XCTAssertEqual(value.coverArtSVG, svg)
+        XCTAssertEqual(value.popularity?.entity, PopularityEntity(kind: .artist, mbid: artist))
+        XCTAssertEqual(value.popularity?.totalListenCount, 2_418_731)
+        XCTAssertEqual(value.popularity?.totalUserCount, 148_206)
+        XCTAssertEqual(value.topListeners?.entity, TopListenersEntity(kind: .artist, mbid: artist))
+        XCTAssertEqual(value.topListeners?.listeners.count, ArtistPageContextDecoder.maximumTopListenerCount)
+        XCTAssertEqual(value.topListeners?.listeners.first?.username, "listener zero")
+        XCTAssertEqual(value.topListeners?.totalListenCount, 2_418_731)
+    }
+
+    func testDecoderRejectsMismatchedStatsAndDropsUnsafeOrOversizedArtwork() throws {
+        let artist = UUID()
+        let different = UUID()
+        let mismatched = try JSONSerialization.data(withJSONObject: [
+            "artist": ["artist_mbid": artist.uuidString],
+            "listeningStats": ["artist_mbid": different.uuidString],
+        ])
+        XCTAssertThrowsError(
+            try ArtistPageContextDecoder.decode(mismatched, sourceArtistMBID: artist)
+        ) { error in
+            guard case SimilarArtistsProviderError.invalidResponse = error else {
+                return XCTFail("Expected invalid response")
+            }
+        }
+
+        let unsafe = try JSONSerialization.data(withJSONObject: [
+            "artist": ["artist_mbid": artist.uuidString],
+            "coverArt": "<svg xmlns=\"http://www.w3.org/2000/svg\"><image href=\"https://example.com/track.png\"/></svg>",
+            "listeningStats": [
+                "artist_mbid": artist.uuidString,
+                "range": "month",
+                "total_listen_count": 42,
+            ],
+        ])
+        let unsafeValue = try ArtistPageContextDecoder.decode(unsafe, sourceArtistMBID: artist)
+        XCTAssertNil(unsafeValue.coverArtSVG)
+        XCTAssertNil(unsafeValue.popularity)
+        XCTAssertNil(unsafeValue.topListeners)
+
+        let oversizedSVG = "<svg>" + String(
+            repeating: " ",
+            count: ArtistPageContextDecoder.maximumCoverArtBytes
+        ) + "</svg>"
+        let oversized = try JSONSerialization.data(withJSONObject: ["coverArt": oversizedSVG])
+        XCTAssertNil(
+            try ArtistPageContextDecoder.decode(oversized, sourceArtistMBID: artist).coverArtSVG
+        )
     }
 
     func testDecoderBoundsEveryEmbeddedCollection() throws {
@@ -170,8 +265,47 @@ final class ArtistPageContextDecoderTests: XCTestCase {
     }
 }
 
+final class ArtistHeroPresentationTests: XCTestCase {
+    func testMetadataAndArtworkAccessibilityCopyStayConciseAndComplete() {
+        let artist = UUID()
+        let presentation = ArtistHeroPresentation(
+            artistName: "Alvvays",
+            identity: ArtistPageIdentity(
+                artistMBID: artist,
+                name: "Alvvays",
+                type: "Group",
+                area: "Toronto, Ontario, Canada",
+                beginYear: 2011,
+                endYear: nil
+            )
+        )
+
+        XCTAssertEqual(presentation.metadataLine, "Since 2011 · Toronto, Ontario, Canada")
+        XCTAssertEqual(presentation.artworkAccessibilityLabel, "Artwork for Alvvays")
+    }
+
+    func testMetadataUsesBoundedYearsAndOmitsAnEmptyLine() {
+        let artist = UUID()
+        XCTAssertEqual(
+            ArtistHeroPresentation(
+                artistName: "Artist",
+                identity: ArtistPageIdentity(
+                    artistMBID: artist,
+                    name: "Artist",
+                    type: nil,
+                    area: nil,
+                    beginYear: 1987,
+                    endYear: 2001
+                )
+            ).metadataLine,
+            "1987–2001"
+        )
+        XCTAssertNil(ArtistHeroPresentation(artistName: "Artist", identity: nil).metadataLine)
+    }
+}
+
 final class ArtistPageContextProviderTests: XCTestCase {
-    func testSeparateHighlightAndSimilarConsumersShareOneRequest() async throws {
+    func testAllArtistPageConsumersShareOneRequest() async throws {
         let artist = UUID()
         let transport = ArtistPageTransportFixture()
         let contextProvider = ListenBrainzArtistPageContextProvider(
@@ -181,15 +315,81 @@ final class ArtistPageContextProviderTests: XCTestCase {
         )
         let highlights = ListenBrainzArtistHighlightsProvider(contextProvider: contextProvider)
         let similar = ListenBrainzSimilarArtistsProvider(contextProvider: contextProvider)
+        let popularity = ArtistPageContextPopularityProvider(contextProvider: contextProvider)
+        let topListeners = ArtistPageContextTopListenersProvider(contextProvider: contextProvider)
 
+        async let loadedContext = contextProvider.context(for: artist, forceRefresh: false)
         async let loadedHighlights = highlights.highlights(for: artist, forceRefresh: false)
         async let loadedSimilar = similar.similarArtists(to: artist)
-        let (highlightValue, similarValue) = try await (loadedHighlights, loadedSimilar)
+        async let loadedPopularity = popularity.popularity(
+            for: PopularityEntity(kind: .artist, mbid: artist)
+        )
+        async let loadedTopListeners = topListeners.topListeners(
+            for: TopListenersEntity(kind: .artist, mbid: artist)
+        )
+        let (contextValue, highlightValue, similarValue, popularityValue, listenersValue) = try await (
+            loadedContext,
+            loadedHighlights,
+            loadedSimilar,
+            loadedPopularity,
+            loadedTopListeners
+        )
 
+        XCTAssertEqual(contextValue?.identity?.name, "Artist")
         XCTAssertEqual(highlightValue?.recordings.count, 1)
         XCTAssertEqual(similarValue?.artists.count, 1)
+        XCTAssertEqual(popularityValue.totalListenCount, 30)
+        XCTAssertEqual(popularityValue.totalUserCount, 12)
+        XCTAssertEqual(listenersValue?.listeners.first?.username, "top-listener")
         let calls = await transport.callCount()
         XCTAssertEqual(calls, 1)
+    }
+
+    func testPageAdaptersDoNotFanOutOrDuplicateErrorsAfterPageFailure() async throws {
+        // Repeat with an immediate failure so scheduler ordering cannot hide a
+        // cache-publication race between independently mounted sections.
+        for _ in 0 ..< 20 {
+            let artist = UUID()
+            let transport = FailingArtistPageTransportFixture()
+            let contextProvider = ListenBrainzArtistPageContextProvider(
+                gate: RequestGate(minimumInterval: .zero),
+                cache: EntityDetailCache(timeToLive: 120),
+                transport: { artistMBID in try await transport.value(for: artistMBID) }
+            )
+            let popularity = ArtistPageContextPopularityProvider(contextProvider: contextProvider)
+            let topListeners = ArtistPageContextTopListenersProvider(contextProvider: contextProvider)
+            let highlights = ListenBrainzArtistHighlightsProvider(
+                contextProvider: contextProvider,
+                suppressesErrors: true
+            )
+            let similar = ListenBrainzSimilarArtistsProvider(
+                contextProvider: contextProvider,
+                suppressesErrors: true
+            )
+
+            async let popularityValue = popularity.popularity(
+                for: PopularityEntity(kind: .artist, mbid: artist)
+            )
+            async let listenerValue = topListeners.topListeners(
+                for: TopListenersEntity(kind: .artist, mbid: artist)
+            )
+            async let highlightValue = highlights.highlights(for: artist, forceRefresh: false)
+            async let similarValue = similar.similarArtists(to: artist)
+            let (loadedPopularity, loadedListeners, loadedHighlights, loadedSimilar) = try await (
+                popularityValue,
+                listenerValue,
+                highlightValue,
+                similarValue
+            )
+
+            XCTAssertNil(loadedPopularity.totalListenCount)
+            XCTAssertNil(loadedPopularity.totalUserCount)
+            XCTAssertNil(loadedListeners)
+            XCTAssertNil(loadedHighlights)
+            XCTAssertNil(loadedSimilar)
+            let calls = await transport.callCount()
+            XCTAssertEqual(calls, 1)
+        }
     }
 
     func testFreshContextCacheAvoidsAnotherReadAndExplicitRefreshMakesOne() async throws {
@@ -211,7 +411,7 @@ final class ArtistPageContextProviderTests: XCTestCase {
         XCTAssertEqual(calls, 2)
     }
 
-    func testFailureIsNegativeCachedWithoutAutomaticRetry() async {
+    func testFailureRemainsAnErrorWhenNegativeCachedWithoutAutomaticRetry() async {
         let artist = UUID()
         let transport = FailingArtistPageTransportFixture()
         let provider = ListenBrainzArtistPageContextProvider(
@@ -226,9 +426,43 @@ final class ArtistPageContextProviderTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? ArtistHighlightsFixtureError, .failed)
         }
-        let cooledDown = try? await provider.context(for: artist, forceRefresh: false)
+        do {
+            _ = try await provider.context(for: artist, forceRefresh: false)
+            XCTFail("Expected the cached failure to remain visible")
+        } catch {
+            guard case SimilarArtistsProviderError.server(status: 0) = error else {
+                return XCTFail("Expected a cached provider failure")
+            }
+        }
 
-        XCTAssertNil(cooledDown)
+        let calls = await transport.callCount()
+        XCTAssertEqual(calls, 1)
+    }
+
+    func testChildFirstFailureStillReachesThePageOwnerWithoutAnotherRead() async {
+        let artist = UUID()
+        let transport = FailingArtistPageTransportFixture()
+        let contextProvider = ListenBrainzArtistPageContextProvider(
+            gate: RequestGate(minimumInterval: .zero),
+            cache: EntityDetailCache(timeToLive: 120),
+            transport: { artistMBID in try await transport.value(for: artistMBID) }
+        )
+        let child = ListenBrainzSimilarArtistsProvider(
+            contextProvider: contextProvider,
+            suppressesErrors: true
+        )
+
+        let childValue = try? await child.similarArtists(to: artist)
+        XCTAssertNil(childValue)
+        do {
+            _ = try await contextProvider.context(for: artist, forceRefresh: false)
+            XCTFail("Expected the page owner to receive the cached failure")
+        } catch {
+            guard case SimilarArtistsProviderError.server(status: 0) = error else {
+                return XCTFail("Expected a cached provider failure")
+            }
+        }
+
         let calls = await transport.callCount()
         XCTAssertEqual(calls, 1)
     }
@@ -381,7 +615,21 @@ private func artistPageJSON(artist: UUID) -> Data {
     let similar = UUID()
     return Data("""
     {
-      "artist": { "name": "Artist" },
+      "artist": {
+        "artist_mbid": "\(artist)",
+        "name": "Artist",
+        "area": "Fixture City",
+        "begin_year": 2001
+      },
+      "listeningStats": {
+        "artist_mbid": "\(artist)",
+        "stats_range": "all_time",
+        "total_listen_count": 30,
+        "total_user_count": 12,
+        "listeners": [
+          { "user_name": "top-listener", "listen_count": 25 }
+        ]
+      },
       "popularRecordings": [
         {
           "recording_mbid": "\(recording)",
