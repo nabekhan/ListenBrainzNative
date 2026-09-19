@@ -188,6 +188,69 @@ import Testing
         }
     }
 
+    @Test("Playlist move uses its exact positional endpoint")
+    func moveRequestBody() async throws {
+        let mock = MockAPIClient(result: .success(PlaylistMutationResponse(status: "ok")))
+        try await LBCoreClient(mock).movePlaylistItems(
+            mbid: playlistMBID,
+            recordingMBID: firstRecordingMBID,
+            from: 2,
+            to: 5
+        )
+        let request = try #require(mock.request as? MovePlaylistItemsRequest)
+        #expect(request.data.path == "/1/playlist/\(playlistMBID.uuidString)/item/move")
+        #expect(request.data.method == .post)
+        #expect(request.data.statusErrors == moveStatusErrors)
+        let body = try #require(request.data.body)
+        let data = try JSONEncoder.ListenBrainz.encode(body)
+        let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(json["mbid"] as? String == firstRecordingMBID.uuidString)
+        #expect(json["from"] as? Int == 2)
+        #expect(json["to"] as? Int == 5)
+        #expect(json["count"] as? Int == 1)
+        #expect(json.count == 4)
+
+        let invalid = MockAPIClient(result: .failure(.unknownError))
+        await #expect(throws: LBError.invalidParam) {
+            try await LBCoreClient(invalid).movePlaylistItems(
+                mbid: playlistMBID,
+                recordingMBID: firstRecordingMBID,
+                from: -1,
+                to: 0
+            )
+        }
+        #expect(invalid.request == nil)
+        await #expect(throws: LBError.invalidParam) {
+            try await LBCoreClient(invalid).movePlaylistItems(
+                mbid: playlistMBID,
+                recordingMBID: firstRecordingMBID,
+                from: 0,
+                to: -1
+            )
+        }
+        #expect(invalid.request == nil)
+        await #expect(throws: LBError.invalidParam) {
+            try await LBCoreClient(invalid).movePlaylistItems(
+                mbid: playlistMBID,
+                recordingMBID: firstRecordingMBID,
+                from: 0,
+                to: 1,
+                count: 0
+            )
+        }
+        #expect(invalid.request == nil)
+
+        let unexpected = MockAPIClient(result: .success(PlaylistMutationResponse(status: "queued")))
+        await #expect(throws: LBError.invalidResponse) {
+            try await LBCoreClient(unexpected).movePlaylistItems(
+                mbid: playlistMBID,
+                recordingMBID: firstRecordingMBID,
+                from: 0,
+                to: 1
+            )
+        }
+    }
+
     @Test("Playlist copy uses an empty one-shot POST and returns the new MBID")
     func copyRequest() async throws {
         let copiedMBID = UUID(uuidString: "dddddddd-dddd-4ddd-8ddd-dddddddddddd")!
@@ -267,6 +330,12 @@ import Testing
         404: .notFound,
     ]
     private let removeStatusErrors: [Int: LBError] = [
+        400: .invalidJSON,
+        401: .invalidAuth,
+        403: .forbidden,
+        404: .notFound,
+    ]
+    private let moveStatusErrors: [Int: LBError] = [
         400: .invalidJSON,
         401: .invalidAuth,
         403: .forbidden,

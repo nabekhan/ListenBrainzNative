@@ -56,6 +56,7 @@ struct PlaylistArtworkMosaic: View {
 
 struct PlaylistTrackRow: View {
     let track: PlaylistTrack
+    var showsDisclosure = true
 
     var body: some View {
         HStack(spacing: 12) {
@@ -92,7 +93,7 @@ struct PlaylistTrackRow: View {
                 }
             }
             Spacer(minLength: 6)
-            if track.recording.identity.mbid != nil {
+            if showsDisclosure, track.recording.identity.mbid != nil {
                 Image(systemName: "chevron.right")
                     .font(.caption2.bold())
                     .foregroundStyle(.tertiary)
@@ -101,11 +102,14 @@ struct PlaylistTrackRow: View {
         .padding(.vertical, 10)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
-        .accessibilityHint(
-            track.recording.identity.mbid == nil
-                ? "This playlist item is not mapped to MusicBrainz"
-                : "Open recording details"
-        )
+        .accessibilityHint(accessibilityHint)
+    }
+
+    private var accessibilityHint: String {
+        if !showsDisclosure { return "Use the Move up or Move down action to change its position" }
+        return track.recording.identity.mbid == nil
+            ? "This playlist item is not mapped to MusicBrainz"
+            : "Open recording details"
     }
 
     private var durationDescription: String? {

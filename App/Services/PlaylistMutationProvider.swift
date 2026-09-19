@@ -20,11 +20,24 @@ protocol PlaylistAppendTransport: Sendable {
 }
 
 protocol PlaylistItemRemovalProviding: Sendable {
+    /// A raw `CancellationError` means transport did not begin. Live providers
+    /// translate cancellation after dispatch into an indeterminate mutation.
     func removeItem(at index: Int, from playlistMBID: UUID) async throws
 }
 
 protocol PlaylistItemRemovalTransport: Sendable {
     func removeItem(at index: Int, from playlistMBID: UUID) async throws
+}
+
+/// A positional move is deliberately a one-shot operation. A raw
+/// `CancellationError` means the transport never started; providers translate
+/// cancellation after dispatch into `.indeterminateReorder`.
+protocol PlaylistItemReorderingProviding: Sendable {
+    func moveItem(recordingMBID: UUID, from: Int, to: Int, in playlistMBID: UUID) async throws
+}
+
+protocol PlaylistItemReorderingTransport: Sendable {
+    func moveItem(recordingMBID: UUID, from: Int, to: Int, in playlistMBID: UUID) async throws
 }
 
 protocol PlaylistCopyProviding: Sendable {
@@ -68,6 +81,15 @@ private struct LivePlaylistItemRemovalTransport: PlaylistItemRemovalTransport {
 
     func removeItem(at index: Int, from playlistMBID: UUID) async throws {
         try await client.core.removePlaylistItems(mbid: playlistMBID, index: index, count: 1)
+    }
+}
+
+private struct LivePlaylistItemReorderingTransport: PlaylistItemReorderingTransport {
+    let client: LBClient
+
+    func moveItem(recordingMBID: UUID, from: Int, to: Int, in playlistMBID: UUID) async throws {
+        try await client.core.movePlaylistItems(
+            mbid: playlistMBID, recordingMBID: recordingMBID, from: from, to: to, count: 1)
     }
 }
 
@@ -378,6 +400,62 @@ struct ListenBrainzPlaylistItemRemovalProvider: PlaylistItemRemovalProviding {
     private actor MutationAttemptState { private(set) var didStartTransport = false; func markTransportStarted() { didStartTransport = true } }
 }
 
+/// Serialized, non-retrying wrapper around ListenBrainz's positional move
+/// endpoint. Cache invalidation happens after every dispatched request because
+/// a missing response cannot prove the order stayed unchanged.
+struct ListenBrainzPlaylistItemReorderingProvider: PlaylistItemReorderingProviding {
+    private let transport: any PlaylistItemReorderingTransport
+    private let gate: RequestGate
+    private let detailCache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>
+    private let profilePageCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>
+
+    init(token: String, gate: RequestGate = .shared,
+         detailCache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail> = EntityDetailCaches.playlists,
+         profilePageCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage> = ProfilePlaylistCaches.pages) {
+        transport = LivePlaylistItemReorderingTransport(client: LBClient(token: token, userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"))
+        self.gate = gate; self.detailCache = detailCache; self.profilePageCache = profilePageCache
+    }
+
+    init(transport: some PlaylistItemReorderingTransport, gate: RequestGate,
+         detailCache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail> = EntityDetailCaches.playlists,
+         profilePageCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage> = ProfilePlaylistCaches.pages) {
+        self.transport = transport; self.gate = gate; self.detailCache = detailCache; self.profilePageCache = profilePageCache
+    }
+
+    func moveItem(recordingMBID: UUID, from: Int, to: Int, in playlistMBID: UUID) async throws {
+        guard from >= 0, to >= 0, from != to else { throw PlaylistMutationProviderError.reorderRejected }
+        let attempt = MutationAttemptState()
+        do {
+            try await gate.perform({
+                await attempt.markTransportStarted()
+                try await transport.moveItem(recordingMBID: recordingMBID, from: from, to: to, in: playlistMBID)
+            }) { error in
+                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
+            await invalidateCaches()
+        } catch let LBError.rateLimited(resetIn) {
+            throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
+        } catch LBError.invalidAuth, LBError.noToken {
+            await invalidateCaches(); throw PlaylistMutationProviderError.invalidAuthentication
+        } catch LBError.forbidden {
+            await invalidateCaches(); throw PlaylistMutationProviderError.notCollaborator
+        } catch LBError.notFound {
+            await invalidateCaches(); throw PlaylistMutationProviderError.playlistUnavailable
+        } catch LBError.invalidJSON, LBError.badRequest, LBError.invalidParam {
+            throw PlaylistMutationProviderError.reorderRejected
+        } catch is CancellationError {
+            if await attempt.didStartTransport { await invalidateCaches(); throw PlaylistMutationProviderError.indeterminateReorder }
+            throw CancellationError()
+        } catch {
+            await invalidateCaches(); throw PlaylistMutationProviderError.indeterminateReorder
+        }
+    }
+
+    private func invalidateCaches() async { await detailCache.removeAll(); await profilePageCache.removeAll() }
+    private actor MutationAttemptState { private(set) var didStartTransport = false; func markTransportStarted() { didStartTransport = true } }
+}
+
 struct ListenBrainzPlaylistMutationProvider: PlaylistMutationProviding {
     private let transport: any PlaylistMutationTransport
     private let gate: RequestGate
@@ -549,12 +627,14 @@ enum PlaylistMutationProviderError: LocalizedError, Sendable {
     case indeterminateAppend
     case indeterminateCopy
     case indeterminateRemoval
+    case reorderRejected
+    case indeterminateReorder
     case deleteRejected
     case indeterminateDeletion
 
     var isIndeterminate: Bool {
         switch self {
-        case .indeterminateCreation, .indeterminateEdit, .indeterminateAppend, .indeterminateCopy, .indeterminateRemoval, .indeterminateDeletion: true
+        case .indeterminateCreation, .indeterminateEdit, .indeterminateAppend, .indeterminateCopy, .indeterminateRemoval, .indeterminateReorder, .indeterminateDeletion: true
         default: false
         }
     }
@@ -585,6 +665,10 @@ enum PlaylistMutationProviderError: LocalizedError, Sendable {
             "ListenBrainz may have duplicated this playlist, but the response was lost. Check Owned Playlists before trying again so you don’t create another copy."
         case .indeterminateRemoval:
             "ListenBrainz may have removed a track, but the response was lost. Refresh the playlist before removing another track."
+        case .reorderRejected:
+            "ListenBrainz couldn’t save this track order. Refresh the playlist and try again."
+        case .indeterminateReorder:
+            "Track changes need review. ListenBrainz may have moved or removed a track, so refresh the playlist before changing it again."
         case .deleteRejected:
             "ListenBrainz couldn’t delete this playlist. Check it and try again."
         case .indeterminateDeletion:

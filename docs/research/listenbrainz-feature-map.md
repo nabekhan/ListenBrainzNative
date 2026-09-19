@@ -50,7 +50,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Playlist detail/create/edit/delete | Y | Y | Y | P | P | Y | P2 | Native one-request detail, authenticated empty creation, owner metadata/privacy editing, and fail-closed creator-only deletion landed |
 | Add recording to playlist | Y | Y | Y | ? | Y | Y | P2 | Native append-only mapped-recording flow landed for owned/collaborating destinations, with best-effort duplicate preflight and no mutation replay |
 | Playlist copy/duplicate | Y | Y | Y | — | Y | Y | P2 | Native one-shot copy of any visible playlist landed with forced preflight, canonical returned-MBID navigation, and a persistent token-free ambiguous-result barrier |
-| Playlist item remove/reorder | Y | Y | Y | ? | P | Y | P2 | Safe fresh-preflight single-item removal landed; multi-item removal and non-atomic reordering remain staged |
+| Playlist item remove/reorder | Y | Y | Y | ? | Y* | Y | P2 | Safe single-item removal and one-track positional reordering landed with fresh whole-order verification, one no-retry POST, durable shared recovery, and exact postflight confirmation; `*` uses local MPL Kit extensions, while multi-item changes remain staged |
 | Playlist import/export/service sync | Y | Y | P | ? | — | P | P3 | Advanced feature |
 | LB Radio generation/tags/artist radio | Y | Y | P | — | Y | — | P2 | Native explicit recipe generation, ordered canonical-track private-playlist saves, and playlist browsing landed; playback/content resolution remains separate |
 | BrainzPlayer queue/content resolution | Y | Y | Y | P | — | P | P2 | Keep modular; viewing is not blocked |

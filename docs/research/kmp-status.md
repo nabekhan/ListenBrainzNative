@@ -49,4 +49,6 @@ Ship native SwiftUI over an app-facing provider using the fixed Swift package no
 
 Creator-only playlist deletion follows that division: the app uses a small typed ListenBrainzKit empty-body request today, while app-owned Swift code supplies the durable no-replay barrier, privacy-safe cache invalidation, and native recovery UI. The official KMP implementation remains behavior evidence and a future replacement candidate, not an iOS build dependency.
 
+Playlist item movement reaches the same conclusion. Shared KMP already models the official positional move route and helped confirm product behavior, but importing the unbuildable full shared graph would be disproportionate to one request. The app therefore uses a small typed MPL-preserving ListenBrainzKit extension; app-owned Swift retains the non-atomic-operation safeguards, whole-order reconciliation, request budget, and native reorder sheet behind provider boundaries that can accept a future official implementation.
+
 Evidence: `References/listenbrainz-android/shared/build.gradle.kts`, `shared/src/{commonMain,androidMain,iosMain}`, and official iOS/Android application source.

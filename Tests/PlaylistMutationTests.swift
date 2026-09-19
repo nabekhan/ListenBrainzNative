@@ -696,6 +696,150 @@ final class PlaylistMutationTests: XCTestCase {
         XCTAssertFalse(didStart)
     }
 
+    func testReorderProviderDispatchesExactMoveOnceAndEvictsCaches() async throws {
+        let playlistMBID = UUID()
+        let recordingMBID = UUID()
+        let detailCache = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
+        let pageCache = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
+        let detailKey = PlaylistDetailCacheKey(mbid: playlistMBID, accessScope: .publicOnly)
+        let pageKey = ProfilePlaylistPageKey(
+            username: "listener",
+            accessScope: .authenticatedViewer(.authenticated(token: "fixture")),
+            category: .owned,
+            offset: 0,
+            count: 20
+        )
+        await detailCache.save(playlistDetail(mbid: playlistMBID), for: detailKey)
+        await pageCache.save(
+            .init(
+                username: "listener",
+                category: .owned,
+                playlists: [],
+                requestedCount: 20,
+                offset: 0,
+                totalCount: 0
+            ),
+            for: pageKey
+        )
+        let transport = PlaylistReorderTransportSpy()
+        let provider = ListenBrainzPlaylistItemReorderingProvider(
+            transport: transport,
+            gate: RequestGate(minimumInterval: .zero),
+            detailCache: detailCache,
+            profilePageCache: pageCache
+        )
+
+        try await provider.moveItem(
+            recordingMBID: recordingMBID,
+            from: 3,
+            to: 1,
+            in: playlistMBID
+        )
+
+        let calls = await transport.calls()
+        XCTAssertEqual(calls, [
+            .init(
+                recordingMBID: recordingMBID,
+                from: 3,
+                to: 1,
+                playlistMBID: playlistMBID
+            ),
+        ])
+        let cachedDetail = await detailCache.value(for: detailKey)
+        let cachedPage = await pageCache.value(for: pageKey)
+        XCTAssertNil(cachedDetail)
+        XCTAssertNil(cachedPage)
+    }
+
+    func testReorderProviderMapsRateLimitWithoutRetrying() async {
+        let transport = PlaylistReorderTransportSpy(error: LBError.rateLimited(resetIn: 7))
+        let provider = ListenBrainzPlaylistItemReorderingProvider(
+            transport: transport,
+            gate: RequestGate(minimumInterval: .zero),
+            detailCache: EntityDetailCache(),
+            profilePageCache: EntityDetailCache()
+        )
+
+        do {
+            try await provider.moveItem(
+                recordingMBID: UUID(),
+                from: 0,
+                to: 1,
+                in: UUID()
+            )
+            XCTFail("Expected rate limiting")
+        } catch let ProviderError.rateLimited(seconds) {
+            XCTAssertEqual(seconds, 7)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        let calls = await transport.calls()
+        XCTAssertEqual(calls.count, 1)
+    }
+
+    func testReorderCancellationAfterTransportStartsIsIndeterminate() async {
+        let transport = CancellationReorderTransport()
+        let provider = ListenBrainzPlaylistItemReorderingProvider(
+            transport: transport,
+            gate: RequestGate(minimumInterval: .zero),
+            detailCache: EntityDetailCache(),
+            profilePageCache: EntityDetailCache()
+        )
+        let task = Task {
+            try await provider.moveItem(
+                recordingMBID: UUID(),
+                from: 0,
+                to: 1,
+                in: UUID()
+            )
+        }
+        while !(await transport.hasStarted) { await Task.yield() }
+
+        task.cancel()
+        do {
+            try await task.value
+            XCTFail("Expected an indeterminate reorder")
+        } catch PlaylistMutationProviderError.indeterminateReorder {
+            // Expected: cancellation after admission cannot prove the POST did not commit.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testReorderCancellationBeforeTransportAdmissionDoesNotDispatch() async throws {
+        let gate = RequestGate(minimumInterval: .seconds(5))
+        _ = try await gate.perform { true }
+        let transport = CancellationReorderTransport()
+        let provider = ListenBrainzPlaylistItemReorderingProvider(
+            transport: transport,
+            gate: gate,
+            detailCache: EntityDetailCache(),
+            profilePageCache: EntityDetailCache()
+        )
+        let task = Task {
+            try await provider.moveItem(
+                recordingMBID: UUID(),
+                from: 0,
+                to: 1,
+                in: UUID()
+            )
+        }
+        await Task.yield()
+
+        task.cancel()
+        do {
+            try await task.value
+            XCTFail("Expected cancellation before transport")
+        } catch is CancellationError {
+            // Expected: no positional POST was admitted to transport.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        let didStart = await transport.hasStarted
+        XCTAssertFalse(didStart)
+    }
+
     private func playlistDetail(
         mbid: UUID,
         title: String = "Playlist",
@@ -847,6 +991,43 @@ private actor PlaylistRemovalTransportSpy: PlaylistItemRemovalTransport {
 private actor CancellationRemovalTransport: PlaylistItemRemovalTransport {
     private(set) var hasStarted = false
     func removeItem(at index: Int, from playlistMBID: UUID) async throws {
+        hasStarted = true
+        try await Task.sleep(for: .seconds(60))
+    }
+}
+
+private actor PlaylistReorderTransportSpy: PlaylistItemReorderingTransport {
+    struct Call: Equatable, Sendable {
+        let recordingMBID: UUID
+        let from: Int
+        let to: Int
+        let playlistMBID: UUID
+    }
+
+    private let error: (any Error & Sendable)?
+    private var values: [Call] = []
+
+    init(error: (any Error & Sendable)? = nil) {
+        self.error = error
+    }
+
+    func moveItem(recordingMBID: UUID, from: Int, to: Int, in playlistMBID: UUID) async throws {
+        values.append(.init(
+            recordingMBID: recordingMBID,
+            from: from,
+            to: to,
+            playlistMBID: playlistMBID
+        ))
+        if let error { throw error }
+    }
+
+    func calls() -> [Call] { values }
+}
+
+private actor CancellationReorderTransport: PlaylistItemReorderingTransport {
+    private(set) var hasStarted = false
+
+    func moveItem(recordingMBID: UUID, from: Int, to: Int, in playlistMBID: UUID) async throws {
         hasStarted = true
         try await Task.sleep(for: .seconds(60))
     }

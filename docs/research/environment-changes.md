@@ -96,6 +96,8 @@ All clones are shallow and ignored by Git. Remove `References/` to delete them.
 
 ## System changes
 
+- `.derived-data/playlist-reorder-focused/`, `Packages/ListenBrainzKit/.build/`, `/tmp/brainz-reorder-build/`, `/tmp/brainz-reorder-*.log`, and `/tmp/brainz-reorder-*.png`: one-track playlist-reorder package/app builds, focused and full tests, result bundles, independent review reruns, and light/dark/recovery/accessibility/smaller-device screenshots. Cleanup: remove only these exact directories and matching temporary files; repository-local derived data is also covered by the general `.derived-data/` rule. Fixture routes and visual providers are local, make no production request or mutation, and use no real token. No package, host application, or additional skill was installed; the existing UX Writing and Computer Use skills were used. Computer Use installed nothing and could not attach because this Xcode installation exposes no interactive Simulator host app. One earlier focused runner stalled in a scoped `simctl diagnose`; only its exact test/diagnostic process IDs were terminated, with no broad process cleanup. Both disposable QA simulators were shut down after acceptance.
+
 - Active developer directory was changed system-wide to `/Applications/Xcode.app/Contents/Developer` with `xcode-select`. Cleanup/reversal: run `sudo xcode-select -s /Library/Developer/CommandLineTools` if full Xcode should no longer be the default.
 - No credentials have been written to disk or shell scripts.
 - During recovery from an interrupted turn, `/Users/nabeel/.Trash/ListenBrainzNative` was moved back to `/Users/nabeel/ListenBrainzNative`. No duplicate project copy remains in Trash.

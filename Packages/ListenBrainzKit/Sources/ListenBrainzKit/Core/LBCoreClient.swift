@@ -296,6 +296,32 @@ public struct LBCoreClient: Sendable {
         guard response.status == "ok" else { throw LBError.invalidResponse }
     }
 
+    /// Move a contiguous range of tracks using the playlist's zero-based
+    /// positions. `recordingMBID` is required by the wire contract, although
+    /// ListenBrainz currently selects the occurrence by position alone.
+    ///
+    /// This positional endpoint is not idempotent. Callers must never
+    /// automatically retry an ambiguous result.
+    public func movePlaylistItems(
+        mbid: UUID,
+        recordingMBID: UUID,
+        from: Int,
+        to: Int,
+        count: Int = 1
+    ) async throws {
+        guard from >= 0, to >= 0, count >= 1 else { throw LBError.invalidParam }
+        let response = try await apiClient.execute(
+            MovePlaylistItemsRequest(
+                mbid: mbid,
+                recordingMBID: recordingMBID,
+                from: from,
+                to: to,
+                count: count
+            )
+        )
+        guard response.status == "ok" else { throw LBError.invalidResponse }
+    }
+
     /// Duplicate a visible ListenBrainz playlist into the authenticated user's
     /// collection. The server preserves the source visibility and track order,
     /// assigns the copy to the caller, and does not carry collaborators over.

@@ -10,9 +10,11 @@ struct PlaylistDetailView: View {
     private let automaticallyPresentsCopyConfirmation: Bool
     private let automaticallyPresentsRemovalConfirmation: Bool
     private let automaticallyPresentsDeletionConfirmation: Bool
+    private let automaticallyPresentsReorder: Bool
     @State private var model: PlaylistDetailModel
     @State private var copyModel: PlaylistCopyModel
     @State private var removalModel: PlaylistItemRemovalModel
+    @State private var reorderModel: PlaylistItemReorderModel
     @State private var deletionModel: PlaylistDeletionModel
     @State private var showsEditor = false
     @State private var showsCopyConfirmation = false
@@ -21,6 +23,7 @@ struct PlaylistDetailView: View {
     @State private var didAutomaticallyPresentCopyConfirmation = false
     @State private var didAutomaticallyPresentRemovalConfirmation = false
     @State private var didAutomaticallyPresentDeletionConfirmation = false
+    @State private var didAutomaticallyPresentReorder = false
     @State private var isPreparingEditor = false
     @State private var isPreparingCopy = false
     @State private var trackPendingRemoval: PlaylistTrack?
@@ -29,6 +32,7 @@ struct PlaylistDetailView: View {
     @State private var showsDeletionSafetyResetConfirmation = false
     @State private var showsDeletionConfirmation = false
     @State private var showsArtwork = false
+    @State private var showsReorder = false
 
     init(
         playlist: SearchPlaylist,
@@ -41,13 +45,15 @@ struct PlaylistDetailView: View {
         mutationJournal: PlaylistMutationJournal = .shared,
         copyReconciliationJournal: PlaylistCopyReconciliationJournal = .shared,
         removalProvider: (any PlaylistItemRemovalProviding)? = nil,
-        removalJournal: PlaylistItemRemovalJournal = .shared,
+        itemMutationJournal: PlaylistItemMutationJournal = .shared,
+        reorderProvider: (any PlaylistItemReorderingProviding)? = nil,
         deletionProvider: (any PlaylistDeletionProviding)? = nil,
         deletionJournal: PlaylistDeletionJournal = .shared,
         automaticallyPresentsEditor: Bool = false,
         automaticallyPresentsCopyConfirmation: Bool = false,
         automaticallyPresentsRemovalConfirmation: Bool = false,
-        automaticallyPresentsDeletionConfirmation: Bool = false
+        automaticallyPresentsDeletionConfirmation: Bool = false,
+        automaticallyPresentsReorder: Bool = false
     ) {
         self.playlist = playlist
         self.viewer = viewer
@@ -58,6 +64,7 @@ struct PlaylistDetailView: View {
         self.automaticallyPresentsCopyConfirmation = automaticallyPresentsCopyConfirmation
         self.automaticallyPresentsRemovalConfirmation = automaticallyPresentsRemovalConfirmation
         self.automaticallyPresentsDeletionConfirmation = automaticallyPresentsDeletionConfirmation
+        self.automaticallyPresentsReorder = automaticallyPresentsReorder
         let resolvedDetailProvider = provider
             ?? ListenBrainzMediaDetailProvider(token: viewer.token)
         _model = State(initialValue: PlaylistDetailModel(
@@ -78,7 +85,14 @@ struct PlaylistDetailView: View {
             account: viewer,
             detailProvider: resolvedDetailProvider,
             provider: removalProvider ?? ListenBrainzPlaylistItemRemovalProvider(token: viewer.token),
-            journal: removalJournal,
+            journal: itemMutationJournal,
+            mutationJournal: mutationJournal
+        ))
+        _reorderModel = State(initialValue: PlaylistItemReorderModel(
+            account: viewer,
+            detailProvider: resolvedDetailProvider,
+            provider: reorderProvider ?? ListenBrainzPlaylistItemReorderingProvider(token: viewer.token),
+            journal: itemMutationJournal,
             mutationJournal: mutationJournal
         ))
         _deletionModel = State(initialValue: PlaylistDeletionModel(
@@ -156,6 +170,15 @@ struct PlaylistDetailView: View {
                 )
             }
         }
+        .sheet(isPresented: $showsReorder) {
+            if let detail = model.detail {
+                PlaylistReorderSheet(detail: detail, model: reorderModel) { canonical in
+                    await model.applyCanonicalDetail(canonical)
+                } discardAccess: { message in
+                    await model.discardAfterAccessLoss(message: message)
+                }
+            }
+        }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if canEdit {
@@ -181,8 +204,17 @@ struct PlaylistDetailView: View {
                                 : "Refreshing playlist before duplication"
                         )
                 }
-                if canCopy || canCreateArtwork || canDelete || actionURL != nil {
+                if canCopy || canCreateArtwork || canDelete || canReorder || actionURL != nil {
                     Menu {
+                        if canReorder {
+                            Button {
+                                reorderModel.dismissNotice()
+                                showsReorder = true
+                            } label: {
+                                Label("Reorder tracks", systemImage: "arrow.up.arrow.down")
+                            }
+                            .disabled(reorderModel.isSaving || reorderModel.isReconciling)
+                        }
                         if canCreateArtwork {
                             Button {
                                 showsArtwork = true
@@ -334,21 +366,21 @@ struct PlaylistDetailView: View {
         .alert(item: removalNoticeBinding) { notice in
             switch notice {
             case .stale:
-                Alert(title: Text("Playlist Changed"), message: Text("The track order changed before anything was removed. Review the refreshed playlist and try again."), dismissButton: .default(Text("OK")))
+                Alert(title: Text("Playlist changed"), message: Text("The track order changed before anything was removed. Review the refreshed playlist and try again."), dismissButton: .default(Text("OK")))
             case let .confirmed(track, playlist):
-                Alert(title: Text("Track Removed"), message: Text("“\(track)” was removed from “\(playlist)”."), dismissButton: .default(Text("OK")))
+                Alert(title: Text("Track removed"), message: Text("“\(track)” was removed from “\(playlist)”."), dismissButton: .default(Text("OK")))
             case let .needsReview(message):
-                Alert(title: Text("Removal Needs Review"), message: Text(message), dismissButton: .default(Text("OK")))
+                Alert(title: Text("Track changes need review"), message: Text(message), dismissButton: .default(Text("OK")))
             case .refreshed:
-                Alert(title: Text("Playlist Refreshed"), message: Text("Review the current track order before removing another track."), dismissButton: .default(Text("OK")))
+                Alert(title: Text("Playlist refreshed"), message: Text("Review the current track order before changing tracks again."), dismissButton: .default(Text("OK")))
             case let .accessLost(message):
-                Alert(title: Text("Playlist Unavailable"), message: Text(message), dismissButton: .default(Text("OK")))
+                Alert(title: Text("Playlist unavailable"), message: Text(message), dismissButton: .default(Text("OK")))
             case let .failed(message):
-                Alert(title: Text("Couldn’t Remove Track"), message: Text(message), dismissButton: .default(Text("OK")))
+                Alert(title: Text("Couldn’t remove track"), message: Text(message), dismissButton: .default(Text("OK")))
             }
         }
-        .confirmationDialog("Reset the Safety Record?", isPresented: $showsSafetyResetConfirmation, titleVisibility: .visible) {
-            Button("Reset Record", role: .destructive) { if let detail = model.detail { _ = removalModel.resetSafetyRecord(playlistMBID: detail.mbid) } }
+        .confirmationDialog("Reset safety record?", isPresented: $showsSafetyResetConfirmation, titleVisibility: .visible) {
+            Button("Reset record", role: .destructive) { if let detail = model.detail { _ = removalModel.resetSafetyRecord(playlistMBID: detail.mbid) } }
             Button("Cancel", role: .cancel) {}
         } message: { Text("Only reset it after reviewing the current track order. This affects this playlist and account only.") }
         .confirmationDialog(
@@ -395,6 +427,10 @@ struct PlaylistDetailView: View {
             if automaticallyPresentsDeletionConfirmation, canDelete, !didAutomaticallyPresentDeletionConfirmation {
                 didAutomaticallyPresentDeletionConfirmation = true
                 showsDeletionConfirmation = true
+            }
+            if automaticallyPresentsReorder, canReorder, !didAutomaticallyPresentReorder {
+                didAutomaticallyPresentReorder = true
+                showsReorder = true
             }
         }
     }
@@ -585,6 +621,10 @@ struct PlaylistDetailView: View {
         !model.accessWasLost && removalModel.canAttemptRemoval(from: model.detail)
     }
 
+    private var canReorder: Bool {
+        !model.accessWasLost && reorderModel.canAttemptReorder(model.detail)
+    }
+
     private var canDelete: Bool {
         !model.accessWasLost && deletionModel.canAttemptDelete(model.detail)
     }
@@ -600,11 +640,11 @@ struct PlaylistDetailView: View {
 
     private func removalReviewNotice(_ detail: PlaylistDetail) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(removalModel.requiresRecovery(playlistMBID: detail.mbid) ? "Removal Paused" : "Removal Needs Review", systemImage: "exclamationmark.arrow.triangle.2.circlepath").font(.headline)
-            Text(removalModel.requiresRecovery(playlistMBID: detail.mbid) ? "Brainz can’t read this playlist’s removal safety record. Refresh and review the playlist before resetting the record." : "A previous removal may have reached ListenBrainz. Refresh the playlist before removing another track.").font(.subheadline).foregroundStyle(.secondary)
+            Label(removalModel.requiresRecovery(playlistMBID: detail.mbid) ? "Track changes paused" : "Track changes need review", systemImage: "exclamationmark.arrow.triangle.2.circlepath").font(.headline)
+            Text(removalModel.requiresRecovery(playlistMBID: detail.mbid) ? "Brainz can’t read this playlist’s track-change safety record. Refresh and review the playlist before resetting it." : "A previous change may have moved or removed a track. Refresh the playlist before changing tracks again.").font(.subheadline).foregroundStyle(.secondary)
             Button("Refresh and Review") { Task { if let canonical = await removalModel.refreshAfterReview(playlistMBID: detail.mbid) { await model.applyCanonicalDetail(canonical) } else { await discardRemovalAccessIfNeeded() } } }
                 .buttonStyle(.bordered).controlSize(.small).disabled(removalModel.isReconciling)
-            if removalModel.canResetSafetyRecord(playlistMBID: detail.mbid) { Button("Reset Safety Record", role: .destructive) { showsSafetyResetConfirmation = true }.buttonStyle(.bordered).controlSize(.small) }
+            if removalModel.canResetSafetyRecord(playlistMBID: detail.mbid) { Button("Reset safety record", role: .destructive) { showsSafetyResetConfirmation = true }.buttonStyle(.bordered).controlSize(.small) }
         }.frame(maxWidth: .infinity, alignment: .leading).padding(16).background(.orange.opacity(0.12), in: .rect(cornerRadius: 18, style: .continuous))
     }
 
@@ -867,6 +907,120 @@ struct PlaylistDetailView: View {
     }
 }
 
+private struct PlaylistReorderSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let baseline: PlaylistDetail
+    let model: PlaylistItemReorderModel
+    let apply: @MainActor (PlaylistDetail) async -> Void
+    let discardAccess: @MainActor (String) async -> Void
+    @State private var entries: [Entry]
+    @State private var didMove = false
+    @State private var isSubmitting = false
+    @State private var moveOperation: (from: Int, to: Int)?
+
+    struct Entry: Identifiable, Hashable {
+        let originalIndex: Int
+        let track: PlaylistTrack
+        var id: Int { originalIndex }
+    }
+
+    init(detail: PlaylistDetail, model: PlaylistItemReorderModel,
+         apply: @escaping @MainActor (PlaylistDetail) async -> Void,
+         discardAccess: @escaping @MainActor (String) async -> Void) {
+        baseline = detail; self.model = model; self.apply = apply; self.discardAccess = discardAccess
+        _entries = State(initialValue: detail.tracks.enumerated().map { Entry(originalIndex: $0.offset, track: $0.element) })
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(entries) { entry in
+                        PlaylistTrackRow(track: entry.track, showsDisclosure: false)
+                            .moveDisabled(didMove || entry.track.recording.identity.mbid == nil)
+                            .accessibilityActions {
+                                Button("Move \(entry.track.recording.title) up") { move(entry, by: -1) }
+                                    .disabled(didMove || entry.id == entries.first?.id || entry.track.recording.identity.mbid == nil)
+                                Button("Move \(entry.track.recording.title) down") { move(entry, by: 1) }
+                                    .disabled(didMove || entry.id == entries.last?.id || entry.track.recording.identity.mbid == nil)
+                            }
+                    }
+                    .onMove(perform: move)
+                } header: {
+                    Text("Track order")
+                } footer: {
+                    Text(didMove ? "Save this order or reset it before making another move." : "Move one track, then save the order.")
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("Reorder")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .disabled(isSubmitting || model.isSaving || model.isReconciling)
+                }
+                ToolbarItemGroup(placement: .confirmationAction) {
+                    Button {
+                        entries = baseline.tracks.enumerated().map { Entry(originalIndex: $0.offset, track: $0.element) }
+                        didMove = false
+                        moveOperation = nil
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                    }
+                    .accessibilityLabel("Reset order")
+                        .disabled(!didMove || isSubmitting || model.isSaving || model.isReconciling)
+                    Button("Save order") {
+                        isSubmitting = true
+                        Task {
+                            await save()
+                            isSubmitting = false
+                        }
+                    }
+                    .disabled(!didMove || isSubmitting || model.isSaving || model.isReconciling)
+                }
+            }
+            .interactiveDismissDisabled(isSubmitting || model.isSaving || model.isReconciling)
+            .alert(item: Binding(get: { model.notice }, set: { if $0 == nil { model.dismissNotice() } })) { notice in
+                switch notice {
+                case .confirmed: Alert(title: Text("Track order saved"), dismissButton: .default(Text("Done")) { dismiss() })
+                case .stale: Alert(title: Text("This playlist changed"), message: Text("The track order changed while you were editing. Review the latest order and try again."), dismissButton: .default(Text("Done")) { dismiss() })
+                case let .needsReview(message): Alert(title: Text("Track changes need review"), message: Text(message), dismissButton: .default(Text("Done")) { dismiss() })
+                case let .failed(message): Alert(title: Text("Couldn’t save track order"), message: Text(message), dismissButton: .default(Text("Done")))
+                case let .accessLost(message): Alert(title: Text("Playlist unavailable"), message: Text(message), dismissButton: .default(Text("Done")) { dismiss() })
+                }
+            }
+        }
+    }
+
+    private func move(from source: IndexSet, to destination: Int) {
+        guard !didMove, source.count == 1, let sourceIndex = source.first,
+              entries.indices.contains(sourceIndex), destination >= 0, destination <= entries.count,
+              entries[sourceIndex].track.recording.identity.mbid != nil else { return }
+        let moved = entries[sourceIndex]
+        entries.move(fromOffsets: source, toOffset: destination)
+        guard let finalIndex = entries.firstIndex(of: moved), finalIndex != sourceIndex else { return }
+        didMove = true
+        moveOperation = (sourceIndex, finalIndex)
+    }
+    private func move(_ entry: Entry, by delta: Int) {
+        guard let source = entries.firstIndex(of: entry) else { return }
+        let target = source + delta
+        guard entries.indices.contains(target) else { return }
+        // List's destination is post-removal; express the adjacent move in its
+        // native coordinate system so VoiceOver and drag share one path.
+        move(from: IndexSet(integer: source), to: delta > 0 ? target + 1 : target)
+    }
+    private func save() async {
+        guard let moveOperation else { return }
+        if let canonical = await model.save(baseline: baseline, from: moveOperation.from, to: moveOperation.to) { await apply(canonical) }
+        if case let .accessLost(message) = model.notice {
+            await discardAccess(message)
+            dismiss()
+        }
+    }
+}
+
 #if DEBUG
 struct PlaylistMutationVisualQAScreen: View {
     private let account = Account(username: "visual-listener", token: "visual-token")
@@ -952,7 +1106,7 @@ struct PlaylistRemovalVisualQAScreen: View {
                 viewer: account,
                 provider: VisualQAPlaylistRemovalDetailProvider(),
                 removalProvider: VisualQAPlaylistRemovalProvider(),
-                removalJournal: journal,
+                itemMutationJournal: journal,
                 automaticallyPresentsRemovalConfirmation: !showsReview
             )
         }
@@ -1057,6 +1211,7 @@ private struct VisualQAPlaylistRemovalDetailProvider: PlaylistDetailProviding {
                 track(1, "Myth", "Beach House", "Bloom", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
                 track(2, "Cherry-coloured Funk", "Cocteau Twins", "Heaven or Las Vegas", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
                 track(3, "An Ending (Ascent)", "Brian Eno", "Apollo", "cccccccc-cccc-4ccc-8ccc-cccccccccccc"),
+                track(4, "Myth", "Beach House", "Bloom", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
             ]
         )
     }
@@ -1090,5 +1245,38 @@ private struct VisualQAPlaylistRemovalDetailProvider: PlaylistDetailProviding {
 
 private struct VisualQAPlaylistRemovalProvider: PlaylistItemRemovalProviding {
     func removeItem(at index: Int, from playlistMBID: UUID) async throws {}
+}
+
+struct PlaylistReorderVisualQAScreen: View {
+    let showsReview: Bool
+    private let account = Account(username: "visual-listener", token: "visual-token")
+    @State private var journal: PlaylistItemMutationJournal
+
+    init(showsReview: Bool) {
+        self.showsReview = showsReview
+        let journal = PlaylistItemMutationJournal()
+        if showsReview { _ = journal.begin(username: "visual-listener", playlistMBID: Self.playlistMBID) }
+        _journal = State(initialValue: journal)
+    }
+
+    var body: some View {
+        NavigationStack {
+            PlaylistDetailView(
+                playlist: Self.playlist,
+                viewer: account,
+                provider: VisualQAPlaylistRemovalDetailProvider(),
+                itemMutationJournal: journal,
+                reorderProvider: VisualQAPlaylistReorderProvider(),
+                automaticallyPresentsReorder: !showsReview
+            )
+        }
+    }
+
+    private static let playlistMBID = UUID(uuidString: "55555555-5555-4555-8555-555555555555")!
+    private static let playlist = SearchPlaylist(title: "Soft Focus — late-night favorites", creator: "visual-listener", annotation: "Dream pop, ambient edges, and songs that make the room feel quieter.", identifier: "https://listenbrainz.org/playlist/\(playlistMBID.uuidString)", isPublic: false, lastModifiedAt: Date(timeIntervalSince1970: 1_789_689_600), createdAt: Date(timeIntervalSince1970: 1_700_000_000), durationMilliseconds: 694_000)
+}
+
+private struct VisualQAPlaylistReorderProvider: PlaylistItemReorderingProviding {
+    func moveItem(recordingMBID: UUID, from: Int, to: Int, in playlistMBID: UUID) async throws {}
 }
 #endif

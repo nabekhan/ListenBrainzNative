@@ -130,7 +130,7 @@ Running integration tests requires setting a ListenBrainz token in the environme
   - [ ] GET  /1/playlist/(playlist_mbid)/xspf
   - [x] POST /1/playlist/(playlist_mbid)/item/add
   - [ ] POST /1/playlist/(playlist_mbid)/item/add/(int: offset)
-  - [ ] POST /1/playlist/(playlist_mbid)/item/move
+  - [x] POST /1/playlist/(playlist_mbid)/item/move
   - [x] POST /1/playlist/(playlist_mbid)/item/delete
   - [x] POST /1/playlist/(playlist_mbid)/delete
   - [x] POST /1/playlist/(playlist_mbid)/copy
