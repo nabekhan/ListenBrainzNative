@@ -153,14 +153,32 @@ final class RadioProviderTests: XCTestCase {
     }
 
     func testCancellationBeforeGateAdmissionDoesNotGenerate() async throws {
-        let gate = RequestGate(minimumInterval: .seconds(5))
-        _ = try await gate.perform { true }
+        let gate = RequestGate(minimumInterval: .zero, maximumConcurrentReads: 1)
+        let blocker = RadioReadBlocker()
+        let activeRead = Task {
+            try await gate.read(
+                for: .init(
+                    scope: .authenticated(token: "radio-admission-fixture"),
+                    feature: .historyRecent,
+                    identityComponents: ["active"]
+                )
+            ) {
+                await blocker.startAndWait()
+                return true
+            }
+        }
+        defer {
+            activeRead.cancel()
+            Task { await blocker.release() }
+        }
+        try await Self.waitForCondition { await blocker.hasStarted() }
+
         let transport = RadioFixtureTransport(generated: Self.generated(firstID: nil, secondID: nil))
         let provider = ListenBrainzRadioProvider(transport: transport, gate: gate)
         let options = try XCTUnwrap(RadioGenerationOptions(prompt: "#ambient", mode: .easy))
 
         let task = Task { try await provider.generate(options: options) }
-        await Task.yield()
+        try await Self.waitForCondition { await gate.queuedReadCountForTesting() == 1 }
         task.cancel()
         do {
             _ = try await task.value
@@ -168,9 +186,30 @@ final class RadioProviderTests: XCTestCase {
         } catch is CancellationError {
             // Expected.
         }
-        try await ContinuousClock().sleep(for: .milliseconds(30))
+        try await Self.waitForCondition { await gate.queuedReadCountForTesting() == 0 }
         let calls = await transport.recordedCalls()
         XCTAssertTrue(calls.isEmpty)
+
+        await blocker.release()
+        let activeReadValue = try await activeRead.value
+        XCTAssertTrue(activeReadValue)
+    }
+
+    nonisolated private static func waitForCondition(
+        timeout: Duration = .seconds(2),
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        _ condition: @escaping @Sendable () async -> Bool
+    ) async throws {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        while !(await condition()) {
+            guard clock.now < deadline else {
+                XCTFail("Timed out waiting for asynchronous test state.", file: file, line: line)
+                throw RadioTestError.timeout
+            }
+            try await clock.sleep(for: .milliseconds(1))
+        }
     }
 
     private static func generated(firstID: UUID?, secondID: UUID?) -> LBGeneratedRadio {
@@ -202,6 +241,27 @@ final class RadioProviderTests: XCTestCase {
             tracks: [first, second, first],
             feedback: ["Using your prompt", "2 tracks", "using your prompt", " "]
         )
+    }
+}
+
+private enum RadioTestError: Error {
+    case timeout
+}
+
+private actor RadioReadBlocker {
+    private var started = false
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    func startAndWait() async {
+        started = true
+        await withCheckedContinuation { continuation = $0 }
+    }
+
+    func hasStarted() -> Bool { started }
+
+    func release() {
+        continuation?.resume()
+        continuation = nil
     }
 }
 

@@ -6,7 +6,7 @@ Snapshot: 2026-09-18.
 
 - The canonical generator is authenticated `GET /1/explore/lb-radio` with required `prompt` and `mode=easy|medium|hard` query items.
 - Success returns one JSPF playlist plus human-readable query feedback. Empty generation is valid and must not be presented as a transport failure.
-- The endpoint has a separate five-requests-per-five-seconds token quota. Brainz remains stricter: every ListenBrainz operation enters the process-wide one-request-per-second gate, 429 timing defers the queue, and generation is never automatically retried.
+- The endpoint has a separate five-requests-per-five-seconds token quota. Brainz admits at most two independent ListenBrainz reads, coalesces exact requests within one opaque credential scope, applies 429 timing globally, and never automatically retries generation.
 - Troi's prompt language supports artist, tag, MusicBrainz collection, ListenBrainz playlist, user statistics, recommendations, and country sources; weights and per-term options can be combined. The language is powerful but not a stable typed API, so the first UI offers safe native presets plus an advanced prompt field rather than attempting to model the entire grammar.
 - LB Radio generates identities and metadata, not guaranteed playable audio. A track is not labeled playable merely because it has a recording MBID.
 
@@ -30,7 +30,7 @@ Snapshot: 2026-09-18.
 ## Validation
 
 - ListenBrainzKit: 114 tests pass, including generated-radio schema, query encoding, empty-prompt, plural-empty fallback, and malformed-response coverage.
-- App: 192 tests pass, including explicit generation, single-batch enrichment, cancellation, preserved mixes, generation-stage 429 mapping, and metadata-stage gate deferral.
+- App: the current integrated suite passes 294 tests. Its radio coverage includes explicit generation, single-batch enrichment, preserved mixes, generation-stage 429 mapping, metadata-stage global deferral, and a queued cancellation assertion repeated ten times without a transport call.
 - The Release simulator build passes.
 - Light, dark, accessibility-extra-large, and compact-phone visual checkpoints use a local fixture. They make no ListenBrainz request and use no account token.
 - No authenticated production generation was claimed because no disposable radio QA token was available.
