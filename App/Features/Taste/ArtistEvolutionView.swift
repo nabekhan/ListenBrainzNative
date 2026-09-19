@@ -400,30 +400,50 @@ struct ArtistEvolutionView: View {
                 .textCase(.uppercase)
 
             ForEach(Array(artists.enumerated()), id: \.element.id) { index, artist in
-                NavigationLink(value: artist.rankedArtist) {
-                    HStack(spacing: 10) {
-                        Circle()
-                            .fill(seriesColors[index % seriesColors.count])
-                            .frame(width: 10, height: 10)
-                            .accessibilityHidden(true)
-                        Text(artist.name)
-                            .font(.subheadline.weight(.medium))
-                            .lineLimit(1)
-                        Spacer(minLength: 8)
-                        Text(artist.listenCount.formatted())
-                            .font(.subheadline.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                        Image(systemName: "chevron.right")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+                if let destination = artist.rankedArtist.detailDestination() {
+                    NavigationLink(value: destination) {
+                        artistLegendRow(artist, index: index, showsDisclosure: true)
                     }
-                    .contentShape(.rect)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(
+                        "\(artist.name), \(artist.listenCount.formatted()) \(artist.listenCount == 1 ? "listen" : "listens")"
+                    )
+                    .accessibilityHint("Opens artist details")
+                } else {
+                    artistLegendRow(artist, index: index, showsDisclosure: false)
+                        .accessibilityLabel(
+                            "\(artist.name), \(artist.listenCount.formatted()) \(artist.listenCount == 1 ? "listen" : "listens")"
+                        )
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(artist.name), \(artist.listenCount) listens")
-                .accessibilityHint("Opens artist details")
             }
         }
+    }
+
+    private func artistLegendRow(
+        _ artist: ArtistEvolutionActivity.Artist,
+        index: Int,
+        showsDisclosure: Bool
+    ) -> some View {
+        HStack(spacing: 10) {
+            Circle()
+                .fill(seriesColors[index % seriesColors.count])
+                .frame(width: 10, height: 10)
+                .accessibilityHidden(true)
+            Text(artist.name)
+                .font(.subheadline.weight(.medium))
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Text(artist.listenCount.formatted())
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(.secondary)
+            if showsDisclosure {
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+        }
+        .contentShape(.rect)
     }
 
     @ViewBuilder

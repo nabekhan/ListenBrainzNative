@@ -1197,10 +1197,15 @@ struct TasteView: View {
             switch ranking {
             case .artists:
                 ForEach(Array(model.snapshot.topArtists.prefix(20).enumerated()), id: \.element.id) { index, artist in
-                    NavigationLink(value: artist) {
-                        rankedArtistRow(index: index, artist: artist)
+                    if let destination = artist.detailDestination() {
+                        NavigationLink(value: destination) {
+                            rankedArtistRow(index: index, artist: artist, showsDisclosure: true)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens artist details")
+                    } else {
+                        rankedArtistRow(index: index, artist: artist, showsDisclosure: false)
                     }
-                    .buttonStyle(.plain)
                 }
             case .releases:
                 ForEach(Array(model.snapshot.topReleases.prefix(20).enumerated()), id: \.element.id) { index, release in
@@ -1224,17 +1229,26 @@ struct TasteView: View {
         }
     }
 
-    private func rankedArtistRow(index: Int, artist: RankedArtist) -> some View {
+    private func rankedArtistRow(index: Int, artist: RankedArtist, showsDisclosure: Bool) -> some View {
         HStack(spacing: 12) {
             rank(index)
             ArtistArtworkView(artist: artist).frame(width: 50, height: 50)
             VStack(alignment: .leading, spacing: 3) {
                 Text(artist.name).font(.body.weight(.semibold)).lineLimit(1)
-                Text("\(artist.listenCount.formatted()) listens").font(.caption).foregroundStyle(.secondary)
+                Text("\(artist.listenCount.formatted()) \(artist.listenCount == 1 ? "listen" : "listens")")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Spacer()
-            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+            if showsDisclosure {
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
         }
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
     }
 
     private func rankedReleaseRow(index: Int, release: RankedRelease) -> some View {

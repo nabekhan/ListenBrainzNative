@@ -690,11 +690,12 @@ private struct YearInMusicArtistsSection: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 16) {
                         ForEach(Array(artists.prefix(10).enumerated()), id: \.element.id) { index, artist in
-                            if allowsNavigation {
-                                NavigationLink(value: artist) {
+                            if allowsNavigation, let destination = artist.detailDestination() {
+                                NavigationLink(value: destination) {
                                     artistCard(artist, rank: index + 1, featured: index == 0)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityHint("Opens artist details")
                             } else {
                                 artistCard(artist, rank: index + 1, featured: index == 0)
                             }
@@ -728,8 +729,9 @@ private struct YearInMusicArtistsSection: View {
         }
         .frame(width: width, alignment: .leading)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Number \(rank), \(artist.name), \(artist.listenCount.formatted()) listens")
-        .accessibilityHint("Opens artist details")
+        .accessibilityLabel(
+            "Number \(rank), \(artist.name), \(artist.listenCount.formatted()) \(artist.listenCount == 1 ? "listen" : "listens")"
+        )
     }
 }
 
