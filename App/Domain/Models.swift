@@ -511,6 +511,14 @@ struct RankedRecording: Identifiable, Hashable, Codable, Sendable {
             source: nil
         )
     }
+
+    /// A recording route is only safe when ListenBrainz supplied the canonical
+    /// recording MBID. A release MBID or matching display strings identify a
+    /// different entity and must not make a ranked track row tappable.
+    var detailDestination: Recording? {
+        guard mbid != nil else { return nil }
+        return recording
+    }
 }
 
 struct ListeningSnapshot: Codable, Sendable {
@@ -539,9 +547,11 @@ struct UserProfileSnapshot: Sendable {
     var listenCount: Int?
     var topArtists: [RankedArtist]
     var topReleases: [RankedRelease]
+    var topRecordings: [RankedRecording]
     var hasLoadedOverview: Bool
     var hasLoadedTopArtists: Bool
     var hasLoadedTopReleases: Bool
+    var hasLoadedTopRecordings: Bool
     var savedAt: Date
 
     static let empty = UserProfileSnapshot(
@@ -550,9 +560,11 @@ struct UserProfileSnapshot: Sendable {
         listenCount: nil,
         topArtists: [],
         topReleases: [],
+        topRecordings: [],
         hasLoadedOverview: false,
         hasLoadedTopArtists: false,
         hasLoadedTopReleases: false,
+        hasLoadedTopRecordings: false,
         savedAt: .distantPast
     )
 }

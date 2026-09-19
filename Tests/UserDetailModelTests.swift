@@ -21,6 +21,7 @@ final class UserDetailModelTests: XCTestCase {
         XCTAssertEqual(model.snapshot.listenCount, 42)
         XCTAssertTrue(model.snapshot.topArtists.isEmpty)
         XCTAssertTrue(model.snapshot.topReleases.isEmpty)
+        XCTAssertTrue(model.snapshot.topRecordings.isEmpty)
         let overviewCalls = await provider.callNames
         XCTAssertEqual(overviewCalls, ["recent:target-user", "playing:target-user", "count:target-user"])
 
@@ -38,6 +39,14 @@ final class UserDetailModelTests: XCTestCase {
             "recent:target-user", "playing:target-user", "count:target-user",
             "artists:target-user", "releases:target-user",
         ])
+
+        await model.loadTopRecordings()
+
+        XCTAssertEqual(model.snapshot.topRecordings.first?.title, "Fixture track")
+        let callsAfterTracks = await provider.callNames
+        XCTAssertEqual(callsAfterTracks.last, "recordings:target-user")
+        let recordingCounts = await provider.topRecordingCounts
+        XCTAssertEqual(recordingCounts, [6])
     }
 
     func testArtistDestinationsRequireCanonicalIdentityWithoutHydration() async throws {
@@ -86,6 +95,26 @@ final class UserDetailModelTests: XCTestCase {
         XCTAssertEqual(calls, ["releases:target-user"])
     }
 
+    func testTrackDestinationsRequireRecordingMBIDWithoutHydration() async throws {
+        let provider = UserDetailFixtureProvider()
+        let model = UserDetailModel(
+            user: SearchUser(username: "target-user"),
+            token: "",
+            provider: provider,
+            cache: UserProfileCache()
+        )
+
+        await model.loadTopRecordings()
+
+        let mapped = try XCTUnwrap(model.snapshot.topRecordings.first)
+        let unmapped = try XCTUnwrap(model.snapshot.topRecordings.last)
+        XCTAssertEqual(mapped.detailDestination?.identity.mbid, UUID(uuidString: "1bf70850-1a66-4e77-b751-51410977ff04"))
+        XCTAssertNil(unmapped.detailDestination)
+        XCTAssertNotNil(unmapped.releaseMBID)
+        let calls = await provider.callNames
+        XCTAssertEqual(calls, ["recordings:target-user"])
+    }
+
     func testFreshCacheUsesNormalizedUsernameWithoutNetworkCalls() async {
         let cache = UserProfileCache()
         var cached = UserProfileSnapshot.empty
@@ -124,7 +153,7 @@ final class UserDetailModelTests: XCTestCase {
         cached.savedAt = .now
         await cache.save(
             cached,
-            for: "target-user",
+            for: "  TARGET-USER  ",
             scope: .authenticated(token: "")
         )
         let provider = UserDetailFixtureProvider()
@@ -139,6 +168,35 @@ final class UserDetailModelTests: XCTestCase {
         await model.loadTopReleases()
 
         XCTAssertEqual(model.snapshot.topReleases.first?.name, "Cached album")
+        let calls = await provider.callNames
+        XCTAssertTrue(calls.isEmpty)
+    }
+
+    func testFreshCachedTopRecordingsDoNotMakeANetworkCall() async {
+        let cache = UserProfileCache()
+        var cached = UserProfileSnapshot.empty
+        cached.recentListens = [UserDetailFixtureProvider.listen(title: "Cached track")]
+        cached.topRecordings = [UserDetailFixtureProvider.recording(title: "Cached ranked track")]
+        cached.hasLoadedOverview = true
+        cached.hasLoadedTopRecordings = true
+        cached.savedAt = .now
+        await cache.save(
+            cached,
+            for: "  TARGET-USER  ",
+            scope: .authenticated(token: "")
+        )
+        let provider = UserDetailFixtureProvider()
+        let model = UserDetailModel(
+            user: SearchUser(username: "target-user"),
+            token: "",
+            provider: provider,
+            cache: cache
+        )
+
+        await model.load()
+        await model.loadTopRecordings()
+
+        XCTAssertEqual(model.snapshot.topRecordings.first?.title, "Cached ranked track")
         let calls = await provider.callNames
         XCTAssertTrue(calls.isEmpty)
     }
@@ -176,10 +234,13 @@ final class UserDetailModelTests: XCTestCase {
         await model.loadTopArtists()
         await model.loadTopReleases()
         await model.loadTopReleases()
+        await model.loadTopRecordings()
+        await model.loadTopRecordings()
 
         let calls = await provider.callNames
-        XCTAssertEqual(calls.count, 5)
+        XCTAssertEqual(calls.count, 6)
         XCTAssertEqual(calls.filter { $0 == "releases:target-user" }.count, 1)
+        XCTAssertEqual(calls.filter { $0 == "recordings:target-user" }.count, 1)
     }
 
     func testCacheFreshnessExpiresWithoutLosingStaleValue() async {
@@ -292,6 +353,94 @@ final class UserDetailModelTests: XCTestCase {
         XCTAssertEqual(calls, ["releases:target-user"])
     }
 
+    func testStaleTopRecordingsRefreshWithoutReloadingFreshOverview() async {
+        let cache = UserProfileCache(timeToLive: 300)
+        var cached = UserProfileSnapshot.empty
+        cached.recentListens = [UserDetailFixtureProvider.listen(title: "Cached track")]
+        cached.listenCount = 99
+        cached.topRecordings = [UserDetailFixtureProvider.recording(title: "Old track")]
+        cached.hasLoadedOverview = true
+        cached.hasLoadedTopRecordings = true
+        let now = Date.now
+        await cache.save(
+            cached,
+            for: "target-user",
+            scope: .authenticated(token: ""),
+            now: now.addingTimeInterval(-301)
+        )
+        await cache.saveOverview(
+            cached,
+            for: "target-user",
+            scope: .authenticated(token: ""),
+            now: now
+        )
+        let provider = UserDetailFixtureProvider()
+        let model = UserDetailModel(
+            user: SearchUser(username: "target-user"),
+            token: "",
+            provider: provider,
+            cache: cache
+        )
+
+        await model.load()
+        XCTAssertEqual(model.snapshot.topRecordings.first?.title, "Old track")
+        XCTAssertEqual(model.topRecordingsPhase, .ready)
+        await model.loadTopRecordings()
+
+        XCTAssertEqual(model.snapshot.topRecordings.first?.title, "Fixture track")
+        let calls = await provider.callNames
+        XCTAssertEqual(calls, ["recordings:target-user"])
+    }
+
+    func testFailedStaleTrackRefreshKeepsRowsAndAllowsExplicitRetry() async {
+        let cache = UserProfileCache(timeToLive: 300)
+        var cached = UserProfileSnapshot.empty
+        cached.recentListens = [UserDetailFixtureProvider.listen(title: "Cached track")]
+        cached.topRecordings = [UserDetailFixtureProvider.recording(title: "Saved track")]
+        cached.hasLoadedOverview = true
+        cached.hasLoadedTopRecordings = true
+        let now = Date.now
+        await cache.save(
+            cached,
+            for: "target-user",
+            scope: .authenticated(token: ""),
+            now: now.addingTimeInterval(-301)
+        )
+        await cache.saveOverview(
+            cached,
+            for: "target-user",
+            scope: .authenticated(token: ""),
+            now: now
+        )
+        let provider = UserDetailFixtureProvider(recordingFailures: 1)
+        let model = UserDetailModel(
+            user: SearchUser(username: "target-user"),
+            token: "",
+            provider: provider,
+            cache: cache
+        )
+
+        await model.load()
+        await model.loadTopRecordings()
+
+        XCTAssertEqual(model.snapshot.topRecordings.first?.title, "Saved track")
+        XCTAssertEqual(model.topRecordingsPhase, .ready)
+        XCTAssertNotNil(model.topRecordingsErrorMessage)
+
+        await model.loadTopRecordings()
+        var calls = await provider.callNames
+        XCTAssertEqual(calls.filter { $0 == "recordings:target-user" }.count, 1)
+
+        await model.loadTopRecordings(retrying: true)
+
+        XCTAssertEqual(model.snapshot.topRecordings.first?.title, "Fixture track")
+        XCTAssertNil(model.topRecordingsErrorMessage)
+        calls = await provider.callNames
+        XCTAssertEqual(calls.filter { $0 == "recordings:target-user" }.count, 2)
+        let counts = await provider.topRecordingCounts
+        XCTAssertEqual(counts, [6, 6])
+    }
+
     func testManualRefreshOnlyReloadsAlbumsAfterAlbumsWereLoaded() async {
         let provider = UserDetailFixtureProvider()
         let model = UserDetailModel(
@@ -310,6 +459,26 @@ final class UserDetailModelTests: XCTestCase {
         await model.refresh()
         calls = await provider.callNames
         XCTAssertEqual(calls.filter { $0 == "releases:target-user" }.count, 2)
+    }
+
+    func testManualRefreshOnlyReloadsTracksAfterTracksWereLoaded() async {
+        let provider = UserDetailFixtureProvider()
+        let model = UserDetailModel(
+            user: SearchUser(username: "target-user"),
+            token: "",
+            provider: provider,
+            cache: UserProfileCache()
+        )
+
+        await model.load()
+        await model.refresh()
+        var calls = await provider.callNames
+        XCTAssertEqual(calls.filter { $0 == "recordings:target-user" }.count, 0)
+
+        await model.loadTopRecordings()
+        await model.refresh()
+        calls = await provider.callNames
+        XCTAssertEqual(calls.filter { $0 == "recordings:target-user" }.count, 2)
     }
 
     func testRefreshDuringInitialAlbumLoadDoesNotDuplicateOrDiscardIt() async {
@@ -332,6 +501,28 @@ final class UserDetailModelTests: XCTestCase {
         XCTAssertEqual(model.snapshot.topReleases.first?.name, "Fixture album")
         let calls = await provider.callNames
         XCTAssertEqual(calls.filter { $0 == "releases:target-user" }.count, 1)
+    }
+
+    func testRefreshDuringInitialTrackLoadDoesNotDuplicateOrDiscardIt() async {
+        let recordingGate = UserDetailAlbumGate()
+        let provider = UserDetailFixtureProvider(recordingGate: recordingGate)
+        let model = UserDetailModel(
+            user: SearchUser(username: "target-user"),
+            token: "",
+            provider: provider,
+            cache: UserProfileCache()
+        )
+        await model.load()
+
+        let initialLoad = Task { await model.loadTopRecordings() }
+        await recordingGate.waitUntilRequestArrives()
+        await model.refresh()
+        await recordingGate.releaseRequest()
+        await initialLoad.value
+
+        XCTAssertEqual(model.snapshot.topRecordings.first?.title, "Fixture track")
+        let calls = await provider.callNames
+        XCTAssertEqual(calls.filter { $0 == "recordings:target-user" }.count, 1)
     }
 
     func testAlbumCacheSurvivesOverviewAndArtistSaves() async {
@@ -374,6 +565,56 @@ final class UserDetailModelTests: XCTestCase {
         XCTAssertEqual(cached?.isTopReleasesFresh, true)
     }
 
+    func testTrackCacheSurvivesOverviewArtistAndAlbumSaves() async {
+        let cache = UserProfileCache()
+        var trackSnapshot = UserProfileSnapshot.empty
+        trackSnapshot.topRecordings = [UserDetailFixtureProvider.recording(title: "Preserved track")]
+        trackSnapshot.hasLoadedTopRecordings = true
+        trackSnapshot.savedAt = .now
+        await cache.saveTopRecordings(
+            trackSnapshot,
+            for: "target-user",
+            scope: .authenticated(token: "")
+        )
+
+        var overviewSnapshot = UserProfileSnapshot.empty
+        overviewSnapshot.recentListens = [UserDetailFixtureProvider.listen(title: "Fresh history")]
+        overviewSnapshot.hasLoadedOverview = true
+        overviewSnapshot.savedAt = .now
+        await cache.saveOverview(
+            overviewSnapshot,
+            for: "target-user",
+            scope: .authenticated(token: "")
+        )
+
+        var artistSnapshot = UserProfileSnapshot.empty
+        artistSnapshot.topArtists = [RankedArtist(mbid: nil, name: "Fresh artist", listenCount: 9)]
+        artistSnapshot.hasLoadedTopArtists = true
+        artistSnapshot.savedAt = .now
+        await cache.saveTopArtists(
+            artistSnapshot,
+            for: "target-user",
+            scope: .authenticated(token: "")
+        )
+
+        var albumSnapshot = UserProfileSnapshot.empty
+        albumSnapshot.topReleases = [UserDetailFixtureProvider.release(name: "Fresh album")]
+        albumSnapshot.hasLoadedTopReleases = true
+        albumSnapshot.savedAt = .now
+        await cache.saveTopReleases(
+            albumSnapshot,
+            for: "target-user",
+            scope: .authenticated(token: "")
+        )
+
+        let cached = await cache.value(
+            for: "target-user",
+            scope: .authenticated(token: "")
+        )
+        XCTAssertEqual(cached?.snapshot.topRecordings.first?.title, "Preserved track")
+        XCTAssertEqual(cached?.isTopRecordingsFresh, true)
+    }
+
     func testCacheEvictsLeastRecentlyUsedEntryAtCapacity() async {
         let cache = UserProfileCache(maximumEntryCount: 2)
         let start = Date(timeIntervalSince1970: 1_000)
@@ -394,7 +635,9 @@ final class UserDetailModelTests: XCTestCase {
         let cache = UserProfileCache()
         var cached = UserProfileSnapshot.empty
         cached.recentListens = [UserDetailFixtureProvider.listen(title: "First credential")]
+        cached.topRecordings = [UserDetailFixtureProvider.recording(title: "First credential track")]
         cached.hasLoadedOverview = true
+        cached.hasLoadedTopRecordings = true
         await cache.save(
             cached,
             for: "listener",
@@ -409,27 +652,38 @@ final class UserDetailModelTests: XCTestCase {
             cache: cache
         )
         await model.load()
+        await model.loadTopRecordings()
 
         XCTAssertEqual(model.snapshot.recentListens.first?.recording.title, "Recent track")
+        XCTAssertEqual(model.snapshot.topRecordings.first?.title, "Fixture track")
         let calls = await provider.callNames
-        XCTAssertEqual(calls, ["recent:LISTENER", "playing:LISTENER", "count:LISTENER"])
+        XCTAssertEqual(calls, [
+            "recent:LISTENER", "playing:LISTENER", "count:LISTENER", "recordings:LISTENER",
+        ])
     }
 }
 
 private actor UserDetailFixtureProvider: ListeningProvider {
     private(set) var callNames: [String] = []
+    private(set) var topRecordingCounts: [Int] = []
     private let failPlayingNow: Bool
     private let failListenCount: Bool
     private let albumGate: UserDetailAlbumGate?
+    private let recordingGate: UserDetailAlbumGate?
+    private var recordingFailuresRemaining: Int
 
     init(
         failPlayingNow: Bool = false,
         failListenCount: Bool = false,
-        albumGate: UserDetailAlbumGate? = nil
+        albumGate: UserDetailAlbumGate? = nil,
+        recordingGate: UserDetailAlbumGate? = nil,
+        recordingFailures: Int = 0
     ) {
         self.failPlayingNow = failPlayingNow
         self.failListenCount = failListenCount
         self.albumGate = albumGate
+        self.recordingGate = recordingGate
+        self.recordingFailuresRemaining = recordingFailures
     }
 
     func validateToken() async throws -> String { "fixture" }
@@ -480,7 +734,29 @@ private actor UserDetailFixtureProvider: ListeningProvider {
             ),
         ]
     }
-    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] { [] }
+    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] {
+        callNames.append("recordings:\(username)")
+        topRecordingCounts.append(count)
+        if let recordingGate {
+            await recordingGate.waitForRelease()
+        }
+        if recordingFailuresRemaining > 0 {
+            recordingFailuresRemaining -= 1
+            throw UserDetailFixtureError.failed
+        }
+        return [
+            Self.recording(),
+            RankedRecording(
+                mbid: nil,
+                releaseMBID: UUID(uuidString: "1390f1b7-7851-48ae-983d-eb8a48f78048"),
+                title: "Unmapped track",
+                artistName: "Fixture artist",
+                artistMBIDs: [],
+                releaseTitle: "Fixture album",
+                listenCount: 5
+            ),
+        ]
+    }
     func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
         ListeningActivity(period: period, from: .distantPast, to: .distantPast, lastUpdated: .distantPast, buckets: [])
     }
@@ -513,6 +789,18 @@ private actor UserDetailFixtureProvider: ListeningProvider {
             name: name,
             artistName: "Fixture artist",
             artistMBIDs: [UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab")!],
+            listenCount: 24
+        )
+    }
+
+    static func recording(name: String = "Fixture track", title: String? = nil) -> RankedRecording {
+        RankedRecording(
+            mbid: UUID(uuidString: "1bf70850-1a66-4e77-b751-51410977ff04"),
+            releaseMBID: UUID(uuidString: "1390f1b7-7851-48ae-983d-eb8a48f78048"),
+            title: title ?? name,
+            artistName: "Fixture artist",
+            artistMBIDs: [UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab")!],
+            releaseTitle: "Fixture album",
             listenCount: 24
         )
     }

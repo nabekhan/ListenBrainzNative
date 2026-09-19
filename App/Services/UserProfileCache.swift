@@ -6,6 +6,7 @@ actor UserProfileCache {
         let isOverviewFresh: Bool
         let isTopArtistsFresh: Bool
         let isTopReleasesFresh: Bool
+        let isTopRecordingsFresh: Bool
 
         var isFresh: Bool { isOverviewFresh }
     }
@@ -17,6 +18,7 @@ actor UserProfileCache {
         var overviewSavedAt: Date?
         var topArtistsSavedAt: Date?
         var topReleasesSavedAt: Date?
+        var topRecordingsSavedAt: Date?
         var lastAccessedAt: Date
     }
 
@@ -59,7 +61,12 @@ actor UserProfileCache {
                 entry.topReleasesSavedAt,
                 at: now,
                 timeToLive: timeToLive
-            ) && entry.snapshot.hasLoadedTopReleases
+            ) && entry.snapshot.hasLoadedTopReleases,
+            isTopRecordingsFresh: Self.isFresh(
+                entry.topRecordingsSavedAt,
+                at: now,
+                timeToLive: timeToLive
+            ) && entry.snapshot.hasLoadedTopRecordings
         )
     }
 
@@ -74,6 +81,7 @@ actor UserProfileCache {
             overviewSavedAt: snapshot.hasLoadedOverview ? now : nil,
             topArtistsSavedAt: snapshot.hasLoadedTopArtists ? now : nil,
             topReleasesSavedAt: snapshot.hasLoadedTopReleases ? now : nil,
+            topRecordingsSavedAt: snapshot.hasLoadedTopRecordings ? now : nil,
             lastAccessedAt: now
         )
         trimIfNeeded()
@@ -91,6 +99,7 @@ actor UserProfileCache {
             overviewSavedAt: nil,
             topArtistsSavedAt: nil,
             topReleasesSavedAt: nil,
+            topRecordingsSavedAt: nil,
             lastAccessedAt: now
         )
         entry.snapshot.recentListens = snapshot.recentListens
@@ -118,6 +127,7 @@ actor UserProfileCache {
             overviewSavedAt: nil,
             topArtistsSavedAt: nil,
             topReleasesSavedAt: nil,
+            topRecordingsSavedAt: nil,
             lastAccessedAt: now
         )
         entry.snapshot.topArtists = snapshot.topArtists
@@ -143,6 +153,7 @@ actor UserProfileCache {
             overviewSavedAt: nil,
             topArtistsSavedAt: nil,
             topReleasesSavedAt: nil,
+            topRecordingsSavedAt: nil,
             lastAccessedAt: now
         )
         entry.snapshot.topReleases = snapshot.topReleases
@@ -150,6 +161,32 @@ actor UserProfileCache {
         entry.snapshot.savedAt = snapshot.savedAt
         if snapshot.hasLoadedTopReleases {
             entry.topReleasesSavedAt = now
+        }
+        entry.lastAccessedAt = now
+        entries[key] = entry
+        trimIfNeeded()
+    }
+
+    func saveTopRecordings(
+        _ snapshot: UserProfileSnapshot,
+        for username: String,
+        scope: RequestGate.ReadScope,
+        now: Date = .now
+    ) {
+        let key = Self.key(for: username, scope: scope)
+        var entry = entries[key] ?? Entry(
+            snapshot: .empty,
+            overviewSavedAt: nil,
+            topArtistsSavedAt: nil,
+            topReleasesSavedAt: nil,
+            topRecordingsSavedAt: nil,
+            lastAccessedAt: now
+        )
+        entry.snapshot.topRecordings = snapshot.topRecordings
+        entry.snapshot.hasLoadedTopRecordings = snapshot.hasLoadedTopRecordings
+        entry.snapshot.savedAt = snapshot.savedAt
+        if snapshot.hasLoadedTopRecordings {
+            entry.topRecordingsSavedAt = now
         }
         entry.lastAccessedAt = now
         entries[key] = entry

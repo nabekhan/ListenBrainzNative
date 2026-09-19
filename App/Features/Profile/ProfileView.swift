@@ -38,6 +38,7 @@ struct ProfileView: View {
                     CurrentPinSection(isOwner: model.account.isAuthenticated)
                     if !model.snapshot.topArtists.isEmpty { favoriteArtists }
                     if !model.snapshot.topReleases.isEmpty { favoriteReleases }
+                    if !model.snapshot.topRecordings.isEmpty { favoriteRecordings }
                     ProfilePlaylistSection(
                         model: playlistModel,
                         selection: $selectedPlaylistCategory,
@@ -164,6 +165,16 @@ struct ProfileView: View {
                     releaseRow(release)
                 }
             }
+        }
+    }
+
+    private var favoriteRecordings: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Most played tracks",
+                subtitle: "Tracks you return to most"
+            )
+            UserProfileTopRecordingsList(recordings: Array(model.snapshot.topRecordings.prefix(6)))
         }
     }
 

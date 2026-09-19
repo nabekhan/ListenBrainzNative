@@ -10,7 +10,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Listen count | Y | Y | Y | Y | Y | Y | P0 | Profile/home summary |
 | Delete a listen | Y | Y | Y | — | Y | Y | P1 | Native authenticated History action landed with track-specific confirmation, exact timestamp/MSID identity, durable ambiguous-outcome protection, and no automatic replay |
 | Submit/batch-submit/Playing Now | Y | Y | Y | ? | Y | Y | P2 | Separate capture layer; do not block viewer |
-| User search and visited-user profiles | Y | Y | Y | Y | Y | Y | P1 | Native scoped search/profile landed with staged overview, independently lazy all-time artist and release sections, bounded cache, canonical navigation, and no N+1 hydration |
+| User search and visited-user profiles | Y | Y | Y | Y | Y | Y | P1 | Native scoped search/profile landed with staged overview, independently lazy all-time artist, release, and track sections, bounded cache, canonical navigation, and no N+1 hydration |
 | Artist/release/recording search | Y* | Y | Y | — | — | Y | P1 | Native MusicBrainz scopes landed; `*` adjacent MB APIs |
 | Playlist search | Y | Y | Y | — | Y | Y | P1 | Public search added to LBKit and native scoped search |
 | Recording/release-group/artist metadata | Y | Y | Y | P | Y | Y | P0 | MBIDs are canonical identities |
@@ -22,7 +22,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Top artists | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
 | Top releases/albums | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
 | Top release groups | Y | Y | Y | Y | Y | P | P1 | Lazy native Taste ranking; one cached aggregate read, canonical group routing, no row hydration, and no release-identity conflation |
-| Top recordings/tracks | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
+| Top recordings/tracks | Y | Y | Y | Y | Y | Y | P0 | Signed-in Profile reuses already-loaded rankings; visited profiles add one lazy cached aggregate read |
 | Listening activity | Y | Y | Y | Y | Y | Y | P0 | Native Swift Charts |
 | Daily/hour-of-day activity | Y | Y | Y | Y | Y | — | P1 | Native cached, selectable 7×24 UTC heatmap across the seven server periods |
 | Artist activity | Y | Y | Y | P | Y | P | P1 | Native on-demand ranked artist/album report landed; one cached aggregate read per selected range and no row hydration |

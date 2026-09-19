@@ -27,6 +27,8 @@ final class UserDetailModel {
     private(set) var phase: Phase = .idle
     private(set) var topArtistsPhase: SectionPhase = .idle
     private(set) var topReleasesPhase: SectionPhase = .idle
+    private(set) var topRecordingsPhase: SectionPhase = .idle
+    private(set) var topRecordingsErrorMessage: String?
     private var didLoadOverview = false
     private var didLoadTopArtists = false
     private var topArtistsNeedRefresh = false
@@ -34,9 +36,13 @@ final class UserDetailModel {
     private var didLoadTopReleases = false
     private var topReleasesNeedRefresh = false
     private var isLoadingTopReleases = false
+    private var didLoadTopRecordings = false
+    private var topRecordingsNeedRefresh = false
+    private var isLoadingTopRecordings = false
     private var overviewRequestID = UUID()
     private var topArtistsRequestID = UUID()
     private var topReleasesRequestID = UUID()
+    private var topRecordingsRequestID = UUID()
     private let cacheScope: RequestGate.ReadScope
 
     init(
@@ -69,6 +75,11 @@ final class UserDetailModel {
                 topReleasesNeedRefresh = !cached.isTopReleasesFresh
                 topReleasesPhase = .ready
             }
+            if snapshot.hasLoadedTopRecordings {
+                didLoadTopRecordings = cached.isTopRecordingsFresh
+                topRecordingsNeedRefresh = !cached.isTopRecordingsFresh
+                topRecordingsPhase = .ready
+            }
             if cached.isOverviewFresh {
                 phase = .ready
                 return
@@ -84,6 +95,7 @@ final class UserDetailModel {
     func refresh() async {
         let shouldRefreshTopArtists = snapshot.hasLoadedTopArtists && !isLoadingTopArtists
         let shouldRefreshTopReleases = snapshot.hasLoadedTopReleases && !isLoadingTopReleases
+        let shouldRefreshTopRecordings = snapshot.hasLoadedTopRecordings && !isLoadingTopRecordings
         overviewRequestID = UUID()
         if shouldRefreshTopArtists {
             topArtistsRequestID = UUID()
@@ -95,6 +107,11 @@ final class UserDetailModel {
             didLoadTopReleases = false
             topReleasesNeedRefresh = true
         }
+        if shouldRefreshTopRecordings {
+            topRecordingsRequestID = UUID()
+            didLoadTopRecordings = false
+            topRecordingsNeedRefresh = true
+        }
         phase = snapshot.recentListens.isEmpty ? .loading : .refreshing
         await refreshOverview()
         if !Task.isCancelled, shouldRefreshTopArtists {
@@ -102,6 +119,9 @@ final class UserDetailModel {
         }
         if !Task.isCancelled, shouldRefreshTopReleases {
             await loadTopReleases(retrying: true)
+        }
+        if !Task.isCancelled, shouldRefreshTopRecordings {
+            await loadTopRecordings(retrying: true)
         }
     }
 
@@ -184,6 +204,51 @@ final class UserDetailModel {
             topReleasesPhase = snapshot.topReleases.isEmpty
                 ? .failed(error.localizedDescription)
                 : .ready
+        }
+    }
+
+    func loadTopRecordings(retrying: Bool = false) async {
+        let needsNetworkLoad = retrying || topRecordingsNeedRefresh || !snapshot.hasLoadedTopRecordings
+        if !needsNetworkLoad {
+            topRecordingsPhase = .ready
+            return
+        }
+        guard !isLoadingTopRecordings else { return }
+        guard !didLoadTopRecordings || retrying else { return }
+        didLoadTopRecordings = true
+        isLoadingTopRecordings = true
+        topRecordingsPhase = snapshot.topRecordings.isEmpty ? .loading : .ready
+        let requestID = UUID()
+        topRecordingsRequestID = requestID
+        defer {
+            if topRecordingsRequestID == requestID {
+                isLoadingTopRecordings = false
+            }
+        }
+
+        do {
+            let recordings = try await provider.topRecordings(username: user.username, count: 6)
+            guard topRecordingsRequestID == requestID else { return }
+            snapshot.topRecordings = recordings
+            snapshot.hasLoadedTopRecordings = true
+            snapshot.savedAt = .now
+            topRecordingsNeedRefresh = false
+            topRecordingsErrorMessage = nil
+            topRecordingsPhase = .ready
+            await cache.saveTopRecordings(snapshot, for: user.username, scope: cacheScope)
+        } catch is CancellationError {
+            guard topRecordingsRequestID == requestID else { return }
+            didLoadTopRecordings = false
+            topRecordingsPhase = snapshot.hasLoadedTopRecordings ? .ready : .idle
+        } catch {
+            guard topRecordingsRequestID == requestID else { return }
+            if snapshot.topRecordings.isEmpty {
+                topRecordingsErrorMessage = nil
+                topRecordingsPhase = .failed(error.localizedDescription)
+            } else {
+                topRecordingsErrorMessage = error.localizedDescription
+                topRecordingsPhase = .ready
+            }
         }
     }
 

@@ -118,6 +118,7 @@ struct UserDetailView: View {
         recentListens
         topArtists
         topReleases
+        topRecordings
     }
 
     private var socialLink: some View {
@@ -232,6 +233,57 @@ struct UserDetailView: View {
             }
         }
         .task { await model.loadTopReleases() }
+    }
+
+    private var topRecordings: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Most played tracks",
+                subtitle: "Tracks this listener returns to most"
+            )
+            switch model.topRecordingsPhase {
+            case .idle, .loading:
+                HStack { Spacer(); ProgressView("Loading tracks…"); Spacer() }
+                    .frame(minHeight: 116)
+            case let .failed(message):
+                ContentUnavailableView {
+                    Label("Tracks unavailable", systemImage: "music.note.list")
+                } description: {
+                    Text(message)
+                } actions: {
+                    Button("Try again") { Task { await model.loadTopRecordings(retrying: true) } }
+                }
+                .frame(maxWidth: .infinity, minHeight: 150)
+            case .ready where model.snapshot.topRecordings.isEmpty:
+                ContentUnavailableView("No track stats yet", systemImage: "music.note.list")
+                    .frame(maxWidth: .infinity, minHeight: 130)
+            case .ready:
+                VStack(alignment: .leading, spacing: 10) {
+                    UserProfileTopRecordingsList(recordings: Array(model.snapshot.topRecordings.prefix(6)))
+                    if let message = model.topRecordingsErrorMessage {
+                        trackRefreshNotice(message: message)
+                    }
+                }
+            }
+        }
+        .task { await model.loadTopRecordings() }
+    }
+
+    private func trackRefreshNotice(message: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Couldn’t update tracks", systemImage: "wifi.exclamationmark")
+                .font(.subheadline.weight(.semibold))
+            Text("Saved tracks are still shown. \(message)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button("Try again") {
+                Task { await model.loadTopRecordings(retrying: true) }
+            }
+            .buttonStyle(.bordered)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.thinMaterial, in: .rect(cornerRadius: 14, style: .continuous))
     }
 
     private func metric(_ value: String, label: String) -> some View {
@@ -350,6 +402,124 @@ private struct UserProfileTopReleasesList: View {
         .accessibilityLabel(
             "\(release.name), \(release.artistName), \(listenCountLabel(release.listenCount))"
         )
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        "\(count.formatted()) \(count == 1 ? "listen" : "listens")"
+    }
+}
+
+struct UserProfileTopRecordingsList: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let recordings: [RankedRecording]
+    var loadsArtwork = true
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ForEach(recordings) { recording in
+                recordingRow(recording)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func recordingRow(_ recording: RankedRecording) -> some View {
+        if let destination = recording.detailDestination {
+            NavigationLink(value: destination) {
+                recordingRowContents(recording, showsDisclosure: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens track details")
+        } else {
+            recordingRowContents(recording, showsDisclosure: false)
+        }
+    }
+
+    @ViewBuilder
+    private func recordingRowContents(_ recording: RankedRecording, showsDisclosure: Bool) -> some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top) {
+                        ArtworkView(
+                            url: loadsArtwork ? recording.recording.artworkURL : nil,
+                            title: recording.title,
+                            cornerRadius: 12
+                        )
+                        .frame(width: 76, height: 76)
+                        Spacer(minLength: 12)
+                        if showsDisclosure {
+                            Image(systemName: "chevron.right")
+                                .font(.body.bold())
+                                .foregroundStyle(.tertiary)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    recordingText(recording, titleFont: .headline, secondaryFont: .body)
+                    Text(listenCountLabel(recording.listenCount))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                HStack(spacing: 13) {
+                    ArtworkView(
+                        url: loadsArtwork ? recording.recording.artworkURL : nil,
+                        title: recording.title,
+                        cornerRadius: 10
+                    )
+                    .frame(width: 60, height: 60)
+                    VStack(alignment: .leading, spacing: 3) {
+                        recordingText(recording, titleFont: .body.weight(.semibold), secondaryFont: .subheadline)
+                        Text(listenCountLabel(recording.listenCount))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    if showsDisclosure {
+                        Image(systemName: "chevron.right")
+                            .font(.caption.bold())
+                            .foregroundStyle(.tertiary)
+                            .accessibilityHidden(true)
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(.thinMaterial, in: .rect(cornerRadius: 16, style: .continuous))
+        .contentShape(.rect)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel(for: recording))
+    }
+
+    @ViewBuilder
+    private func recordingText(
+        _ recording: RankedRecording,
+        titleFont: Font,
+        secondaryFont: Font
+    ) -> some View {
+        Text(recording.title)
+            .font(titleFont)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            .fixedSize(horizontal: false, vertical: true)
+        Text(recording.artistName)
+            .font(secondaryFont)
+            .foregroundStyle(.secondary)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+            .fixedSize(horizontal: false, vertical: true)
+        if let releaseTitle = recording.releaseTitle, !releaseTitle.isEmpty {
+            Text(releaseTitle)
+                .font(secondaryFont)
+                .foregroundStyle(.secondary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func accessibilityLabel(for recording: RankedRecording) -> String {
+        [recording.title, recording.artistName, recording.releaseTitle, listenCountLabel(recording.listenCount)]
+            .compactMap { $0 }
+            .joined(separator: ", ")
     }
 
     private func listenCountLabel(_ count: Int) -> String {
@@ -525,6 +695,50 @@ struct UserProfileAlbumsVisualQAScreen: View {
                         subtitle: "Albums this listener returns to most"
                     )
                     UserProfileTopReleasesList(releases: releases, loadsArtwork: false)
+                }
+                .padding(18)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("music-friend")
+            .navigationBarTitleDisplayMode(.inline)
+            .mediaDestinations(model: model)
+        }
+    }
+}
+
+struct UserProfileTracksVisualQAScreen: View {
+    @Bindable var model: ListeningModel
+
+    private let recordings = [
+        RankedRecording(
+            mbid: nil,
+            releaseMBID: UUID(uuidString: "1390f1b7-7851-48ae-983d-eb8a48f78048"),
+            title: "A Very Long Unmapped Track Title for Layout Inspection and VoiceOver",
+            artistName: "Japanese Breakfast",
+            artistMBIDs: [],
+            releaseTitle: "A Very Long Unmapped Album Title for Layout Inspection",
+            listenCount: 587
+        ),
+        RankedRecording(
+            mbid: UUID(uuidString: "1bf70850-1a66-4e77-b751-51410977ff04"),
+            releaseMBID: UUID(uuidString: "1390f1b7-7851-48ae-983d-eb8a48f78048"),
+            title: "Belinda Says",
+            artistName: "Alvvays",
+            artistMBIDs: [UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab")!],
+            releaseTitle: "Blue Rev",
+            listenCount: 423
+        ),
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    SectionHeader(
+                        title: "Most played tracks",
+                        subtitle: "Tracks this listener returns to most"
+                    )
+                    UserProfileTopRecordingsList(recordings: recordings, loadsArtwork: false)
                 }
                 .padding(18)
             }
