@@ -7,7 +7,7 @@ Snapshot: 2026-09-19. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-
 | User search/token validation | SUPPORTED | Typed public API | Reuse |
 | Recent listens/count/Playing Now | SUPPORTED | Strict `min_ts`/`max_ts` bounds, timestamp pagination, and listen submission included | Reuse through the shared gate; app-owned History state supplies DST-safe local-day bounds and overlap de-duplication |
 | Delete listen | SUPPORTED | Exact authenticated timestamp/MSID request exists; local regression coverage now fixes the path, method, body, status map, and truncated-second encoding | Reuse through the shared mutation gate; native History flow adds account validation and durable accepted/uncertain replay protection |
-| Submit/batch submit | SUPPORTED | Typed single, batch, and Playing Now submission operations exist | Reuse later; keep capture separate from the viewer |
+| Submit/batch submit | SUPPORTED | Typed single, batch, and Playing Now submission operations exist | Reused for the explicit single-listen and Playing Now composer; keep automatic capture and batch import separate from the viewer |
 | Similar users/pairwise similarity | SUPPORTED | Typed models | Reuse |
 | Followers/following/follow/unfollow | SUPPORTED | Typed social client with endpoint-specific status handling | Reuse native Social slice; upstream candidate |
 | Connected services/latest import | SUPPORTED | Core client methods; services username path is now segment-safe in the vendored Kit | Reused for the authenticated native status list; latest import remains staged |

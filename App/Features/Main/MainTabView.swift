@@ -178,7 +178,16 @@ struct MainTabView: View {
 
     var body: some View {
         #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-demo")
+            if ProcessInfo.processInfo.arguments.contains("-brainz-log-listen-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-log-listen-success-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-log-listen-indeterminate-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-log-listen-error-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-log-listen-recovery-demo")
+            {
+                LogListenVisualQAScreen(mode: .listen)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-log-listen-playing-now-demo") {
+                LogListenVisualQAScreen(mode: .playingNow)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-unmapped-demo")
             {
                 ListenInspectionVisualQAScreen(listen: VisualQAHistoryProvider.inspectionPreview())

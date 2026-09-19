@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Bindable var model: ListeningModel
+    @State private var isLogListenPresented = false
 
     var body: some View {
         NavigationStack {
@@ -19,6 +20,12 @@ struct HomeView: View {
             .navigationTitle(greeting)
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                if model.account.isAuthenticated {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { isLogListenPresented = true } label: { Image(systemName: "plus.circle") }
+                            .accessibilityLabel("Log a listen")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { Task { await model.refresh() } } label: {
                         if model.phase == .refreshing {
@@ -31,6 +38,7 @@ struct HomeView: View {
                 }
             }
             .mediaDestinations(model: model)
+            .sheet(isPresented: $isLogListenPresented) { LogListenSheet(account: model.account) }
         }
     }
 

@@ -10,6 +10,7 @@ struct RecordingDetailView: View {
     @State private var didPresentRecommendationPreview = false
     @State private var pinBlurb = ""
     @State private var isPlaylistAddPresented = false
+    @State private var isLogListenPresented = false
 
     init(recording: Recording, model: ListeningModel) {
         self.recording = recording
@@ -73,6 +74,7 @@ struct RecordingDetailView: View {
                 PlaylistAddSheet(account: model.account, recordingMBID: mbid)
             }
         }
+        .sheet(isPresented: $isLogListenPresented) { LogListenSheet(account: model.account, recording: recording) }
         .alert(
             shareModel.notice?.kind == .confirmation ? "Recommendation Shared" : "Couldn’t Share Recommendation",
             isPresented: Binding(
@@ -101,6 +103,11 @@ struct RecordingDetailView: View {
 
     private var recommendationMenu: some View {
         Menu {
+            Button { isLogListenPresented = true } label: {
+                Label("Log a listen", systemImage: "plus.circle")
+            }
+            .disabled(!model.account.isAuthenticated)
+
             Button {
                 isPlaylistAddPresented = true
             } label: {
@@ -131,9 +138,9 @@ struct RecordingDetailView: View {
         }
         .accessibilityLabel("Recording actions")
         .accessibilityHint(
-            canAddToPlaylist || shareModel.canRecommend
-                ? "Add this recording to a playlist or share it through ListenBrainz"
-                : "Requires sign-in and a stable MusicBrainz recording identifier"
+            model.account.isAuthenticated
+                ? "Log a listen, add this recording to a playlist, or share it through ListenBrainz"
+                : "Sign in to log or share this recording"
         )
     }
 

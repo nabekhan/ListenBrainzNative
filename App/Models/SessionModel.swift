@@ -176,6 +176,12 @@ final class SessionModel {
                 || arguments.contains("-brainz-connected-services-demo")
                 || arguments.contains("-brainz-connected-services-empty-demo")
                 || arguments.contains("-brainz-connected-services-failure-demo")
+                || arguments.contains("-brainz-log-listen-demo")
+                || arguments.contains("-brainz-log-listen-playing-now-demo")
+                || arguments.contains("-brainz-log-listen-success-demo")
+                || arguments.contains("-brainz-log-listen-indeterminate-demo")
+                || arguments.contains("-brainz-log-listen-error-demo")
+                || arguments.contains("-brainz-log-listen-recovery-demo")
             {
                 state = .active(Account(username: "visual-listener", token: "visual-token"))
                 return true
