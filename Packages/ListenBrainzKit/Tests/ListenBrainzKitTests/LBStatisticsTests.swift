@@ -9,6 +9,53 @@ import Testing
 
 @Suite
 struct LBStatisticsTests {
+    @Test("Artist activity decodes user and sitewide payloads tolerantly")
+    func deserializeArtistActivity() throws {
+        let response = try JSONDecoder.ListenBrainz.decode(StatsArtistActivityRequest.Result.self, from: Data("""
+        { "payload": { "user_id": "listener", "artist_activity": [
+          { "name": "  Artist  ", "artist_name": "Artist", "artist_mbid": "11111111-1111-1111-1111-111111111111", "listen_count": "12", "albums": [
+            { "name": "Album", "listen_count": 7, "release_group_mbid": "22222222-2222-2222-2222-222222222222" }, { "name": null, "listen_count": null }
+          ] }
+        ], "range": "this_year", "from_ts": 1, "to_ts": 2, "last_updated": 3 } }
+        """.utf8))
+        #expect(response.payload.userID == "listener")
+        #expect(response.payload.artistActivity.first?.listenCount == 12)
+        #expect(response.payload.artistActivity.first?.artistMBID == "11111111-1111-1111-1111-111111111111")
+        #expect(response.payload.artistActivity.first?.albums.map(\.listenCount) == [7, 0])
+        #expect(response.payload.artistActivity.first?.albums.first?.releaseGroupMBID == "22222222-2222-2222-2222-222222222222")
+        #expect(response.payload.artistActivity.first?.albums.last?.name == "")
+
+        let sitewide = try JSONDecoder.ListenBrainz.decode(
+            StatsArtistActivityRequest.Result.self,
+            from: Data("""
+            { "payload": { "artist_activity": [], "range": "all_time", "from_ts": 1, "to_ts": 2, "last_updated": 3 } }
+            """.utf8)
+        )
+        #expect(sitewide.payload.userID == nil)
+    }
+
+    @Test("Artist activity request selects user or sitewide endpoint and maps no-content to nil")
+    func artistActivityRequestSemantics() async throws {
+        let user = StatsArtistActivityRequest(user: "test user", range: .thisMonth)
+        let sitewide = StatsArtistActivityRequest(user: nil, range: .allTime)
+        #expect(user.data.path == "/1/stats/user/test user/artist-activity")
+        #expect(sitewide.data.path == "/1/stats/sitewide/artist-activity")
+        #expect(user.data.queryItems == ["range": ["this_month"]])
+        #expect(user.data.statusErrors[204] == .noContent)
+        let apiClient = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+        let urlRequest = try apiClient.makeURLRequest(user)
+        #expect(urlRequest.url?.path == "/1/stats/user/test user/artist-activity")
+        #expect(urlRequest.url?.absoluteString.contains("test%20user") == true)
+        #expect(urlRequest.url?.query == "range=this_month")
+
+        let client = LBStatisticsClient(MockAPIClient(result: .failure(.noContent)))
+        #expect(try await client.artistActivity(user: "listener", range: .thisMonth) == nil)
+        #expect(try await client.artistActivitySitewide(range: .allTime) == nil)
+    }
     @Test("Daily activity decodes weekday hour buckets")
     func deserializeDailyActivity() throws {
         let response = try JSONDecoder.ListenBrainz.decode(

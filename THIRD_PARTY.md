@@ -4,7 +4,7 @@ This project is intended to be licensed under MPL-2.0. This file is updated when
 
 ## Included source
 
-- ListenBrainzKit, commit `c06b12f8c35bfee8fcf11dc973b5d78e23719cdf`, is vendored at `Packages/ListenBrainzKit/` and locally patched for transport correctness, public model access, tolerant identifier decoding, and typed social, social feed-read/feed-mutation, Pins, detail, Fresh Releases, recommendation-read, recommendation-feedback, era-activity, artist-evolution, current Year in Music, Year in Music art, popularity, generated LB Radio, and playlist create/edit/append APIs. It is licensed under MPL-2.0; its original license and per-file notices are preserved.
+- ListenBrainzKit, commit `c06b12f8c35bfee8fcf11dc973b5d78e23719cdf`, is vendored at `Packages/ListenBrainzKit/` and locally patched for transport correctness, public model access, tolerant identifier decoding, and typed social, social feed-read/feed-mutation, Pins, detail, Fresh Releases, recommendation-read, recommendation-feedback, era-activity, artist-evolution, artist-activity, current Year in Music, Year in Music art, popularity, generated LB Radio, and playlist create/edit/append APIs. It is licensed under MPL-2.0; its original license and per-file notices are preserved.
 - `App/Features/Taste/YearInMusicView.swift` adapts the composition and selected implementation patterns from Cassette's `WrappedStatHero.swift`, `WrappedTopArtistsSection.swift`, `WrappedTopAlbumsSection.swift`, `WrappedTopTracksSection.swift`, `MeshGradientBackground.swift`, and `WrappedYearPalette.swift` at commit `49da821`. Cassette is MPL-2.0, copyright Mathieu Dubart; the covered app file retains the MPL notice and attribution.
 - `App/Features/Playlist/PlaylistAddSheet.swift` adapts the destination-sheet structure and explicit duplicate-decision interaction from Minidisc's `Minidisc/Views/Browse/AddToPlaylistSheet.swift`, `Minidisc/ViewModels/AddToPlaylistViewModel.swift`, and `Minidisc/Models/Domain/PlaylistAppendIntent.swift` at commit `2072435702909a8ac313d7871ed7cf114a8e1012`. Minidisc is MPL-2.0; the covered app file retains the MPL notice and attribution. ListenBrainz-specific paging, rate limiting, mutation uncertainty, and occurrence-count reconciliation are implemented here.
 
@@ -21,6 +21,7 @@ All other application UI remains independently implemented from inspected behavi
 - Volta: artist-page visual reference only; GPL-3.0 code is not copied.
 - AppleMusicBottombarSwiftUI and FastScrobbler: behavior reference only; no license found, so code is not copied.
 - Autohop: statistics/history interaction reference for the heatmap, era hierarchy, and artist-evolution information hierarchy; MIT overall with named MPL-2.0 exceptions. No Autohop UI file was copied.
+- The current ListenBrainz website plus first.fm and Autohop informed Artist Activity's independently written native statistics hierarchy and album-composition treatment. No website or donor UI source was copied.
 - Beans Music, Bòcan Music, Finale, and Discrobble: secondary UI/architecture references.
 
 See `docs/research/license-map.md` and `docs/research/repo-reuse-map.md` for the working audit.

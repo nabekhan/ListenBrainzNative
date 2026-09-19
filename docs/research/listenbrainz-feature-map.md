@@ -25,7 +25,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Top recordings/tracks | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
 | Listening activity | Y | Y | Y | Y | Y | Y | P0 | Native Swift Charts |
 | Daily/hour-of-day activity | Y | Y | Y | Y | Y | — | P1 | Native cached, selectable 7×24 UTC heatmap across the seven server periods |
-| Artist activity | Y | Y | Y | P | — | P | P1 | Explain listening mix |
+| Artist activity | Y | Y | Y | P | Y | P | P1 | Native on-demand ranked artist/album report landed; one cached aggregate read per selected range and no row hydration |
 | Genre activity | Y | Y | Y | P | Y | P | P1 | Native one-request local-daypart view landed; labels it as incomplete top-per-hour genre-tag matches and explains overlap/time-zone approximation |
 | Era activity | Y | Y | Y | P | Y | P | P1 | Native cached Music by Decade chart with server-derived years and decade-to-year drill-down |
 | Artist evolution activity | Y | Y | — | — | Y | — | P1 | Native on-demand top-artist timeline with touch inspection; one server request per selected range |
@@ -74,6 +74,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 - The current Year in Music endpoint is one aggregate request whose 2025 payload can contain totals, UTC day activity, rankings, discovery data, similar users, and full JSPF playlists. The native first slice deliberately maps the highest-value identity-safe subset and does not fan out into row requests.
 - LB Radio is an authenticated server-side JSPF generator with a separate five-per-five-second quota. The native slice generates only on an explicit tap, uses the bounded/coalescing shared read lane with global 429 deferral, performs at most one batch metadata enrichment, never auto-retries, and does not imply that an MBID is playable audio. A saved mix becomes one explicit, private populated-playlist POST; nil MBIDs are excluded and duplicate canonical occurrences remain ordered.
 - Artist Origins is a public aggregate statistics response built from up to a user's top 1,000 artists that have MusicBrainz country data. The native destination performs one cached user/range read, then ranks by artist or listen count and opens server-embedded country artists locally; it does not issue per-country or per-artist hydration requests.
+- Artist Activity is a bounded ranked response derived from mapped release-group statistics: at most 15 leading artists, each with its album/release-group breakdown. The native destination makes one cached user/range read, merges MBID-first identities locally, and opens only identifiers already present in the response; expanding albums makes no request.
 
 ## Evidence
 

@@ -46,6 +46,8 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-genre-activity-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-artist-origins-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-artist-origins-country-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-activity-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-activity-expanded-demo")
             {
                 let visualAccount = Account(username: "visual-taste", token: "visual-taste")
                 _model = State(
@@ -216,6 +218,14 @@ struct MainTabView: View {
                         .mediaDestinations(model: model)
                 }
                 .environment(pins)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-artist-activity-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-activity-expanded-demo")
+            {
+                NavigationStack {
+                    ArtistActivityView(model: model, period: .constant(.thisYear))
+                        .mediaDestinations(model: model)
+                }
+                .environment(pins)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo") {
                 NavigationStack {
                     ArtistDetailView(artist: Self.popularityPreviewArtist, model: model)
@@ -309,6 +319,9 @@ struct MainTabView: View {
                         presentedListen = Self.recommendationPreviewListen
                     }
                 #endif
+            }
+            .onDisappear {
+                model.cancelArtistActivityLoads()
             }
             .environment(pins)
             .sheet(item: $presentedListen) { listen in
@@ -908,6 +921,24 @@ struct MainTabView: View {
                     .init(countryCode: "?", artistCount: 3, listenCount: 84, artists: []),
                 ]
             )
+        }
+        func artistActivity(username: String, period: ListeningActivityPeriod) async throws -> ArtistActivity? {
+            let now = Date.now
+            return ArtistActivity(period: period, from: now.addingTimeInterval(-365 * 86_400), to: now, lastUpdated: now, rows: [
+                .init(creditedName: "Alvvays", canonicalName: "Alvvays", artistMBID: Self.artistMBIDs[0], listenCount: 612, albums: [
+                    .init(name: "Blue Rev", releaseGroupMBID: Self.releaseMBID, listenCount: 323),
+                    .init(name: "Antisocialites", releaseGroupMBID: nil, listenCount: 118),
+                    .init(name: "Alvvays", releaseGroupMBID: nil, listenCount: 76),
+                    .init(name: "Adult Diversion", releaseGroupMBID: nil, listenCount: 31),
+                    .init(name: "Dreams Tonite", releaseGroupMBID: nil, listenCount: 24),
+                    .init(name: "Belinda Says", releaseGroupMBID: nil, listenCount: 18),
+                    .init(name: "Pharmacist", releaseGroupMBID: nil, listenCount: 13),
+                    .init(name: "Archie, Marry Me", releaseGroupMBID: nil, listenCount: 9)
+                ]),
+                .init(creditedName: "Japanese Breakfast", canonicalName: nil, artistMBID: Self.artistMBIDs[1], listenCount: 391, albums: [
+                    .init(name: "Jubilee", releaseGroupMBID: nil, listenCount: 287), .init(name: "Soft Sounds from Another Planet", releaseGroupMBID: nil, listenCount: 104)]),
+                .init(creditedName: "The Marías", canonicalName: "The Marías", artistMBID: Self.artistMBIDs[2], listenCount: 284, albums: [.init(name: "Submarine", releaseGroupMBID: nil, listenCount: 284)])
+            ])
         }
         func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
         func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}

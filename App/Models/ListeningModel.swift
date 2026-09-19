@@ -5,6 +5,11 @@ import Observation
 @MainActor
 @Observable
 final class ListeningModel {
+    private struct ArtistActivityFlight {
+        let id: UUID
+        let task: Task<Void, Never>
+    }
+
     private struct ListenDeletionKey: Hashable, Sendable {
         let listenedAt: Int
         let recordingMSID: UUID
@@ -33,6 +38,7 @@ final class ListeningModel {
     private let artistEvolutionActivityCache: EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity>
     private let genreActivityCache: EntityDetailCache<GenreActivityCacheKey, GenreActivity>
     private let artistOriginsCache: EntityDetailCache<ArtistOriginsCacheKey, ArtistOrigins>
+    private let artistActivityCache: EntityDetailCache<ArtistActivityCacheKey, ArtistActivity>
     private let deletionJournal: ListenDeletionSafetyJournal
 
     private(set) var snapshot = ListeningSnapshot.empty
@@ -62,6 +68,9 @@ final class ListeningModel {
     private(set) var artistOrigins: [ListeningActivityPeriod: ArtistOriginsLoadState] = [:]
     private(set) var artistOriginsRefreshMessages: [ListeningActivityPeriod: String] = [:]
     private var artistOriginsRequestIDs: [ListeningActivityPeriod: UUID] = [:]
+    private(set) var artistActivity: [ListeningActivityPeriod: ArtistActivityLoadState] = [:]
+    private(set) var artistActivityRefreshMessages: [ListeningActivityPeriod: String] = [:]
+    private var artistActivityFlights: [ListeningActivityPeriod: ArtistActivityFlight] = [:]
     var feedback: [String: RecordingFeedback] = [:]
     var actionError: String?
     var deletionNotice: String?
@@ -80,6 +89,7 @@ final class ListeningModel {
         artistEvolutionActivityCache: EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity> = EntityDetailCaches.artistEvolutionActivity,
         genreActivityCache: EntityDetailCache<GenreActivityCacheKey, GenreActivity> = EntityDetailCaches.genreActivity,
         artistOriginsCache: EntityDetailCache<ArtistOriginsCacheKey, ArtistOrigins> = EntityDetailCaches.artistOrigins,
+        artistActivityCache: EntityDetailCache<ArtistActivityCacheKey, ArtistActivity> = EntityDetailCaches.artistActivity,
         deletionJournal: ListenDeletionSafetyJournal = .shared
     ) {
         self.account = account
@@ -91,6 +101,7 @@ final class ListeningModel {
         self.artistEvolutionActivityCache = artistEvolutionActivityCache
         self.genreActivityCache = genreActivityCache
         self.artistOriginsCache = artistOriginsCache
+        self.artistActivityCache = artistActivityCache
         self.deletionJournal = deletionJournal
     }
 
@@ -669,6 +680,102 @@ final class ListeningModel {
 
     func artistOriginsRefreshMessage(for period: ListeningActivityPeriod) -> String? {
         artistOriginsRefreshMessages[period]
+    }
+
+    func artistActivityState(for period: ListeningActivityPeriod) -> ArtistActivityLoadState {
+        artistActivity[period] ?? .idle
+    }
+
+    func artistActivityRefreshMessage(for period: ListeningActivityPeriod) -> String? {
+        artistActivityRefreshMessages[period]
+    }
+
+    /// Fetches one bounded aggregate only after the Artist Activity destination opens.
+    /// The unstructured flight outlives a cancelled view task so a quick
+    /// dismiss-and-reopen can join the same intentional request instead of
+    /// leaving the replacement screen idle or starting an overlapping read.
+    func loadArtistActivity(for period: ListeningActivityPeriod, retrying: Bool = false) async {
+        let key = ArtistActivityCacheKey(username: account.username, scope: cacheScope, period: period)
+        var hasVisibleValue = false
+
+        if let cached = await artistActivityCache.value(for: key) {
+            artistActivity[period] = .loaded(cached.value)
+            hasVisibleValue = true
+            if cached.isFresh, !retrying { return }
+        } else if case .loaded = artistActivityState(for: period) {
+            hasVisibleValue = true
+        }
+
+        if let flight = artistActivityFlights[period] {
+            await flight.task.value
+            return
+        }
+
+        if !retrying, case .unavailable = artistActivityState(for: period) {
+            return
+        }
+        if !hasVisibleValue {
+            artistActivity[period] = .loading
+        }
+
+        artistActivityRefreshMessages[period] = nil
+        let flightID = UUID()
+        let provider = self.provider
+        let username = account.username
+        let cache = artistActivityCache
+        let task = Task { @MainActor [weak self] in
+            let outcome: Result<ArtistActivity?, Error>
+            do {
+                outcome = .success(try await provider.artistActivity(username: username, period: period))
+            } catch {
+                outcome = .failure(error)
+            }
+
+            guard let self else { return }
+            defer {
+                if self.artistActivityFlights[period]?.id == flightID {
+                    self.artistActivityFlights.removeValue(forKey: period)
+                }
+            }
+            guard self.artistActivityFlights[period]?.id == flightID else { return }
+
+            switch outcome {
+            case let .success(result):
+                guard let result else {
+                    self.artistActivity[period] = .unavailable
+                    return
+                }
+                self.artistActivity[period] = .loaded(result)
+                await cache.save(result, for: key)
+            case let .failure(error) where error is CancellationError:
+                if case .loading = self.artistActivityState(for: period) {
+                    self.artistActivity[period] = .idle
+                }
+            case let .failure(error):
+                if case .loaded = self.artistActivityState(for: period) {
+                    self.artistActivityRefreshMessages[period] = error.localizedDescription
+                } else {
+                    self.artistActivity[period] = .failed(error.localizedDescription)
+                }
+            }
+        }
+        artistActivityFlights[period] = ArtistActivityFlight(id: flightID, task: task)
+        await task.value
+    }
+
+    /// Ends report reads when the authenticated app surface is torn down.
+    /// A destination-level cancellation does not call this so a quick reopen
+    /// can still join its single bounded request.
+    func cancelArtistActivityLoads() {
+        let flights = Array(artistActivityFlights.values)
+        artistActivityFlights.removeAll()
+        for flight in flights {
+            flight.task.cancel()
+        }
+        for period in ListeningActivityPeriod.allCases
+        where artistActivityState(for: period) == .loading {
+            artistActivity[period] = .idle
+        }
     }
 
     /// Loads the full precomputed Artist Origins response only when its future

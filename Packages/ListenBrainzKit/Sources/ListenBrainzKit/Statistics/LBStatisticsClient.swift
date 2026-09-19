@@ -205,6 +205,17 @@ public struct LBStatisticsClient: Sendable {
         return try await (execNoContent(request))?.payload
     }
 
+    /// Get a user's leading artists with the release groups contributing to each total.
+    /// A `nil` result means ListenBrainz has not calculated this statistic yet.
+    public func artistActivity(user: String, range: LBStatRange? = nil) async throws -> LBArtistActivity? {
+        try await (execNoContent(StatsArtistActivityRequest(user: user, range: range)))?.payload
+    }
+
+    /// Get ListenBrainz's sitewide leading artists and their release groups.
+    public func artistActivitySitewide(range: LBStatRange? = nil) async throws -> LBArtistActivity? {
+        try await (execNoContent(StatsArtistActivityRequest(user: nil, range: range)))?.payload
+    }
+
     /// Get a user's ListenBrainz Year in Music report.
     /// - Parameters:
     ///   - user: The user to get the report for.

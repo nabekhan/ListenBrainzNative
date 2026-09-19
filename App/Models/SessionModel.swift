@@ -176,6 +176,8 @@ final class SessionModel {
                 || arguments.contains("-brainz-genre-activity-demo")
                 || arguments.contains("-brainz-artist-origins-demo")
                 || arguments.contains("-brainz-artist-origins-country-demo")
+                || arguments.contains("-brainz-artist-activity-demo")
+                || arguments.contains("-brainz-artist-activity-expanded-demo")
             {
                 state = .active(Account(username: "visual-taste", token: "visual-taste"))
                 return true

@@ -1027,6 +1027,110 @@ struct ArtistOriginsCacheKey: Hashable, Sendable {
     }
 }
 
+/// A bounded ListenBrainz ranking of artists and the release groups that
+/// contributed to each artist's total. It is deliberately an aggregate view,
+/// not a complete albumography or listening-history replacement.
+struct ArtistActivity: Hashable, Sendable {
+    struct Row: Hashable, Sendable {
+        let creditedName: String
+        let canonicalName: String?
+        let artistMBID: UUID?
+        let listenCount: Int
+        let albums: [Album.Row]
+    }
+
+    struct Album: Identifiable, Hashable, Sendable {
+        struct Row: Hashable, Sendable { let name: String; let releaseGroupMBID: UUID?; let listenCount: Int }
+        let name: String
+        let releaseGroupMBID: UUID?
+        let listenCount: Int
+        var id: String { releaseGroupMBID?.uuidString ?? "album:\(ArtistActivity.normalizedKey(name))" }
+        func releaseGroup(artistName: String) -> SearchReleaseGroup? {
+            guard let releaseGroupMBID else { return nil }
+            return SearchReleaseGroup(
+                mbid: releaseGroupMBID,
+                title: name,
+                artistName: artistName,
+                primaryType: nil,
+                firstReleaseDate: nil
+            )
+        }
+    }
+
+    struct Artist: Identifiable, Hashable, Sendable {
+        let creditedName: String
+        let canonicalName: String?
+        let mbid: UUID?
+        let listenCount: Int
+        let albums: [Album]
+        var name: String { canonicalName ?? creditedName }
+        var id: String { mbid?.uuidString ?? "artist:\(ArtistActivity.normalizedKey(creditedName))" }
+        var rankedArtist: RankedArtist { .init(mbid: mbid, name: name, listenCount: listenCount) }
+    }
+
+    let period: ListeningActivityPeriod
+    let from: Date
+    let to: Date
+    let lastUpdated: Date
+    let artists: [Artist]
+
+    var albumEntryCount: Int {
+        artists.reduce(0) { partial, artist in
+            let result = partial.addingReportingOverflow(artist.albums.count)
+            return result.overflow ? Int.max : result.partialValue
+        }
+    }
+
+    init(period: ListeningActivityPeriod, from: Date, to: Date, lastUpdated: Date, rows: [Row]) {
+        self.period = period; self.from = from; self.to = to; self.lastUpdated = lastUpdated
+        var grouped: [ArtistKey: Accumulator] = [:]
+        for row in rows {
+            let credited = Self.displayName(row.creditedName)
+            guard !credited.isEmpty else { continue }
+            let canonical = row.canonicalName.map(Self.displayName).flatMap { $0.isEmpty ? nil : $0 }
+            let key = row.artistMBID.map(ArtistKey.mbid) ?? .name(Self.normalizedKey(credited))
+            var value = grouped[key, default: .init(mbid: row.artistMBID)]
+            value.credited[credited] = Self.sum(value.credited[credited, default: 0], max(0, row.listenCount))
+            if let canonical { value.canonical[canonical] = Self.sum(value.canonical[canonical, default: 0], max(0, row.listenCount)) }
+            for album in row.albums {
+                let name = Self.displayName(album.name); guard !name.isEmpty else { continue }
+                let albumKey = album.releaseGroupMBID.map(AlbumKey.mbid) ?? .name(Self.normalizedKey(name))
+                var albumValue = value.albums[albumKey, default: .init(mbid: album.releaseGroupMBID)]
+                albumValue.names[name] = Self.sum(albumValue.names[name, default: 0], max(0, album.listenCount))
+                albumValue.listenCount = Self.sum(albumValue.listenCount, max(0, album.listenCount))
+                value.albums[albumKey] = albumValue
+            }
+            value.listenCount = Self.sum(value.listenCount, max(0, row.listenCount))
+            grouped[key] = value
+        }
+        artists = grouped.values.map { value in
+            let credited = Self.bestName(value.credited) ?? "Unknown artist"
+            let canonical = Self.bestName(value.canonical)
+            let albums = value.albums.values.map { album in
+                Album(name: Self.bestName(album.names) ?? "Unknown album", releaseGroupMBID: album.mbid, listenCount: album.listenCount)
+            }.sorted(by: Self.albumOrder)
+            return Artist(creditedName: credited, canonicalName: canonical, mbid: value.mbid, listenCount: value.listenCount, albums: albums)
+        }.sorted { lhs, rhs in lhs.listenCount == rhs.listenCount ? lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending : lhs.listenCount > rhs.listenCount }
+    }
+
+    var totalListenCount: Int { artists.reduce(0) { Self.sum($0, $1.listenCount) } }
+    var isEmpty: Bool { artists.isEmpty || totalListenCount == 0 }
+    fileprivate static func normalizedKey(_ value: String) -> String { displayName(value).folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX")).lowercased() }
+    private static func displayName(_ value: String) -> String { value.trimmingCharacters(in: .whitespacesAndNewlines).split(whereSeparator: \.isWhitespace).joined(separator: " ") }
+    private static func bestName(_ values: [String: Int]) -> String? { values.keys.sorted { values[$0, default: 0] == values[$1, default: 0] ? $0.localizedCaseInsensitiveCompare($1) == .orderedAscending : values[$0, default: 0] > values[$1, default: 0] }.first }
+    private static func albumOrder(_ lhs: Album, _ rhs: Album) -> Bool { lhs.listenCount == rhs.listenCount ? lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending : lhs.listenCount > rhs.listenCount }
+    private static func sum(_ lhs: Int, _ rhs: Int) -> Int { let result = lhs.addingReportingOverflow(rhs); return result.overflow ? Int.max : result.partialValue }
+    private enum ArtistKey: Hashable { case mbid(UUID), name(String) }; private enum AlbumKey: Hashable { case mbid(UUID), name(String) }
+    private struct AlbumAccumulator { let mbid: UUID?; var names: [String: Int] = [:]; var listenCount = 0; init(mbid: UUID?) { self.mbid = mbid } }
+    private struct Accumulator { let mbid: UUID?; var credited: [String: Int] = [:]; var canonical: [String: Int] = [:]; var listenCount = 0; var albums: [AlbumKey: AlbumAccumulator] = [:]; init(mbid: UUID?) { self.mbid = mbid } }
+}
+
+enum ArtistActivityLoadState: Equatable { case idle, loading, loaded(ArtistActivity), unavailable, failed(String) }
+struct ArtistActivityCacheKey: Hashable, Sendable {
+    let username: String; let scope: RequestGate.ReadScope; let period: ListeningActivityPeriod
+    init(username: String, scope: RequestGate.ReadScope, period: ListeningActivityPeriod) { self.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(); self.scope = scope; self.period = period }
+}
+
 struct FreshRelease: Identifiable, Hashable, Sendable {
     let releaseMBID: UUID?
     let releaseGroupMBID: UUID?

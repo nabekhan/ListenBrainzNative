@@ -36,6 +36,7 @@ struct TasteView: View {
                         periodControls
                         dailyListeningHours
                         genreActivity
+                        artistActivity
                         artistOrigins
                         musicByDecade
                         artistEvolution
@@ -50,6 +51,7 @@ struct TasteView: View {
                     periodControls
                     dailyListeningHours
                     genreActivity
+                    artistActivity
                     artistOrigins
                     musicByDecade
                     artistEvolution
@@ -684,6 +686,19 @@ struct TasteView: View {
             }
             .buttonStyle(.plain)
             .accessibilityHint("Loads one ListenBrainz artist origins report for the selected period")
+        }
+    }
+
+    private var artistActivity: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(title: "Artist activity", subtitle: "See how your listens are spread across artists and albums.")
+            NavigationLink { ArtistActivityView(model: model, period: $activityPeriod) } label: {
+                HStack(spacing: 16) {
+                    Image(systemName: "rectangle.3.group.fill").font(.title2.weight(.semibold)).foregroundStyle(AppTheme.accent).frame(width: 52, height: 52).background(AppTheme.accent.opacity(0.13), in: .circle)
+                    VStack(alignment: .leading, spacing: 4) { Text("Open artist activity").font(.headline); Text("See which albums shaped \(activityPeriod.title.lowercased()).").font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+                    Spacer(minLength: 4); Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).foregroundStyle(.tertiary)
+                }.padding(16).background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous)).contentShape(.rect)
+            }.buttonStyle(.plain).accessibilityHint("Opens artist activity for the selected period")
         }
     }
 
