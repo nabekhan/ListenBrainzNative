@@ -285,6 +285,17 @@ public struct LBCoreClient: Sendable {
         guard response.status == "ok" else { throw LBError.invalidResponse }
     }
 
+    /// Remove a contiguous range of tracks using the playlist's zero-based
+    /// positions. This positional endpoint is not idempotent; callers must
+    /// never automatically retry an ambiguous result.
+    public func removePlaylistItems(mbid: UUID, index: Int, count: Int = 1) async throws {
+        guard index >= 0, count >= 1 else { throw LBError.invalidParam }
+        let response = try await apiClient.execute(
+            RemovePlaylistItemsRequest(mbid: mbid, index: index, count: count)
+        )
+        guard response.status == "ok" else { throw LBError.invalidResponse }
+    }
+
     /// Duplicate a visible ListenBrainz playlist into the authenticated user's
     /// collection. The server preserves the source visibility and track order,
     /// assigns the copy to the caller, and does not carry collaborators over.

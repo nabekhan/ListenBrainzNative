@@ -589,6 +589,113 @@ final class PlaylistMutationTests: XCTestCase {
         XCTAssertEqual(operations.count, 1)
     }
 
+    func testRemovalProviderDispatchesOnceAndEvictsDetailAndProfileCaches() async throws {
+        let mbid = UUID()
+        let details = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
+        let pages = EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>()
+        let publicKey = PlaylistDetailCacheKey(mbid: mbid, accessScope: .publicOnly)
+        let firstViewerKey = PlaylistDetailCacheKey(mbid: mbid, accessScope: .authenticatedViewer(.authenticated(token: "first")))
+        let secondViewerKey = PlaylistDetailCacheKey(mbid: mbid, accessScope: .authenticatedViewer(.authenticated(token: "second")))
+        let profileKey = ProfilePlaylistPageKey(username: "listener", accessScope: .authenticatedViewer(.authenticated(token: "first")), category: .collaborating, offset: 0, count: 20)
+        let cached = playlistDetail(mbid: mbid)
+        await details.save(cached, for: publicKey)
+        await details.save(cached, for: firstViewerKey)
+        await details.save(cached, for: secondViewerKey)
+        await pages.save(.init(username: "listener", category: .collaborating, playlists: [], requestedCount: 20, offset: 0, totalCount: 0), for: profileKey)
+        let transport = PlaylistRemovalTransportSpy()
+        let provider = ListenBrainzPlaylistItemRemovalProvider(
+            transport: transport, gate: RequestGate(minimumInterval: .zero), detailCache: details, profilePageCache: pages
+        )
+        try await provider.removeItem(at: 0, from: mbid)
+        let calls = await transport.calls()
+        let publicValue = await details.value(for: publicKey)
+        let firstViewerValue = await details.value(for: firstViewerKey)
+        let secondViewerValue = await details.value(for: secondViewerKey)
+        let profileValue = await pages.value(for: profileKey)
+        XCTAssertEqual(calls, [.init(index: 0, playlistMBID: mbid)])
+        XCTAssertNil(publicValue)
+        XCTAssertNil(firstViewerValue)
+        XCTAssertNil(secondViewerValue)
+        XCTAssertNil(profileValue)
+    }
+
+    func testRemovalMapsRateLimitWithoutRetrying() async {
+        let transport = PlaylistRemovalTransportSpy(error: LBError.rateLimited(resetIn: 6))
+        let provider = ListenBrainzPlaylistItemRemovalProvider(
+            transport: transport,
+            gate: RequestGate(minimumInterval: .zero),
+            detailCache: EntityDetailCache(),
+            profilePageCache: EntityDetailCache()
+        )
+
+        do {
+            try await provider.removeItem(at: 0, from: UUID())
+            XCTFail("Expected rate limiting")
+        } catch let ProviderError.rateLimited(seconds) {
+            XCTAssertEqual(seconds, 6)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        let calls = await transport.calls()
+        XCTAssertEqual(calls.count, 1)
+    }
+
+    func testRemovalCancellationAfterTransportStartsIsIndeterminateAndClearsCaches() async {
+        let playlistMBID = UUID()
+        let detailCache = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
+        let key = PlaylistDetailCacheKey(mbid: playlistMBID, accessScope: .publicOnly)
+        await detailCache.save(playlistDetail(mbid: playlistMBID), for: key)
+        let transport = CancellationRemovalTransport()
+        let provider = ListenBrainzPlaylistItemRemovalProvider(
+            transport: transport,
+            gate: RequestGate(minimumInterval: .zero),
+            detailCache: detailCache,
+            profilePageCache: EntityDetailCache()
+        )
+        let task = Task { try await provider.removeItem(at: 0, from: playlistMBID) }
+        while !(await transport.hasStarted) { await Task.yield() }
+
+        task.cancel()
+        do {
+            try await task.value
+            XCTFail("Expected an indeterminate removal result")
+        } catch let error as PlaylistMutationProviderError {
+            XCTAssertEqual(error.localizedDescription, PlaylistMutationProviderError.indeterminateRemoval.localizedDescription)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        let cached = await detailCache.value(for: key)
+        XCTAssertNil(cached)
+    }
+
+    func testRemovalCancellationBeforeTransportAdmissionDoesNotDispatch() async throws {
+        let gate = RequestGate(minimumInterval: .seconds(5))
+        _ = try await gate.perform { true }
+        let transport = CancellationRemovalTransport()
+        let provider = ListenBrainzPlaylistItemRemovalProvider(
+            transport: transport,
+            gate: gate,
+            detailCache: EntityDetailCache(),
+            profilePageCache: EntityDetailCache()
+        )
+        let task = Task { try await provider.removeItem(at: 0, from: UUID()) }
+        await Task.yield()
+
+        task.cancel()
+        do {
+            try await task.value
+            XCTFail("Expected cancellation before transport")
+        } catch is CancellationError {
+            // Expected: no positional POST was admitted to transport.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        let didStart = await transport.hasStarted
+        XCTAssertFalse(didStart)
+    }
+
     private func playlistDetail(
         mbid: UUID,
         title: String = "Playlist",
@@ -720,6 +827,26 @@ private actor CancellationAppendTransport: PlaylistAppendTransport {
     private(set) var hasStarted = false
 
     func append(recordingMBIDs: [UUID], to playlistMBID: UUID) async throws {
+        hasStarted = true
+        try await Task.sleep(for: .seconds(60))
+    }
+}
+
+private actor PlaylistRemovalTransportSpy: PlaylistItemRemovalTransport {
+    struct Call: Equatable, Sendable { let index: Int; let playlistMBID: UUID }
+    private let error: (any Error & Sendable)?
+    private var values: [Call] = []
+    init(error: (any Error & Sendable)? = nil) { self.error = error }
+    func removeItem(at index: Int, from playlistMBID: UUID) async throws {
+        values.append(.init(index: index, playlistMBID: playlistMBID))
+        if let error { throw error }
+    }
+    func calls() -> [Call] { values }
+}
+
+private actor CancellationRemovalTransport: PlaylistItemRemovalTransport {
+    private(set) var hasStarted = false
+    func removeItem(at index: Int, from playlistMBID: UUID) async throws {
         hasStarted = true
         try await Task.sleep(for: .seconds(60))
     }

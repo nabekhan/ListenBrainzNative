@@ -163,7 +163,9 @@ final class SessionModel {
             || arguments.contains("-brainz-profile-playlists-collab-demo")
             || arguments.contains("-brainz-playlist-edit-demo")
             || arguments.contains("-brainz-playlist-add-demo")
-            || arguments.contains("-brainz-playlist-copy-demo") {
+            || arguments.contains("-brainz-playlist-copy-demo")
+            || arguments.contains("-brainz-playlist-remove-demo")
+            || arguments.contains("-brainz-playlist-remove-review-demo") {
             state = .active(Account(username: "visual-listener", token: "visual-token"))
             return true
         }

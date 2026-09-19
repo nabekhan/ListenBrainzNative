@@ -159,6 +159,35 @@ import Testing
         }
     }
 
+    @Test("Playlist removal uses its exact positional endpoint")
+    func removalRequestBody() async throws {
+        let mock = MockAPIClient(result: .success(PlaylistMutationResponse(status: "ok")))
+        try await LBCoreClient(mock).removePlaylistItems(mbid: playlistMBID, index: 2)
+        let request = try #require(mock.request as? RemovePlaylistItemsRequest)
+        #expect(request.data.path == "/1/playlist/\(playlistMBID.uuidString)/item/delete")
+        #expect(request.data.method == .post)
+        #expect(request.data.statusErrors == removeStatusErrors)
+        let body = try #require(request.data.body)
+        let data = try JSONEncoder.ListenBrainz.encode(body)
+        let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Int])
+        #expect(json == ["index": 2, "count": 1])
+
+        let invalid = MockAPIClient(result: .failure(.unknownError))
+        await #expect(throws: LBError.invalidParam) {
+            try await LBCoreClient(invalid).removePlaylistItems(mbid: playlistMBID, index: -1)
+        }
+        #expect(invalid.request == nil)
+        await #expect(throws: LBError.invalidParam) {
+            try await LBCoreClient(invalid).removePlaylistItems(mbid: playlistMBID, index: 0, count: 0)
+        }
+        #expect(invalid.request == nil)
+
+        let unexpected = MockAPIClient(result: .success(PlaylistMutationResponse(status: "queued")))
+        await #expect(throws: LBError.invalidResponse) {
+            try await LBCoreClient(unexpected).removePlaylistItems(mbid: playlistMBID, index: 0)
+        }
+    }
+
     @Test("Playlist copy uses an empty one-shot POST and returns the new MBID")
     func copyRequest() async throws {
         let copiedMBID = UUID(uuidString: "dddddddd-dddd-4ddd-8ddd-dddddddddddd")!
@@ -217,6 +246,12 @@ import Testing
     ]
     private let copyStatusErrors: [Int: LBError] = [
         400: .badRequest,
+        401: .invalidAuth,
+        403: .forbidden,
+        404: .notFound,
+    ]
+    private let removeStatusErrors: [Int: LBError] = [
+        400: .invalidJSON,
         401: .invalidAuth,
         403: .forbidden,
         404: .notFound,

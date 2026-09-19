@@ -49,6 +49,21 @@ struct AddPlaylistItemsRequest: APIRequest {
     }
 }
 
+struct RemovePlaylistItemsRequest: APIRequest {
+    typealias Result = PlaylistMutationResponse
+
+    let data: APIRequestData<PlaylistRemovalItemsBody>
+
+    init(mbid: UUID, index: Int, count: Int) {
+        data = .init(
+            path: "/1/playlist/\(mbid.uuidString)/item/delete",
+            method: .post,
+            body: .init(index: index, count: count),
+            statusErrors: PlaylistMutationStatusErrors.removeItems
+        )
+    }
+}
+
 struct CopyPlaylistRequest: APIRequest {
     typealias Result = PlaylistCopyResponse
 
@@ -142,6 +157,11 @@ struct PlaylistAppendItemsBody: Encodable {
     }
 }
 
+struct PlaylistRemovalItemsBody: Encodable {
+    let index: Int
+    let count: Int
+}
+
 struct PlaylistCreateResponse: Decodable {
     let status: String
     let playlistMBID: UUID
@@ -183,6 +203,13 @@ private enum PlaylistMutationStatusErrors {
     ]
 
     static let addItems: [Int: LBError] = [
+        400: .invalidJSON,
+        401: .invalidAuth,
+        403: .forbidden,
+        404: .notFound,
+    ]
+
+    static let removeItems: [Int: LBError] = [
         400: .invalidJSON,
         401: .invalidAuth,
         403: .forbidden,

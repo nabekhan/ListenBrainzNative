@@ -11,6 +11,15 @@ protocol ConcreteReleaseDetailProviding: Sendable {
 
 protocol PlaylistDetailProviding: Sendable {
     func playlist(mbid: UUID) async throws -> PlaylistDetail
+    /// Mutation preflight/reconciliation must never join an ordinary read
+    /// flight that began before the user explicitly requested the mutation.
+    func playlistForMutationInspection(mbid: UUID) async throws -> PlaylistDetail
+}
+
+extension PlaylistDetailProviding {
+    func playlistForMutationInspection(mbid: UUID) async throws -> PlaylistDetail {
+        try await playlist(mbid: mbid)
+    }
 }
 
 struct ListenBrainzMediaDetailProvider: ReleaseDetailProviding, PlaylistDetailProviding {
@@ -61,8 +70,16 @@ struct ListenBrainzMediaDetailProvider: ReleaseDetailProviding, PlaylistDetailPr
     }
 
     func playlist(mbid: UUID) async throws -> PlaylistDetail {
+        try await playlist(mbid: mbid, coalesced: true)
+    }
+
+    func playlistForMutationInspection(mbid: UUID) async throws -> PlaylistDetail {
+        try await playlist(mbid: mbid, coalesced: false)
+    }
+
+    private func playlist(mbid: UUID, coalesced: Bool) async throws -> PlaylistDetail {
         do {
-            return try await read(.playlistDetail(readScope, mbid: mbid)) {
+            let operation: @Sendable () async throws -> PlaylistDetail = {
                 let value = try await client.core.playlist(mbid: mbid)
                 let metadata = value.metadata
                 let tracks = value.tracks.enumerated().map { index, track in
@@ -101,11 +118,22 @@ struct ListenBrainzMediaDetailProvider: ReleaseDetailProviding, PlaylistDetailPr
                     tracks: tracks
                 )
             }
+            if coalesced { return try await read(.playlistDetail(readScope, mbid: mbid), operation) }
+            return try await performInspection(operation)
         } catch LBError.notFound, LBError.forbidden {
             throw MediaDetailError.playlistUnavailable
         } catch LBError.invalidAuth, LBError.noToken {
             throw ProviderError.invalidToken
         }
+    }
+
+    private func performInspection<Result: Sendable>(_ operation: @escaping @Sendable () async throws -> Result) async throws -> Result {
+        do {
+            return try await gate.perform(operation) { error in
+                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
+        } catch let LBError.rateLimited(resetIn) { throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1)) }
     }
 
     private func read<Result: Sendable>(

@@ -210,6 +210,15 @@ final class PlaylistDetailModel {
         await fetch(mbid: mbid)
     }
 
+    func applyCanonicalDetail(_ value: PlaylistDetail) async {
+        detail = value
+        accessWasLost = false
+        refreshMessage = nil
+        phase = .ready
+        await cache.removeAll()
+        await cache.save(value, for: cacheKey(mbid: value.mbid))
+    }
+
     /// Editing a full metadata snapshot must start from a network-confirmed
     /// value, not a fresh-looking cache entry. The editor calls this again at
     /// save time and refuses to overwrite metadata that changed meanwhile.

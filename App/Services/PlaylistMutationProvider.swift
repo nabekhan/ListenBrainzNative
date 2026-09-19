@@ -19,6 +19,14 @@ protocol PlaylistAppendTransport: Sendable {
     func append(recordingMBIDs: [UUID], to playlistMBID: UUID) async throws
 }
 
+protocol PlaylistItemRemovalProviding: Sendable {
+    func removeItem(at index: Int, from playlistMBID: UUID) async throws
+}
+
+protocol PlaylistItemRemovalTransport: Sendable {
+    func removeItem(at index: Int, from playlistMBID: UUID) async throws
+}
+
 protocol PlaylistCopyProviding: Sendable {
     func copy(mbid: UUID) async throws -> UUID
 }
@@ -44,6 +52,14 @@ private struct LivePlaylistAppendTransport: PlaylistAppendTransport {
 
     func append(recordingMBIDs: [UUID], to playlistMBID: UUID) async throws {
         try await client.core.addPlaylistItems(mbid: playlistMBID, recordingMBIDs: recordingMBIDs)
+    }
+}
+
+private struct LivePlaylistItemRemovalTransport: PlaylistItemRemovalTransport {
+    let client: LBClient
+
+    func removeItem(at index: Int, from playlistMBID: UUID) async throws {
+        try await client.core.removePlaylistItems(mbid: playlistMBID, index: index, count: 1)
     }
 }
 
@@ -231,6 +247,66 @@ struct ListenBrainzPlaylistAppendProvider: PlaylistAppendProviding {
     }
 }
 
+/// A one-shot positional removal boundary. A lost response cannot establish
+/// whether that index was deleted, so it is deliberately never retried.
+struct ListenBrainzPlaylistItemRemovalProvider: PlaylistItemRemovalProviding {
+    private let transport: any PlaylistItemRemovalTransport
+    private let gate: RequestGate
+    private let detailCache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>
+    private let profilePageCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage>
+
+    init(token: String, gate: RequestGate = .shared,
+         detailCache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail> = EntityDetailCaches.playlists,
+         profilePageCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage> = ProfilePlaylistCaches.pages) {
+        transport = LivePlaylistItemRemovalTransport(client: LBClient(token: token, userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"))
+        self.gate = gate
+        self.detailCache = detailCache
+        self.profilePageCache = profilePageCache
+    }
+
+    init(transport: some PlaylistItemRemovalTransport, gate: RequestGate,
+         detailCache: EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail> = EntityDetailCaches.playlists,
+         profilePageCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage> = ProfilePlaylistCaches.pages) {
+        self.transport = transport
+        self.gate = gate
+        self.detailCache = detailCache
+        self.profilePageCache = profilePageCache
+    }
+
+    func removeItem(at index: Int, from playlistMBID: UUID) async throws {
+        guard index >= 0 else { throw PlaylistMutationProviderError.rejected }
+        let attempt = MutationAttemptState()
+        do {
+            try await gate.perform({
+                await attempt.markTransportStarted()
+                try await transport.removeItem(at: index, from: playlistMBID)
+            }) { error in
+                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
+            await invalidateCaches()
+        } catch let LBError.rateLimited(resetIn) {
+            throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
+        } catch LBError.invalidAuth, LBError.noToken {
+            await invalidateCaches(); throw PlaylistMutationProviderError.invalidAuthentication
+        } catch LBError.forbidden {
+            await invalidateCaches(); throw PlaylistMutationProviderError.notCollaborator
+        } catch LBError.notFound {
+            await invalidateCaches(); throw PlaylistMutationProviderError.playlistUnavailable
+        } catch LBError.invalidJSON, LBError.badRequest, LBError.invalidParam {
+            throw PlaylistMutationProviderError.rejected
+        } catch is CancellationError {
+            if await attempt.didStartTransport { await invalidateCaches(); throw PlaylistMutationProviderError.indeterminateRemoval }
+            throw CancellationError()
+        } catch {
+            await invalidateCaches(); throw PlaylistMutationProviderError.indeterminateRemoval
+        }
+    }
+
+    private func invalidateCaches() async { await detailCache.removeAll(); await profilePageCache.removeAll() }
+    private actor MutationAttemptState { private(set) var didStartTransport = false; func markTransportStarted() { didStartTransport = true } }
+}
+
 struct ListenBrainzPlaylistMutationProvider: PlaylistMutationProviding {
     private let transport: any PlaylistMutationTransport
     private let gate: RequestGate
@@ -400,10 +476,11 @@ enum PlaylistMutationProviderError: LocalizedError, Sendable {
     case indeterminateEdit
     case indeterminateAppend
     case indeterminateCopy
+    case indeterminateRemoval
 
     var isIndeterminate: Bool {
         switch self {
-        case .indeterminateCreation, .indeterminateEdit, .indeterminateAppend, .indeterminateCopy: true
+        case .indeterminateCreation, .indeterminateEdit, .indeterminateAppend, .indeterminateCopy, .indeterminateRemoval: true
         default: false
         }
     }
@@ -415,7 +492,7 @@ enum PlaylistMutationProviderError: LocalizedError, Sendable {
         case .notOwner:
             "Only the playlist owner can change its name, description, or privacy."
         case .notCollaborator:
-            "Only a playlist owner or collaborator can add recordings."
+            "Only a playlist owner or collaborator can change its tracks."
         case .playlistUnavailable:
             "This playlist was removed or is no longer available to your account."
         case .rejected:
@@ -430,6 +507,8 @@ enum PlaylistMutationProviderError: LocalizedError, Sendable {
             "ListenBrainz may have added this recording, but the response was lost. Inspect the playlist before trying again so you don’t add a duplicate."
         case .indeterminateCopy:
             "ListenBrainz may have duplicated this playlist, but the response was lost. Check Owned Playlists before trying again so you don’t create another copy."
+        case .indeterminateRemoval:
+            "ListenBrainz may have removed a track, but the response was lost. Refresh the playlist before removing another track."
         }
     }
 }
