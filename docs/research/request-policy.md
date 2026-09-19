@@ -30,8 +30,11 @@ The tested replacement is active. It deliberately separates reads from mutations
 8. credential-derived scopes are process-local HMAC values. Raw tokens are never placed in request keys, telemetry, or cache keys.
 9. Year in Music makes one aggregate read only after a year is opened or selected. Frozen 2021–2024 reports use an empty-token client, an anonymous 24-hour cache, cancellation on selection replacement, and a 16 MiB receive/decode ceiling; no archive, artwork, or ranking row is preloaded.
 10. External service actions resolve only already-loaded `spotify_id` or `origin_url` locally. They perform zero ListenBrainz, metadata, search, or playback-resolution requests and accept only strict HTTPS provider destinations.
+11. Artist Detail shares the current website/official KMP `POST /artist/{mbid}/` payload between Popular Tracks, Releases, and Similar Artists. Its bounded positive/negative cache is the only owner of that read; switching shelves is local and row hydration is forbidden.
 
 This is intentionally stricter than copying the official clients' unconstrained fan-out. The conditional API allowance is used for selective concurrency, while coalescing, pagination guards, cancellation, caching, shared 429 deferral, and tests prevent erroneous traffic. Any future retry or concurrency increase requires endpoint-specific evidence and new tests first.
+
+The documented artist-ranked popularity GETs are not the mobile default. Current server `e83a7ab` requires a token, exposes no `count` or pagination parameter, and returns every matching entity. Reusing the already-required combined artist-page response avoids two additional unbounded reads.
 
 ## Inspected source
 

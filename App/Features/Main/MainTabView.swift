@@ -69,6 +69,9 @@ struct MainTabView: View {
                 return
             }
             if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-highlights-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-highlights-releases-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-highlights-failure-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-top-listeners-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-top-listeners-expanded-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-demo")
@@ -346,6 +349,24 @@ struct MainTabView: View {
                             ? .failure
                             : .populated
                 ))
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-artist-highlights-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-highlights-releases-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-highlights-failure-demo")
+            {
+                NavigationStack {
+                    ScrollView {
+                        ArtistHighlightsSummaryView(artistMBID: Self.popularityPreviewArtist.mbid!)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
+                    }
+                    .navigationTitle("Alvvays")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .mediaDestinations(model: model)
+                }
+                .environment(pins)
+                .environment(\.artistHighlightsProvider, VisualQAArtistHighlightsProvider(
+                    fails: ProcessInfo.processInfo.arguments.contains("-brainz-artist-highlights-failure-demo")
+                ))
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo") {
                 NavigationStack {
                     ArtistDetailView(artist: Self.popularityPreviewArtist, model: model)
@@ -355,6 +376,7 @@ struct MainTabView: View {
                 .environment(pins)
                 .environment(\.popularityProvider, VisualQAPopularityProvider())
                 .environment(\.similarArtistsProvider, VisualQASimilarArtistsProvider())
+                .environment(\.artistHighlightsProvider, VisualQAArtistHighlightsProvider())
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2021-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2024-demo") {
@@ -837,6 +859,76 @@ struct MainTabView: View {
                 }
             )
         }
+    }
+
+    private struct VisualQAArtistHighlightsProvider: ArtistHighlightsProviding {
+        let fails: Bool
+
+        init(fails: Bool = false) {
+            self.fails = fails
+        }
+
+        func highlights(for artistMBID: UUID, forceRefresh: Bool) async throws -> ArtistHighlights? {
+            await Task.yield()
+            if fails { throw VisualQAArtistHighlightsError.unavailable }
+            let recordingRows: [(String, String, String?, Int, Int)] = [
+                ("11111111-1111-4111-8111-111111111111", "Dreams Tonite", "Antisocialites", 2_418_731, 148_206),
+                ("22222222-2222-4222-8222-222222222222", "Archie, Marry Me", "Alvvays", 2_104_992, 137_844),
+                ("33333333-3333-4333-8333-333333333333", "Belinda Says", "Blue Rev", 1_792_310, 109_248),
+                ("44444444-4444-4444-8444-444444444444", "In Undertow", "Antisocialites", 1_501_042, 97_510),
+                ("55555555-5555-4555-8555-555555555555", "Adult Diversion", "Alvvays", 1_218_004, 88_200),
+                ("66666666-6666-4666-8666-666666666666", "Very Online Guy", "Blue Rev", 884_729, 61_400),
+                ("77777777-7777-4777-8777-777777777777", "A Deliberately Long Recording Title for Layout Testing", nil, 420_018, 30_042),
+            ]
+            let recordings = recordingRows.compactMap { row -> ArtistPopularRecording? in
+                guard let recordingMBID = UUID(uuidString: row.0) else { return nil }
+                return ArtistPopularRecording(
+                    recordingMBID: recordingMBID,
+                    title: row.1,
+                    artistName: "Alvvays",
+                    artistMBIDs: [artistMBID],
+                    releaseTitle: row.2,
+                    releaseMBID: nil,
+                    artworkReleaseMBID: nil,
+                    durationMilliseconds: 210_000,
+                    totalListenCount: row.3,
+                    totalUserCount: row.4
+                )
+            }
+
+            let releaseGroupRows: [(String, String, String, String, Int, Int)] = [
+                ("81111111-1111-4111-8111-111111111111", "Blue Rev", "Album", "2022-10-07", 7_845_210, 184_005),
+                ("82222222-2222-4222-8222-222222222222", "Antisocialites", "Album", "2017-09-08", 6_320_144, 171_210),
+                ("83333333-3333-4333-8333-333333333333", "Alvvays", "Album", "2014-07-22", 5_812_901, 166_402),
+                ("84444444-4444-4444-8444-444444444444", "Party Police", "Single", "2014", 908_442, 57_120),
+                ("85555555-5555-4555-8555-555555555555", "Pharmacist", "Single", "2022-07-06", 814_084, 49_022),
+                ("86666666-6666-4666-8666-666666666666", "Belinda Says / Very Online Guy", "Single", "2022-09-22", 612_704, 41_801),
+                ("87777777-7777-4777-8777-777777777777", "A Very Long Release Group Title for Accessibility Layout Testing", "EP", "2020", 210_300, 18_921),
+            ]
+            let releaseGroups = releaseGroupRows.compactMap { row -> ArtistPopularReleaseGroup? in
+                guard let mbid = UUID(uuidString: row.0) else { return nil }
+                return ArtistPopularReleaseGroup(
+                    mbid: mbid,
+                    title: row.1,
+                    artistName: "Alvvays",
+                    primaryType: row.2,
+                    firstReleaseDate: row.3,
+                    artworkReleaseMBID: nil,
+                    totalListenCount: row.4,
+                    totalUserCount: row.5
+                )
+            }
+            return ArtistHighlights(
+                artistMBID: artistMBID,
+                recordings: recordings,
+                releaseGroups: releaseGroups
+            )
+        }
+    }
+
+    private enum VisualQAArtistHighlightsError: LocalizedError {
+        case unavailable
+        var errorDescription: String? { "Fixture artist highlights unavailable." }
     }
 
     private struct VisualQACritiqueBrainzReviewsProvider: CritiqueBrainzReviewsProviding {

@@ -13,6 +13,7 @@ struct ArtistDetailView: View {
                 topListeners
                 reviews
                 topRecordings
+                artistHighlights
                 similarArtists
                 recentListens
             }
@@ -66,6 +67,13 @@ struct ArtistDetailView: View {
     private var similarArtists: some View {
         if let mbid = artist.mbid {
             SimilarArtistsSummaryView(artistMBID: mbid)
+        }
+    }
+
+    @ViewBuilder
+    private var artistHighlights: some View {
+        if let mbid = artist.mbid {
+            ArtistHighlightsSummaryView(artistMBID: mbid)
         }
     }
 
