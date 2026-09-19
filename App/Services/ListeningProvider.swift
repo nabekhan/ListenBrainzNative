@@ -13,6 +13,7 @@ protocol ListeningProvider: Sendable {
     func eraActivity(username: String, period: ListeningActivityPeriod) async throws -> EraActivity?
     func artistEvolutionActivity(username: String, period: ListeningActivityPeriod) async throws -> ArtistEvolutionActivity?
     func genreActivity(username: String, period: ListeningActivityPeriod) async throws -> GenreActivity?
+    func artistOrigins(username: String, period: ListeningActivityPeriod) async throws -> ArtistOrigins?
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease]
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws
     /// Asks ListenBrainz to queue deletion of one submitted listen. The server
@@ -41,6 +42,10 @@ extension ListeningProvider {
     }
 
     func genreActivity(username: String, period: ListeningActivityPeriod) async throws -> GenreActivity? {
+        nil
+    }
+
+    func artistOrigins(username: String, period: ListeningActivityPeriod) async throws -> ArtistOrigins? {
         nil
     }
 

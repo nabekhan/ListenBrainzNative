@@ -879,6 +879,154 @@ struct GenreActivityCacheKey: Hashable, Sendable {
     }
 }
 
+/// ListenBrainz's server-calculated artist origins. The API returns ISO
+/// alpha-3 country codes and may include a bounded artist sample per country.
+/// Malformed values remain visible in an explicit unknown bucket rather than
+/// invalidating an otherwise useful statistic.
+struct ArtistOrigins: Hashable, Sendable {
+    struct Row: Hashable, Sendable {
+        let countryCode: String
+        let artistCount: Int
+        let listenCount: Int
+        let artists: [Artist]
+    }
+
+    struct Artist: Identifiable, Hashable, Sendable {
+        let mbid: UUID?
+        let name: String
+        let listenCount: Int
+
+        var id: String { mbid?.uuidString ?? "artist:\(ArtistOrigins.normalizedKey(name))" }
+    }
+
+    struct Country: Identifiable, Hashable, Sendable {
+        /// `nil` is a malformed source code, never a guessed location.
+        let code: String?
+        let artistCount: Int
+        let listenCount: Int
+        let artists: [Artist]
+
+        var id: String { code ?? "unknown" }
+        var isKnownCode: Bool { code != nil }
+    }
+
+    let period: ListeningActivityPeriod
+    let from: Date
+    let to: Date
+    let lastUpdated: Date
+    let countries: [Country]
+
+    init(period: ListeningActivityPeriod, from: Date, to: Date, lastUpdated: Date, rows: [Row]) {
+        self.period = period
+        self.from = from
+        self.to = to
+        self.lastUpdated = lastUpdated
+
+        var grouped: [String?: CountryAccumulator] = [:]
+        for row in rows {
+            let code = Self.normalizedCountryCode(row.countryCode)
+            var accumulator = grouped[code, default: .init()]
+            accumulator.artistCount = Self.saturatedSum(accumulator.artistCount, max(0, row.artistCount))
+            accumulator.listenCount = Self.saturatedSum(accumulator.listenCount, max(0, row.listenCount))
+            accumulator.add(row.artists)
+            grouped[code] = accumulator
+        }
+        countries = grouped.map { code, accumulator in
+            Country(code: code, artistCount: accumulator.artistCount, listenCount: accumulator.listenCount, artists: accumulator.artists())
+        }.sorted { lhs, rhs in
+            if lhs.listenCount == rhs.listenCount {
+                switch (lhs.code, rhs.code) {
+                case let (left?, right?): return left < right
+                case (nil, _?): return false
+                case (_?, nil): return true
+                case (nil, nil): return false
+                }
+            }
+            return lhs.listenCount > rhs.listenCount
+        }
+    }
+
+    var totalArtistCount: Int { countries.reduce(0) { Self.saturatedSum($0, $1.artistCount) } }
+    var totalListenCount: Int { countries.reduce(0) { Self.saturatedSum($0, $1.listenCount) } }
+    var isEmpty: Bool {
+        countries.isEmpty || countries.allSatisfy { $0.artistCount == 0 && $0.listenCount == 0 }
+    }
+
+    private static func normalizedCountryCode(_ rawValue: String) -> String? {
+        let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard value.unicodeScalars.count == 3,
+              value.unicodeScalars.allSatisfy({ (65 ... 90).contains(Int($0.value)) }) else { return nil }
+        return value
+    }
+
+    fileprivate static func normalizedKey(_ rawValue: String) -> String {
+        rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+            .lowercased()
+    }
+
+    private static func saturatedSum(_ lhs: Int, _ rhs: Int) -> Int {
+        let result = lhs.addingReportingOverflow(rhs)
+        return result.overflow ? Int.max : result.partialValue
+    }
+
+    private struct CountryAccumulator {
+        var artistCount = 0
+        var listenCount = 0
+        private var artistsByKey: [ArtistKey: ArtistAccumulator] = [:]
+
+        mutating func add(_ artists: [Artist]) {
+            for artist in artists {
+                let name = artist.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty else { continue }
+                let key = artist.mbid.map(ArtistKey.mbid) ?? .name(ArtistOrigins.normalizedKey(name))
+                var accumulator = artistsByKey[key, default: .init(mbid: artist.mbid)]
+                accumulator.nameCounts[name] = ArtistOrigins.saturatedSum(accumulator.nameCounts[name, default: 0], max(0, artist.listenCount))
+                accumulator.listenCount = ArtistOrigins.saturatedSum(accumulator.listenCount, max(0, artist.listenCount))
+                artistsByKey[key] = accumulator
+            }
+        }
+
+        func artists() -> [Artist] {
+            artistsByKey.values.map { accumulator in
+                let name = accumulator.nameCounts.keys.sorted { lhs, rhs in
+                    let left = accumulator.nameCounts[lhs, default: 0]
+                    let right = accumulator.nameCounts[rhs, default: 0]
+                    if left == right { return lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending }
+                    return left > right
+                }.first ?? "Unknown artist"
+                return Artist(mbid: accumulator.mbid, name: name, listenCount: accumulator.listenCount)
+            }.sorted { lhs, rhs in
+                if lhs.listenCount == rhs.listenCount { return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending }
+                return lhs.listenCount > rhs.listenCount
+            }
+        }
+    }
+
+    private enum ArtistKey: Hashable { case mbid(UUID), name(String) }
+    private struct ArtistAccumulator {
+        let mbid: UUID?
+        var nameCounts: [String: Int] = [:]
+        var listenCount = 0
+    }
+}
+
+enum ArtistOriginsLoadState: Equatable { case idle, loading, loaded(ArtistOrigins), unavailable, failed(String) }
+
+struct ArtistOriginsCacheKey: Hashable, Sendable {
+    let username: String
+    let scope: RequestGate.ReadScope
+    let period: ListeningActivityPeriod
+
+    init(username: String, scope: RequestGate.ReadScope, period: ListeningActivityPeriod) {
+        self.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        self.scope = scope
+        self.period = period
+    }
+}
+
 struct FreshRelease: Identifiable, Hashable, Sendable {
     let releaseMBID: UUID?
     let releaseGroupMBID: UUID?

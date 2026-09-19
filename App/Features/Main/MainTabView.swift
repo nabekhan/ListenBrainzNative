@@ -44,6 +44,8 @@ struct MainTabView: View {
             if ProcessInfo.processInfo.arguments.contains("-brainz-artist-evolution-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-artist-evolution-all-time-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-genre-activity-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-origins-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-origins-country-demo")
             {
                 let visualAccount = Account(username: "visual-taste", token: "visual-taste")
                 _model = State(
@@ -204,6 +206,14 @@ struct MainTabView: View {
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-genre-activity-demo") {
                 NavigationStack {
                     GenreActivityView(model: model, period: .constant(.thisMonth))
+                }
+                .environment(pins)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-artist-origins-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-origins-country-demo")
+            {
+                NavigationStack {
+                    ArtistOriginsView(model: model, period: .constant(.thisYear))
+                        .mediaDestinations(model: model)
                 }
                 .environment(pins)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo") {
@@ -864,6 +874,39 @@ struct MainTabView: View {
                 to: now,
                 lastUpdated: now,
                 rows: rows
+            )
+        }
+        func artistOrigins(username: String, period: ListeningActivityPeriod) async throws -> ArtistOrigins? {
+            let now = Date.now
+            return ArtistOrigins(
+                period: period,
+                from: now.addingTimeInterval(-365 * 86_400),
+                to: now,
+                lastUpdated: now,
+                rows: [
+                    .init(
+                        countryCode: "CAN", artistCount: 18, listenCount: 1_426,
+                        artists: [
+                            .init(mbid: Self.artistMBIDs[0], name: "Alvvays", listenCount: 612),
+                            .init(mbid: nil, name: "Men I Trust", listenCount: 438),
+                            .init(mbid: nil, name: "A Canadian Artist With an Especially Long Name", listenCount: 176),
+                        ]
+                    ),
+                    .init(
+                        countryCode: "USA", artistCount: 46, listenCount: 1_218,
+                        artists: [
+                            .init(mbid: Self.artistMBIDs[1], name: "Japanese Breakfast", listenCount: 391),
+                            .init(mbid: Self.artistMBIDs[2], name: "The Marías", listenCount: 284),
+                        ]
+                    ),
+                    .init(countryCode: "GBR", artistCount: 31, listenCount: 984, artists: []),
+                    .init(countryCode: "JPN", artistCount: 22, listenCount: 731, artists: []),
+                    .init(countryCode: "IND", artistCount: 15, listenCount: 654, artists: []),
+                    .init(countryCode: "BRA", artistCount: 12, listenCount: 408, artists: []),
+                    .init(countryCode: "KOR", artistCount: 9, listenCount: 372, artists: []),
+                    .init(countryCode: "MEX", artistCount: 7, listenCount: 246, artists: []),
+                    .init(countryCode: "?", artistCount: 3, listenCount: 84, artists: []),
+                ]
             )
         }
         func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }

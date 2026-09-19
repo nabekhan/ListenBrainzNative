@@ -191,6 +191,20 @@ public struct LBStatisticsClient: Sendable {
         return try await (execNoContent(request))?.payload
     }
 
+    /// Get a user's listened artists grouped by country of origin.
+    /// `nil` means ListenBrainz has not calculated this statistic yet.
+    public func artistMap(user: String, range: LBStatRange? = nil) async throws -> LBArtistMap? {
+        let request = StatsArtistMapRequest(user: user, range: range)
+        return try await (execNoContent(request))?.payload
+    }
+
+    /// Get ListenBrainz's sitewide artist-origin breakdown.
+    /// `nil` means ListenBrainz has not calculated this statistic yet.
+    public func artistMapSitewide(range: LBStatRange? = nil) async throws -> LBArtistMap? {
+        let request = StatsArtistMapRequest(user: nil, range: range)
+        return try await (execNoContent(request))?.payload
+    }
+
     /// Get a user's ListenBrainz Year in Music report.
     /// - Parameters:
     ///   - user: The user to get the report for.

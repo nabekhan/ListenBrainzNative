@@ -32,6 +32,7 @@ final class ListeningModel {
     private let eraActivityCache: EntityDetailCache<EraActivityCacheKey, EraActivity>
     private let artistEvolutionActivityCache: EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity>
     private let genreActivityCache: EntityDetailCache<GenreActivityCacheKey, GenreActivity>
+    private let artistOriginsCache: EntityDetailCache<ArtistOriginsCacheKey, ArtistOrigins>
     private let deletionJournal: ListenDeletionSafetyJournal
 
     private(set) var snapshot = ListeningSnapshot.empty
@@ -58,6 +59,9 @@ final class ListeningModel {
     private(set) var genreActivity: [ListeningActivityPeriod: GenreActivityLoadState] = [:]
     private(set) var genreActivityRefreshMessages: [ListeningActivityPeriod: String] = [:]
     private var genreActivityRequestIDs: [ListeningActivityPeriod: UUID] = [:]
+    private(set) var artistOrigins: [ListeningActivityPeriod: ArtistOriginsLoadState] = [:]
+    private(set) var artistOriginsRefreshMessages: [ListeningActivityPeriod: String] = [:]
+    private var artistOriginsRequestIDs: [ListeningActivityPeriod: UUID] = [:]
     var feedback: [String: RecordingFeedback] = [:]
     var actionError: String?
     var deletionNotice: String?
@@ -75,6 +79,7 @@ final class ListeningModel {
         eraActivityCache: EntityDetailCache<EraActivityCacheKey, EraActivity> = EntityDetailCaches.eraActivity,
         artistEvolutionActivityCache: EntityDetailCache<ArtistEvolutionActivityCacheKey, ArtistEvolutionActivity> = EntityDetailCaches.artistEvolutionActivity,
         genreActivityCache: EntityDetailCache<GenreActivityCacheKey, GenreActivity> = EntityDetailCaches.genreActivity,
+        artistOriginsCache: EntityDetailCache<ArtistOriginsCacheKey, ArtistOrigins> = EntityDetailCaches.artistOrigins,
         deletionJournal: ListenDeletionSafetyJournal = .shared
     ) {
         self.account = account
@@ -85,6 +90,7 @@ final class ListeningModel {
         self.eraActivityCache = eraActivityCache
         self.artistEvolutionActivityCache = artistEvolutionActivityCache
         self.genreActivityCache = genreActivityCache
+        self.artistOriginsCache = artistOriginsCache
         self.deletionJournal = deletionJournal
     }
 
@@ -655,6 +661,73 @@ final class ListeningModel {
 
     func genreActivityRefreshMessage(for period: ListeningActivityPeriod) -> String? {
         genreActivityRefreshMessages[period]
+    }
+
+    func artistOriginsState(for period: ListeningActivityPeriod) -> ArtistOriginsLoadState {
+        artistOrigins[period] ?? .idle
+    }
+
+    func artistOriginsRefreshMessage(for period: ListeningActivityPeriod) -> String? {
+        artistOriginsRefreshMessages[period]
+    }
+
+    /// Loads the full precomputed Artist Origins response only when its future
+    /// detail screen asks for it. Stale data remains useful while the one
+    /// exact user-and-range request is revalidated.
+    func loadArtistOrigins(for period: ListeningActivityPeriod, retrying: Bool = false) async {
+        let key = ArtistOriginsCacheKey(username: account.username, scope: cacheScope, period: period)
+        if !retrying, artistOriginsRequestIDs[period] != nil {
+            return
+        }
+
+        if let cached = await artistOriginsCache.value(for: key) {
+            artistOrigins[period] = .loaded(cached.value)
+            if cached.isFresh, !retrying {
+                return
+            }
+        } else {
+            if !retrying {
+                switch artistOriginsState(for: period) {
+                case .loaded, .unavailable, .loading:
+                    return
+                case .idle, .failed:
+                    break
+                }
+            }
+            artistOrigins[period] = .loading
+        }
+
+        artistOriginsRefreshMessages[period] = nil
+        let requestID = UUID()
+        artistOriginsRequestIDs[period] = requestID
+
+        do {
+            let result = try await provider.artistOrigins(username: account.username, period: period)
+            try Task.checkCancellation()
+            guard artistOriginsRequestIDs[period] == requestID else { return }
+            guard let result else {
+                artistOrigins[period] = .unavailable
+                artistOriginsRequestIDs[period] = nil
+                return
+            }
+            artistOrigins[period] = .loaded(result)
+            artistOriginsRequestIDs[period] = nil
+            await artistOriginsCache.save(result, for: key)
+        } catch is CancellationError {
+            guard artistOriginsRequestIDs[period] == requestID else { return }
+            artistOriginsRequestIDs[period] = nil
+            if case .loading = artistOriginsState(for: period) {
+                artistOrigins[period] = .idle
+            }
+        } catch {
+            guard artistOriginsRequestIDs[period] == requestID else { return }
+            artistOriginsRequestIDs[period] = nil
+            if case .loaded = artistOriginsState(for: period) {
+                artistOriginsRefreshMessages[period] = error.localizedDescription
+            } else {
+                artistOrigins[period] = .failed(error.localizedDescription)
+            }
+        }
     }
 
     /// Loads one server-calculated UTC-hour genre aggregate. A stale response

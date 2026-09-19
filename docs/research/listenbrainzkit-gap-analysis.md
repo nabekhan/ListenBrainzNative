@@ -1,6 +1,6 @@
 # ListenBrainzKit gap analysis
 
-Snapshot: 2026-09-18. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-05) plus the local audited extensions.
+Snapshot: 2026-09-19. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-05) plus the local audited extensions.
 
 | Area | Classification | Current finding | Decision |
 |---|---|---|---|
@@ -19,10 +19,11 @@ Snapshot: 2026-09-18. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-
 | Era activity | SUPPORTED | Typed user era-activity response, optional server range, release-year counts, and honest 204 handling | Reuse through the shared gate; local extension is an upstream candidate |
 | Artist evolution activity | SUPPORTED | Typed user response accepts documented string and real numeric time buckets, optional/missing artist MBIDs, all statistics ranges, and honest 204 handling | Reuse on demand through the shared gate; local extension is an upstream candidate |
 | Genre activity | SUPPORTED | Typed top-genre-per-UTC-hour aggregate, optional server range, tolerant rows, and honest 204 handling | Reuse on demand through the shared gate; do not misrepresent it as a complete genre distribution; local extension is an upstream candidate |
+| Artist map / origins | SUPPORTED | Typed user and sitewide routes preserve country artist/listen totals, optional embedded artists/MBIDs, all statistics ranges, tolerant legacy numbers, and honest 204 handling | Reuse on demand through one exact user/range gate key; local extension is an upstream candidate |
 | Recording feedback | SUPPORTED | Love/hate/clear and lookup | Reuse |
 | Playlist lists/search/detail | SUPPORTED | Typed paginated user/created-for/collaborator listings preserve server count/offset/total metadata; public search and complete JSPF detail/track payloads are also typed | Reuse; page/detail extensions are upstream candidates and now power native Profile/For You/search paths |
 | LB Radio | SUPPORTED | Existing tag/artist datasets plus a typed authenticated `/1/explore/lb-radio` generator with tolerant JSPF/feedback decoding, exact mode/query semantics, and malformed-response protection | Reuse through the shared gate; generated-radio extension is an upstream candidate |
-| Other activity/identity statistics | MISSING | Artist activity, artist map, and listener counts remain absent | Add in focused upstream extensions |
+| Other activity/identity statistics | MISSING | Artist activity and ranked listener counts remain absent | Add in focused upstream extensions |
 | Year in Music | SUPPORTED | Typed current-schema aggregate endpoint with explicit-year path, partial/empty tolerance, 204 handling, and flexible identifiers/evolution buckets; legacy routes remain absent | Reuse through one gated request; local extension is an upstream candidate |
 | Pins | PARTIALLY_SUPPORTED | Current pin, paginated history, create, unpin, note update, and delete are typed; following pins remain absent | Reuse native slice; add following pins with Social; upstream candidate |
 | Social feed reads | SUPPORTED | Typed aggregate, following, and similar feed pages; tolerant nested metadata; one request per page | Reuse native feed slice; upstream candidate |

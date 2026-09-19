@@ -174,6 +174,8 @@ final class SessionModel {
             if arguments.contains("-brainz-artist-evolution-demo")
                 || arguments.contains("-brainz-artist-evolution-all-time-demo")
                 || arguments.contains("-brainz-genre-activity-demo")
+                || arguments.contains("-brainz-artist-origins-demo")
+                || arguments.contains("-brainz-artist-origins-country-demo")
             {
                 state = .active(Account(username: "visual-taste", token: "visual-taste"))
                 return true

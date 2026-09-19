@@ -228,6 +228,35 @@ struct ListenBrainzProvider: ListeningProvider {
         }
     }
 
+    func artistOrigins(username: String, period: ListeningActivityPeriod) async throws -> ArtistOrigins? {
+        let rangeName = Self.range(for: period).rawValue
+        return try await read(.artistOrigins(readScope, user: username, period: rangeName)) {
+            guard let result = try await client.stats.artistMap(user: username, range: Self.range(for: period)) else {
+                return nil
+            }
+            return ArtistOrigins(
+                period: period,
+                from: result.from,
+                to: result.to,
+                lastUpdated: Date(timeIntervalSince1970: TimeInterval(result.lastUpdated)),
+                rows: result.artistMap.map {
+                    .init(
+                        countryCode: $0.country,
+                        artistCount: $0.artistCount,
+                        listenCount: $0.listenCount,
+                        artists: $0.artists.map {
+                            .init(
+                                mbid: $0.artistMBID.flatMap(UUID.init(uuidString:)),
+                                name: $0.artistName,
+                                listenCount: $0.listenCount
+                            )
+                        }
+                    )
+                }
+            )
+        }
+    }
+
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] {
         let requestUser = scope == .forYou ? username : nil
         return try await read(.freshReleases(readScope, user: requestUser, scopeName: scope.rawValue)) {
@@ -475,6 +504,7 @@ actor RequestGate {
         case statsEraActivity
         case statsArtistEvolution
         case statsGenreActivity
+        case statsArtistOrigins
         case searchResults
         case discoveryFreshReleases
         case feedPage
@@ -536,6 +566,7 @@ actor RequestGate {
         static func eraActivity(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsEraActivity, [userID(user), period]) }
         static func artistEvolution(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsArtistEvolution, [userID(user), period]) }
         static func genreActivity(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsGenreActivity, [userID(user), period]) }
+        static func artistOrigins(_ scope: ReadScope, user: String, period: String) -> Self { endpoint(scope, .statsArtistOrigins, [userID(user), period]) }
         static func freshReleases(_ scope: ReadScope, user: String?, scopeName: String) -> Self {
             endpoint(
                 scope,

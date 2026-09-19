@@ -191,6 +191,64 @@ struct LBStatisticsTests {
         #expect(activity == nil)
     }
 
+    @Test("Artist map decodes user and sitewide shapes tolerantly")
+    func deserializeArtistMap() throws {
+        let userResponse = try JSONDecoder.ListenBrainz.decode(
+            StatsArtistMapRequest.Result.self,
+            from: Data("""
+            { "payload": {
+              "user_id": "listener", "artist_map": [{
+                "country": "usa", "artist_count": "2", "listen_count": 9,
+                "artists": [
+                  { "artist_name": "Mapped Artist", "artist_mbid": "11111111-1111-1111-1111-111111111111", "listen_count": "7" },
+                  { "artist_name": null, "artist_mbid": "invalid", "listen_count": null }
+                ]
+              }], "range": "all_time", "from_ts": 1735689600, "to_ts": 1738368000, "last_updated": 1738454400
+            }}
+            """.utf8)
+        )
+        let map = userResponse.payload
+        #expect(map.userID == "listener")
+        #expect(map.artistMap.first?.country == "usa")
+        #expect(map.artistMap.first?.artistCount == 2)
+        #expect(map.artistMap.first?.artists.map(\.listenCount) == [7, 0])
+        #expect(map.artistMap.first?.artists.first?.artistMBID == "11111111-1111-1111-1111-111111111111")
+        #expect(map.artistMap.first?.artists.last?.artistName == "")
+
+        let sitewideResponse = try JSONDecoder.ListenBrainz.decode(
+            StatsArtistMapRequest.Result.self,
+            from: Data("""
+            { "payload": { "artist_map": [], "range": "this_year", "from_ts": 1735689600, "to_ts": 1738368000, "last_updated": 1738454400 } }
+            """.utf8)
+        )
+        #expect(sitewideResponse.payload.userID == nil)
+    }
+
+    @Test("Artist map requests use exact user and sitewide routes")
+    func artistMapRequestSemantics() throws {
+        let userRequest = StatsArtistMapRequest(user: "test user", range: .halfYearly)
+        #expect(userRequest.data.path == "/1/stats/user/test user/artist-map")
+        #expect(userRequest.data.queryItems == ["range": ["half_yearly"]])
+        #expect(userRequest.data.statusErrors[204] == .noContent)
+
+        let sitewideRequest = StatsArtistMapRequest(user: nil, range: .allTime)
+        #expect(sitewideRequest.data.path == "/1/stats/sitewide/artist-map")
+        #expect(sitewideRequest.data.queryItems == ["range": ["all_time"]])
+
+        let apiClient = ListenBrainzAPIClient(token: "", root: URL(string: "https://api.listenbrainz.org")!, userAgent: "TestClient/1.0 (+https://example.com)")
+        let urlRequest = try apiClient.makeURLRequest(userRequest)
+        #expect(urlRequest.url?.path == "/1/stats/user/test user/artist-map")
+        #expect(urlRequest.url?.absoluteString.contains("test%20user") == true)
+        #expect(urlRequest.url?.query == "range=half_yearly")
+    }
+
+    @Test("Artist map maps no-content to nil")
+    func artistMapNoContentIsNil() async throws {
+        let client = LBStatisticsClient(MockAPIClient(result: .failure(.noContent)))
+        #expect(try await client.artistMap(user: "listener", range: .thisWeek) == nil)
+        #expect(try await client.artistMapSitewide(range: .thisWeek) == nil)
+    }
+
     @Test("Artist evolution decodes string and numeric buckets with missing artist identifiers")
     func deserializeArtistEvolutionActivity() throws {
         let response = try JSONDecoder.ListenBrainz.decode(

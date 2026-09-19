@@ -1,6 +1,6 @@
 # ListenBrainz capability map
 
-Snapshot: 2026-09-18. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
+Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
 
 | User capability | API | Web | Android | iOS | LBKit | KMP | Priority | Product decision |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
@@ -29,7 +29,7 @@ Snapshot: 2026-09-18. `Y` means source/API evidence exists; `P` means partial or
 | Genre activity | Y | Y | Y | P | Y | P | P1 | Native one-request local-daypart view landed; labels it as incomplete top-per-hour genre-tag matches and explains overlap/time-zone approximation |
 | Era activity | Y | Y | Y | P | Y | P | P1 | Native cached Music by Decade chart with server-derived years and decade-to-year drill-down |
 | Artist evolution activity | Y | Y | — | — | Y | — | P1 | Native on-demand top-artist timeline with touch inspection; one server request per selected range |
-| Artist map | Y | Y | Y | Y | — | P | P2 | Map only when data is meaningful |
+| Artist map / origins | Y | Y | Y | Y | Y | P | P1 | Native on-demand ranked-country report landed with local Artists/Listens ranking and embedded artist detail; geographic map remains optional |
 | Sitewide statistics/context | Y | Y | P | ? | P | P | P2 | Use sparingly for context |
 | Entity popularity/listener counts | Y | Y | Y | ? | Y | P | P1 | Native global listens/listeners context landed on canonical artist, recording, release, and release-group details; daily cache and no row hydration |
 | Year in Music (2021–2025) | Y | Y | Y | Y | Y | P | P1 | Native current-schema 2025 story plus explicit official overview-art preview/PNG sharing landed; legacy years remain staged |
@@ -73,6 +73,7 @@ Snapshot: 2026-09-18. `Y` means source/API evidence exists; `P` means partial or
 - Public API calls were checked against real ListenBrainz data and include messy but useful identity fields: recording MSID, mapped MBIDs, multi-artist credits, Cover Art Archive IDs, service/source metadata, and external URL relations.
 - The current Year in Music endpoint is one aggregate request whose 2025 payload can contain totals, UTC day activity, rankings, discovery data, similar users, and full JSPF playlists. The native first slice deliberately maps the highest-value identity-safe subset and does not fan out into row requests.
 - LB Radio is an authenticated server-side JSPF generator with a separate five-per-five-second quota. The native slice generates only on an explicit tap, uses the bounded/coalescing shared read lane with global 429 deferral, performs at most one batch metadata enrichment, never auto-retries, and does not imply that an MBID is playable audio. A saved mix becomes one explicit, private populated-playlist POST; nil MBIDs are excluded and duplicate canonical occurrences remain ordered.
+- Artist Origins is a public aggregate statistics response built from up to a user's top 1,000 artists that have MusicBrainz country data. The native destination performs one cached user/range read, then ranks by artist or listen count and opens server-embedded country artists locally; it does not issue per-country or per-artist hydration requests.
 
 ## Evidence
 

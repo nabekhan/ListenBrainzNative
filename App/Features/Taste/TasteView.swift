@@ -36,6 +36,7 @@ struct TasteView: View {
                         periodControls
                         dailyListeningHours
                         genreActivity
+                        artistOrigins
                         musicByDecade
                         artistEvolution
                         listeningActivity
@@ -49,6 +50,7 @@ struct TasteView: View {
                     periodControls
                     dailyListeningHours
                     genreActivity
+                    artistOrigins
                     musicByDecade
                     artistEvolution
                     listeningActivity
@@ -642,6 +644,46 @@ struct TasteView: View {
             }
             .buttonStyle(.plain)
             .accessibilityHint("Loads one ListenBrainz artist evolution report for the selected period")
+        }
+    }
+
+    private var artistOrigins: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Artist origins",
+                subtitle: "Where your leading artists come from"
+            )
+
+            NavigationLink {
+                ArtistOriginsView(model: model, period: $activityPeriod)
+            } label: {
+                HStack(spacing: 16) {
+                    Image(systemName: "globe.americas.fill")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(AppTheme.secondary)
+                        .frame(width: 52, height: 52)
+                        .background(AppTheme.secondary.opacity(0.14), in: .circle)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Explore your music’s geography")
+                            .font(.headline)
+                        Text("Compare countries for \(activityPeriod.title.lowercased()) by artists or listens.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 4)
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(16)
+                .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Loads one ListenBrainz artist origins report for the selected period")
         }
     }
 
