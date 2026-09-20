@@ -130,6 +130,68 @@ final class YearInMusicModelTests: XCTestCase {
         XCTAssertTrue(mapped.hasIdentityContent, "A supplied tag name remains useful even without a count.")
     }
 
+    func testArtistEvolutionMapsMonthNamesNumericBucketsAndCanonicalArtists() throws {
+        let artist = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+        let source = try yearInMusic("""
+        { "user_name": "listener", "year": 2024, "data": {
+          "total_listen_count": 0,
+          "artist_evolution_activity": [
+            {"time_unit":" January ", "artist_mbid":"\(artist)", "artist_name":"Artist", "listen_count":3},
+            {"time_unit":1, "artist_mbid":"\(artist)", "artist_name":"artist", "listen_count":2},
+            {"time_unit":"02", "artist_name":"Artist", "listen_count":4},
+            {"time_unit":"March", "artist_mbid":"\(artist)", "artist_name":"Artist", "listen_count":-9},
+            {"time_unit":"March", "artist_name":"Invalid negative artist", "listen_count":-2},
+            {"time_unit":"March", "artist_name":"Missing count artist"},
+            {"time_unit":"13", "artist_mbid":"\(artist)", "artist_name":"Artist", "listen_count":99},
+            {"time_unit":"April", "artist_name":"   ", "listen_count":9}
+          ]
+        } }
+        """)
+
+        let mapped = try XCTUnwrap(YearInMusicReport(source: source, requestedYear: 2024))
+        let evolution = try XCTUnwrap(mapped.artistEvolution)
+        XCTAssertEqual(evolution.timeUnits, ArtistEvolutionActivity.monthNames)
+        XCTAssertEqual(evolution.artists.count, 1)
+        XCTAssertEqual(evolution.artists[0].mbid, artist)
+        XCTAssertEqual(evolution.artists[0].listenCount(at: "January"), 5)
+        XCTAssertEqual(evolution.artists[0].listenCount(at: "February"), 4)
+        XCTAssertEqual(evolution.artists[0].listenCount(at: "March"), 0)
+        XCTAssertEqual(evolution.artists[0].listenCount, 9)
+        XCTAssertEqual(evolution.from, utcDate(year: 2024, month: 1, day: 1))
+        XCTAssertEqual(evolution.to, utcDate(year: 2025, month: 1, day: 1))
+    }
+
+    func testArtistEvolutionOmitsInvalidOrEmptyRowsAndReportEmptinessIncludesEvolution() throws {
+        let source = try yearInMusic("""
+        { "user_name": "listener", "year": 2024, "data": {
+          "total_listen_count": 0,
+          "artist_evolution_activity": [
+            {"time_unit":"0", "artist_name":"Artist", "listen_count":8},
+            {"time_unit":"January", "artist_name":" ", "listen_count":8},
+            {"time_unit":"February", "artist_name":"Artist", "listen_count":-2}
+          ]
+        } }
+        """)
+        let mapped = try XCTUnwrap(YearInMusicReport(source: source, requestedYear: 2024))
+        XCTAssertNil(mapped.artistEvolution)
+        XCTAssertTrue(mapped.isEmpty)
+
+        let activity = ArtistEvolutionActivity(
+            period: .thisYear,
+            from: .distantPast,
+            to: .distantPast,
+            lastUpdated: .distantPast,
+            rows: [.init(timeUnit: "1", artistMBID: nil, artistName: "Artist", listenCount: 1)]
+        )
+        let report = YearInMusicReport(
+            username: nil, year: 2024,
+            totals: .init(listenCount: 0, artistCount: 0, recordingCount: 0, releaseGroupCount: 0, newArtistCount: 0, listeningTime: 0, hasArtistCount: false, hasRecordingCount: false, hasReleaseCount: false, hasListeningTime: false, hasNewArtistCount: false),
+            listeningDays: [], topArtists: [], topReleaseGroups: [], topRecordings: [],
+            artistEvolution: activity
+        )
+        XCTAssertFalse(report.isEmpty)
+    }
+
     func testArchiveMapsConcreteReleasesAndMissingTotalsTruthfully() throws {
         let source = try yearInMusic("""
         { "user_name": "listener", "year": 2021, "data": {

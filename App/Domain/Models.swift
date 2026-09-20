@@ -1057,6 +1057,9 @@ struct ArtistEvolutionActivity: Hashable, Sendable {
             guard let day = Int(value), (1 ... 31).contains(day) else { return nil }
             return String(day)
         case .thisYear, .lastYear:
+            if let month = Int(value), (1 ... 12).contains(month) {
+                return monthNames[month - 1]
+            }
             return monthNames.first {
                 $0.caseInsensitiveCompare(value) == .orderedSame
             }

@@ -9,19 +9,6 @@ struct ArtistEvolutionView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private let artistCountOptions = [3, 5, 10]
-    private let seriesColors: [Color] = [
-        AppTheme.accent,
-        .purple,
-        .blue,
-        .teal,
-        .orange,
-        .indigo,
-        .green,
-        .pink,
-        .cyan,
-        .mint,
-    ]
-
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 24) {
@@ -313,137 +300,16 @@ struct ArtistEvolutionView: View {
         _ activity: ArtistEvolutionActivity,
         artists: [ArtistEvolutionActivity.Artist]
     ) -> some View {
-        GeometryReader { geometry in
-            ScrollView(.horizontal, showsIndicators: activity.timeUnits.count > 12) {
-                Chart {
-                    ForEach(artists) { artist in
-                        ForEach(artist.points) { point in
-                            LineMark(
-                                x: .value("Time", point.timeUnit),
-                                y: .value("Listens", point.listenCount),
-                                series: .value("Artist identity", artist.id)
-                            )
-                            .foregroundStyle(by: .value("Artist identity", artist.id))
-                            .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-                            .interpolationMethod(.catmullRom)
-
-                            if point.timeUnit == selectedTimeUnit {
-                                PointMark(
-                                    x: .value("Time", point.timeUnit),
-                                    y: .value("Listens", point.listenCount)
-                                )
-                                .foregroundStyle(by: .value("Artist identity", artist.id))
-                                .symbolSize(44)
-                            }
-                        }
-                    }
-
-                    // Emit this after the series so a categorical selection
-                    // cannot become the first x-axis category.
-                    if let selectedTimeUnit {
-                        RuleMark(x: .value("Selected time", selectedTimeUnit))
-                            .foregroundStyle(.secondary.opacity(0.6))
-                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                    }
-                }
-                .chartForegroundStyleScale(
-                    domain: artists.map(\.id),
-                    range: Array(seriesColors.prefix(artists.count))
-                )
-                .chartLegend(.hidden)
-                .chartXAxis {
-                    AxisMarks(values: activity.timeUnits) { value in
-                        if let label = value.as(String.self),
-                           axisValues(activity.timeUnits).contains(label) {
-                            AxisTick(stroke: StrokeStyle(lineWidth: 0.5))
-                            AxisValueLabel {
-                                Text(axisLabel(label, period: period))
-                                    .font(.caption2)
-                            }
-                        }
-                    }
-                }
-                .chartYAxis {
-                    AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
-                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                            .foregroundStyle(.tertiary)
-                        AxisValueLabel {
-                            if let count = value.as(Int.self) {
-                                Text(count.formatted(.number.notation(.compactName)))
-                                    .font(.caption2)
-                            } else if let count = value.as(Double.self) {
-                                Text(count.formatted(.number.precision(.fractionLength(0)).notation(.compactName)))
-                                    .font(.caption2)
-                            }
-                        }
-                    }
-                }
-                .chartYScale(range: .plotDimension(startPadding: 4, endPadding: 18))
-                .chartXSelection(value: $selectedTimeUnit)
-                .frame(
-                    width: max(geometry.size.width, chartWidth(for: activity.timeUnits.count)),
-                    height: dynamicTypeSize.isAccessibilitySize ? 330 : 250
-                )
-                .accessibilityChartDescriptor(
-                    ArtistEvolutionDescriptor(activity: activity, artistLimit: requestedArtistCount)
-                )
-            }
-        }
-        .frame(height: dynamicTypeSize.isAccessibilitySize ? 330 : 250)
+        ArtistEvolutionChart(
+            activity: activity,
+            artists: artists,
+            selectedTimeUnit: $selectedTimeUnit,
+            accessibilityTitle: "\(period.title) artist evolution"
+        )
     }
 
     private func artistLegend(_ artists: [ArtistEvolutionActivity.Artist]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Artists")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-
-            ForEach(Array(artists.enumerated()), id: \.element.id) { index, artist in
-                if let destination = artist.rankedArtist.detailDestination() {
-                    NavigationLink(value: destination) {
-                        artistLegendRow(artist, index: index, showsDisclosure: true)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(
-                        "\(artist.name), \(artist.listenCount.formatted()) \(artist.listenCount == 1 ? "listen" : "listens")"
-                    )
-                    .accessibilityHint("Opens artist details")
-                } else {
-                    artistLegendRow(artist, index: index, showsDisclosure: false)
-                        .accessibilityLabel(
-                            "\(artist.name), \(artist.listenCount.formatted()) \(artist.listenCount == 1 ? "listen" : "listens")"
-                        )
-                }
-            }
-        }
-    }
-
-    private func artistLegendRow(
-        _ artist: ArtistEvolutionActivity.Artist,
-        index: Int,
-        showsDisclosure: Bool
-    ) -> some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(seriesColors[index % seriesColors.count])
-                .frame(width: 10, height: 10)
-                .accessibilityHidden(true)
-            Text(artist.name)
-                .font(.subheadline.weight(.medium))
-                .lineLimit(1)
-            Spacer(minLength: 8)
-            Text(artist.listenCount.formatted())
-                .font(.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
-            if showsDisclosure {
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-                    .accessibilityHidden(true)
-            }
-        }
-        .contentShape(.rect)
+        ArtistEvolutionArtistLegend(artists: artists)
     }
 
     @ViewBuilder
@@ -452,48 +318,11 @@ struct ArtistEvolutionView: View {
         artists: [ArtistEvolutionActivity.Artist]
     ) -> some View {
         if let selectedTimeUnit {
-            let ranked = artists.sorted {
-                let lhs = $0.listenCount(at: selectedTimeUnit)
-                let rhs = $1.listenCount(at: selectedTimeUnit)
-                if lhs == rhs {
-                    return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-                }
-                return lhs > rhs
-            }
-            let bucketTotal = ranked.reduce(0) {
-                saturatedSum($0, $1.listenCount(at: selectedTimeUnit))
-            }
-
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(selectedLabel(selectedTimeUnit, period: activity.period))
-                        .font(.headline)
-                    Spacer()
-                    Text("\(bucketTotal.formatted()) listens")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-
-                ForEach(Array(ranked.enumerated()), id: \.element.id) { index, artist in
-                    let count = artist.listenCount(at: selectedTimeUnit)
-                    HStack(spacing: 10) {
-                        Circle()
-                            .fill(seriesColors[(artists.firstIndex(of: artist) ?? index) % seriesColors.count])
-                            .frame(width: 8, height: 8)
-                        Text(artist.name)
-                            .font(.subheadline)
-                            .lineLimit(1)
-                        Spacer()
-                        Text(count.formatted())
-                            .font(.subheadline.monospacedDigit())
-                            .foregroundStyle(count == 0 ? .tertiary : .secondary)
-                    }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(artist.name), \(count) listens")
-                }
-            }
-            .padding(14)
-            .background(Color.secondary.opacity(0.08), in: .rect(cornerRadius: 16, style: .continuous))
+            ArtistEvolutionSelectedBreakdown(
+                period: activity.period,
+                selectedTimeUnit: selectedTimeUnit,
+                artists: artists
+            )
         }
     }
 
@@ -516,42 +345,6 @@ struct ArtistEvolutionView: View {
         }
     }
 
-    private func axisValues(_ values: [String]) -> [String] {
-        guard values.count > 8 else { return values }
-        let desiredCount = dynamicTypeSize.isAccessibilitySize ? 4 : 6
-        let step = max(1, Int(ceil(Double(values.count - 1) / Double(desiredCount - 1))))
-        var result = stride(from: 0, to: values.count, by: step).map { values[$0] }
-        if let last = values.last, result.last != last {
-            result.append(last)
-        }
-        return result
-    }
-
-    private func axisLabel(_ value: String, period: ListeningActivityPeriod) -> String {
-        switch period {
-        case .thisWeek, .lastWeek, .thisYear, .lastYear:
-            return String(value.prefix(3))
-        case .thisMonth, .lastMonth, .allTime:
-            return value
-        }
-    }
-
-    private func selectedLabel(_ value: String, period: ListeningActivityPeriod) -> String {
-        switch period {
-        case .thisMonth, .lastMonth:
-            return "Day \(value)"
-        case .allTime:
-            return "Year \(value)"
-        case .thisWeek, .lastWeek, .thisYear, .lastYear:
-            return value
-        }
-    }
-
-    private func chartWidth(for bucketCount: Int) -> CGFloat {
-        guard bucketCount > 12 || dynamicTypeSize.isAccessibilitySize else { return 0 }
-        return CGFloat(bucketCount) * (dynamicTypeSize.isAccessibilitySize ? 58 : 42)
-    }
-
     private func dateRange(_ activity: ArtistEvolutionActivity) -> String {
         guard activity.from != .distantPast, activity.to != .distantPast else {
             return "Server-calculated by ListenBrainz"
@@ -565,9 +358,305 @@ struct ArtistEvolutionView: View {
     }
 }
 
+private enum ArtistEvolutionStyle {
+    static let colors: [Color] = [
+        AppTheme.accent, .purple, .blue, .teal, .orange,
+        .indigo, .green, .pink, .cyan, .mint,
+    ]
+}
+
+/// A render-only evolution chart shared by the live Taste screen and the
+/// annual report. It deliberately owns no network or model lifecycle.
+struct ArtistEvolutionChart: View {
+    let activity: ArtistEvolutionActivity
+    let artists: [ArtistEvolutionActivity.Artist]
+    @Binding var selectedTimeUnit: String?
+    let accessibilityTitle: String
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        GeometryReader { geometry in
+            ScrollView(.horizontal, showsIndicators: requiresHorizontalScrolling) {
+                Chart {
+                    ForEach(artists) { artist in
+                        ForEach(artist.points) { point in
+                            LineMark(
+                                x: .value("Time", point.timeUnit),
+                                y: .value("Listens", point.listenCount),
+                                series: .value("Artist identity", artist.id)
+                            )
+                            .foregroundStyle(by: .value("Artist identity", artist.id))
+                            .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                            .interpolationMethod(.catmullRom)
+
+                            if point.timeUnit == selectedTimeUnit {
+                                PointMark(x: .value("Time", point.timeUnit), y: .value("Listens", point.listenCount))
+                                    .foregroundStyle(by: .value("Artist identity", artist.id))
+                                    .symbolSize(44)
+                            }
+                        }
+                    }
+                    if let selectedTimeUnit {
+                        RuleMark(x: .value("Selected time", selectedTimeUnit))
+                            .foregroundStyle(.secondary.opacity(0.6))
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    }
+                }
+                .chartForegroundStyleScale(
+                    domain: artists.map(\.id),
+                    range: Array(ArtistEvolutionStyle.colors.prefix(artists.count))
+                )
+                .chartLegend(.hidden)
+                .chartXAxis {
+                    AxisMarks(values: activity.timeUnits) { value in
+                        if let label = value.as(String.self), axisValues(activity.timeUnits).contains(label) {
+                            AxisTick(stroke: StrokeStyle(lineWidth: 0.5))
+                            AxisValueLabel { Text(axisLabel(label)).font(.caption2) }
+                        }
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(
+                        position: requiresHorizontalScrolling ? .trailing : .leading,
+                        values: .automatic(desiredCount: 4)
+                    ) { value in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(.tertiary)
+                        AxisValueLabel {
+                            if let count = value.as(Int.self) {
+                                Text(count.formatted(.number.notation(.compactName))).font(.caption2)
+                            } else if let count = value.as(Double.self) {
+                                Text(count.formatted(.number.precision(.fractionLength(0)).notation(.compactName))).font(.caption2)
+                            }
+                        }
+                    }
+                }
+                .chartYScale(range: .plotDimension(startPadding: 4, endPadding: 18))
+                .chartXSelection(value: $selectedTimeUnit)
+                .frame(
+                    width: max(geometry.size.width, chartWidth(for: activity.timeUnits.count)),
+                    height: dynamicTypeSize.isAccessibilitySize ? 330 : 250
+                )
+                .accessibilityChartDescriptor(
+                    ArtistEvolutionDescriptor(
+                        activity: activity,
+                        artistLimit: artists.count,
+                        title: accessibilityTitle
+                    )
+                )
+            }
+            .defaultScrollAnchor(activity.period == .allTime ? .leading : .trailing)
+        }
+        .frame(height: dynamicTypeSize.isAccessibilitySize ? 330 : 250)
+    }
+
+    private func axisValues(_ values: [String]) -> [String] {
+        guard values.count > 8 else { return values }
+        let desiredCount = dynamicTypeSize.isAccessibilitySize ? 4 : 6
+        let step = max(1, Int(ceil(Double(values.count - 1) / Double(desiredCount - 1))))
+        var result = stride(from: 0, to: values.count, by: step).map { values[$0] }
+        if let last = values.last, result.last != last { result.append(last) }
+        return result
+    }
+
+    private func axisLabel(_ value: String) -> String {
+        switch activity.period {
+        case .thisWeek, .lastWeek, .thisYear, .lastYear: String(value.prefix(3))
+        case .thisMonth, .lastMonth, .allTime: value
+        }
+    }
+
+    private func chartWidth(for bucketCount: Int) -> CGFloat {
+        guard requiresHorizontalScrolling else { return 0 }
+        let bucketWidth: CGFloat
+        if dynamicTypeSize.isAccessibilitySize {
+            bucketWidth = 78
+        } else if dynamicTypeSize >= .xxxLarge {
+            bucketWidth = 72
+        } else {
+            bucketWidth = 42
+        }
+        return CGFloat(bucketCount) * bucketWidth
+    }
+
+    private var requiresHorizontalScrolling: Bool {
+        activity.timeUnits.count > 12 || dynamicTypeSize >= .xxxLarge
+    }
+}
+
+/// The legend only creates destinations for verified MusicBrainz artist IDs.
+struct ArtistEvolutionArtistLegend: View {
+    let artists: [ArtistEvolutionActivity.Artist]
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Artists")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+            ForEach(Array(artists.enumerated()), id: \.element.id) { index, artist in
+                if let destination = artist.rankedArtist.detailDestination() {
+                    NavigationLink(value: destination) { row(artist, index: index, showsDisclosure: true) }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(artist.name), \(artist.listenCount.formatted()) \(artist.listenCount == 1 ? "listen" : "listens")")
+                        .accessibilityHint("Opens artist details")
+                } else {
+                    row(artist, index: index, showsDisclosure: false)
+                        .accessibilityLabel("\(artist.name), \(artist.listenCount.formatted()) \(artist.listenCount == 1 ? "listen" : "listens")")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func row(_ artist: ArtistEvolutionActivity.Artist, index: Int, showsDisclosure: Bool) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            HStack(alignment: .top, spacing: 10) {
+                colorMarker(index)
+                    .padding(.top, 7)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(artist.name)
+                        .font(.subheadline.weight(.medium))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(artist.listenCount.formatted())
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                disclosure(showsDisclosure)
+            }
+        } else {
+            HStack(spacing: 10) {
+                colorMarker(index)
+                Text(artist.name)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(2)
+                Spacer(minLength: 8)
+                Text(artist.listenCount.formatted())
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                disclosure(showsDisclosure)
+            }
+        }
+    }
+
+    private func colorMarker(_ index: Int) -> some View {
+        Circle()
+            .fill(ArtistEvolutionStyle.colors[index % ArtistEvolutionStyle.colors.count])
+            .frame(width: 10, height: 10)
+            .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func disclosure(_ visible: Bool) -> some View {
+        if visible {
+            Image(systemName: "chevron.right")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
+        }
+    }
+}
+
+struct ArtistEvolutionSelectedBreakdown: View {
+    let period: ListeningActivityPeriod
+    let selectedTimeUnit: String
+    let artists: [ArtistEvolutionActivity.Artist]
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var rankedArtists: [ArtistEvolutionActivity.Artist] {
+        artists.sorted {
+            let left = $0.listenCount(at: selectedTimeUnit)
+            let right = $1.listenCount(at: selectedTimeUnit)
+            if left == right {
+                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+            return left > right
+        }
+    }
+
+    private var total: Int {
+        rankedArtists.reduce(0) { partial, artist in
+            let result = partial.addingReportingOverflow(artist.listenCount(at: selectedTimeUnit))
+            return result.overflow ? Int.max : result.partialValue
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 3) { breakdownHeader }
+            } else {
+                HStack(alignment: .firstTextBaseline) { breakdownHeader }
+            }
+
+            ForEach(rankedArtists) { artist in
+                artistRow(artist)
+            }
+        }
+        .padding(14)
+        .background(Color.secondary.opacity(0.08), in: .rect(cornerRadius: 16, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var breakdownHeader: some View {
+        Text(selectedLabel)
+            .font(.headline)
+        if !dynamicTypeSize.isAccessibilitySize { Spacer() }
+        Text("\(total.formatted()) \(total == 1 ? "listen" : "listens")")
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.secondary)
+    }
+
+    private func artistRow(_ artist: ArtistEvolutionActivity.Artist) -> some View {
+        let count = artist.listenCount(at: selectedTimeUnit)
+        let index = artists.firstIndex(of: artist) ?? 0
+        return HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(ArtistEvolutionStyle.colors[index % ArtistEvolutionStyle.colors.count])
+                .frame(width: 8, height: 8)
+                .padding(.top, dynamicTypeSize.isAccessibilitySize ? 8 : 5)
+                .accessibilityHidden(true)
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(artist.name)
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    countLabel(count)
+                }
+            } else {
+                Text(artist.name)
+                    .font(.subheadline)
+                    .lineLimit(2)
+                Spacer(minLength: 8)
+                countLabel(count)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(artist.name), \(count.formatted()) \(count == 1 ? "listen" : "listens")")
+    }
+
+    private func countLabel(_ count: Int) -> some View {
+        Text(count.formatted())
+            .font(.subheadline.monospacedDigit())
+            .foregroundStyle(count == 0 ? .tertiary : .secondary)
+    }
+
+    private var selectedLabel: String {
+        switch period {
+        case .thisMonth, .lastMonth: "Day \(selectedTimeUnit)"
+        case .allTime: "Year \(selectedTimeUnit)"
+        case .thisWeek, .lastWeek, .thisYear, .lastYear: selectedTimeUnit
+        }
+    }
+}
+
 private struct ArtistEvolutionDescriptor: AXChartDescriptorRepresentable {
     let activity: ArtistEvolutionActivity
     let artistLimit: Int
+    let title: String
 
     func makeChartDescriptor() -> AXChartDescriptor {
         let artists = activity.artists(limit: artistLimit)
@@ -591,7 +680,7 @@ private struct ArtistEvolutionDescriptor: AXChartDescriptorRepresentable {
             )
         }
         return AXChartDescriptor(
-            title: "\(activity.period.title) artist evolution",
+            title: title,
             summary: "Listen counts for \(artists.count) leading artists across \(activity.timeUnits.count) time periods",
             xAxis: xAxis,
             yAxis: yAxis,

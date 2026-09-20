@@ -166,6 +166,8 @@ struct YearInMusicView: View {
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-brainz-year-in-music-identity-demo") {
             YearInMusicIdentitySection(report: report)
+        } else if arguments.contains("-brainz-year-in-music-evolution-demo") {
+            YearInMusicArtistEvolutionSection(report: report)
         } else if arguments.contains("-brainz-year-in-music-artists-demo") {
             YearInMusicArtistsSection(
                 artists: report.topArtists,
@@ -182,6 +184,7 @@ struct YearInMusicView: View {
             YearInMusicHero(report: report)
             YearInMusicCalendarSection(report: report)
             if report.hasIdentityContent { YearInMusicIdentitySection(report: report) }
+            if report.artistEvolution != nil { YearInMusicArtistEvolutionSection(report: report) }
             YearInMusicArtistsSection(
                 artists: report.topArtists,
                 allowsNavigation: allowsMediaNavigation
@@ -196,6 +199,7 @@ struct YearInMusicView: View {
         YearInMusicHero(report: report)
         if !report.listeningDays.isEmpty { YearInMusicCalendarSection(report: report) }
         if report.hasIdentityContent { YearInMusicIdentitySection(report: report) }
+        if report.artistEvolution != nil { YearInMusicArtistEvolutionSection(report: report) }
         if !report.topArtists.isEmpty { YearInMusicArtistsSection(artists: report.topArtists, allowsNavigation: true) }
         releaseSection(report)
         if !report.topRecordings.isEmpty { YearInMusicTracksSection(recordings: report.topRecordings, allowsNavigation: true) }
@@ -271,6 +275,124 @@ struct YearInMusicView: View {
         let archivePath = model.report?.source == .archive ? "/legacy" : ""
         components.path = "/user/\(username)/year-in-music\(archivePath)/\(model.year)/"
         return components.url
+    }
+}
+
+private struct YearInMusicArtistEvolutionSection: View {
+    let report: YearInMusicReport
+    @State private var requestedArtistCount = 5
+    @State private var selectedTimeUnit: String?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private let artistCountOptions = [3, 5, 10]
+
+    var body: some View {
+        if let activity = report.artistEvolution, !activity.isEmpty {
+            let artists = activity.artists(limit: requestedArtistCount)
+            VStack(alignment: .leading, spacing: 14) {
+                SectionHeader(
+                    title: "Artists through the year",
+                    subtitle: "See how your favorites changed month by month."
+                )
+
+                VStack(alignment: .leading, spacing: 18) {
+                    header(activity, artists: artists)
+                    ArtistEvolutionChart(
+                        activity: activity,
+                        artists: artists,
+                        selectedTimeUnit: $selectedTimeUnit,
+                        accessibilityTitle: "\(report.year) artist evolution"
+                    )
+                    ArtistEvolutionArtistLegend(artists: artists)
+                    selectedBreakdown(activity, artists: artists)
+                }
+                .padding(16)
+                .background(.thinMaterial, in: .rect(cornerRadius: 22, style: .continuous))
+            }
+            .sensoryFeedback(.selection, trigger: selectedTimeUnit)
+            .onAppear { selectUsefulBucketIfNeeded(activity, artists: artists) }
+            .onChange(of: requestedArtistCount) { _, _ in
+                selectUsefulBucketIfNeeded(activity, artists: activity.artists(limit: requestedArtistCount))
+            }
+        }
+    }
+
+    private func header(
+        _ activity: ArtistEvolutionActivity,
+        artists: [ArtistEvolutionActivity.Artist]
+    ) -> some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 12) {
+                    reportContext
+                    artistCountMenu(activity, artists: artists)
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    reportContext
+                    Spacer(minLength: 8)
+                    artistCountMenu(activity, artists: artists)
+                }
+            }
+        }
+    }
+
+    private var reportContext: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(String(report.year))
+                .font(.headline)
+            Text("Tap the chart to inspect a time slice")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func artistCountMenu(
+        _ activity: ArtistEvolutionActivity,
+        artists: [ArtistEvolutionActivity.Artist]
+    ) -> some View {
+        let counts = Array(Set(artistCountOptions.map { min($0, activity.artists.count) }))
+            .filter { $0 > 0 }
+            .sorted()
+        return Menu {
+            ForEach(counts, id: \.self) { count in
+                Button {
+                    requestedArtistCount = count
+                } label: {
+                    if artists.count == count { Label("Top \(count)", systemImage: "checkmark") }
+                    else { Text("Top \(count)") }
+                }
+            }
+        } label: {
+            Label("Top \(artists.count)", systemImage: "line.3.horizontal.decrease.circle")
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .accessibilityLabel("Show top \(artists.count) artists")
+    }
+
+    @ViewBuilder
+    private func selectedBreakdown(
+        _ activity: ArtistEvolutionActivity,
+        artists: [ArtistEvolutionActivity.Artist]
+    ) -> some View {
+        if let selectedTimeUnit {
+            ArtistEvolutionSelectedBreakdown(
+                period: activity.period,
+                selectedTimeUnit: selectedTimeUnit,
+                artists: artists
+            )
+        }
+    }
+
+    private func selectUsefulBucketIfNeeded(
+        _ activity: ArtistEvolutionActivity,
+        artists: [ArtistEvolutionActivity.Artist]
+    ) {
+        guard selectedTimeUnit == nil || !activity.timeUnits.contains(selectedTimeUnit!) else { return }
+        selectedTimeUnit = activity.timeUnits.last { timeUnit in
+            artists.contains { $0.listenCount(at: timeUnit) > 0 }
+        } ?? activity.timeUnits.last
     }
 }
 
@@ -1320,7 +1442,14 @@ private extension YearInMusicReport {
                 .init(decade: 2010, listenCount: 5_817),
                 .init(decade: 2000, listenCount: 3_420),
                 .init(decade: 1990, listenCount: 1_163),
-            ]
+            ],
+            artistEvolution: ArtistEvolutionActivity(
+                period: .thisYear,
+                from: visualDate(year: year, dayOffset: 0) ?? .distantPast,
+                to: visualDate(year: year + 1, dayOffset: 0) ?? .distantPast,
+                lastUpdated: .distantPast,
+                rows: visualArtistEvolutionRows(artistIDs: artistIDs)
+            )
         )
     }
 
@@ -1360,6 +1489,20 @@ private extension YearInMusicReport {
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         guard let start = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) else { return nil }
         return calendar.date(byAdding: .day, value: dayOffset, to: start)
+    }
+
+    static func visualArtistEvolutionRows(artistIDs: [UUID?]) -> [ArtistEvolutionActivity.Row] {
+        ArtistEvolutionActivity.monthNames.enumerated().flatMap { month, name in
+            artistIDs.enumerated().map { index, identifier in
+                let listenCount = max(0, 24 + ((month * 19 + index * 31) % 92) - (index == 3 && month < 4 ? 45 : 0))
+                return .init(
+                    timeUnit: name,
+                    artistMBID: identifier,
+                    artistName: ["Alvvays", "Japanese Breakfast", "Radiohead", "Men I Trust"][index],
+                    listenCount: listenCount
+                )
+            }
+        }
     }
 
     static func visualUUID(_ seed: Int) -> UUID {

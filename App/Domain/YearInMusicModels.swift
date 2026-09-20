@@ -25,6 +25,10 @@ struct YearInMusicReport: Hashable, Sendable {
     /// Release-year listening grouped into decades. These are release dates,
     /// not the dates on which the user listened.
     let releaseDecades: [ReleaseDecade]
+    /// The server-calculated top artists in each month of this report year.
+    /// This is intentionally presentation-neutral so it can reuse the native
+    /// artist-evolution chart without issuing a second statistics request.
+    let artistEvolution: ArtistEvolutionActivity?
 
     var isEmpty: Bool {
         totals.listenCount == 0
@@ -37,6 +41,7 @@ struct YearInMusicReport: Hashable, Sendable {
             && mostActiveWeekday == nil
             && topGenres.isEmpty
             && releaseDecades.isEmpty
+            && (artistEvolution?.isEmpty ?? true)
     }
 
     var hasIdentityContent: Bool {
@@ -197,7 +202,8 @@ struct YearInMusicReport: Hashable, Sendable {
         topRecordings: [TopRecording],
         mostActiveWeekday: Weekday? = nil,
         topGenres: [Genre] = [],
-        releaseDecades: [ReleaseDecade] = []
+        releaseDecades: [ReleaseDecade] = [],
+        artistEvolution: ArtistEvolutionActivity? = nil
     ) {
         self.username = username
         self.year = year
@@ -211,6 +217,7 @@ struct YearInMusicReport: Hashable, Sendable {
         self.mostActiveWeekday = mostActiveWeekday
         self.topGenres = topGenres
         self.releaseDecades = releaseDecades
+        self.artistEvolution = artistEvolution
     }
 
     /// Maps only a report the API says exists.  `nil` is intentionally
@@ -242,6 +249,41 @@ struct YearInMusicReport: Hashable, Sendable {
         mostActiveWeekday = Self.mapWeekday(data.dayOfWeek)
         topGenres = Self.mapGenres(data.topGenres)
         releaseDecades = Self.mapReleaseDecades(data.mostListenedYear, reportYear: year)
+        artistEvolution = Self.mapArtistEvolution(data.artistEvolutionActivity, year: year)
+    }
+
+    private static func mapArtistEvolution(
+        _ source: [LBYearInMusic.Report.ArtistEvolutionEntry],
+        year: Int
+    ) -> ArtistEvolutionActivity? {
+        guard (1000 ... 9999).contains(year) else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        guard let from = calendar.date(from: DateComponents(year: year, month: 1, day: 1)),
+              let to = calendar.date(from: DateComponents(year: year + 1, month: 1, day: 1))
+        else { return nil }
+
+        let rows = source.compactMap { row -> ArtistEvolutionActivity.Row? in
+            guard let timeUnit = row.timeUnit,
+                  let artistName = row.artistName,
+                  let listenCount = row.listenCount,
+                  listenCount > 0
+            else { return nil }
+            return .init(
+                timeUnit: timeUnit,
+                artistMBID: row.artistMBID.flatMap(UUID.init(uuidString:)),
+                artistName: artistName,
+                listenCount: listenCount
+            )
+        }
+        let activity = ArtistEvolutionActivity(
+            period: .thisYear,
+            from: from,
+            to: to,
+            lastUpdated: .distantPast,
+            rows: rows
+        )
+        return activity.isEmpty ? nil : activity
     }
 
     private static func mapWeekday(_ source: String?) -> Weekday? {

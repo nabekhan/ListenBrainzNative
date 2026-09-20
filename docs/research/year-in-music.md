@@ -26,6 +26,7 @@ Snapshot: 2026-09-19.
 - The current report keeps its authenticated request scope and 30-minute cache. Frozen archives use an empty-token client, anonymous gate/cache scope, and a separate 24-hour cache. Neither path retries automatically.
 - The native story shows listening-time/listen totals, a Monday-first UTC annual heatmap, annual identity context, ranked artists, release groups, and recordings.
 - The identity chapter reuses the same aggregate response: it preserves the presence of `total_new_artists_discovered` (including a truthful zero), normalizes only canonical weekday names, presents genre strings explicitly as ListenBrainz tags, and groups positive release-year counts from 1850 through the report year into decades. Missing or invalid fields are omitted rather than invented, and no secondary request or row hydration is introduced.
+- The annual artist-evolution chapter also stays inside that aggregate. Documented English months and defensive numeric 1–12 buckets feed the existing `ArtistEvolutionActivity` identity/ordering normalizer; malformed or non-positive rows disappear, sparse months remain truthful zeroes, and the render-only native chart/legend is shared with Taste without importing its request-owning lifecycle. Mapped artists retain the existing Artist Detail route only after a tap, while unmapped names remain readable.
 - Existing artist, release-group, release, and recording destinations are reused. The archive adapter preserves concrete releases for 2021–2022, uses the supplied safe HTTPS 2021 artwork map when present, and never collapses a release MBID into a release-group identity.
 - Cache keys include normalized user, request scope, and year; stale content survives refresh failures, and late/cancelled responses cannot overwrite newer state.
 - Cassette's MPL-2.0 Wrapped composition supplies the adapted mesh hero, artist shelf, album grid, track list, and 2025 palette. The annual heatmap and ListenBrainz state handling are app-specific.
@@ -42,5 +43,5 @@ Snapshot: 2026-09-19.
 
 ## Deferred
 
-- Secondary payload chapters such as artist evolution, artist-map context, discovery playlists, similar users, and new releases remain deferred until their value and duplication with existing app surfaces are reviewed.
+- Secondary payload chapters such as artist-map context, discovery playlists, similar users, and new releases remain deferred until their value and duplication with existing app surfaces are reviewed.
 - The full year-specific website animations and layouts remain reference-only GPL behavior; the native story deliberately normalizes the highest-value chapters instead of copying them.
