@@ -36,7 +36,8 @@ final class YearInMusicModelTests: XCTestCase {
             "top_recordings": [
               {"recording_mbid": "\(recordingA)", "track_name": "Same", "artist_name": "Artist", "release_mbid": "\(release)", "listen_count": 2, "caa_id": 10},
               {"recording_mbid": "\(recordingA)", "track_name": "Same (Remaster)", "artist_name": "Artist", "release_mbid": "\(release)", "listen_count": 4, "caa_id": 8},
-              {"recording_mbid": "\(recordingB)", "track_name": "Same", "artist_name": "Artist", "release_mbid": "\(release)", "listen_count": 3, "caa_id": 9}
+              {"recording_mbid": "\(recordingB)", "track_name": "Same", "artist_name": "Artist", "release_mbid": "\(release)", "listen_count": 3, "caa_id": 9},
+              {"track_name": "Unmapped", "artist_name": "Artist", "release_mbid": "\(release)", "listen_count": 1}
             ]
           }
         }
@@ -57,9 +58,16 @@ final class YearInMusicModelTests: XCTestCase {
         XCTAssertEqual(mapped.topReleaseGroups[0].artworkReleaseMBID, release)
         XCTAssertEqual(mapped.topReleaseGroups[0].coverArtArchiveID, 4)
         XCTAssertEqual(mapped.topReleaseGroups[0].artistMBIDs, [artistA, artistB])
-        XCTAssertEqual(mapped.topRecordings.count, 2)
-        XCTAssertEqual(Set(mapped.topRecordings.map { $0.recording.identity.mbid }), Set([recordingA, recordingB]))
+        XCTAssertEqual(mapped.topRecordings.count, 3)
+        XCTAssertEqual(Set(mapped.topRecordings.compactMap { $0.recording.identity.mbid }), Set([recordingA, recordingB]))
         XCTAssertEqual(mapped.topRecordings.first(where: { $0.recording.identity.mbid == recordingA })?.listenCount, 6)
+        XCTAssertEqual(
+            mapped.topRecordings.first(where: { $0.recording.identity.mbid == recordingA })?.detailDestination?.identity.mbid,
+            recordingA
+        )
+        let unmapped = try XCTUnwrap(mapped.topRecordings.first(where: { $0.recording.title == "Unmapped" }))
+        XCTAssertEqual(unmapped.recording.releaseMBID, release)
+        XCTAssertNil(unmapped.detailDestination)
     }
 
     func testEmptyReportMapsToUnavailableRatherThanEmptyRetrospective() throws {

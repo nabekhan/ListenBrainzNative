@@ -133,6 +133,10 @@ struct YearInMusicReport: Hashable, Sendable {
 
         var id: String { recording.id }
         var artworkURL: URL? { recording.artworkURL }
+        var detailDestination: Recording? {
+            guard recording.identity.mbid != nil else { return nil }
+            return recording
+        }
     }
 
     /// Internal construction path for deterministic previews and tests. Live

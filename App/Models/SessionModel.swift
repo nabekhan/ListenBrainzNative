@@ -207,6 +207,7 @@ final class SessionModel {
                 return true
             }
             if arguments.contains("-brainz-popularity-detail-demo")
+                || arguments.contains("-brainz-artist-tracks-demo")
                 || arguments.contains("-brainz-artist-context-demo")
                 || arguments.contains("-brainz-artist-context-failure-demo")
                 || arguments.contains("-brainz-artist-highlights-demo")
@@ -225,6 +226,7 @@ final class SessionModel {
                 return true
             }
             if arguments.contains("-brainz-year-in-music-demo")
+                || arguments.contains("-brainz-year-in-music-tracks-demo")
                 || arguments.contains("-brainz-year-in-music-2021-demo")
                 || arguments.contains("-brainz-year-in-music-2024-demo") {
                 state = .active(Account(username: "visual-taste", token: "visual-taste"))
@@ -237,6 +239,7 @@ final class SessionModel {
             if arguments.contains("-brainz-taste-demo")
                 || arguments.contains("-brainz-taste-heatmap-demo")
                 || arguments.contains("-brainz-taste-release-groups-demo")
+                || arguments.contains("-brainz-taste-tracks-demo")
                 || arguments.contains("-brainz-year-in-music-teaser-demo")
                 || arguments.contains("-brainz-taste-era-demo")
                 || arguments.contains("-brainz-taste-era-zoom-demo")

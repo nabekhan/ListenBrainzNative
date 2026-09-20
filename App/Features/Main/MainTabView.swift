@@ -78,6 +78,7 @@ struct MainTabView: View {
                 return
             }
             if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-tracks-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-artist-context-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-artist-context-failure-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-artist-highlights-demo")
@@ -105,7 +106,9 @@ struct MainTabView: View {
                     ))
                 return
             }
-            if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo") {
+            if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-tracks-demo")
+            {
                 let visualAccount = Account(username: "visual-taste", token: "visual-taste")
                 _model = State(
                     initialValue: ListeningModel(
@@ -161,6 +164,7 @@ struct MainTabView: View {
             if ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-release-groups-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-taste-tracks-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-teaser-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-zoom-demo")
@@ -264,6 +268,7 @@ struct MainTabView: View {
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-release-groups-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-taste-tracks-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-teaser-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-zoom-demo")
@@ -415,6 +420,7 @@ struct MainTabView: View {
                     fails: ProcessInfo.processInfo.arguments.contains("-brainz-artist-highlights-failure-demo")
                 ))
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-popularity-detail-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-artist-tracks-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-artist-context-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-artist-context-failure-demo")
             {
@@ -437,6 +443,7 @@ struct MainTabView: View {
                     VisualQACritiqueBrainzReviewsProvider(result: .populated)
                 )
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-tracks-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2021-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2024-demo") {
                 NavigationStack {
@@ -1190,6 +1197,15 @@ struct MainTabView: View {
                     artistMBIDs: [Self.artistMBID],
                     releaseTitle: "Blue Rev",
                     listenCount: 96
+                ),
+                .init(
+                    mbid: nil,
+                    releaseMBID: nil,
+                    title: "A Very Long Unmapped Recording Title for Layout Inspection",
+                    artistName: "Alvvays",
+                    artistMBIDs: [Self.artistMBID],
+                    releaseTitle: nil,
+                    listenCount: 61
                 )
             ]
         }
@@ -1325,6 +1341,7 @@ struct MainTabView: View {
             UUID(uuidString: "a1d4c987-9c07-4c71-8f75-6505e2e8f554")!,
         ]
         private static let releaseMBID = UUID(uuidString: "1390f1b7-7851-48ae-983d-eb8a48f78048")!
+        private static let recordingMBID = UUID(uuidString: "39ad19e5-c0b0-454a-985b-201fb92898a0")!
 
         func validateToken() async throws -> String { "visual-taste" }
         func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] { [] }
@@ -1368,7 +1385,8 @@ struct MainTabView: View {
         func topRecordings(username: String, count: Int) async throws -> [RankedRecording] {
             [
                 .init(
-                    mbid: nil, releaseMBID: Self.releaseMBID, title: "After the Earthquake", artistName: "Alvvays",
+                    mbid: Self.recordingMBID, releaseMBID: Self.releaseMBID,
+                    title: "After the Earthquake", artistName: "Alvvays",
                     artistMBIDs: [Self.artistMBIDs[0]], releaseTitle: "Blue Rev", listenCount: 96),
                 .init(
                     mbid: nil, releaseMBID: nil, title: "Be Sweet", artistName: "Japanese Breakfast",

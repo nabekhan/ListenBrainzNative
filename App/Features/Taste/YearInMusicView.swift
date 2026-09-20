@@ -861,23 +861,25 @@ private struct YearInMusicTracksSection: View {
     let recordings: [YearInMusicReport.TopRecording]
     let allowsNavigation: Bool
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption) private var rankCircleSize: CGFloat = 30
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "Top tracks", subtitle: "Your most-played recordings")
+            SectionHeader(title: "Top tracks", subtitle: "Your most-played tracks")
 
             if recordings.isEmpty {
                 sectionEmpty("No track ranking was included in this report.")
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(recordings.prefix(10).enumerated()), id: \.element.id) { index, item in
-                        if allowsNavigation {
-                            NavigationLink(value: item.recording) {
-                                trackRow(item, rank: index + 1)
+                        if allowsNavigation, let destination = item.detailDestination {
+                            NavigationLink(value: destination) {
+                                trackRow(item, rank: index + 1, showsDisclosure: true)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityHint("Opens track details")
                         } else {
-                            trackRow(item, rank: index + 1)
+                            trackRow(item, rank: index + 1, showsDisclosure: false)
                         }
 
                         if index < min(recordings.count, 10) - 1 {
@@ -889,13 +891,23 @@ private struct YearInMusicTracksSection: View {
         }
     }
 
-    private func trackRow(_ item: YearInMusicReport.TopRecording, rank: Int) -> some View {
+    private func trackRow(
+        _ item: YearInMusicReport.TopRecording,
+        rank: Int,
+        showsDisclosure: Bool
+    ) -> some View {
         Group {
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 12) {
+                    HStack(alignment: .top, spacing: 12) {
                         rankCircle(rank)
                         trackIdentity(item)
+                        if showsDisclosure {
+                            Image(systemName: "chevron.right")
+                                .font(.body.bold())
+                                .foregroundStyle(.tertiary)
+                                .accessibilityHidden(true)
+                        }
                     }
                     Text("\(item.listenCount.formatted()) listens")
                         .font(.subheadline)
@@ -911,6 +923,12 @@ private struct YearInMusicTracksSection: View {
                     Text("\(item.listenCount.formatted())")
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(.secondary)
+                    if showsDisclosure {
+                        Image(systemName: "chevron.right")
+                            .font(.caption.bold())
+                            .foregroundStyle(.tertiary)
+                            .accessibilityHidden(true)
+                    }
                 }
             }
         }
@@ -918,7 +936,6 @@ private struct YearInMusicTracksSection: View {
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Number \(rank), \(item.recording.title) by \(item.recording.artistName), \(item.listenCount.formatted()) listens")
-        .accessibilityHint("Opens recording details")
     }
 
     private func trackIdentity(_ item: YearInMusicReport.TopRecording) -> some View {
@@ -938,7 +955,7 @@ private struct YearInMusicTracksSection: View {
         Text("\(rank)")
             .font(.caption.bold().monospacedDigit())
             .foregroundStyle(rank <= 3 ? .black : AppTheme.accent)
-            .frame(width: 30, height: 30)
+            .frame(width: min(rankCircleSize, 72), height: min(rankCircleSize, 72))
             .background(rank <= 3 ? YearInMusicPalette.medal(rank) : AppTheme.accent.opacity(0.13), in: .circle)
     }
 }
@@ -1050,7 +1067,7 @@ private extension YearInMusicReport {
         ]
         let tracks = [
             visualRecording(title: "Belinda Says", artist: "Alvvays", release: "Blue Rev", count: 73, seed: 10),
-            visualRecording(title: "Be Sweet", artist: "Japanese Breakfast", release: "Jubilee", count: 68, seed: 11),
+            visualRecording(title: "Be Sweet", artist: "Japanese Breakfast", release: "Jubilee", count: 68, seed: nil),
             visualRecording(title: "Weird Fishes / Arpeggi", artist: "Radiohead", release: "In Rainbows", count: 62, seed: 12),
             visualRecording(title: "Sugar", artist: "Men I Trust", release: "Untourable Album", count: 51, seed: 13),
             visualRecording(title: "Dreams Tonite", artist: "Alvvays", release: "Antisocialites", count: 48, seed: 14),
@@ -1108,10 +1125,10 @@ private extension YearInMusicReport {
         )
     }
 
-    static func visualRecording(title: String, artist: String, release: String, count: Int, seed: Int) -> TopRecording {
+    static func visualRecording(title: String, artist: String, release: String, count: Int, seed: Int?) -> TopRecording {
         TopRecording(
             recording: Recording(
-                identity: .init(mbid: visualUUID(seed), msid: nil),
+                identity: .init(mbid: seed.map(visualUUID), msid: nil),
                 title: title,
                 artistName: artist,
                 artistMBIDs: [],

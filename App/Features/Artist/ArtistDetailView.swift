@@ -50,15 +50,15 @@ struct ArtistDetailView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
-                hero
-                artistPageFailure
-                popularity
-                topListeners
-                reviews
-                topRecordings
-                artistHighlights
-                similarArtists
-                recentListens
+                #if DEBUG
+                if isTracksVisualQA {
+                    topRecordings
+                } else {
+                    artistDetailContent
+                }
+                #else
+                artistDetailContent
+                #endif
             }
             .padding(.horizontal, 18)
             .padding(.bottom, 40)
@@ -72,6 +72,7 @@ struct ArtistDetailView: View {
         .navigationTitle(artist.name)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: artist.mbid) {
+            guard !isTracksVisualQA else { return }
             await loadPageContext()
         }
         .navigationDestination(for: Recording.self) { recording in
@@ -81,13 +82,13 @@ struct ArtistDetailView: View {
             UserDetailView(user: user, viewer: model.account)
         }
         .toolbar {
-            if artist.mbid != nil {
+            if artist.mbid != nil, !isTracksVisualQA {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showsArtwork = true } label: { Image(systemName: "photo") }
                     .accessibilityLabel("Create artist artwork")
                 }
             }
-            if let mbid = artist.mbid {
+            if let mbid = artist.mbid, !isTracksVisualQA {
                 ToolbarItem(placement: .topBarTrailing) {
                     Link(destination: URL(string: "https://musicbrainz.org/artist/\(mbid.uuidString)")!) {
                         Image(systemName: "arrow.up.right.square")
@@ -107,6 +108,27 @@ struct ArtistDetailView: View {
                 )
             }
         }
+    }
+
+    @ViewBuilder
+    private var artistDetailContent: some View {
+        hero
+        artistPageFailure
+        popularity
+        topListeners
+        reviews
+        topRecordings
+        artistHighlights
+        similarArtists
+        recentListens
+    }
+
+    private var isTracksVisualQA: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-brainz-artist-tracks-demo")
+        #else
+        false
+        #endif
     }
 
     @ViewBuilder
@@ -352,29 +374,82 @@ struct ArtistDetailView: View {
         let recordings = model.recordings(for: artist)
         if !recordings.isEmpty {
             VStack(alignment: .leading, spacing: 14) {
-                SectionHeader(title: "Your top recordings")
+                SectionHeader(title: "Your top tracks")
                 ForEach(Array(recordings.prefix(10).enumerated()), id: \.element.id) { index, item in
-                    NavigationLink(value: item.recording) {
-                        HStack(spacing: 12) {
-                            Text("\(index + 1)")
-                                .font(.subheadline.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                                .frame(width: 22)
-                            ArtworkView(url: item.recording.artworkURL, title: item.title, cornerRadius: 7)
-                                .frame(width: 48, height: 48)
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(item.title).font(.body.weight(.semibold)).lineLimit(1)
-                                Text("\(item.listenCount.formatted()) listens")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                    if let destination = item.detailDestination {
+                        NavigationLink(value: destination) {
+                            topRecordingRow(item, rank: index + 1, showsDisclosure: true)
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens track details")
+                    } else {
+                        topRecordingRow(item, rank: index + 1, showsDisclosure: false)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
+    }
+
+    private func topRecordingRow(
+        _ item: RankedRecording,
+        rank: Int,
+        showsDisclosure: Bool
+    ) -> some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 12) {
+                        recordingRank(rank)
+                        ArtworkView(url: item.recording.artworkURL, title: item.title, cornerRadius: 12)
+                            .frame(width: 76, height: 76)
+                        Spacer(minLength: 8)
+                        if showsDisclosure {
+                            Image(systemName: "chevron.right")
+                                .font(.body.bold())
+                                .foregroundStyle(.tertiary)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    Text(item.title)
+                        .font(.headline)
+                    Text(listenCountLabel(item.listenCount))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                HStack(spacing: 12) {
+                    recordingRank(rank)
+                    ArtworkView(url: item.recording.artworkURL, title: item.title, cornerRadius: 7)
+                        .frame(width: 48, height: 48)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(item.title).font(.body.weight(.semibold)).lineLimit(1)
+                        Text(listenCountLabel(item.listenCount))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if showsDisclosure {
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .accessibilityHidden(true)
+                    }
+                }
+            }
+        }
+        .contentShape(.rect)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Rank \(rank), \(item.title), \(listenCountLabel(item.listenCount))")
+    }
+
+    private func recordingRank(_ rank: Int) -> some View {
+        Text("\(rank)")
+            .font(.subheadline.monospacedDigit())
+            .foregroundStyle(.secondary)
+            .frame(width: 22)
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        "\(count.formatted()) \(count == 1 ? "listen" : "listens")"
     }
 
     @ViewBuilder

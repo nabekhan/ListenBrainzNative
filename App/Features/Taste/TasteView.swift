@@ -32,7 +32,7 @@ struct TasteView: View {
                     } else if isEraVisualQA {
                         periodControls
                         musicByDecade
-                    } else if isReleaseGroupsVisualQA {
+                    } else if isReleaseGroupsVisualQA || isTracksVisualQA {
                         rankings
                     } else {
                         overview
@@ -108,6 +108,8 @@ struct TasteView: View {
                 }
                 if isReleaseGroupsVisualQA {
                     ranking = .releaseGroups
+                } else if isTracksVisualQA {
+                    ranking = .recordings
                 }
             }
             #endif
@@ -131,6 +133,7 @@ struct TasteView: View {
             || isYearInMusicTeaserVisualQA
             || isEraVisualQA
             || isReleaseGroupsVisualQA
+            || isTracksVisualQA
         #else
         false
         #endif
@@ -179,12 +182,24 @@ struct TasteView: View {
     }
 
     private var isFocusedVisualQA: Bool {
-        isYearInMusicTeaserVisualQA || isHeatmapVisualQA || isEraVisualQA || isReleaseGroupsVisualQA
+        isYearInMusicTeaserVisualQA
+            || isHeatmapVisualQA
+            || isEraVisualQA
+            || isReleaseGroupsVisualQA
+            || isTracksVisualQA
     }
 
     private var isReleaseGroupsVisualQA: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-brainz-taste-release-groups-demo")
+        #else
+        false
+        #endif
+    }
+
+    private var isTracksVisualQA: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-brainz-taste-tracks-demo")
         #else
         false
         #endif
@@ -1250,6 +1265,9 @@ struct TasteView: View {
             .onChange(of: ranking) { _, value in
                 withAnimation(.snappy) { proxy.scrollTo(value, anchor: .center) }
             }
+            .onChange(of: dynamicTypeSize) { _, _ in
+                proxy.scrollTo(ranking, anchor: .center)
+            }
         }
         .accessibilityLabel("Ranking type")
     }
@@ -1283,10 +1301,15 @@ struct TasteView: View {
 
     private var recordingRankings: some View {
         ForEach(Array(model.snapshot.topRecordings.prefix(20).enumerated()), id: \.element.id) { index, recording in
-            NavigationLink(value: recording.recording) {
-                rankedRecordingRow(index: index, recording: recording)
+            if let destination = recording.detailDestination {
+                NavigationLink(value: destination) {
+                    rankedRecordingRow(index: index, recording: recording, showsDisclosure: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens track details")
+            } else {
+                rankedRecordingRow(index: index, recording: recording, showsDisclosure: false)
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -1443,19 +1466,72 @@ struct TasteView: View {
         "\(count.formatted()) \(count == 1 ? "listen" : "listens")"
     }
 
-    private func rankedRecordingRow(index: Int, recording: RankedRecording) -> some View {
-        HStack(spacing: 12) {
-            rank(index)
-            ArtworkView(url: recording.recording.artworkURL, title: recording.title, cornerRadius: 8)
-                .frame(width: 50, height: 50)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(recording.title).font(.body.weight(.semibold)).lineLimit(1)
-                Text("\(recording.artistName) · \(recording.listenCount.formatted()) listens")
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+    private func rankedRecordingRow(
+        index: Int,
+        recording: RankedRecording,
+        showsDisclosure: Bool
+    ) -> some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 12) {
+                        rank(index)
+                        recordingArtwork(recording, size: 76, cornerRadius: 12)
+                        Spacer(minLength: 8)
+                        if showsDisclosure {
+                            Image(systemName: "chevron.right")
+                                .font(.body.bold())
+                                .foregroundStyle(.tertiary)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    Text(recording.title)
+                        .font(.headline)
+                    Text(recording.artistName)
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                    Text(listenCountLabel(recording.listenCount))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                HStack(spacing: 12) {
+                    rank(index)
+                    recordingArtwork(recording, size: 50, cornerRadius: 8)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(recording.title).font(.body.weight(.semibold)).lineLimit(1)
+                        Text("\(recording.artistName) · \(listenCountLabel(recording.listenCount))")
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    Spacer()
+                    if showsDisclosure {
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .accessibilityHidden(true)
+                    }
+                }
             }
-            Spacer()
-            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
         }
+        .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 8 : 0)
+        .contentShape(.rect)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "Rank \(index + 1), \(recording.title), \(recording.artistName), \(listenCountLabel(recording.listenCount))"
+        )
+    }
+
+    private func recordingArtwork(
+        _ recording: RankedRecording,
+        size: CGFloat,
+        cornerRadius: CGFloat
+    ) -> some View {
+        ArtworkView(
+            url: isTracksVisualQA ? nil : recording.recording.artworkURL,
+            title: recording.title,
+            cornerRadius: cornerRadius
+        )
+        .frame(width: size, height: size)
     }
 
     private func rank(_ index: Int) -> some View {
