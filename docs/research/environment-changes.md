@@ -4,6 +4,19 @@ Updated: 2026-09-19
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
 
+## Handoff cleanup performed
+
+On 2026-09-19, before moving development to another machine, the following generated or disposable project artifacts were moved to Trash and remain recoverable until Trash is emptied:
+
+- ignored `References/` clones;
+- repository-local `.derived-data/`, `.build/`, and `Packages/ListenBrainzKit/.build/` products;
+- project-specific `~/Library/Developer/Xcode/DerivedData/ListenBrainzNative-*` data;
+- the isolated `/tmp/listenbrainz-playwright-yim/` browser project;
+
+The disposable `Brainz QA iPhone 17 Pro` and `Brainz QA iPhone SE` simulator devices were deleted after shutdown. The tracked `ListenBrainzNative.xcodeproj/` was retained alongside authoritative `project.yml` so the checkout remains immediately portable.
+
+All simulators were shut down first. Xcode, the iOS simulator runtime, shared Nix/Gradle/Kotlin caches, and the reusable UX-writing skill were retained because they may support other work. Their optional cleanup instructions remain below. No credential was copied into the repository or handoff.
+
 ## Reference clones
 
 All clones are shallow and ignored by Git. Remove `References/` to delete them.

@@ -56,6 +56,7 @@ The SwiftUI presentation depends on the small `ListeningProvider` boundary rathe
 
 This repository follows an inspect-first, reuse-first workflow. Start with:
 
+- `docs/research/development-handoff.md`
 - `docs/research/implementation-plan.md`
 - `docs/research/listenbrainz-feature-map.md`
 - `docs/research/listenbrainzkit-gap-analysis.md`
