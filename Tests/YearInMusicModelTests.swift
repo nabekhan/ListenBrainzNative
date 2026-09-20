@@ -89,7 +89,7 @@ final class YearInMusicModelTests: XCTestCase {
           ],
           "most_listened_year": {
             "2010": 2, "2019": 4, "2020": -1,
-            "1849": 8, "2026": 7, "not a year": 6
+            "1849": 8, "2025": 9, "2026": 7, "not a year": 6
           }
         } }
         """)

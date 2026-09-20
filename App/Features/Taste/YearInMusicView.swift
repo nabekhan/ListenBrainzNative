@@ -464,7 +464,6 @@ private struct YearInMusicHero: View {
 
 private struct YearInMusicIdentitySection: View {
     let report: YearInMusicReport
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -567,7 +566,21 @@ private struct YearInMusicIdentitySection: View {
 
     @ViewBuilder
     private func identityRowLabel(_ title: String, detail: String?) -> some View {
-        if dynamicTypeSize.isAccessibilitySize {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: true, vertical: false)
+                Spacer(minLength: 8)
+                if let detail {
+                    Text(detail)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+            }
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
@@ -576,19 +589,7 @@ private struct YearInMusicIdentitySection: View {
                     Text(detail)
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
-                }
-            }
-        } else {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                Spacer(minLength: 8)
-                if let detail {
-                    Text(detail)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -1312,7 +1313,7 @@ private extension YearInMusicReport {
                 .init(name: "Dream pop", listenCount: 2_184, percentage: 34.8, hasListenCount: true),
                 .init(name: "Indie rock", listenCount: 1_806, percentage: 28.8, hasListenCount: true),
                 .init(name: "Art pop", listenCount: 1_174, percentage: 18.7, hasListenCount: true),
-                .init(name: "Alternative rock", listenCount: 961, percentage: 15.3, hasListenCount: true),
+                .init(name: "Atmospheric experimental indie rock", listenCount: 961, percentage: 15.3, hasListenCount: true),
             ],
             releaseDecades: [
                 .init(decade: 2020, listenCount: 6_942),

@@ -301,9 +301,9 @@ struct YearInMusicReport: Hashable, Sendable {
 
     private static func mapReleaseDecades(_ source: [String: Int], reportYear: Int) -> [ReleaseDecade] {
         let minimumPlausibleReleaseYear = 1850
-        // Permit a one-year boundary tolerance for early metadata, but do not
-        // let malformed future dates dominate an historical report.
-        let maximumPlausibleReleaseYear = min(2100, reportYear + 1)
+        // A retrospective must not imply listening to music released after
+        // the report year, even when source metadata contains future dates.
+        let maximumPlausibleReleaseYear = min(2100, reportYear)
         var counts: [Int: Int] = [:]
         for (rawYear, count) in source {
             guard let year = Int(rawYear.trimmingCharacters(in: .whitespacesAndNewlines)),
