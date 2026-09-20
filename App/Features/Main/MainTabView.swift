@@ -110,6 +110,7 @@ struct MainTabView: View {
             }
             if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-tracks-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-identity-demo")
             {
                 let visualAccount = Account(username: "visual-taste", token: "visual-taste")
                 _model = State(
@@ -455,6 +456,7 @@ struct MainTabView: View {
                 )
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-tracks-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-identity-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2021-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2024-demo") {
                 NavigationStack {

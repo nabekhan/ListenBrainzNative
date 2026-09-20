@@ -164,7 +164,9 @@ struct YearInMusicView: View {
     private func visibleSections(_ report: YearInMusicReport) -> some View {
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
-        if arguments.contains("-brainz-year-in-music-artists-demo") {
+        if arguments.contains("-brainz-year-in-music-identity-demo") {
+            YearInMusicIdentitySection(report: report)
+        } else if arguments.contains("-brainz-year-in-music-artists-demo") {
             YearInMusicArtistsSection(
                 artists: report.topArtists,
                 allowsNavigation: allowsMediaNavigation
@@ -179,6 +181,7 @@ struct YearInMusicView: View {
         } else {
             YearInMusicHero(report: report)
             YearInMusicCalendarSection(report: report)
+            if report.hasIdentityContent { YearInMusicIdentitySection(report: report) }
             YearInMusicArtistsSection(
                 artists: report.topArtists,
                 allowsNavigation: allowsMediaNavigation
@@ -192,6 +195,7 @@ struct YearInMusicView: View {
         #else
         YearInMusicHero(report: report)
         if !report.listeningDays.isEmpty { YearInMusicCalendarSection(report: report) }
+        if report.hasIdentityContent { YearInMusicIdentitySection(report: report) }
         if !report.topArtists.isEmpty { YearInMusicArtistsSection(artists: report.topArtists, allowsNavigation: true) }
         releaseSection(report)
         if !report.topRecordings.isEmpty { YearInMusicTracksSection(recordings: report.topRecordings, allowsNavigation: true) }
@@ -455,6 +459,199 @@ private struct YearInMusicHero: View {
         if report.totals.hasReleaseCount { summary += ", \(report.totals.releaseGroupCount.formatted()) releases" }
         if report.totals.hasRecordingCount { summary += ", and \(report.totals.recordingCount.formatted()) tracks" }
         return summary + "."
+    }
+}
+
+private struct YearInMusicIdentitySection: View {
+    let report: YearInMusicReport
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "How you listened",
+                subtitle: "A few patterns from your annual report"
+            )
+
+            VStack(alignment: .leading, spacing: 12) {
+                if report.totals.hasNewArtistCount {
+                    newArtistsCard
+                }
+                if let weekday = report.mostActiveWeekday {
+                    weekdayCard(weekday)
+                }
+                if !report.topGenres.isEmpty {
+                    genresCard
+                }
+                if !report.releaseDecades.isEmpty {
+                    decadesCard
+                }
+            }
+        }
+    }
+
+    private var newArtistsCard: some View {
+        YearInMusicIdentityCard(icon: "person.badge.plus", title: "New artists") {
+            Text("\(report.totals.newArtistCount.formatted()) new \(report.totals.newArtistCount == 1 ? "artist" : "artists") discovered")
+                .font(.title3.bold().monospacedDigit())
+                .foregroundStyle(.primary)
+        } accessibilityLabel: {
+            "New artists. \(report.totals.newArtistCount.formatted()) \(report.totals.newArtistCount == 1 ? "artist" : "artists") discovered."
+        }
+    }
+
+    private func weekdayCard(_ weekday: YearInMusicReport.Weekday) -> some View {
+        YearInMusicIdentityCard(icon: "calendar", title: "Most active weekday") {
+            Text(weekday.name)
+                .font(.title3.bold())
+            Text("Your busiest day for listening.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        } accessibilityLabel: {
+            "Most active weekday. \(weekday.name) was your busiest day for listening."
+        }
+    }
+
+    private var genresCard: some View {
+        YearInMusicIdentityCard(
+            icon: "tag",
+            title: "Top genre tags",
+            subtitle: "ListenBrainz tags, not a complete genre profile"
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(report.topGenres.prefix(6)) { genre in
+                    genreRow(genre)
+                }
+            }
+        } accessibilityLabel: {
+            "Top genre tags. " + report.topGenres.prefix(6).map(genreAccessibilitySummary).joined(separator: ". ")
+        }
+    }
+
+    private var decadesCard: some View {
+        YearInMusicIdentityCard(
+            icon: "clock.arrow.circlepath",
+            title: "Release decades",
+            subtitle: "Release years for the music you played"
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(report.releaseDecades.prefix(6)) { decade in
+                    decadeRow(decade)
+                }
+            }
+        } accessibilityLabel: {
+            "Release decades. " + report.releaseDecades.prefix(6).map { "\($0.label), \($0.listenCount.formatted()) \($0.listenCount == 1 ? "listen" : "listens")" }.joined(separator: ". ")
+        }
+    }
+
+    private func genreRow(_ genre: YearInMusicReport.Genre) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            identityRowLabel(genre.name, detail: genreDetail(genre))
+            if let proportion = genre.percentage {
+                YearInMusicProportionBar(value: proportion / 100)
+            }
+        }
+    }
+
+    private func decadeRow(_ decade: YearInMusicReport.ReleaseDecade) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            identityRowLabel(
+                decade.label,
+                detail: "\(decade.listenCount.formatted()) \(decade.listenCount == 1 ? "listen" : "listens")"
+            )
+            YearInMusicProportionBar(
+                value: Double(decade.listenCount) / Double(max(1, report.releaseDecades.map(\.listenCount).max() ?? 1))
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func identityRowLabel(_ title: String, detail: String?) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                if let detail {
+                    Text(detail)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                if let detail {
+                    Text(detail)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.trailing)
+                }
+            }
+        }
+    }
+
+    private func genreDetail(_ genre: YearInMusicReport.Genre) -> String? {
+        if genre.hasListenCount {
+            return "\(genre.listenCount.formatted()) \(genre.listenCount == 1 ? "listen" : "listens")"
+        }
+        if let percentage = genre.percentage {
+            return (percentage / 100).formatted(.percent.precision(.fractionLength(0)))
+        }
+        return nil
+    }
+
+    private func genreAccessibilitySummary(_ genre: YearInMusicReport.Genre) -> String {
+        if let detail = genreDetail(genre) { return "\(genre.name), \(detail)" }
+        return genre.name
+    }
+}
+
+private struct YearInMusicIdentityCard<Content: View>: View {
+    let icon: String
+    let title: String
+    var subtitle: String? = nil
+    @ViewBuilder let content: Content
+    let accessibilityLabel: () -> String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(title, systemImage: icon)
+                .font(.headline)
+                .foregroundStyle(AppTheme.accent)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(.thinMaterial, in: .rect(cornerRadius: 22, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel())
+    }
+}
+
+private struct YearInMusicProportionBar: View {
+    let value: Double
+
+    var body: some View {
+        GeometryReader { proxy in
+            Capsule()
+                .fill(AppTheme.accent.opacity(0.16))
+                .overlay(alignment: .leading) {
+                    Capsule()
+                        .fill(AppTheme.accent)
+                        .frame(width: proxy.size.width * max(0, min(1, value)))
+                }
+        }
+        .frame(height: 6)
+        .accessibilityHidden(true)
     }
 }
 
@@ -1109,7 +1306,20 @@ private extension YearInMusicReport {
             topArtists: artists,
             topReleaseGroups: year <= 2022 ? [] : releaseGroups,
             topReleases: concreteReleases,
-            topRecordings: tracks
+            topRecordings: tracks,
+            mostActiveWeekday: .init(name: "Saturday", order: 5),
+            topGenres: [
+                .init(name: "Dream pop", listenCount: 2_184, percentage: 34.8, hasListenCount: true),
+                .init(name: "Indie rock", listenCount: 1_806, percentage: 28.8, hasListenCount: true),
+                .init(name: "Art pop", listenCount: 1_174, percentage: 18.7, hasListenCount: true),
+                .init(name: "Alternative rock", listenCount: 961, percentage: 15.3, hasListenCount: true),
+            ],
+            releaseDecades: [
+                .init(decade: 2020, listenCount: 6_942),
+                .init(decade: 2010, listenCount: 5_817),
+                .init(decade: 2000, listenCount: 3_420),
+                .init(decade: 1990, listenCount: 1_163),
+            ]
         )
     }
 

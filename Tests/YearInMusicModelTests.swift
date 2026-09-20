@@ -75,6 +75,61 @@ final class YearInMusicModelTests: XCTestCase {
         XCTAssertNil(YearInMusicReport(source: source, requestedYear: 2025))
     }
 
+    func testIdentityChapterNormalizesPresenceTagsWeekdayAndReleaseDecades() throws {
+        let source = try yearInMusic("""
+        { "user_name": "listener", "year": 2024, "data": {
+          "total_listen_count": 1,
+          "total_new_artists_discovered": 0,
+          "day_of_week": " WED ",
+          "top_genres": [
+            {"genre": "Dream Pop", "genre_count": 4, "genre_count_percent": 12.5},
+            {"genre": "dream pop ", "genre_count": -9, "genre_count_percent": -2},
+            {"genre": "Ambient", "genre_count": 3, "genre_count_percent": 300},
+            {"genre": "  ", "genre_count": 99, "genre_count_percent": 99}
+          ],
+          "most_listened_year": {
+            "2010": 2, "2019": 4, "2020": -1,
+            "1849": 8, "2026": 7, "not a year": 6
+          }
+        } }
+        """)
+
+        let mapped = try XCTUnwrap(YearInMusicReport(source: source, requestedYear: 2024))
+
+        XCTAssertTrue(mapped.totals.hasNewArtistCount)
+        XCTAssertEqual(mapped.totals.newArtistCount, 0)
+        XCTAssertEqual(mapped.mostActiveWeekday, .init(name: "Wednesday", order: 2))
+        XCTAssertEqual(mapped.topGenres.count, 2)
+        XCTAssertEqual(mapped.topGenres[0].name, "Dream Pop")
+        XCTAssertEqual(mapped.topGenres[0].listenCount, 4)
+        XCTAssertTrue(mapped.topGenres[0].hasListenCount)
+        XCTAssertEqual(mapped.topGenres[0].percentage, 12.5)
+        XCTAssertEqual(mapped.topGenres[1].name, "Ambient")
+        XCTAssertEqual(mapped.topGenres[1].percentage, 100)
+        XCTAssertEqual(mapped.releaseDecades, [.init(decade: 2010, listenCount: 6)])
+        XCTAssertTrue(mapped.hasIdentityContent)
+    }
+
+    func testIdentityChapterOmitsUnavailableAndInvalidValues() throws {
+        let source = try yearInMusic("""
+        { "user_name": "listener", "year": 2021, "data": {
+          "total_listen_count": 1,
+          "total_new_artists_discovered": -1,
+          "day_of_week": "everyday",
+          "top_genres": [{"genre": "Noise"}],
+          "most_listened_year": {"2020": 0}
+        } }
+        """)
+
+        let mapped = try XCTUnwrap(YearInMusicReport(source: source, requestedYear: 2021, sourceKind: .archive))
+
+        XCTAssertFalse(mapped.totals.hasNewArtistCount)
+        XCTAssertNil(mapped.mostActiveWeekday)
+        XCTAssertEqual(mapped.topGenres, [.init(name: "Noise", listenCount: 0, percentage: nil, hasListenCount: false)])
+        XCTAssertTrue(mapped.releaseDecades.isEmpty)
+        XCTAssertTrue(mapped.hasIdentityContent, "A supplied tag name remains useful even without a count.")
+    }
+
     func testArchiveMapsConcreteReleasesAndMissingTotalsTruthfully() throws {
         let source = try yearInMusic("""
         { "user_name": "listener", "year": 2021, "data": {

@@ -17,6 +17,14 @@ struct YearInMusicReport: Hashable, Sendable {
     let topReleaseGroups: [ReleaseGroup]
     let topReleases: [Release]
     let topRecordings: [TopRecording]
+    /// The weekday ListenBrainz identifies as the user's most active music day.
+    let mostActiveWeekday: Weekday?
+    /// ListenBrainz genre tags, retained as display-only labels rather than
+    /// treated as a canonical genre taxonomy.
+    let topGenres: [Genre]
+    /// Release-year listening grouped into decades. These are release dates,
+    /// not the dates on which the user listened.
+    let releaseDecades: [ReleaseDecade]
 
     var isEmpty: Bool {
         totals.listenCount == 0
@@ -25,6 +33,17 @@ struct YearInMusicReport: Hashable, Sendable {
             && topReleaseGroups.isEmpty
             && topReleases.isEmpty
             && topRecordings.isEmpty
+            && !totals.hasNewArtistCount
+            && mostActiveWeekday == nil
+            && topGenres.isEmpty
+            && releaseDecades.isEmpty
+    }
+
+    var hasIdentityContent: Bool {
+        totals.hasNewArtistCount
+            || mostActiveWeekday != nil
+            || !topGenres.isEmpty
+            || !releaseDecades.isEmpty
     }
 
     struct Totals: Hashable, Sendable {
@@ -41,6 +60,7 @@ struct YearInMusicReport: Hashable, Sendable {
         let hasRecordingCount: Bool
         let hasReleaseCount: Bool
         let hasListeningTime: Bool
+        let hasNewArtistCount: Bool
 
         init(
             listenCount: Int,
@@ -52,14 +72,38 @@ struct YearInMusicReport: Hashable, Sendable {
             hasArtistCount: Bool = true,
             hasRecordingCount: Bool = true,
             hasReleaseCount: Bool = true,
-            hasListeningTime: Bool = true
+            hasListeningTime: Bool = true,
+            hasNewArtistCount: Bool = true
         ) {
             self.listenCount = listenCount; self.artistCount = artistCount
             self.recordingCount = recordingCount; self.releaseGroupCount = releaseGroupCount
             self.newArtistCount = newArtistCount; self.listeningTime = listeningTime
             self.hasArtistCount = hasArtistCount; self.hasRecordingCount = hasRecordingCount
             self.hasReleaseCount = hasReleaseCount; self.hasListeningTime = hasListeningTime
+            self.hasNewArtistCount = hasNewArtistCount
         }
+    }
+
+    struct Weekday: Hashable, Sendable {
+        let name: String
+        let order: Int
+    }
+
+    struct Genre: Identifiable, Hashable, Sendable {
+        let name: String
+        let listenCount: Int
+        let percentage: Double?
+        let hasListenCount: Bool
+
+        var id: String { name.normalizedIdentity }
+    }
+
+    struct ReleaseDecade: Identifiable, Hashable, Sendable {
+        let decade: Int
+        let listenCount: Int
+
+        var id: Int { decade }
+        var label: String { "\(decade)s" }
     }
 
     struct ListeningDay: Identifiable, Hashable, Sendable {
@@ -150,7 +194,10 @@ struct YearInMusicReport: Hashable, Sendable {
         topArtists: [RankedArtist],
         topReleaseGroups: [ReleaseGroup],
         topReleases: [Release] = [],
-        topRecordings: [TopRecording]
+        topRecordings: [TopRecording],
+        mostActiveWeekday: Weekday? = nil,
+        topGenres: [Genre] = [],
+        releaseDecades: [ReleaseDecade] = []
     ) {
         self.username = username
         self.year = year
@@ -161,6 +208,9 @@ struct YearInMusicReport: Hashable, Sendable {
         self.topReleaseGroups = topReleaseGroups
         self.topReleases = topReleases
         self.topRecordings = topRecordings
+        self.mostActiveWeekday = mostActiveWeekday
+        self.topGenres = topGenres
+        self.releaseDecades = releaseDecades
     }
 
     /// Maps only a report the API says exists.  `nil` is intentionally
@@ -181,13 +231,94 @@ struct YearInMusicReport: Hashable, Sendable {
             hasArtistCount: data.totalArtistsCount != nil,
             hasRecordingCount: data.totalRecordingsCount != nil,
             hasReleaseCount: data.totalReleaseGroupsCount != nil || data.totalReleasesCount != nil,
-            hasListeningTime: data.totalListeningTime != nil
+            hasListeningTime: data.totalListeningTime != nil,
+            hasNewArtistCount: Self.nonNegativeValid(data.totalNewArtistsDiscovered) != nil
         )
         listeningDays = Self.mapListeningDays(data.listensPerDay, year: year)
         topArtists = Self.mapArtists(data.topArtists)
         topReleaseGroups = Self.mapReleaseGroups(data.topReleaseGroups)
         topReleases = Self.mapReleases(data.topReleases, coverArtByReleaseMBID: data.topReleasesCoverArt)
         topRecordings = Self.mapRecordings(data.topRecordings)
+        mostActiveWeekday = Self.mapWeekday(data.dayOfWeek)
+        topGenres = Self.mapGenres(data.topGenres)
+        releaseDecades = Self.mapReleaseDecades(data.mostListenedYear, reportYear: year)
+    }
+
+    private static func mapWeekday(_ source: String?) -> Weekday? {
+        guard let normalized = source?.normalizedIdentity else { return nil }
+        let weekdays = [
+            ("Monday", ["monday", "mon"]),
+            ("Tuesday", ["tuesday", "tue", "tues"]),
+            ("Wednesday", ["wednesday", "wed"]),
+            ("Thursday", ["thursday", "thu", "thur", "thurs"]),
+            ("Friday", ["friday", "fri"]),
+            ("Saturday", ["saturday", "sat"]),
+            ("Sunday", ["sunday", "sun"]),
+        ]
+        guard let index = weekdays.firstIndex(where: { $0.1.contains(normalized) }) else { return nil }
+        return Weekday(name: weekdays[index].0, order: index)
+    }
+
+    private static func mapGenres(_ source: [LBYearInMusic.Report.Genre]) -> [Genre] {
+        struct Accumulator {
+            var name: String
+            var listenCount = 0
+            var hasListenCount = false
+            var percentage = 0.0
+            var hasPercentage = false
+        }
+
+        var values: [String: Accumulator] = [:]
+        for row in source {
+            guard let name = row.name?.trimmedNilIfEmpty else { continue }
+            let key = name.normalizedIdentity
+            var value = values[key] ?? Accumulator(name: name)
+            if preferred(name, over: value.name) { value.name = name }
+            if let count = nonNegativeValid(row.count) {
+                value.listenCount = saturatedSum(value.listenCount, count)
+                value.hasListenCount = true
+            }
+            if let percentage = normalizedPercentage(row.countPercent) {
+                value.percentage = min(100, value.percentage + percentage)
+                value.hasPercentage = true
+            }
+            values[key] = value
+        }
+        return values.values.map { value in
+            Genre(
+                name: value.name,
+                listenCount: value.listenCount,
+                percentage: value.hasPercentage ? value.percentage : nil,
+                hasListenCount: value.hasListenCount
+            )
+        }
+        .sorted { lhs, rhs in
+            if lhs.listenCount != rhs.listenCount { return lhs.listenCount > rhs.listenCount }
+            if lhs.percentage != rhs.percentage { return (lhs.percentage ?? 0) > (rhs.percentage ?? 0) }
+            return lhs.name.normalizedIdentity < rhs.name.normalizedIdentity
+        }
+    }
+
+    private static func mapReleaseDecades(_ source: [String: Int], reportYear: Int) -> [ReleaseDecade] {
+        let minimumPlausibleReleaseYear = 1850
+        // Permit a one-year boundary tolerance for early metadata, but do not
+        // let malformed future dates dominate an historical report.
+        let maximumPlausibleReleaseYear = min(2100, reportYear + 1)
+        var counts: [Int: Int] = [:]
+        for (rawYear, count) in source {
+            guard let year = Int(rawYear.trimmingCharacters(in: .whitespacesAndNewlines)),
+                  (minimumPlausibleReleaseYear ... maximumPlausibleReleaseYear).contains(year)
+            else { continue }
+            let normalizedCount = nonNegative(count)
+            guard normalizedCount > 0 else { continue }
+            let decade = (year / 10) * 10
+            counts[decade] = saturatedSum(counts[decade, default: 0], normalizedCount)
+        }
+        return counts.map { ReleaseDecade(decade: $0.key, listenCount: $0.value) }
+            .sorted { lhs, rhs in
+                if lhs.listenCount != rhs.listenCount { return lhs.listenCount > rhs.listenCount }
+                return lhs.decade > rhs.decade
+            }
     }
 
     private static func mapReleases(
@@ -399,10 +530,18 @@ struct YearInMusicReport: Hashable, Sendable {
     }
 
     private static func nonNegative(_ value: Int?) -> Int { max(0, value ?? 0) }
+    private static func nonNegativeValid(_ value: Int?) -> Int? {
+        guard let value, value >= 0 else { return nil }
+        return value
+    }
     private static func nonNegativeOptional(_ value: Int?) -> Int? { value.map { max(0, $0) } }
     private static func nonNegative(_ value: Double?) -> TimeInterval {
         guard let value, value.isFinite else { return 0 }
         return max(0, value)
+    }
+    private static func normalizedPercentage(_ value: Double?) -> Double? {
+        guard let value, value.isFinite, value >= 0 else { return nil }
+        return min(100, value)
     }
     private static func saturatedSum(_ lhs: Int, _ rhs: Int) -> Int {
         let result = lhs.addingReportingOverflow(rhs)
