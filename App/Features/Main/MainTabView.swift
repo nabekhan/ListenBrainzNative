@@ -62,6 +62,7 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-user-defining-artists-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-user-profile-albums-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-user-profile-tracks-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-home-tracks-demo")
             {
                 let visualAccount = Account(username: "visual-taste", token: "visual-taste")
                 _model = State(
@@ -279,6 +280,9 @@ struct MainTabView: View {
                     .environment(pins)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-user-profile-tracks-demo") {
                 UserProfileTracksVisualQAScreen(model: model)
+                    .environment(pins)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-home-tracks-demo") {
+                HomeTopRecordingsVisualQAScreen(model: model)
                     .environment(pins)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-artist-evolution-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-artist-evolution-all-time-demo")

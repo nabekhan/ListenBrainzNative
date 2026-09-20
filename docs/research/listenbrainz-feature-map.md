@@ -22,7 +22,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Top artists | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
 | Top releases/albums | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
 | Top release groups | Y | Y | Y | Y | Y | P | P1 | Lazy native Taste ranking; one cached aggregate read, canonical group routing, no row hydration, and no release-identity conflation |
-| Top recordings/tracks | Y | Y | Y | Y | Y | Y | P0 | Signed-in Profile reuses already-loaded rankings; visited profiles add one lazy cached aggregate read |
+| Top recordings/tracks | Y | Y | Y | Y | Y | Y | P0 | Home and signed-in Profile reuse already-loaded rankings; visited profiles add one lazy cached aggregate read |
 | Listening activity | Y | Y | Y | Y | Y | Y | P0 | Native Swift Charts |
 | Daily/hour-of-day activity | Y | Y | Y | Y | Y | — | P1 | Native cached, selectable 7×24 UTC heatmap across the seven server periods |
 | Artist activity | Y | Y | Y | P | Y | P | P1 | Native on-demand ranked artist/album report landed; one cached aggregate read per selected range and no row hydration |

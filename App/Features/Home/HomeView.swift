@@ -67,6 +67,10 @@ struct HomeView: View {
                     topArtistsSection
                 }
 
+                if !model.snapshot.topRecordings.isEmpty {
+                    HomeTopRecordingsSection(recordings: Array(model.snapshot.topRecordings.prefix(12)))
+                }
+
                 if !model.snapshot.topReleases.isEmpty {
                     topReleasesSection
                 }
@@ -198,3 +202,176 @@ struct HomeView: View {
         return "Good evening"
     }
 }
+
+struct HomeTopRecordingsSection: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let recordings: [RankedRecording]
+    var loadsArtwork = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Most played tracks",
+                subtitle: "The tracks you return to most"
+            )
+
+            if dynamicTypeSize.isAccessibilitySize {
+                LazyVStack(spacing: 12) {
+                    ForEach(recordings) { recording in
+                        recordingDestination(recording) {
+                            accessibilityRow(recording)
+                        }
+                    }
+                }
+            } else {
+                ScrollView(.horizontal) {
+                    LazyHStack(alignment: .top, spacing: 16) {
+                        ForEach(recordings) { recording in
+                            recordingDestination(recording) {
+                                recordingCard(recording)
+                            }
+                        }
+                    }
+                    .scrollTargetLayout()
+                }
+                .scrollTargetBehavior(.viewAligned)
+                .scrollIndicators(.hidden)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func recordingDestination<Content: View>(
+        _ recording: RankedRecording,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        if let destination = recording.detailDestination {
+            NavigationLink(value: destination) {
+                content()
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens track details")
+        } else {
+            content()
+        }
+    }
+
+    private func recordingCard(_ recording: RankedRecording) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            artwork(for: recording, cornerRadius: 13)
+                .frame(width: 152, height: 152)
+            Text(recording.title)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(recording.artistName)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Text(listenCountLabel(recording.listenCount))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(width: 152, alignment: .leading)
+        .contentShape(.rect)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel(for: recording))
+    }
+
+    private func accessibilityRow(_ recording: RankedRecording) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            artwork(for: recording, cornerRadius: 12)
+                .frame(width: 76, height: 76)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(recording.title)
+                    .font(.headline)
+                Text(recording.artistName)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                Text(listenCountLabel(recording.listenCount))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if recording.detailDestination != nil {
+                Image(systemName: "chevron.right")
+                    .font(.body.bold())
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(12)
+        .background(.thinMaterial, in: .rect(cornerRadius: 16, style: .continuous))
+        .contentShape(.rect)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel(for: recording))
+    }
+
+    private func artwork(for recording: RankedRecording, cornerRadius: CGFloat) -> some View {
+        ArtworkView(
+            url: loadsArtwork ? recording.recording.artworkURL : nil,
+            title: recording.title,
+            cornerRadius: cornerRadius
+        )
+    }
+
+    private func accessibilityLabel(for recording: RankedRecording) -> String {
+        [recording.title, recording.artistName, listenCountLabel(recording.listenCount)]
+            .joined(separator: ", ")
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        "\(count.formatted()) \(count == 1 ? "listen" : "listens")"
+    }
+}
+
+#if DEBUG
+    struct HomeTopRecordingsVisualQAScreen: View {
+        @Bindable var model: ListeningModel
+
+        private let recordings = [
+            RankedRecording(
+                mbid: UUID(uuidString: "1bf70850-1a66-4e77-b751-51410977ff04"),
+                releaseMBID: nil,
+                title: "Belinda Says",
+                artistName: "Alvvays",
+                artistMBIDs: [UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab")!],
+                releaseTitle: "Blue Rev",
+                listenCount: 423
+            ),
+            RankedRecording(
+                mbid: nil,
+                releaseMBID: nil,
+                title: "A Very Long Unmapped Track Title for Layout Inspection and VoiceOver",
+                artistName: "Japanese Breakfast",
+                artistMBIDs: [],
+                releaseTitle: "Jubilee",
+                listenCount: 287
+            ),
+            RankedRecording(
+                mbid: UUID(uuidString: "35c5d972-9356-4880-bd56-37b43a726160"),
+                releaseMBID: nil,
+                title: "Hush",
+                artistName: "The Marías",
+                artistMBIDs: [],
+                releaseTitle: "Cinema",
+                listenCount: 1
+            ),
+        ]
+
+        var body: some View {
+            NavigationStack {
+                ScrollView {
+                    HomeTopRecordingsSection(recordings: recordings, loadsArtwork: false)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 24)
+                }
+                .navigationTitle("Good evening")
+                .mediaDestinations(model: model)
+            }
+        }
+    }
+#endif
