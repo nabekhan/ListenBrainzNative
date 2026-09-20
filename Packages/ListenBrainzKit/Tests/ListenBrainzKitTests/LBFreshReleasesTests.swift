@@ -88,10 +88,14 @@ import Testing
         #expect(personalized.data.path == "/1/user/test user/fresh_releases")
         #expect(personalized.data.preservesTrailingSlash == false)
         #expect(personalized.data.queryItems["days"] == ["1"])
+        #expect(personalized.data.queryItems["past"] == ["false"])
+        #expect(personalized.data.queryItems["future"] == ["true"])
         #expect(personalized.data.queryItems["sort"] == ["confidence"])
         #expect(sitewide.data.path == "/1/explore/fresh-releases/")
         #expect(sitewide.data.preservesTrailingSlash)
         #expect(sitewide.data.queryItems["days"] == ["90"])
+        #expect(sitewide.data.queryItems["past"] == ["true"])
+        #expect(sitewide.data.queryItems["future"] == ["false"])
         #expect(sitewide.data.queryItems["sort"] == ["release_name"])
     }
 

@@ -6,8 +6,9 @@ import Observation
 final class FreshReleasesModel {
     let account: Account
     private let provider: any ListeningProvider
-    private var requestIDs: [FreshReleaseScope: UUID] = [:]
-    private(set) var states: [FreshReleaseScope: FreshReleasesLoadState] = [:]
+    private var requestIDs: [FreshReleaseQuery: UUID] = [:]
+    private var inFlight: [FreshReleaseQuery: Task<[FreshRelease], Error>] = [:]
+    private(set) var states: [FreshReleaseQuery: FreshReleasesLoadState] = [:]
 
     init(account: Account, provider: (any ListeningProvider)? = nil) {
         self.account = account
@@ -15,43 +16,73 @@ final class FreshReleasesModel {
     }
 
     func state(for scope: FreshReleaseScope) -> FreshReleasesLoadState {
-        states[scope] ?? .idle
+        state(for: .default(for: scope))
+    }
+
+    func state(for query: FreshReleaseQuery) -> FreshReleasesLoadState {
+        states[query] ?? .idle
     }
 
     func isLoading(scope: FreshReleaseScope) -> Bool {
-        state(for: scope) == .loading
+        isLoading(query: .default(for: scope))
     }
 
+    func isLoading(query: FreshReleaseQuery) -> Bool { state(for: query) == .loading }
+
     func load(scope: FreshReleaseScope, retrying: Bool = false) async {
-        switch state(for: scope) {
+        await load(query: .default(for: scope), retrying: retrying)
+    }
+
+    func load(query: FreshReleaseQuery, retrying: Bool = false) async {
+        switch state(for: query) {
         case .loaded:
             return
         case .failed where !retrying:
             return
-        case .idle, .loading, .failed:
-            states[scope] = .loading
+        case .loading:
+            if let task = inFlight[query], let requestID = requestIDs[query] {
+                await resolve(task, requestID: requestID, for: query)
+            }
+            return
+        case .idle, .failed:
+            states[query] = .loading
         }
 
-        // A scope can be selected again before cancellation of its previous
-        // SwiftUI task reaches the provider. The newer request owns the state;
-        // a superseded task may finish, but cannot reset or overwrite it.
         let requestID = UUID()
-        requestIDs[scope] = requestID
-        do {
-            let releases = try await provider.freshReleases(username: account.username, scope: scope)
-            guard requestIDs[scope] == requestID else { return }
-            states[scope] = .loaded(releases)
-            requestIDs[scope] = nil
-        } catch {
-            guard requestIDs[scope] == requestID else { return }
-            states[scope] = Task.isCancelled ? .idle : .failed(error.localizedDescription)
-            requestIDs[scope] = nil
-        }
+        requestIDs[query] = requestID
+        let provider = provider
+        let username = account.username
+        let task = Task { try await provider.freshReleases(username: username, query: query) }
+        inFlight[query] = task
+        await resolve(task, requestID: requestID, for: query)
     }
 
     func refresh(scope: FreshReleaseScope) async {
-        guard !isLoading(scope: scope) else { return }
-        states[scope] = .idle
-        await load(scope: scope, retrying: true)
+        await refresh(query: .default(for: scope))
+    }
+
+    func refresh(query: FreshReleaseQuery) async {
+        guard !isLoading(query: query) else { return }
+        states[query] = .idle
+        await load(query: query, retrying: true)
+    }
+
+    private func resolve(_ task: Task<[FreshRelease], Error>, requestID: UUID, for query: FreshReleaseQuery) async {
+        do {
+            let releases = try await task.value
+            guard requestIDs[query] == requestID else { return }
+            states[query] = .loaded(releases)
+            inFlight[query] = nil
+            requestIDs[query] = nil
+        } catch {
+            guard requestIDs[query] == requestID else { return }
+            // The request task is owned by the model, not by an individual
+            // SwiftUI caller. Always retire its bookkeeping when it ends;
+            // otherwise a cancelled waiter can leave this exact query stuck
+            // in `.loading` forever.
+            states[query] = error is CancellationError ? .idle : .failed(error.localizedDescription)
+            inFlight[query] = nil
+            requestIDs[query] = nil
+        }
     }
 }

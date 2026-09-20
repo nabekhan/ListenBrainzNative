@@ -289,19 +289,41 @@ struct ListenBrainzProvider: ListeningProvider {
     }
 
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] {
-        let requestUser = scope == .forYou ? username : nil
-        return try await read(.freshReleases(readScope, user: requestUser, scopeName: scope.rawValue)) {
+        try await freshReleases(username: username, query: .default(for: scope))
+    }
+
+    func freshReleases(username: String, query: FreshReleaseQuery) async throws -> [FreshRelease] {
+        let requestUser = query.scope == .forYou ? username : nil
+        return try await read(.freshReleases(readScope, user: requestUser, query: query)) {
             let result: LBFreshReleases?
-            switch scope {
+            switch query.scope {
             case .forYou:
-                result = try await client.freshReleases.personalized(user: username, days: 7)
+                let sort = LBFreshReleaseSort(rawValue: query.sort.rawValue) ?? .releaseDate
+                result = try await client.freshReleases.personalized(
+                    user: username,
+                    days: query.days.rawValue,
+                    includePast: query.includesPast,
+                    includeFuture: query.includesUpcoming,
+                    sort: sort
+                )
             case .all:
-                result = try await client.freshReleases.sitewide(days: 7)
+                let sort = LBSitewideFreshReleaseSort(rawValue: query.sort.rawValue) ?? .releaseDate
+                result = try await client.freshReleases.sitewide(
+                    days: query.days.rawValue,
+                    includePast: query.includesPast,
+                    includeFuture: query.includesUpcoming,
+                    sort: sort
+                )
             }
             let releases = result?.releases.enumerated().map { index, release in
                 Self.map(release, sourcePosition: index)
             } ?? []
-            return releases.sorted(by: Self.freshReleaseComesFirst)
+            // The API returns date/artist/title in ascending order and
+            // confidence in descending order. Preserve its selected ordering,
+            // except for the product's established newest-first date view.
+            return query.sort == .releaseDate
+                ? releases.sorted(by: Self.freshReleaseComesFirst)
+                : releases
         }
     }
 
@@ -687,11 +709,17 @@ actor RequestGate {
         static func topListeners(_ scope: ReadScope, kind: String, mbid: UUID, range: String) -> Self {
             endpoint(scope, .statsTopListeners, [kind, uuid(mbid), range])
         }
-        static func freshReleases(_ scope: ReadScope, user: String?, scopeName: String) -> Self {
+        static func freshReleases(_ scope: ReadScope, user: String?, query: FreshReleaseQuery) -> Self {
             endpoint(
                 scope,
                 .discoveryFreshReleases,
-                [scopeName, "7"] + (user.map { [userID($0)] } ?? [])
+                [
+                    query.scope.rawValue,
+                    String(query.days.rawValue),
+                    String(query.includesPast),
+                    String(query.includesUpcoming),
+                    query.sort.rawValue,
+                ] + (user.map { [userID($0)] } ?? [])
             )
         }
         static func currentPin(_ scope: ReadScope, user: String) -> Self { endpoint(scope, .pinsCurrent, [userID(user)]) }

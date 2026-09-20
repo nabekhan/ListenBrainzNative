@@ -17,6 +17,7 @@ protocol ListeningProvider: Sendable {
     func artistOrigins(username: String, period: ListeningActivityPeriod) async throws -> ArtistOrigins?
     func artistActivity(username: String, period: ListeningActivityPeriod) async throws -> ArtistActivity?
     func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease]
+    func freshReleases(username: String, query: FreshReleaseQuery) async throws -> [FreshRelease]
     func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws
     /// Asks ListenBrainz to queue deletion of one submitted listen. The server
     /// processes accepted deletions asynchronously.
@@ -24,6 +25,12 @@ protocol ListeningProvider: Sendable {
 }
 
 extension ListeningProvider {
+    /// Keeps existing fixture and preview providers source-compatible while
+    /// production providers adopt the complete server query shape.
+    func freshReleases(username: String, query: FreshReleaseQuery) async throws -> [FreshRelease] {
+        try await freshReleases(username: username, scope: query.scope)
+    }
+
     func topReleaseGroups(username: String, count: Int) async throws -> [RankedReleaseGroup] { [] }
 
     func recentListens(username: String, before: Date?, count: Int) async throws -> [Listen] {

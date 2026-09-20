@@ -63,6 +63,8 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-user-profile-albums-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-user-profile-tracks-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-home-tracks-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-fresh-releases-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-fresh-releases-filters-demo")
             {
                 let visualAccount = Account(username: "visual-taste", token: "visual-taste")
                 _model = State(
@@ -265,6 +267,15 @@ struct MainTabView: View {
                         ? .collaborating
                         : .owned
                 )
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-fresh-releases-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-fresh-releases-filters-demo")
+            {
+                DiscoverView(
+                    account: model.account,
+                    listeningModel: model,
+                    freshReleasesProvider: VisualQATasteProvider()
+                )
+                .environment(pins)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-taste-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-heatmap-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-release-groups-demo")
@@ -1579,8 +1590,107 @@ struct MainTabView: View {
                 .init(creditedName: "The Marías", canonicalName: "The Marías", artistMBID: Self.artistMBIDs[2], listenCount: 284, albums: [.init(name: "Submarine", releaseGroupMBID: nil, listenCount: 284)])
             ])
         }
-        func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+        func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] {
+            try await freshReleases(username: username, query: .default(for: scope))
+        }
+
+        func freshReleases(username: String, query: FreshReleaseQuery) async throws -> [FreshRelease] {
+            let releases: [FreshRelease] = [
+                .init(
+                    releaseMBID: UUID(uuidString: "f0000000-0000-4000-8000-000000000001"),
+                    releaseGroupMBID: UUID(uuidString: "f1000000-0000-4000-8000-000000000001"),
+                    title: "The Long Way Home",
+                    artistName: "Japanese Breakfast",
+                    artistMBIDs: [Self.artistMBIDs[1]],
+                    releaseDate: Self.freshReleaseDate(dayOffset: 4),
+                    primaryType: "Album",
+                    secondaryType: nil,
+                    tags: ["indie pop", "dream pop"],
+                    confidence: 0.96,
+                    listenCount: 2_841,
+                    artworkReleaseMBID: nil,
+                    sourcePosition: 0
+                ),
+                .init(
+                    releaseMBID: UUID(uuidString: "f0000000-0000-4000-8000-000000000002"),
+                    releaseGroupMBID: UUID(uuidString: "f1000000-0000-4000-8000-000000000002"),
+                    title: "Night Drive",
+                    artistName: "The Marías",
+                    artistMBIDs: [Self.artistMBIDs[2]],
+                    releaseDate: Self.freshReleaseDate(dayOffset: 10),
+                    primaryType: "EP",
+                    secondaryType: nil,
+                    tags: ["dream pop", "indie pop"],
+                    confidence: 0.88,
+                    listenCount: 1_704,
+                    artworkReleaseMBID: nil,
+                    sourcePosition: 1
+                ),
+                .init(
+                    releaseMBID: UUID(uuidString: "f0000000-0000-4000-8000-000000000003"),
+                    releaseGroupMBID: UUID(uuidString: "f1000000-0000-4000-8000-000000000003"),
+                    title: "Blue Rev: Live at Massey Hall",
+                    artistName: "Alvvays",
+                    artistMBIDs: [Self.artistMBIDs[0]],
+                    releaseDate: Self.freshReleaseDate(dayOffset: -2),
+                    primaryType: "Album",
+                    secondaryType: "Live",
+                    tags: ["indie rock", "live"],
+                    confidence: 0.79,
+                    listenCount: 986,
+                    artworkReleaseMBID: nil,
+                    sourcePosition: 2
+                ),
+                .init(
+                    releaseMBID: nil,
+                    releaseGroupMBID: UUID(uuidString: "f1000000-0000-4000-8000-000000000004"),
+                    title: "A Very Long Release Title for Small-Screen Layout Inspection",
+                    artistName: "Fixture Ensemble",
+                    artistMBIDs: [],
+                    releaseDate: Self.freshReleaseDate(dayOffset: -5),
+                    primaryType: "Single",
+                    secondaryType: nil,
+                    tags: ["electronic", "ambient"],
+                    confidence: 0.64,
+                    listenCount: 412,
+                    artworkReleaseMBID: nil,
+                    sourcePosition: 3
+                ),
+                .init(
+                    releaseMBID: nil,
+                    releaseGroupMBID: nil,
+                    title: "Unmapped Morning",
+                    artistName: "Community Radio",
+                    artistMBIDs: [],
+                    releaseDate: Self.freshReleaseDate(dayOffset: 7),
+                    primaryType: "EP",
+                    secondaryType: nil,
+                    tags: ["ambient"],
+                    confidence: 0.42,
+                    listenCount: 83,
+                    artworkReleaseMBID: nil,
+                    sourcePosition: 4
+                ),
+            ]
+
+            return releases.filter { release in
+                (query.includesPast && !release.isUpcoming)
+                    || (query.includesUpcoming && release.isUpcoming)
+            }
+        }
         func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+
+        private static func freshReleaseDate(dayOffset: Int) -> String {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = .autoupdatingCurrent
+            let date = calendar.date(byAdding: .day, value: dayOffset, to: calendar.startOfDay(for: .now)) ?? .now
+            let formatter = DateFormatter()
+            formatter.calendar = calendar
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = calendar.timeZone
+            formatter.dateFormat = "yyyy-MM-dd"
+            return formatter.string(from: date)
+        }
 
         private func tasteCount(weekday: ListeningWeekday, hour: Int) -> Int {
             let weekdayOffset = ListeningWeekday.allCases.firstIndex(of: weekday) ?? 0

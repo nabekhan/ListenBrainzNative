@@ -44,7 +44,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Thanks/hide/unhide/delete feed event | Y | Y | Y | P | Y | Y | P2 | Native eligibility-aware actions landed with stable row IDs, optimistic rollback, hidden-card privacy, and dedicated pin deletion |
 | Collaborative-filter recommendations | Y | Y | Y | P | Y | P | P1 | Native For You tracks landed with paginated batch hydration; feedback remains staged |
 | Recommendation feedback | Y | Y | P | P | Y | P | P1 | Native Hate/Dislike/Like/Love control with batched state reads, tap-again clear, optimistic rollback, and pending-action serialization |
-| Fresh Releases | Y | Y | P | P | Y | — | P1 | Native Discover grid; personalized default and explicit sitewide scope |
+| Fresh Releases | Y | Y | P | P | Y | — | P1 | Native Discover grid with personalized/sitewide scope, supported 7/30/90-day windows, past/upcoming selection, server-backed ordering, and zero-request local type/tag filters |
 | Created For You/recommended playlists | Y | Y | Y | Y | Y | Y | P1 | Lazy native For You list uses server generator/expiry metadata and the shared playlist detail |
 | User/collaborator playlists | Y | Y | Y | Y | Y | Y | P1 | Native owned/collaborating Profile tabs landed with lazy server pagination, public browsing, and no row hydration |
 | Playlist detail/create/edit/delete | Y | Y | Y | P | P | Y | P2 | Native one-request detail, authenticated empty creation, owner metadata/privacy editing, and fail-closed creator-only deletion landed |

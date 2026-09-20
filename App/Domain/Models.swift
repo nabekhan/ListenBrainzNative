@@ -1755,6 +1755,52 @@ enum FreshReleaseScope: String, CaseIterable, Identifiable, Sendable {
     var title: String { self == .forYou ? "For You" : "All" }
 }
 
+/// The complete server-side shape of a Fresh Releases read. Local presentation
+/// filters deliberately do not belong here, so changing them cannot trigger a
+/// second aggregate request.
+struct FreshReleaseQuery: Hashable, Sendable {
+    enum Days: Int, CaseIterable, Sendable {
+        case seven = 7
+        case thirty = 30
+        case ninety = 90
+    }
+
+    enum Sort: String, CaseIterable, Sendable {
+        case releaseDate = "release_date"
+        case artistCreditName = "artist_credit_name"
+        case releaseName = "release_name"
+        case confidence
+    }
+
+    let scope: FreshReleaseScope
+    let days: Days
+    let includesPast: Bool
+    let includesUpcoming: Bool
+    let sort: Sort
+
+    /// Normalizes inputs to shapes accepted by the production endpoints.
+    /// Sitewide has no confidence signal and currently supports a 30-day
+    /// horizon at most; an empty time direction is made useful by requesting
+    /// both directions.
+    init(
+        scope: FreshReleaseScope,
+        days: Days = .seven,
+        includesPast: Bool = true,
+        includesUpcoming: Bool = true,
+        sort: Sort = .releaseDate
+    ) {
+        self.scope = scope
+        self.days = scope == .all && days == .ninety ? .thirty : days
+        self.includesPast = includesPast || !includesUpcoming
+        self.includesUpcoming = includesUpcoming || !includesPast
+        self.sort = scope == .all && sort == .confidence ? .releaseDate : sort
+    }
+
+    static func `default`(for scope: FreshReleaseScope) -> Self {
+        .init(scope: scope)
+    }
+}
+
 enum SearchScope: String, CaseIterable, Identifiable, Sendable {
     case users
     case artists
