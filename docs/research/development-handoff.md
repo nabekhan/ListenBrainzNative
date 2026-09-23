@@ -1,16 +1,16 @@
 # Development handoff
 
-Snapshot: 2026-09-19.
+Snapshot: 2026-09-22.
 
 ## Portable checkpoint
 
 - Branch: `main`
-- Last validated product commit: `e2ae8c93ad737d73df6882afeca5ae9bee92398b`
+- Last validated product commit: `418f7c4be1abf12ee736c760c58d6e9fce5a26ae`
 - Remote: `https://github.com/nabekhan/ListenBrainzNative.git`
-- Matching checkpoint branch: `codex/checkpoint-yim-evolution-2026-09-19`
+- Matching checkpoint branch: `codex/checkpoint-yim-new-releases-2026-09-22`
 - Worktree was clean before this handoff note was added. No feature implementation was in progress or left partially applied.
 
-That checkpoint includes the request-free Year in Music artist-evolution chapter. Its final evidence was 14 focused tests, 545 complete app tests, a universal `x86_64`/`arm64` Release simulator binary, responsive light/dark/Dynamic Type/small-device fixture QA, and an independent ready review. The disposable QA simulators were reset and shut down after acceptance.
+That checkpoint includes the request-free Year in Music **New from top artists** chapter. Current release groups navigate only through their canonical MBID; concrete legacy releases remain static, and CAA release IDs remain artwork-only. Its final evidence was 16 focused Year in Music tests, 547 complete app tests, a universal `x86_64`/`arm64` Release simulator binary, responsive light/dark/maximum-Dynamic-Type/iPhone SE fixture QA, a scoped no-service-host log, and an independent READY review.
 
 ## Resume on another Mac
 
@@ -25,31 +25,28 @@ open ListenBrainzNative.xcodeproj
 
 Do not copy local build products, reference clones, simulator devices, or credentials. No ListenBrainz token or other secret is stored in the repository.
 
-## Next unstarted product slice
+## Next unstarted product research
 
-The completed audit recommends a **request-free Year in Music discovery chapter for new releases from the listener's top artists**. No source change for this slice was started.
+The strongest adjacent candidate is a request-free Year in Music playlist chapter using the JSPF playlists already embedded in the annual aggregate. No source change or final product decision for this candidate has started.
 
-Authoritative behavior:
+Before implementation, establish:
 
-- Reuse `newReleasesOfTopArtists` from the one annual aggregate already loaded by `YearInMusicModel`; do not add a provider call, row hydration, or artwork preload.
-- Current rows represent MusicBrainz release groups and provide title, artist credits, optional release-group MBID, and optional Cover Art Archive release identity. A CAA release MBID is artwork identity, not release-group identity.
-- Use a dedicated presentation model rather than `YearInMusicReport.Release`, preserve server order, deduplicate MBID-first, and keep unmapped rows visible but non-navigable.
-- Route only a valid release-group MBID through the existing `SearchReleaseGroup` destination. Do not invent dates, types, confidence, or listen counts.
-- Legacy 2021 data uses a different concrete-release shape. If it cannot be represented without conflating release and release-group identity, keep it readable without navigation or omit the section.
-- Reuse `ArtworkView` and existing Year in Music grid/shelf patterns. Suggested concise copy: **New from top artists** / **Albums and singles released in {year}**.
-- Focused coverage should include malformed and missing IDs, multi-artist credits, CAA fallback, stable deduplication/order, unmapped navigation policy, and proof that rendering schedules no ListenBrainz request.
+- Which of `playlist-top-discoveries-for-year`, `playlist-top-missed-recordings-for-year`, `playlist-top-new-recordings-for-year`, and `playlist-top-recordings-for-year` the current website and official clients actually present, and whether a native chapter adds value beyond existing For You and playlist surfaces.
+- Whether each embedded JSPF `identifier` is a canonical ListenBrainz playlist MBID that can reuse Playlist Detail without a lookup. Never infer playlist identity from title or creator.
+- Whether the embedded ordered tracks alone are sufficient for a compact native preview. Rendering must not hydrate every recording or imply that an MBID is playable audio.
+- Current/archive schema differences, absence behavior, deduplication, and the smallest truthful UI. Continue to use the one loaded annual response; do not add preloading, polling, row hydration, or a second Year in Music provider call.
+- Existing reusable playlist mosaic/row components and official wording. Apply the UX Writing skill before introducing any visible copy.
 
 Current primary references:
 
 - `Packages/ListenBrainzKit/Sources/ListenBrainzKit/Statistics/Models/LBYearInMusic.swift`
 - `App/Domain/YearInMusicModels.swift`
 - `App/Features/Taste/YearInMusicView.swift`
-- `Tests/YearInMusicModelTests.swift`
+- `App/Features/Playlist/PlaylistDetailView.swift`
 - [ListenBrainz Year in Music API](https://listenbrainz.readthedocs.io/en/latest/users/api/statistics.html#get-1-stats-user-mb-username-user-name-year-in-music-int-year)
-- [Official website new-releases component](https://github.com/metabrainz/listenbrainz-server/blob/master/frontend/js/src/user/year-in-music/components/YIMNewReleases.tsx)
 
-After that slice, the strongest remaining candidates are embedded annual discovery/missed playlists, a shared Home current-pin section, and the separately researched advanced manual-mapping workflow. Playback/content resolution, MusicKit capture, and Spotify-linked playback remain deliberately separate; any libspot/librespot experiment starts only on its own branch after the core product and policy/license review are complete.
+If annual playlists do not add enough distinct value, the next candidates remain a shared Home current-pin section and the separately researched advanced manual-mapping workflow. Playback/content resolution, MusicKit capture, and Spotify-linked playback remain deliberately separate; any libspot/librespot experiment starts only on its own branch after the core product and policy/license review are complete.
 
 ## Local cleanup
 
-The old machine's build products, temporary reference clones/browser, and project-specific Xcode DerivedData were moved to Trash during handoff, so they remain recoverable until Trash is emptied. Disposable QA simulator devices were deleted. The tracked generated Xcode project, host-wide installations, and shared caches were intentionally retained; exact provenance and optional removal guidance remain in `environment-changes.md`.
+The new-release milestone's exact DerivedData and screenshots were moved to Trash, so they remain recoverable until Trash is emptied. Its disposable iPhone SE simulator was deleted; the standard iPhone 18 Pro was restored to light/large, the fixture app was uninstalled, and the device was shut down. The tracked generated Xcode project, Xcode/iOS runtime, host-wide installations, and shared caches were intentionally retained; exact provenance and optional removal guidance remain in `environment-changes.md`.
