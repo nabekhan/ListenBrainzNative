@@ -4,22 +4,25 @@ Updated: 2026-09-22
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
 
-## Handoff cleanup performed
+## Portable cleanup performed
 
-On 2026-09-19, before moving development to another machine, the following generated or disposable project artifacts were moved to Trash and remain recoverable until Trash is emptied:
+On 2026-09-22, after the validated product checkpoint was pushed, disposable development downloads and generated output were permanently removed. The cleanup included:
 
-- ignored `References/` clones;
-- repository-local `.derived-data/`, `.build/`, and `Packages/ListenBrainzKit/.build/` products;
-- project-specific `~/Library/Developer/Xcode/DerivedData/ListenBrainzNative-*` data;
-- the isolated `/tmp/listenbrainz-playwright-yim/` browser project;
+- ignored donor/reference clones and the isolated Playwright/Chromium project;
+- repository-local and project-specific Xcode/SwiftPM build products, result bundles, logs, and screenshots;
+- previously trashed project artifacts, including an approximately 90 GB derived-data tree;
+- Xcode 27.0, its downloaded iOS 27 and watchOS 27 simulator runtimes, Xcode user support data, and Xcode-created developer disk-image support;
+- Gradle 9.4.1 and Kotlin/Native 2.3.10 caches created specifically for the official KMP reconnaissance;
+- the locally installed `ux-writing` development skill; and
+- disposable simulator devices and installed fixture applications, after shutting down all simulators.
 
-The disposable `Brainz QA iPhone 17 Pro` and `Brainz QA iPhone SE` simulator devices were deleted after shutdown. The tracked `ListenBrainzNative.xcodeproj/` was retained alongside authoritative `project.yml` so the checkout remains immediately portable.
+The source checkout, Git history, tracked `ListenBrainzNative.xcodeproj/`, and authoritative `project.yml` were retained. Apple Command Line Tools were retained so Git continues to work. The shared Nix store was not manually modified; its content-addressed packages may be used elsewhere and can be reclaimed later through normal Nix garbage collection. Pre-existing XCTest device data, DVT downloads, CoreDevice data, Xcode preferences, and unrelated Trash contents were also retained. No credential was copied into the repository or handoff.
 
-All simulators were shut down first. Xcode, the iOS simulator runtime, shared Nix/Gradle/Kotlin caches, and the reusable UX-writing skill were retained because they may support other work. Their optional cleanup instructions remain below. No credential was copied into the repository or handoff.
+Measured removed artifacts total well over 100 GB. The filesystem reported 240 GiB available after cleanup; APFS accounting and purgeable space mean this is not a byte-for-byte before/after measurement.
 
 ## Reference clones
 
-All clones are shallow and ignored by Git. Remove `References/` to delete them.
+All clones were shallow and ignored by Git. They were permanently removed during the 2026-09-22 portable cleanup; this list remains as provenance.
 
 - `References/listenbrainz-server`
 - `References/listenbrainz-android`
@@ -39,12 +42,12 @@ All clones are shallow and ignored by Git. Remove `References/` to delete them.
 
 ## Installed applications and packages
 
-- Xcode 27.0: installed at `/Applications/Xcode.app` through the existing Mac App Store CLI (`mas install 497799835`), then licensed and initialized with `xcodebuild -runFirstLaunch`. Cleanup: remove Xcode through Finder/App Store if it was installed solely for this project.
-- iOS 27.0 Simulator runtime (arm64): downloaded with `xcodebuild -downloadPlatform iOS` for tests and visual checks (8.05 GB download). Cleanup: remove it from Xcode Settings > Components, or with the corresponding supported `simctl runtime delete` command after identifying the installed runtime.
+- Xcode 27.0: installed at `/Applications/Xcode.app` through the existing Mac App Store CLI (`mas install 497799835`), then licensed and initialized with `xcodebuild -runFirstLaunch`. Removed during the 2026-09-22 portable cleanup.
+- iOS 27.0 Simulator runtime (arm64): downloaded with `xcodebuild -downloadPlatform iOS` for tests and visual checks (8.05 GB download). The iOS and watchOS 27 runtimes were removed during the 2026-09-22 portable cleanup.
 - XcodeGen 2.44.1: used from an ephemeral `nix shell nixpkgs#xcodegen` environment. Nix downloaded XcodeGen and its Swift 5.10.1 runtime into the shared `/nix/store`; no profile package was installed. Cleanup is optional because the paths are content-addressed and may be shared; use normal Nix garbage collection rather than deleting store paths by hand.
 - Zulu JDK 17.0.19: used from an ephemeral `nix shell nixpkgs#jdk17_headless` environment to exercise the official KMP iOS build. No profile package was installed; use normal Nix garbage collection for its shared `/nix/store` paths.
-- Node.js 22 was used from an ephemeral `nix shell nixpkgs#nodejs_22` environment for the Year in Music website check. Playwright and its Chromium payload were installed only under `/tmp/listenbrainz-playwright-yim/`; no global npm package or browser was installed. Cleanup: remove that exact temporary directory, then use normal Nix garbage collection for shared `/nix/store` paths if desired.
-- `ux-writing` skill from `content-designer/ux-writing-skill` (MIT) was installed at `/Users/nabeel/.codex/skills/ux-writing/` to audit user-facing text. Cleanup: remove that exact directory. It is development guidance only and is not linked into or shipped with Brainz.
+- Node.js 22 was used from an ephemeral `nix shell nixpkgs#nodejs_22` environment for the Year in Music website check. Playwright and its Chromium payload were installed only under `/tmp/listenbrainz-playwright-yim/`; no global npm package or browser was installed. The isolated project/browser payload was removed during the 2026-09-22 portable cleanup; shared `/nix/store` paths were retained.
+- `ux-writing` skill from `content-designer/ux-writing-skill` (MIT) was installed at `/Users/nabeel/.codex/skills/ux-writing/` to audit user-facing text. It was removed during the 2026-09-22 portable cleanup and was never linked into or shipped with Brainz.
 
 ## Generated caches and build output
 
@@ -101,9 +104,9 @@ All clones are shallow and ignored by Git. Remove `References/` to delete them.
 - The Debug Brainz app was installed into the disposable `Brainz QA iPhone 17 Pro` and `Brainz QA iPhone SE` simulators for fixture QA. Cleanup without deleting the simulators: run `xcrun simctl uninstall 'Brainz QA iPhone 17 Pro' dev.nabekhan.listenbrainznative` and the equivalent command for `Brainz QA iPhone SE`. No package or host application was installed for this milestone; XcodeGen reused the already-recorded ephemeral Nix environment.
 - `~/Library/Developer/Xcode/DerivedData/ListenBrainzNative-*/`: Xcode's project-specific products, indexes, and test result bundles. Cleanup: remove only matching ListenBrainzNative directories after Xcode and Simulator are closed.
 - `/tmp/brainz-xcodegen.log`, `/tmp/brainz-release-headers.txt`, `/tmp/brainz-release-response.txt`, and `/tmp/brainz-release-response.json`: transient project-generation and canonical-endpoint inspection evidence. Cleanup: remove those exact files.
-- `~/.gradle/`: Gradle 9.4.1 wrapper distribution and dependency caches created while checking the official KMP module. This directory may be shared with other projects; inspect before removing or use Gradle's supported cache cleanup.
-- `~/.konan/kotlin-native-prebuilt-macos-aarch64-2.3.10/` and `~/.konan/dependencies/`: Kotlin/Native compiler and LLVM/libffi dependencies downloaded by the official KMP build. These may be shared; inspect before removing.
-- `References/listenbrainz-android/.gradle/`, `build/`, and `shared/build/`: ignored Gradle configuration/build output from the KMP framework experiment. Cleanup: remove only these exact directories under the reference clone, or remove the whole ignored reference clone.
+- `~/.gradle/`: Gradle 9.4.1 wrapper distribution and dependency caches created while checking the official KMP module. The directory was born with this project and was removed during the 2026-09-22 portable cleanup (approximately 2.3 GB).
+- `~/.konan/kotlin-native-prebuilt-macos-aarch64-2.3.10/` and `~/.konan/dependencies/`: Kotlin/Native compiler and LLVM/libffi dependencies downloaded by the official KMP build. The project-created `.konan` directory was removed during the 2026-09-22 portable cleanup (approximately 1.3 GB).
+- `References/listenbrainz-android/.gradle/`, `build/`, and `shared/build/`: ignored Gradle configuration/build output from the KMP framework experiment. These were removed with the ignored reference clones during the 2026-09-22 portable cleanup.
 - `.derived-data/artist-context-*`, `/tmp/brainz-artist-context-*.log`, and `/tmp/brainz-artist-context-*.png`: Artist Detail context focused/full tests, Debug/Release simulator builds, and populated/failure visual checkpoints in light, dark, accessibility, and smaller-device layouts. Cleanup: remove only those matching artifacts; repository-local derived data is also covered by the general `.derived-data/` rule. Fixture routes use local providers, make no production request, and use no real token. Both disposable QA simulators were shut down after acceptance. No package, host application, or additional skill was installed; the existing UX Writing skill guided copy.
 - `.derived-data/playlist-deletion-focused/`, `.derived-data/playlist-deletion-focused-final/`, `.derived-data/playlist-deletion-full/`, `.derived-data/playlist-deletion-full-final/`, `.derived-data/playlist-deletion-release-final/`, and `.derived-data/security-rereview/`: playlist-deletion focused/full tests, independent review, Debug/Release simulator products, and visual-QA builds. `/tmp/listenbrainzkit-playlist-delete*.log`, `/tmp/brainz-playlist-deletion-*.log`, and `/tmp/brainz-playlist-deletion-*.png` are the corresponding package/app test logs, XcodeGen/build/launch diagnostics, and accepted light, dark, recovery, confirmed, maximum-Dynamic-Type, and iPhone SE screenshots; `/tmp/brainz-playlist-deletion-xcodegen.log` is the project-generation log. Cleanup: remove only those exact directories and matching temporary files; repository-local derived data is also covered by the general `.derived-data/` rule. The initial blank screenshots were warm-up diagnostics, not acceptance evidence. Fixture routes use local providers, make no production request or mutation, and use no real token. Both disposable QA simulators were shut down after acceptance. No package, host application, or additional skill was installed; the existing UX Writing skill guided copy and XcodeGen reused the recorded ephemeral Nix environment.
 

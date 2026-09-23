@@ -5,12 +5,23 @@ Snapshot: 2026-09-22.
 ## Portable checkpoint
 
 - Branch: `main`
-- Last validated product commit: `418f7c4be1abf12ee736c760c58d6e9fce5a26ae`
+- Last validated product commit: `6ccbf13dc4670ee12aea4f1354c2aec4e82ddb98`
 - Remote: `https://github.com/nabekhan/ListenBrainzNative.git`
-- Matching checkpoint branch: `codex/checkpoint-yim-new-releases-2026-09-22`
-- Worktree was clean before this handoff note was added. No feature implementation was in progress or left partially applied.
+- Remote `main` was verified at the product commit before this handoff note was added.
+- No feature implementation is in progress or left partially applied.
 
-That checkpoint includes the request-free Year in Music **New from top artists** chapter. Current release groups navigate only through their canonical MBID; concrete legacy releases remain static, and CAA release IDs remain artwork-only. Its final evidence was 16 focused Year in Music tests, 547 complete app tests, a universal `x86_64`/`arm64` Release simulator binary, responsive light/dark/maximum-Dynamic-Type/iPhone SE fixture QA, a scoped no-service-host log, and an independent READY review.
+That checkpoint adds request-free Year in Music playlist snapshots for the current official **Top discoveries** and **Tracks you missed** reports. It decodes current direct JSPF and the archival 2021 nested shape, accepts scalar or array identifiers, preserves playlist order and duplicates, filters links to canonical ListenBrainz playlist and MusicBrainz recording URLs, and never exposes raw annotation HTML. Snapshot cards and the local detail view perform no playlist, artwork, metadata, or row-hydration request; navigation to mapped Recording detail or the canonical external playlist happens only after an explicit tap.
+
+Final evidence before cleanup:
+
+- 29 focused ListenBrainzKit statistics tests passed;
+- 18 focused app Year in Music tests passed;
+- the complete app suite passed 549/549 with no failures or skips;
+- subsequent final Debug builds succeeded;
+- light, dark, local-detail, maximum-accessibility, and iPhone SE-sized fixture layouts were inspected; and
+- an independent re-review returned READY after the visible descriptions were corrected.
+
+A regular-width iPad visual pass for this addition was interrupted before cleanup and remains a narrow follow-up, not completed evidence.
 
 ## Resume on another Mac
 
@@ -23,30 +34,16 @@ nix shell nixpkgs#xcodegen -c xcodegen generate
 open ListenBrainzNative.xcodeproj
 ```
 
-Do not copy local build products, reference clones, simulator devices, or credentials. No ListenBrainz token or other secret is stored in the repository.
+Install Xcode and a compatible iOS simulator runtime before building. Reinstall the MIT `content-designer/ux-writing-skill` before adding or revising user-facing strings. Donor clones can be recreated from the URLs recorded in the research documents; do not copy local build products, simulator devices, or credentials. No ListenBrainz token or other secret is stored in the repository.
 
-## Next unstarted product research
+## Next unstarted product work
 
-The strongest adjacent candidate is a request-free Year in Music playlist chapter using the JSPF playlists already embedded in the annual aggregate. No source change or final product decision for this candidate has started.
+The annual-playlist candidate is complete. The strongest adjacent candidates are a shared Home current-pin section and the separately researched advanced manual-mapping workflow. Reassess their user value against the current implementation plan before selecting one.
 
-Before implementation, establish:
-
-- Which of `playlist-top-discoveries-for-year`, `playlist-top-missed-recordings-for-year`, `playlist-top-new-recordings-for-year`, and `playlist-top-recordings-for-year` the current website and official clients actually present, and whether a native chapter adds value beyond existing For You and playlist surfaces.
-- Whether each embedded JSPF `identifier` is a canonical ListenBrainz playlist MBID that can reuse Playlist Detail without a lookup. Never infer playlist identity from title or creator.
-- Whether the embedded ordered tracks alone are sufficient for a compact native preview. Rendering must not hydrate every recording or imply that an MBID is playable audio.
-- Current/archive schema differences, absence behavior, deduplication, and the smallest truthful UI. Continue to use the one loaded annual response; do not add preloading, polling, row hydration, or a second Year in Music provider call.
-- Existing reusable playlist mosaic/row components and official wording. Apply the UX Writing skill before introducing any visible copy.
-
-Current primary references:
-
-- `Packages/ListenBrainzKit/Sources/ListenBrainzKit/Statistics/Models/LBYearInMusic.swift`
-- `App/Domain/YearInMusicModels.swift`
-- `App/Features/Taste/YearInMusicView.swift`
-- `App/Features/Playlist/PlaylistDetailView.swift`
-- [ListenBrainz Year in Music API](https://listenbrainz.readthedocs.io/en/latest/users/api/statistics.html#get-1-stats-user-mb-username-user-name-year-in-music-int-year)
-
-If annual playlists do not add enough distinct value, the next candidates remain a shared Home current-pin section and the separately researched advanced manual-mapping workflow. Playback/content resolution, MusicKit capture, and Spotify-linked playback remain deliberately separate; any libspot/librespot experiment starts only on its own branch after the core product and policy/license review are complete.
+Playback/content resolution, MusicKit capture, and Spotify-linked playback remain deliberately separate. Any libspot/librespot experiment starts only on its own branch after the core product is complete and after policy, licensing, account-security, App Store, and maintenance implications are reviewed.
 
 ## Local cleanup
 
-The new-release milestone's exact DerivedData and screenshots were moved to Trash, so they remain recoverable until Trash is emptied. Its disposable iPhone SE simulator was deleted; the standard iPhone 18 Pro was restored to light/large, the fixture app was uninstalled, and the device was shut down. The tracked generated Xcode project, Xcode/iOS runtime, host-wide installations, and shared caches were intentionally retained; exact provenance and optional removal guidance remain in `environment-changes.md`.
+Disposable development downloads and generated artifacts were permanently removed after the product commit was pushed. This includes donor clones, Playwright/Chromium, project build products and result bundles, accumulated project Trash, Xcode and its downloaded simulator runtimes/support data, project-created Gradle/Kotlin toolchains, the local UX-writing skill, disposable simulators, fixture apps, logs, and screenshots. The cleanup reclaimed well over 100 GB by measured artifact sizes.
+
+The source checkout, Git history, tracked Xcode project, `project.yml`, Apple Command Line Tools, the shared Nix store, pre-existing developer data, user settings, credentials, personal files, and unrelated Trash contents were retained. Exact provenance is recorded in `environment-changes.md`.
