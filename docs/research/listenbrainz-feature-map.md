@@ -1,6 +1,6 @@
 # ListenBrainz capability map
 
-Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
+Snapshot: 2026-09-22. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
 
 | User capability | API | Web | Android | iOS | LBKit | KMP | Priority | Product decision |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
@@ -33,7 +33,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 | Sitewide statistics/context | Y | Y | P | ? | P | P | P2 | Use sparingly for context |
 | Entity popularity/listener counts | Y | Y | Y | ? | Y | P | P1 | Native global listens/listeners context landed on canonical artist, recording, release, and release-group details; daily cache and no row hydration |
 | Artist/release-group top listeners | Y | Y | Y | — | Y | P | P1 | Native all-time rankings landed on canonical artist and release-group details; one cached aggregate read, local expand, and no row hydration |
-| Year in Music (2021–2025) | Y | Y | Y | Y | Y | P | P1 | Native current/archive story with identity context from the same aggregate; concrete historical releases retain release identity and artwork is explicit |
+| Year in Music (2021–2025) | Y | Y | Y | Y | Y | P | P1 | Native current/archive story reuses one aggregate for identity, evolution, and new releases from top artists; canonical release-group navigation stays separate from concrete/CAA identity |
 | Similar users and compatibility | Y | Y | Y | Y | Y | Y | P1 | Native Social destination landed without row hydration |
 | Followers/following | Y | Y | Y | Y | Y | Y | P1 | Complete native lists; typed Kit extension |
 | Follow/unfollow | Y | Y | Y | ? | Y | Y | P1 | Optimistic serialized mutation with rollback |
@@ -72,7 +72,7 @@ Snapshot: 2026-09-19. `Y` means source/API evidence exists; `P` means partial or
 - The aggregate social feed currently excludes ordinary listens. Following and Similar are separate listen-only recent feeds, so the native UI keeps those modes distinct instead of implying one unified event stream.
 - The iOS product should start with high-value read paths, then add mutations to the same entity screens. Android-only notification-listener scrobbling and foreground playback services have no direct public-iOS equivalent.
 - Public API calls were checked against real ListenBrainz data and include messy but useful identity fields: recording MSID, mapped MBIDs, multi-artist credits, Cover Art Archive IDs, service/source metadata, and external URL relations.
-- The current Year in Music endpoint is one aggregate request whose 2025 payload can contain totals, UTC day activity, rankings, genres, weekday context, discovery data, release-year counts, similar users, and full JSPF playlists. The native story maps a presence-aware, identity-safe subset—including new artists, weekday, display-only genre tags, and release decades—without fanning out into row requests.
+- The current Year in Music endpoint is one aggregate request whose 2025 payload can contain totals, UTC day activity, rankings, genres, weekday context, discovery data, release-year counts, similar users, and full JSPF playlists. The native story maps a presence-aware, identity-safe subset—including new artists, weekday, display-only genre tags, release decades, artist evolution, and ordered new releases from top artists—without fanning out into row requests.
 - LB Radio is an authenticated server-side JSPF generator with a separate five-per-five-second quota. The native slice generates only on an explicit tap, uses the bounded/coalescing shared read lane with global 429 deferral, performs at most one batch metadata enrichment, never auto-retries, and does not imply that an MBID is playable audio. A saved mix becomes one explicit, private populated-playlist POST; nil MBIDs are excluded and duplicate canonical occurrences remain ordered.
 - Artist Origins is a public aggregate statistics response built from up to a user's top 1,000 artists that have MusicBrainz country data. The native destination performs one cached user/range read, then ranks by artist or listen count and opens server-embedded country artists locally; it does not issue per-country or per-artist hydration requests.
 - Artist Activity is a bounded ranked response derived from mapped release-group statistics: at most 15 leading artists, each with its album/release-group breakdown. The native destination makes one cached user/range read, merges MBID-first identities locally, and opens only identifiers already present in the response; expanding albums makes no request.

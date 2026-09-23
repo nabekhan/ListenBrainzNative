@@ -173,6 +173,13 @@ struct YearInMusicView: View {
                 artists: report.topArtists,
                 allowsNavigation: allowsMediaNavigation
             )
+        } else if arguments.contains("-brainz-year-in-music-new-releases-demo") {
+            YearInMusicNewReleasesSection(
+                releases: report.newReleasesOfTopArtists,
+                year: report.year,
+                allowsNavigation: allowsMediaNavigation,
+                loadsArtwork: false
+            )
         } else if arguments.contains("-brainz-year-in-music-albums-demo") {
             releaseSection(report)
         } else if arguments.contains("-brainz-year-in-music-tracks-demo") {
@@ -189,6 +196,11 @@ struct YearInMusicView: View {
                 artists: report.topArtists,
                 allowsNavigation: allowsMediaNavigation
             )
+            YearInMusicNewReleasesSection(
+                releases: report.newReleasesOfTopArtists,
+                year: report.year,
+                allowsNavigation: allowsMediaNavigation
+            )
             releaseSection(report)
             YearInMusicTracksSection(
                 recordings: report.topRecordings,
@@ -201,6 +213,13 @@ struct YearInMusicView: View {
         if report.hasIdentityContent { YearInMusicIdentitySection(report: report) }
         if report.artistEvolution != nil { YearInMusicArtistEvolutionSection(report: report) }
         if !report.topArtists.isEmpty { YearInMusicArtistsSection(artists: report.topArtists, allowsNavigation: true) }
+        if !report.newReleasesOfTopArtists.isEmpty {
+            YearInMusicNewReleasesSection(
+                releases: report.newReleasesOfTopArtists,
+                year: report.year,
+                allowsNavigation: true
+            )
+        }
         releaseSection(report)
         if !report.topRecordings.isEmpty { YearInMusicTracksSection(recordings: report.topRecordings, allowsNavigation: true) }
         #endif
@@ -219,6 +238,7 @@ struct YearInMusicView: View {
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
         return !arguments.contains("-brainz-year-in-music-demo")
+            && !arguments.contains("-brainz-year-in-music-new-releases-demo")
             && !arguments.contains("-brainz-taste-demo")
             && !arguments.contains("-brainz-year-in-music-teaser-demo")
         #else
@@ -1139,6 +1159,88 @@ private struct YearInMusicAlbumsSection: View {
     }
 }
 
+private struct YearInMusicNewReleasesSection: View {
+    let releases: [YearInMusicReport.NewRelease]
+    let year: Int
+    let allowsNavigation: Bool
+    var loadsArtwork = true
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var columns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(), spacing: 14, alignment: .top),
+            count: dynamicTypeSize.isAccessibilitySize ? 1 : 2
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "New from top artists",
+                subtitle: "Albums and singles released in \(year)"
+            )
+
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
+                ForEach(releases.prefix(6)) { release in
+                    if allowsNavigation, let destination = release.detailDestination {
+                        NavigationLink(value: destination) {
+                            card(release)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens release details")
+                    } else {
+                        card(release)
+                    }
+                }
+            }
+        }
+    }
+
+    private func card(_ release: YearInMusicReport.NewRelease) -> some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                HStack(alignment: .top, spacing: 14) {
+                    ArtworkView(
+                        url: loadsArtwork ? release.artworkURL : nil,
+                        title: release.title,
+                        cornerRadius: 14
+                    )
+                        .frame(width: 116, height: 116)
+                    identity(release, accessibilityLayout: true)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    ArtworkView(
+                        url: loadsArtwork ? release.artworkURL : nil,
+                        title: release.title,
+                        cornerRadius: 14
+                    )
+                        .aspectRatio(1, contentMode: .fit)
+                    identity(release, accessibilityLayout: false)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(release.title) by \(release.artistName)")
+    }
+
+    private func identity(
+        _ release: YearInMusicReport.NewRelease,
+        accessibilityLayout: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(release.title)
+                .font(.headline)
+                .lineLimit(accessibilityLayout ? nil : 3)
+            Text(release.artistName)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 /// Archival 2021/22 reports rank concrete MusicBrainz releases, not release
 /// groups. Keep both the label and navigation truthful.
 private struct YearInMusicReleasesSection: View {
@@ -1385,6 +1487,25 @@ private extension YearInMusicReport {
             visualRelease(title: "In Rainbows", artist: "Radiohead", count: 143, seed: 3),
             visualRelease(title: "Untourable Album", artist: "Men I Trust", count: 109, seed: 4),
         ]
+        let newReleases = [
+            NewRelease(
+                releaseGroupMBID: visualUUID(40), concreteReleaseMBID: visualUUID(140),
+                title: "A very long new release title that wraps cleanly at larger text sizes",
+                artistName: "Alvvays", artistMBIDs: [artistIDs[0]!],
+                coverArtArchiveID: nil, artworkReleaseMBID: nil
+            ),
+            NewRelease(
+                releaseGroupMBID: visualUUID(41), concreteReleaseMBID: visualUUID(141),
+                title: "For Melancholy Brunettes (& Sad Women)",
+                artistName: "Japanese Breakfast", artistMBIDs: [artistIDs[1]!],
+                coverArtArchiveID: nil, artworkReleaseMBID: nil
+            ),
+            NewRelease(
+                releaseGroupMBID: nil, concreteReleaseMBID: visualUUID(142),
+                title: "Unmapped edition", artistName: "Radiohead", artistMBIDs: [artistIDs[2]!],
+                coverArtArchiveID: nil, artworkReleaseMBID: nil
+            ),
+        ]
         let tracks = [
             visualRecording(title: "Belinda Says", artist: "Alvvays", release: "Blue Rev", count: 73, seed: 10),
             visualRecording(title: "Be Sweet", artist: "Japanese Breakfast", release: "Jubilee", count: 68, seed: nil),
@@ -1427,6 +1548,7 @@ private extension YearInMusicReport {
             ),
             listeningDays: days,
             topArtists: artists,
+            newReleasesOfTopArtists: newReleases,
             topReleaseGroups: year <= 2022 ? [] : releaseGroups,
             topReleases: concreteReleases,
             topRecordings: tracks,

@@ -75,6 +75,66 @@ final class YearInMusicModelTests: XCTestCase {
         XCTAssertNil(YearInMusicReport(source: source, requestedYear: 2025))
     }
 
+    func testNewReleasesPreserveReleaseGroupIdentityArtworkAndServerOrder() throws {
+        let artist = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+        let featuredArtist = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
+        let firstGroup = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
+        let secondGroup = UUID(uuidString: "44444444-4444-4444-4444-444444444444")!
+        let artworkRelease = UUID(uuidString: "55555555-5555-5555-5555-555555555555")!
+        let source = try yearInMusic("""
+        { "user_name": "listener", "year": 2025, "data": {
+          "total_listen_count": 0,
+          "new_releases_of_top_artists": [
+            {"title":"First", "release_group_mbid":"\(firstGroup)", "caa_id":8, "caa_release_mbid":"\(artworkRelease)", "artist_credit_name":"Artist feat. Guest", "artist_credit_mbids":["\(artist)"], "artists":[{"artist_credit_name":"Guest", "artist_mbid":"\(featuredArtist)"}]},
+            {"title":"First deluxe", "release_group_mbid":"\(firstGroup)", "artist_credit_name":"Different wording", "artist_credit_mbids":["\(featuredArtist)"]},
+            {"title":"Second", "release_group_mbid":"\(secondGroup)", "artist_name":"Second Artist"}
+          ]
+        } }
+        """)
+
+        let mapped = try XCTUnwrap(YearInMusicReport(source: source, requestedYear: 2025))
+        XCTAssertEqual(mapped.newReleasesOfTopArtists.map(\.title), ["First", "Second"])
+        let first = try XCTUnwrap(mapped.newReleasesOfTopArtists.first)
+        XCTAssertEqual(first.releaseGroupMBID, firstGroup)
+        XCTAssertNil(first.concreteReleaseMBID)
+        XCTAssertEqual(first.artworkReleaseMBID, artworkRelease)
+        XCTAssertEqual(first.artworkURL?.absoluteString, "https://coverartarchive.org/release/55555555-5555-5555-5555-555555555555/front-500")
+        XCTAssertEqual(first.detailDestination?.mbid, firstGroup)
+        XCTAssertEqual(first.artistName, "Artist feat. Guest")
+        XCTAssertEqual(Set(first.artistMBIDs), Set([artist, featuredArtist]))
+        XCTAssertNotEqual(first.detailDestination?.mbid, first.artworkReleaseMBID)
+    }
+
+    func testNewReleasesKeepUnmappedAndLegacyConcreteRowsReadableWithoutReleaseGroupNavigation() throws {
+        let concreteRelease = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+        let alternateEdition = UUID(uuidString: "55555555-5555-5555-5555-555555555555")!
+        let source = try yearInMusic("""
+        { "user_name": "listener", "year": 2025, "data": {
+          "total_listen_count": 0,
+          "new_releases_of_top_artists": [
+            {"title":"Legacy edition", "release_mbid":"\(concreteRelease)", "artist_name":"Legacy Artist"},
+            {"title":" legacy edition ", "release_mbid":"\(alternateEdition)", "artist_name":"legacy artist"},
+            {"title":"Unmapped", "caa_id":-7, "caa_release_mbid":"22222222-2222-2222-2222-222222222222", "artists":[{"artist_credit_name":"First", "artist_mbid":"33333333-3333-3333-3333-333333333333", "join_phrase":" & "},{"artist_credit_name":"Second", "artist_mbid":"44444444-4444-4444-4444-444444444444"}]},
+            {"title":" Unmapped ", "release_group_mbid":"not-a-uuid", "artist_name":"First & Second"},
+            {"title":"   ", "artist_name":"Ignored"}
+          ]
+        } }
+        """)
+
+        let mapped = try XCTUnwrap(YearInMusicReport(source: source, requestedYear: 2025))
+        XCTAssertEqual(mapped.newReleasesOfTopArtists.map(\.title), ["Legacy edition", "Unmapped"])
+        let legacy = mapped.newReleasesOfTopArtists[0]
+        XCTAssertEqual(legacy.concreteReleaseMBID, concreteRelease)
+        XCTAssertNil(legacy.releaseGroupMBID)
+        XCTAssertNil(legacy.detailDestination)
+        XCTAssertNil(legacy.artworkURL, "Concrete content identity must not be reused as artwork identity.")
+        let unmapped = mapped.newReleasesOfTopArtists[1]
+        XCTAssertNil(unmapped.detailDestination)
+        XCTAssertEqual(unmapped.artistName, "First & Second")
+        XCTAssertNil(unmapped.coverArtArchiveID)
+        XCTAssertFalse(mapped.isEmpty)
+    }
+
     func testIdentityChapterNormalizesPresenceTagsWeekdayAndReleaseDecades() throws {
         let source = try yearInMusic("""
         { "user_name": "listener", "year": 2024, "data": {
@@ -214,12 +274,21 @@ final class YearInMusicModelTests: XCTestCase {
     }
 
     func testProviderUsesExactlyOneTransportCallAndMapsUnavailableForms() async throws {
-        let transport = CountingTransport(result: .report(try yearInMusic("{ \"user_name\": \"listener\", \"year\": 2025, \"data\": { \"total_listen_count\": 1 } }")))
+        let releaseGroup = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
+        let transport = CountingTransport(result: .report(try yearInMusic("""
+        { "user_name": "listener", "year": 2025, "data": {
+          "total_listen_count": 1,
+          "new_releases_of_top_artists": [
+            {"title":"New release", "release_group_mbid":"\(releaseGroup)", "artist_credit_name":"Artist"}
+          ]
+        } }
+        """)))
         let provider = ListenBrainzYearInMusicProvider(transport: transport, gate: RequestGate(minimumInterval: .zero))
 
         let loaded = try await provider.report(username: "listener", year: 2025)
 
         XCTAssertEqual(loaded?.totals.listenCount, 1)
+        XCTAssertEqual(loaded?.newReleasesOfTopArtists.first?.releaseGroupMBID, releaseGroup)
         XCTAssertEqual(transport.callCount, 1)
         XCTAssertEqual(transport.currentCallCount, 1)
         XCTAssertEqual(transport.legacyCallCount, 0)

@@ -14,6 +14,9 @@ struct YearInMusicReport: Hashable, Sendable {
     let totals: Totals
     let listeningDays: [ListeningDay]
     let topArtists: [RankedArtist]
+    /// Releases that ListenBrainz identifies as new work from this listener's
+    /// top artists. This is a discovery list, not a ranked listening chart.
+    let newReleasesOfTopArtists: [NewRelease]
     let topReleaseGroups: [ReleaseGroup]
     let topReleases: [Release]
     let topRecordings: [TopRecording]
@@ -34,6 +37,7 @@ struct YearInMusicReport: Hashable, Sendable {
         totals.listenCount == 0
             && listeningDays.allSatisfy { $0.listenCount == 0 }
             && topArtists.isEmpty
+            && newReleasesOfTopArtists.isEmpty
             && topReleaseGroups.isEmpty
             && topReleases.isEmpty
             && topRecordings.isEmpty
@@ -154,6 +158,43 @@ struct YearInMusicReport: Hashable, Sendable {
         }
     }
 
+    /// A current Year in Music discovery item. The release-group MBID is the
+    /// only identity that may navigate to a release-group screen. A concrete
+    /// release MBID is retained as legacy source identity, while the CAA
+    /// release MBID is artwork identity only.
+    struct NewRelease: Identifiable, Hashable, Sendable {
+        let releaseGroupMBID: UUID?
+        let concreteReleaseMBID: UUID?
+        let title: String
+        let artistName: String
+        let artistMBIDs: [UUID]
+        let coverArtArchiveID: Int?
+        let artworkReleaseMBID: UUID?
+
+        var id: String {
+            if let releaseGroupMBID { return "new-release-group:\(releaseGroupMBID.uuidString)" }
+            if let concreteReleaseMBID { return "new-release:\(concreteReleaseMBID.uuidString)" }
+            return "new-release-unmapped:\(artistName.normalizedIdentity):\(title.normalizedIdentity)"
+        }
+
+        var artworkURL: URL? {
+            if let artworkReleaseMBID { return CoverArtArchiveURL.release(artworkReleaseMBID) }
+            if let releaseGroupMBID { return CoverArtArchiveURL.releaseGroup(releaseGroupMBID) }
+            return nil
+        }
+
+        var detailDestination: SearchReleaseGroup? {
+            guard let releaseGroupMBID else { return nil }
+            return SearchReleaseGroup(
+                mbid: releaseGroupMBID,
+                title: title,
+                artistName: artistName,
+                primaryType: nil,
+                firstReleaseDate: nil
+            )
+        }
+    }
+
     struct Release: Hashable, Sendable {
         let releaseMBID: UUID?
         let title: String
@@ -197,6 +238,7 @@ struct YearInMusicReport: Hashable, Sendable {
         totals: Totals,
         listeningDays: [ListeningDay],
         topArtists: [RankedArtist],
+        newReleasesOfTopArtists: [NewRelease] = [],
         topReleaseGroups: [ReleaseGroup],
         topReleases: [Release] = [],
         topRecordings: [TopRecording],
@@ -211,6 +253,7 @@ struct YearInMusicReport: Hashable, Sendable {
         self.totals = totals
         self.listeningDays = listeningDays
         self.topArtists = topArtists
+        self.newReleasesOfTopArtists = newReleasesOfTopArtists
         self.topReleaseGroups = topReleaseGroups
         self.topReleases = topReleases
         self.topRecordings = topRecordings
@@ -243,6 +286,7 @@ struct YearInMusicReport: Hashable, Sendable {
         )
         listeningDays = Self.mapListeningDays(data.listensPerDay, year: year)
         topArtists = Self.mapArtists(data.topArtists)
+        newReleasesOfTopArtists = Self.mapNewReleases(data.newReleasesOfTopArtists)
         topReleaseGroups = Self.mapReleaseGroups(data.topReleaseGroups)
         topReleases = Self.mapReleases(data.topReleases, coverArtByReleaseMBID: data.topReleasesCoverArt)
         topRecordings = Self.mapRecordings(data.topRecordings)
@@ -447,6 +491,44 @@ struct YearInMusicReport: Hashable, Sendable {
         .sorted(by: rankedArtistOrder)
     }
 
+    private static func mapNewReleases(_ source: [LBYearInMusic.Report.Release]) -> [NewRelease] {
+        enum Key: Hashable { case releaseGroup(UUID), fallback(String) }
+
+        var releases: [NewRelease] = []
+        var indexByKey: [Key: Int] = [:]
+
+        for row in source {
+            guard let title = row.title?.trimmedNilIfEmpty else { continue }
+            let artistName = resolvedArtistName(row.artistCreditName ?? row.artistName, credits: row.artists)
+            let releaseGroupMBID = row.releaseGroupMBID.flatMap(UUID.init(uuidString:))
+            let concreteReleaseMBID = row.releaseMBID.flatMap(UUID.init(uuidString:))
+            let key = releaseGroupMBID.map(Key.releaseGroup)
+                ?? .fallback("\(artistName.normalizedIdentity):\(title.normalizedIdentity)")
+            let artistMBIDs = normalizedUUIDs(
+                (row.artistCreditMBIDs ?? row.artistMBIDs ?? [])
+                    + (row.artists?.compactMap(\.mbid) ?? [])
+            )
+            let candidate = NewRelease(
+                releaseGroupMBID: releaseGroupMBID,
+                concreteReleaseMBID: concreteReleaseMBID,
+                title: title,
+                artistName: artistName,
+                artistMBIDs: artistMBIDs,
+                coverArtArchiveID: nonNegativeValid(row.coverArtArchiveID),
+                artworkReleaseMBID: row.coverArtArchiveReleaseMBID.flatMap(UUID.init(uuidString:))
+            )
+
+            if let index = indexByKey[key] {
+                releases[index] = merge(candidate, into: releases[index])
+            } else {
+                indexByKey[key] = releases.count
+                releases.append(candidate)
+            }
+        }
+
+        return releases
+    }
+
     private static func mapReleaseGroups(_ source: [LBYearInMusic.Report.ReleaseGroup]) -> [ReleaseGroup] {
         enum Key: Hashable { case mbid(UUID), fallback(String) }
         var values: [Key: ReleaseGroup] = [:]
@@ -524,6 +606,20 @@ struct YearInMusicReport: Hashable, Sendable {
             listenCount: saturatedSum(existing.listenCount, candidate.listenCount),
             coverArtArchiveID: [existing.coverArtArchiveID, candidate.coverArtArchiveID].compactMap { $0 }.min(),
             artworkReleaseMBID: [existing.artworkReleaseMBID, candidate.artworkReleaseMBID].compactMap { $0 }.sorted { $0.uuidString < $1.uuidString }.first
+        )
+    }
+
+    private static func merge(_ candidate: NewRelease, into existing: NewRelease) -> NewRelease {
+        // Keep the first server position and wording stable. Later duplicate
+        // rows may still fill gaps in IDs or artwork metadata.
+        NewRelease(
+            releaseGroupMBID: existing.releaseGroupMBID ?? candidate.releaseGroupMBID,
+            concreteReleaseMBID: existing.concreteReleaseMBID ?? candidate.concreteReleaseMBID,
+            title: existing.title,
+            artistName: existing.artistName,
+            artistMBIDs: Array(Set(existing.artistMBIDs).union(candidate.artistMBIDs)).sorted { $0.uuidString < $1.uuidString },
+            coverArtArchiveID: existing.coverArtArchiveID ?? candidate.coverArtArchiveID,
+            artworkReleaseMBID: existing.artworkReleaseMBID ?? candidate.artworkReleaseMBID
         )
     }
 
