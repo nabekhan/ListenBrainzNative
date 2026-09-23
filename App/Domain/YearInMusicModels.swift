@@ -20,6 +20,9 @@ struct YearInMusicReport: Hashable, Sendable {
     let topReleaseGroups: [ReleaseGroup]
     let topReleases: [Release]
     let topRecordings: [TopRecording]
+    /// Read-only annual playlist snapshots embedded in the Year in Music
+    /// aggregate. They never imply that the canonical playlist was loaded.
+    let annualPlaylists: [AnnualPlaylistSnapshot]
     /// The weekday ListenBrainz identifies as the user's most active music day.
     let mostActiveWeekday: Weekday?
     /// ListenBrainz genre tags, retained as display-only labels rather than
@@ -41,6 +44,7 @@ struct YearInMusicReport: Hashable, Sendable {
             && topReleaseGroups.isEmpty
             && topReleases.isEmpty
             && topRecordings.isEmpty
+            && annualPlaylists.isEmpty
             && !totals.hasNewArtistCount
             && mostActiveWeekday == nil
             && topGenres.isEmpty
@@ -229,6 +233,45 @@ struct YearInMusicReport: Hashable, Sendable {
         }
     }
 
+    struct AnnualPlaylistSnapshot: Identifiable, Hashable, Sendable {
+        enum Kind: String, Hashable, Sendable {
+            case discoveries
+            case missedRecordings
+
+            var title: String {
+                switch self {
+                case .discoveries: "Top discoveries"
+                case .missedRecordings: "Tracks you missed"
+                }
+            }
+
+            func explanation(year: Int) -> String {
+                switch self {
+                case .discoveries: "Your top tracks first heard in \(year)."
+                case .missedRecordings: "A discovery playlist based on similar listeners."
+                }
+            }
+        }
+
+        struct Track: Identifiable, Hashable, Sendable {
+            let index: Int
+            let title: String
+            let artistName: String
+            let albumTitle: String?
+            let durationMilliseconds: Int?
+            let recording: Recording?
+
+            var id: String { "\(index):\(title.normalizedIdentity):\(artistName.normalizedIdentity)" }
+        }
+
+        let kind: Kind
+        let title: String?
+        let externalURL: URL?
+        let tracks: [Track]
+
+        var id: Kind { kind }
+    }
+
     /// Internal construction path for deterministic previews and tests. Live
     /// reports continue to enter through the schema-normalizing initializer.
     init(
@@ -242,6 +285,7 @@ struct YearInMusicReport: Hashable, Sendable {
         topReleaseGroups: [ReleaseGroup],
         topReleases: [Release] = [],
         topRecordings: [TopRecording],
+        annualPlaylists: [AnnualPlaylistSnapshot] = [],
         mostActiveWeekday: Weekday? = nil,
         topGenres: [Genre] = [],
         releaseDecades: [ReleaseDecade] = [],
@@ -257,6 +301,7 @@ struct YearInMusicReport: Hashable, Sendable {
         self.topReleaseGroups = topReleaseGroups
         self.topReleases = topReleases
         self.topRecordings = topRecordings
+        self.annualPlaylists = annualPlaylists
         self.mostActiveWeekday = mostActiveWeekday
         self.topGenres = topGenres
         self.releaseDecades = releaseDecades
@@ -290,6 +335,10 @@ struct YearInMusicReport: Hashable, Sendable {
         topReleaseGroups = Self.mapReleaseGroups(data.topReleaseGroups)
         topReleases = Self.mapReleases(data.topReleases, coverArtByReleaseMBID: data.topReleasesCoverArt)
         topRecordings = Self.mapRecordings(data.topRecordings)
+        annualPlaylists = Self.mapAnnualPlaylists(
+            discoveries: data.topDiscoveriesPlaylist,
+            missedRecordings: data.topMissedRecordingsPlaylist
+        )
         mostActiveWeekday = Self.mapWeekday(data.dayOfWeek)
         topGenres = Self.mapGenres(data.topGenres)
         releaseDecades = Self.mapReleaseDecades(data.mostListenedYear, reportYear: year)
@@ -328,6 +377,98 @@ struct YearInMusicReport: Hashable, Sendable {
             rows: rows
         )
         return activity.isEmpty ? nil : activity
+    }
+
+    private static func mapAnnualPlaylists(
+        discoveries: LBYearInMusic.Report.Playlist?,
+        missedRecordings: LBYearInMusic.Report.Playlist?
+    ) -> [AnnualPlaylistSnapshot] {
+        [
+            mapAnnualPlaylist(discoveries, kind: .discoveries),
+            mapAnnualPlaylist(missedRecordings, kind: .missedRecordings),
+        ].compactMap { $0 }
+    }
+
+    private static func mapAnnualPlaylist(
+        _ source: LBYearInMusic.Report.Playlist?,
+        kind: AnnualPlaylistSnapshot.Kind
+    ) -> AnnualPlaylistSnapshot? {
+        guard let source else { return nil }
+        let tracks = source.tracks.enumerated().compactMap { index, track -> AnnualPlaylistSnapshot.Track? in
+            guard let title = track.title?.trimmedNilIfEmpty else { return nil }
+            let artistName = track.creator?.trimmedNilIfEmpty ?? "Unknown artist"
+            let recordingMBID = track.identifiers?.compactMap(strictRecordingMBID).first
+            let recording = recordingMBID.map { mbid in
+                Recording(
+                    identity: .init(mbid: mbid, msid: nil),
+                    title: title,
+                    artistName: artistName,
+                    artistMBIDs: [],
+                    releaseTitle: track.album?.trimmedNilIfEmpty,
+                    releaseMBID: nil,
+                    releaseGroupMBID: nil,
+                    artworkReleaseMBID: nil,
+                    durationMilliseconds: nonNegativeValid(track.duration),
+                    source: "ListenBrainz"
+                )
+            }
+            return .init(
+                index: index,
+                title: title,
+                artistName: artistName,
+                albumTitle: track.album?.trimmedNilIfEmpty,
+                durationMilliseconds: nonNegativeValid(track.duration),
+                recording: recording
+            )
+        }
+        guard !tracks.isEmpty else { return nil }
+        return .init(
+            kind: kind,
+            title: source.title?.trimmedNilIfEmpty,
+            externalURL: strictPlaylistURL(identifier: source.identifier, legacyMBID: source.legacyMBID),
+            tracks: tracks
+        )
+    }
+
+    private static func strictPlaylistURL(identifier: String?, legacyMBID: String?) -> URL? {
+        if let identifier,
+           let mbid = strictPlaylistMBID(identifier) {
+            return URL(string: "https://listenbrainz.org/playlist/\(mbid.uuidString.lowercased())")
+        }
+        guard let legacyMBID = legacyMBID?.trimmedNilIfEmpty,
+              let mbid = UUID(uuidString: legacyMBID)
+        else { return nil }
+        return URL(string: "https://listenbrainz.org/playlist/\(mbid.uuidString.lowercased())")
+    }
+
+    private static func strictPlaylistMBID(_ identifier: String) -> UUID? {
+        guard let source = URL(string: identifier),
+              source.scheme?.lowercased() == "https",
+              source.host?.lowercased() == "listenbrainz.org",
+              source.user == nil,
+              source.password == nil,
+              source.port == nil,
+              source.query == nil,
+              source.fragment == nil
+        else { return nil }
+        let components = source.pathComponents.filter { $0 != "/" }
+        guard components.count == 2, components[0] == "playlist" else { return nil }
+        return UUID(uuidString: components[1])
+    }
+
+    private static func strictRecordingMBID(_ identifier: String) -> UUID? {
+        guard let source = URL(string: identifier),
+              source.scheme?.lowercased() == "https",
+              source.host?.lowercased() == "musicbrainz.org",
+              source.user == nil,
+              source.password == nil,
+              source.port == nil,
+              source.query == nil,
+              source.fragment == nil
+        else { return nil }
+        let components = source.pathComponents.filter { $0 != "/" }
+        guard components.count == 2, components[0] == "recording" else { return nil }
+        return UUID(uuidString: components[1])
     }
 
     private static func mapWeekday(_ source: String?) -> Weekday? {

@@ -252,6 +252,77 @@ final class YearInMusicModelTests: XCTestCase {
         XCTAssertFalse(report.isEmpty)
     }
 
+    func testAnnualPlaylistsKeepOnlySupportedKindsInSourceOrderAndPreserveDuplicates() throws {
+        let source = try yearInMusic("""
+        { "user_name": "listener", "year": 2025, "data": {
+          "playlist-top-discoveries-for-year": {
+            "identifier":"https://listenbrainz.org/playlist/11111111-1111-1111-1111-111111111111",
+            "annotation":"<script>ignored</script>", "track":[
+              {"title":"First","creator":"Artist","album":"Album","duration":181000,"identifier":"https://musicbrainz.org/recording/22222222-2222-2222-2222-222222222222"},
+              {"title":"First","creator":"Artist","identifier":["invalid", "https://musicbrainz.org/recording/22222222-2222-2222-2222-222222222222"]},
+              {"title":"  ","creator":"Ignored"}
+            ]
+          },
+          "playlist-top-missed-recordings-for-year": {
+            "identifier":"https://listenbrainz.org/playlist/33333333-3333-3333-3333-333333333333", "track":[
+              {"title":"Second","creator":"Other"}
+            ]
+          },
+          "playlist-top-new-recordings-for-year": {"track":[{"title":"Deprecated","creator":"Ignored"}]},
+          "playlist-top-recordings-for-year": {"track":[{"title":"Deprecated too","creator":"Ignored"}]}
+        } }
+        """)
+        let mapped = try XCTUnwrap(YearInMusicReport(source: source, requestedYear: 2025))
+
+        XCTAssertEqual(mapped.annualPlaylists.map(\.kind), [.discoveries, .missedRecordings])
+        XCTAssertEqual(mapped.annualPlaylists[0].tracks.map(\.title), ["First", "First"])
+        XCTAssertEqual(mapped.annualPlaylists[0].tracks.map(\.index), [0, 1])
+        XCTAssertEqual(mapped.annualPlaylists[0].externalURL?.absoluteString, "https://listenbrainz.org/playlist/11111111-1111-1111-1111-111111111111")
+        XCTAssertEqual(mapped.annualPlaylists[0].tracks.first?.recording?.identity.mbid?.uuidString, "22222222-2222-2222-2222-222222222222")
+        XCTAssertEqual(mapped.annualPlaylists[0].tracks.first?.durationMilliseconds, 181_000)
+        XCTAssertEqual(mapped.annualPlaylists[0].tracks.first?.recording?.durationMilliseconds, 181_000)
+        XCTAssertFalse(mapped.isEmpty)
+
+        let missedOnly = try yearInMusic("""
+        { "year": 2025, "data": {
+          "playlist-top-missed-recordings-for-year": {"track":[{"title":"Only missed","creator":"Artist"}]}
+        } }
+        """)
+        XCTAssertEqual(
+            YearInMusicReport(source: missedOnly, requestedYear: 2025)?.annualPlaylists.map(\.kind),
+            [.missedRecordings]
+        )
+    }
+
+    func testAnnualPlaylistRoutesRequireCanonicalURLsAndPlaylistOnlyReportsRemainUseful() throws {
+        let source = try yearInMusic("""
+        { "user_name": "listener", "year": 2021, "data": {
+          "playlist-top-discoveries-for-year": {
+            "mbid":"11111111-1111-1111-1111-111111111111", "jspf":{"playlist":{"track":[
+              {"title":"Legacy","creator":"Artist","identifier":[
+                "https://musicbrainz.org/recording/22222222-2222-2222-2222-222222222222?bad=1",
+                "https://www.musicbrainz.org/recording/33333333-3333-3333-3333-333333333333"
+              ]}
+            ]}}
+          },
+          "playlist-top-missed-recordings-for-year": {
+            "identifier":"https://listenbrainz.org/playlist/44444444-4444-4444-4444-444444444444?bad=1", "track":[
+              {"title":"No route","creator":"Artist"}
+            ]
+          }
+        } }
+        """)
+        let mapped = try XCTUnwrap(YearInMusicReport(source: source, requestedYear: 2021, sourceKind: .archive))
+
+        XCTAssertTrue(mapped.topArtists.isEmpty)
+        XCTAssertFalse(mapped.isEmpty)
+        XCTAssertEqual(mapped.annualPlaylists[0].externalURL?.absoluteString, "https://listenbrainz.org/playlist/11111111-1111-1111-1111-111111111111")
+        XCTAssertNil(mapped.annualPlaylists[0].tracks[0].recording)
+        XCTAssertNil(mapped.annualPlaylists[1].externalURL)
+        XCTAssertEqual(mapped.annualPlaylists[0].kind.explanation(year: 2021), "Your top tracks first heard in 2021.")
+        XCTAssertEqual(mapped.annualPlaylists[1].kind.explanation(year: 2021), "A discovery playlist based on similar listeners.")
+    }
+
     func testArchiveMapsConcreteReleasesAndMissingTotalsTruthfully() throws {
         let source = try yearInMusic("""
         { "user_name": "listener", "year": 2021, "data": {

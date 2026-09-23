@@ -32,6 +32,14 @@ Snapshot: 2026-09-22.
 - Cache keys include normalized user, request scope, and year; stale content survives refresh failures, and late/cancelled responses cannot overwrite newer state.
 - Cassette's MPL-2.0 Wrapped composition supplies the adapted mesh hero, artist shelf, album grid, track list, and 2025 palette. The annual heatmap and ListenBrainz state handling are app-specific.
 
+## Annual playlist snapshots
+
+- The native story now maps only the two current official annual playlists: Top Discoveries and Top Missed Recordings. Deprecated top-new and top-recordings playlist keys remain decoded for compatibility but are deliberately not presented because they duplicate existing chapters.
+- Current direct JSPF objects and the nested 2021 `jspf.playlist` envelope decode tolerantly, including scalar or array recording identifiers and the explicit legacy playlist MBID. Source order and duplicate tracks are preserved.
+- Cards and their full read-only detail use only the already-loaded annual aggregate. They issue no playlist, metadata, artwork, playback, queue, save, or copy request. A valid canonical ListenBrainz URL can be opened explicitly in the browser; only an exact canonical MusicBrainz recording URL enables Track Detail after a user tap.
+- Raw HTML annotations never enter the app-facing snapshot model. Concise local explanations follow the official playlist meaning without inventing thresholds, rankings, or recommendation reasons.
+- The adaptive presentation stacks on phones and at accessibility text sizes, uses two columns at regular width, and keeps long titles readable in the local detail.
+
 ## Generated artwork slice
 
 - Canonical report-link sharing remains immediate and independent of image generation.
@@ -44,5 +52,5 @@ Snapshot: 2026-09-22.
 
 ## Deferred
 
-- Secondary payload chapters such as artist-map context, discovery playlists, and similar users remain deferred until their value and duplication with existing app surfaces are reviewed.
+- Secondary payload chapters such as artist-map context and similar users remain deferred until their value and duplication with existing app surfaces are reviewed.
 - The full year-specific website animations and layouts remain reference-only GPL behavior; the native story deliberately normalizes the highest-value chapters instead of copying them.

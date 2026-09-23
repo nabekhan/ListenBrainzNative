@@ -17,9 +17,11 @@ struct YearInMusicView: View {
     private let currentReportCache: EntityDetailCache<YearInMusicCacheKey, YearInMusicReport>
     private let archiveReportCache: EntityDetailCache<YearInMusicCacheKey, YearInMusicReport>
     private let automaticallyPresentsArtwork: Bool
+    private let automaticallyPresentsPlaylistDetail: Bool
     @State private var model: YearInMusicModel
     @State private var selectedYear: Int
     @State private var showsArtwork = false
+    @State private var visualQAPlaylistDetail: YearInMusicReport.AnnualPlaylistSnapshot?
 
     init(
         account: Account,
@@ -38,8 +40,12 @@ struct YearInMusicView: View {
         self.artworkProvider = artworkProvider ?? ListenBrainzYearInMusicArtworkProvider(token: "")
         #if DEBUG
         automaticallyPresentsArtwork = ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-art-demo")
+        automaticallyPresentsPlaylistDetail = ProcessInfo.processInfo.arguments.contains(
+            "-brainz-year-in-music-playlist-detail-demo"
+        )
         #else
         automaticallyPresentsArtwork = false
+        automaticallyPresentsPlaylistDetail = false
         #endif
         _model = State(
             initialValue: YearInMusicModel(
@@ -123,6 +129,27 @@ struct YearInMusicView: View {
             guard automaticallyPresentsArtwork, reportIsReady else { return }
             showsArtwork = true
         }
+        .onChange(of: model.report != nil, initial: true) { _, reportIsReady in
+            guard automaticallyPresentsPlaylistDetail,
+                  reportIsReady,
+                  visualQAPlaylistDetail == nil
+            else { return }
+            visualQAPlaylistDetail = model.report?.annualPlaylists.first
+        }
+        .navigationDestination(for: YearInMusicReport.AnnualPlaylistSnapshot.self) { snapshot in
+            YearInMusicPlaylistSnapshotDetail(
+                snapshot: snapshot,
+                year: selectedYear,
+                allowsRecordingNavigation: allowsMediaNavigation
+            )
+        }
+        .navigationDestination(item: $visualQAPlaylistDetail) { snapshot in
+            YearInMusicPlaylistSnapshotDetail(
+                snapshot: snapshot,
+                year: selectedYear,
+                allowsRecordingNavigation: false
+            )
+        }
         .mediaDestinations(model: listeningModel)
     }
 
@@ -187,6 +214,12 @@ struct YearInMusicView: View {
                 recordings: report.topRecordings,
                 allowsNavigation: allowsMediaNavigation
             )
+        } else if arguments.contains("-brainz-year-in-music-playlists-demo") {
+            YearInMusicPlaylistsSection(
+                playlists: report.annualPlaylists,
+                year: report.year,
+                allowsNavigation: true
+            )
         } else {
             YearInMusicHero(report: report)
             YearInMusicCalendarSection(report: report)
@@ -198,6 +231,11 @@ struct YearInMusicView: View {
             )
             YearInMusicNewReleasesSection(
                 releases: report.newReleasesOfTopArtists,
+                year: report.year,
+                allowsNavigation: allowsMediaNavigation
+            )
+            YearInMusicPlaylistsSection(
+                playlists: report.annualPlaylists,
                 year: report.year,
                 allowsNavigation: allowsMediaNavigation
             )
@@ -216,6 +254,13 @@ struct YearInMusicView: View {
         if !report.newReleasesOfTopArtists.isEmpty {
             YearInMusicNewReleasesSection(
                 releases: report.newReleasesOfTopArtists,
+                year: report.year,
+                allowsNavigation: true
+            )
+        }
+        if !report.annualPlaylists.isEmpty {
+            YearInMusicPlaylistsSection(
+                playlists: report.annualPlaylists,
                 year: report.year,
                 allowsNavigation: true
             )
@@ -239,6 +284,8 @@ struct YearInMusicView: View {
         let arguments = ProcessInfo.processInfo.arguments
         return !arguments.contains("-brainz-year-in-music-demo")
             && !arguments.contains("-brainz-year-in-music-new-releases-demo")
+            && !arguments.contains("-brainz-year-in-music-playlists-demo")
+            && !arguments.contains("-brainz-year-in-music-playlist-detail-demo")
             && !arguments.contains("-brainz-taste-demo")
             && !arguments.contains("-brainz-year-in-music-teaser-demo")
         #else
@@ -1407,6 +1454,183 @@ private func sectionEmpty(_ message: String) -> some View {
         .background(.thinMaterial, in: .rect(cornerRadius: 18, style: .continuous))
 }
 
+private struct YearInMusicPlaylistsSection: View {
+    let playlists: [YearInMusicReport.AnnualPlaylistSnapshot]
+    let year: Int
+    let allowsNavigation: Bool
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        if !playlists.isEmpty {
+            VStack(alignment: .leading, spacing: 14) {
+                SectionHeader(
+                    title: "Revisit your year",
+                    subtitle: "Playlists from your annual report."
+                )
+                if horizontalSizeClass == .regular, !dynamicTypeSize.isAccessibilitySize {
+                    HStack(alignment: .top, spacing: 12) {
+                        ForEach(Array(playlists.prefix(2))) { playlist in
+                            card(playlist).frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(Array(playlists.prefix(2))) { playlist in
+                            card(playlist)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func card(_ playlist: YearInMusicReport.AnnualPlaylistSnapshot) -> some View {
+        Group {
+            if allowsNavigation {
+                NavigationLink(value: playlist) { cardContent(playlist) }
+                    .buttonStyle(.plain)
+            } else {
+                cardContent(playlist)
+            }
+        }
+        .padding(16)
+        .background(.thinMaterial, in: .rect(cornerRadius: 22, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(allowsNavigation ? "Opens this saved track list." : "")
+    }
+
+    private func cardContent(_ playlist: YearInMusicReport.AnnualPlaylistSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            playlistHeader(playlist)
+            Text(playlist.kind.explanation(year: year))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(playlist.tracks.prefix(dynamicTypeSize.isAccessibilitySize ? 2 : 3))) { track in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Image(systemName: "music.note")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(track.title)
+                                .font(.subheadline.weight(.medium))
+                                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                                .fixedSize(horizontal: false, vertical: dynamicTypeSize.isAccessibilitySize)
+                            Text(track.artistName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                                .fixedSize(horizontal: false, vertical: dynamicTypeSize.isAccessibilitySize)
+                        }
+                    }
+                }
+            }
+            HStack(spacing: 8) {
+                Text("\(playlist.tracks.count.formatted()) \(playlist.tracks.count == 1 ? "track" : "tracks")")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                if allowsNavigation {
+                    Image(systemName: "chevron.right")
+                        .font(.caption.bold())
+                        .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func playlistHeader(_ playlist: YearInMusicReport.AnnualPlaylistSnapshot) -> some View {
+        let symbol = playlist.kind == .discoveries ? "sparkles" : "arrow.uturn.backward.circle"
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: symbol)
+                Text(playlist.kind.title)
+            }
+            .font(.headline)
+            .foregroundStyle(.primary)
+        } else {
+            Label(playlist.kind.title, systemImage: symbol)
+                .font(.headline)
+                .foregroundStyle(.primary)
+        }
+    }
+}
+
+private struct YearInMusicPlaylistSnapshotDetail: View {
+    let snapshot: YearInMusicReport.AnnualPlaylistSnapshot
+    let year: Int
+    let allowsRecordingNavigation: Bool
+
+    var body: some View {
+        List {
+            Section {
+                Text(snapshot.kind.explanation(year: year))
+                    .foregroundStyle(.secondary)
+                if let externalURL = snapshot.externalURL {
+                    Link(destination: externalURL) {
+                        Label("Open on ListenBrainz", systemImage: "safari")
+                    }
+                    .accessibilityHint("Opens this playlist in a browser.")
+                }
+            }
+
+            Section("Tracks") {
+                ForEach(snapshot.tracks) { track in
+                    if allowsRecordingNavigation, let recording = track.recording {
+                        NavigationLink(value: recording) { trackRow(track) }
+                    } else {
+                        trackRow(track)
+                    }
+                }
+            }
+        }
+        .navigationTitle(snapshot.kind.title)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func trackRow(_ track: YearInMusicReport.AnnualPlaylistSnapshot.Track) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(track.title).font(.body.weight(.medium))
+            Text(track.artistName).font(.subheadline).foregroundStyle(.secondary)
+            if track.albumTitle != nil || durationDescription(track.durationMilliseconds) != nil {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 5) { secondaryMetadata(track, showsSeparator: true) }
+                    VStack(alignment: .leading, spacing: 2) { secondaryMetadata(track, showsSeparator: false) }
+                }
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private func secondaryMetadata(
+        _ track: YearInMusicReport.AnnualPlaylistSnapshot.Track,
+        showsSeparator: Bool
+    ) -> some View {
+        if let albumTitle = track.albumTitle { Text(albumTitle).lineLimit(1) }
+        if showsSeparator, track.albumTitle != nil, durationDescription(track.durationMilliseconds) != nil {
+            Text("·").accessibilityHidden(true)
+        }
+        if let duration = durationDescription(track.durationMilliseconds) {
+            Text(duration).monospacedDigit()
+        }
+    }
+
+    private func durationDescription(_ milliseconds: Int?) -> String? {
+        guard let milliseconds, milliseconds > 0 else { return nil }
+        let seconds = milliseconds / 1_000
+        return "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
+    }
+}
+
 private struct YearInMusicMeshBackground: View {
     let animated: Bool
     @State private var phase: CGFloat = 0
@@ -1552,6 +1776,27 @@ private extension YearInMusicReport {
             topReleaseGroups: year <= 2022 ? [] : releaseGroups,
             topReleases: concreteReleases,
             topRecordings: tracks,
+            annualPlaylists: [
+                .init(
+                    kind: .discoveries,
+                    title: "Top discoveries",
+                    externalURL: URL(string: "https://listenbrainz.org/playlist/00000000-0000-4000-8000-000000000501"),
+                    tracks: [
+                        .init(index: 0, title: "A discovery with an especially long title for accessibility", artistName: "Alvvays", albumTitle: "Blue Rev", durationMilliseconds: 226_000, recording: tracks[0].recording),
+                        .init(index: 1, title: "Be Sweet", artistName: "Japanese Breakfast", albumTitle: "Jubilee", durationMilliseconds: 195_000, recording: nil),
+                        .init(index: 2, title: "Weird Fishes / Arpeggi", artistName: "Radiohead", albumTitle: "In Rainbows", durationMilliseconds: 318_000, recording: tracks[2].recording),
+                    ]
+                ),
+                .init(
+                    kind: .missedRecordings,
+                    title: "Top missed recordings",
+                    externalURL: URL(string: "https://listenbrainz.org/playlist/00000000-0000-4000-8000-000000000502"),
+                    tracks: [
+                        .init(index: 0, title: "Sugar", artistName: "Men I Trust", albumTitle: "Untourable Album", durationMilliseconds: 177_000, recording: tracks[3].recording),
+                        .init(index: 1, title: "Dreams Tonite", artistName: "Alvvays", albumTitle: "Antisocialites", durationMilliseconds: 197_000, recording: tracks[4].recording),
+                    ]
+                ),
+            ],
             mostActiveWeekday: .init(name: "Saturday", order: 5),
             topGenres: [
                 .init(name: "Dream pop", listenCount: 2_184, percentage: 34.8, hasListenCount: true),

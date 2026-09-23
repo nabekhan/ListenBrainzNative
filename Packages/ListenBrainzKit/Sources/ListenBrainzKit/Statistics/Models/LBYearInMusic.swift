@@ -266,10 +266,13 @@ public struct LBYearInMusic: Decodable {
             /// JSPF date strings are ISO 8601, unlike ListenBrainz's usual epoch timestamps.
             public let date: String?
             public let identifier: String?
+            /// The legacy Year in Music schema wrapped JSPF data and put the
+            /// playlist MBID beside it. Current payloads use `identifier`.
+            public let legacyMBID: String?
             public let annotation: String?
             public let tracks: [Track]
 
-            enum CodingKeys: String, CodingKey {
+            private enum CodingKeys: String, CodingKey {
                 case title
                 case creator
                 case date
@@ -278,14 +281,58 @@ public struct LBYearInMusic: Decodable {
                 case tracks = "track"
             }
 
+            private enum LegacyCodingKeys: String, CodingKey {
+                case jspf
+                case mbid
+            }
+
+            private struct LegacyEnvelope: Decodable {
+                let playlist: Payload
+            }
+
+            private struct Payload: Decodable {
+                let title: String?
+                let creator: String?
+                let date: String?
+                let identifier: String?
+                let annotation: String?
+                let tracks: [Track]
+
+                enum CodingKeys: String, CodingKey {
+                    case title
+                    case creator
+                    case date
+                    case identifier
+                    case annotation
+                    case tracks = "track"
+                }
+
+                init(from decoder: Decoder) throws {
+                    let values = try decoder.container(keyedBy: CodingKeys.self)
+                    title = try values.decodeIfPresent(String.self, forKey: .title)
+                    creator = try values.decodeIfPresent(String.self, forKey: .creator)
+                    date = try values.decodeIfPresent(String.self, forKey: .date)
+                    identifier = try values.decodeIfPresent(String.self, forKey: .identifier)
+                    annotation = try values.decodeIfPresent(String.self, forKey: .annotation)
+                    tracks = try values.decodeIfPresent([Track].self, forKey: .tracks) ?? []
+                }
+            }
+
             public init(from decoder: Decoder) throws {
-                let values = try decoder.container(keyedBy: CodingKeys.self)
-                title = try values.decodeIfPresent(String.self, forKey: .title)
-                creator = try values.decodeIfPresent(String.self, forKey: .creator)
-                date = try values.decodeIfPresent(String.self, forKey: .date)
-                identifier = try values.decodeIfPresent(String.self, forKey: .identifier)
-                annotation = try values.decodeIfPresent(String.self, forKey: .annotation)
-                tracks = try values.decodeIfPresent([Track].self, forKey: .tracks) ?? []
+                let legacy = try decoder.container(keyedBy: LegacyCodingKeys.self)
+                legacyMBID = try? legacy.decodeIfPresent(String.self, forKey: .mbid)
+                let payload: Payload
+                if let envelope = try? legacy.decodeIfPresent(LegacyEnvelope.self, forKey: .jspf) {
+                    payload = envelope.playlist
+                } else {
+                    payload = try Payload(from: decoder)
+                }
+                title = payload.title
+                creator = payload.creator
+                date = payload.date
+                identifier = payload.identifier
+                annotation = payload.annotation
+                tracks = payload.tracks
             }
         }
 
@@ -302,6 +349,21 @@ public struct LBYearInMusic: Decodable {
                 case album
                 case duration
                 case identifiers = "identifier"
+            }
+
+            public init(from decoder: Decoder) throws {
+                let values = try decoder.container(keyedBy: CodingKeys.self)
+                title = try values.decodeIfPresent(String.self, forKey: .title)
+                creator = try values.decodeIfPresent(String.self, forKey: .creator)
+                album = try values.decodeIfPresent(String.self, forKey: .album)
+                duration = try values.decodeIfPresent(Int.self, forKey: .duration)
+                if let values = try? values.decode([String].self, forKey: .identifiers) {
+                    identifiers = values
+                } else if let value = try? values.decode(String.self, forKey: .identifiers) {
+                    identifiers = [value]
+                } else {
+                    identifiers = nil
+                }
             }
         }
 

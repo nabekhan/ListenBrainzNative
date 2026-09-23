@@ -548,6 +548,52 @@ struct LBStatisticsTests {
         #expect(empty.data.topReleaseGroups.isEmpty)
     }
 
+    @Test("Year in Music annual playlists decode current and legacy JSPF forms")
+    func deserializeAnnualPlaylists() throws {
+        let current = try JSONDecoder.ListenBrainz.decode(
+            StatsYearInMusicRequest.Result.self,
+            from: Data("""
+            { "payload": { "year": 2025, "data": {
+              "playlist-top-discoveries-for-year": {
+                "title": "Discoveries", "identifier": "https://listenbrainz.org/playlist/11111111-1111-1111-1111-111111111111",
+                "annotation": "<p>Never present this</p>", "track": [
+                  {"title":"First","creator":"Artist","identifier":"https://musicbrainz.org/recording/22222222-2222-2222-2222-222222222222"},
+                  {"title":"Second","creator":"Artist","identifier":["https://musicbrainz.org/recording/33333333-3333-3333-3333-333333333333", "opaque"]}
+                ]
+              },
+              "playlist-top-missed-recordings-for-year": {
+                "mbid": 42, "jspf": "malformed", "title": "Still usable", "track": [
+                  {"title":"Fallback","creator":"Artist","identifier":null}
+                ]
+              }
+            } } }
+            """.utf8)
+        ).payload
+        #expect(current.data.topDiscoveriesPlaylist?.identifier?.contains("listenbrainz.org") == true)
+        #expect(current.data.topDiscoveriesPlaylist?.legacyMBID == nil)
+        #expect(current.data.topDiscoveriesPlaylist?.tracks.map(\.identifiers?.count) == [1, 2])
+        #expect(current.data.topMissedRecordingsPlaylist?.title == "Still usable")
+        #expect(current.data.topMissedRecordingsPlaylist?.legacyMBID == nil)
+        #expect(current.data.topMissedRecordingsPlaylist?.tracks.first?.identifiers == nil)
+
+        let legacy = try JSONDecoder.ListenBrainz.decode(
+            StatsYearInMusicRequest.Result.self,
+            from: Data("""
+            { "payload": { "year": 2021, "data": {
+              "playlist-top-missed-recordings-for-year": {
+                "mbid": "44444444-4444-4444-4444-444444444444",
+                "jspf": { "playlist": { "title":"Missed", "track":[
+                  {"title":"Legacy track","creator":"Artist","identifier":"https://musicbrainz.org/recording/55555555-5555-5555-5555-555555555555"}
+                ] } }
+              }
+            } } }
+            """.utf8)
+        ).payload
+        #expect(legacy.data.topMissedRecordingsPlaylist?.title == "Missed")
+        #expect(legacy.data.topMissedRecordingsPlaylist?.legacyMBID == "44444444-4444-4444-4444-444444444444")
+        #expect(legacy.data.topMissedRecordingsPlaylist?.tracks.first?.identifiers == ["https://musicbrainz.org/recording/55555555-5555-5555-5555-555555555555"])
+    }
+
     @Test("Year in Music request uses optional year path and escaped user path")
     func yearInMusicRequestSemantics() throws {
         let current = StatsYearInMusicRequest(user: "test user", year: nil)
