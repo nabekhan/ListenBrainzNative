@@ -18,7 +18,7 @@ struct HomeView: View {
                     content
                 }
             }
-            .navigationTitle(greeting)
+            .navigationTitle(Text(greeting))
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 if model.account.isAuthenticated {
@@ -63,9 +63,7 @@ struct HomeView: View {
 
                 CurrentPinSection(
                     isOwner: showsOwnerPinContext,
-                    subtitle: showsOwnerPinContext
-                        ? "A track you want to share"
-                        : "A track this listener wants to share"
+                    subtitle: currentPinSubtitle
                 )
 
                 if !model.snapshot.recentListens.isEmpty {
@@ -123,7 +121,7 @@ struct HomeView: View {
         }
     }
 
-    private func metric(_ value: String, label: String, icon: String) -> some View {
+    private func metric(_ value: String, label: LocalizedStringResource, icon: String) -> some View {
         VStack(alignment: .leading, spacing: 9) {
             Image(systemName: icon)
                 .foregroundStyle(AppTheme.accent)
@@ -168,7 +166,7 @@ struct HomeView: View {
                                 Text(artist.name)
                                     .font(.subheadline.weight(.semibold))
                                     .lineLimit(1)
-                                Text("\(artist.listenCount.formatted()) listens")
+                                Text(listenCountLabel(artist.listenCount))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -222,11 +220,19 @@ struct HomeView: View {
         .frame(width: 152, alignment: .leading)
     }
 
-    private var greeting: String {
+    private var greeting: LocalizedStringResource {
         let hour = Calendar.current.component(.hour, from: .now)
         if hour < 12 { return "Good morning" }
         if hour < 18 { return "Good afternoon" }
         return "Good evening"
+    }
+
+    private var currentPinSubtitle: LocalizedStringResource {
+        showsOwnerPinContext ? "A track you want to share" : "A track this listener wants to share"
+    }
+
+    private func listenCountLabel(_ count: Int) -> LocalizedStringResource {
+        count == 1 ? "\(count) listen" : "\(count) listens"
     }
 }
 
@@ -346,12 +352,12 @@ struct HomeTopRecordingsSection: View {
     }
 
     private func accessibilityLabel(for recording: RankedRecording) -> String {
-        [recording.title, recording.artistName, listenCountLabel(recording.listenCount)]
+        [recording.title, recording.artistName, String(localized: listenCountLabel(recording.listenCount))]
             .joined(separator: ", ")
     }
 
-    private func listenCountLabel(_ count: Int) -> String {
-        "\(count.formatted()) \(count == 1 ? "listen" : "listens")"
+    private func listenCountLabel(_ count: Int) -> LocalizedStringResource {
+        count == 1 ? "\(count) listen" : "\(count) listens"
     }
 }
 

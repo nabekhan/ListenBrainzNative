@@ -4,9 +4,9 @@ struct CurrentPinSection: View {
     @Environment(PinsModel.self) private var pins
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let isOwner: Bool
-    let subtitle: String
+    let subtitle: LocalizedStringResource
 
-    init(isOwner: Bool, subtitle: String? = nil) {
+    init(isOwner: Bool, subtitle: LocalizedStringResource? = nil) {
         self.isOwner = isOwner
         self.subtitle = subtitle ?? (isOwner
             ? "A note you want visitors to hear"
@@ -222,7 +222,7 @@ private struct PinRow: View {
 }
 
 struct PinBlurbEditor: View {
-    let title: String
+    let title: LocalizedStringResource
     @Binding var blurb: String
     let save: () -> Void
     @Environment(\.dismiss) private var dismiss
@@ -234,7 +234,7 @@ struct PinBlurbEditor: View {
                     .foregroundStyle(blurb.count > 280 ? .red : .secondary)
             }
         }
-        .navigationTitle(title)
+        .navigationTitle(Text(title))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

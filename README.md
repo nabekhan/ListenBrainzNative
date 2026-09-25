@@ -33,6 +33,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Xcode 27 or newer
 - iOS 18 or newer
 - XcodeGen 2.44 or newer to regenerate the project
+- `jq` 1.7 or newer for the localization sync/check helper
 
 Generate and open the project:
 
@@ -52,12 +53,26 @@ No token or secret belongs in source control. For authenticated use, copy the us
 
 The SwiftUI presentation depends on the small `ListeningProvider` boundary rather than on API-library types. This keeps today's implementation straightforward while preserving a path to adopt stronger official Kotlin Multiplatform domain logic later without replacing the native UI.
 
+## Localization
+
+The app uses one translator-facing source of truth: `App/Resources/Localizable.xcstrings`. It stores an explicit editable English source value for every nonempty production key. SwiftUI literals are compiler-extracted, while reusable components accept `LocalizedStringResource` so copy does not disappear behind `String`-typed boundaries. New app-owned interface copy must follow the same path; existing computed and formatted copy is being migrated in reviewable feature passes. Server responses, usernames, music metadata, identifiers, and test fixtures remain verbatim rather than becoming translation keys.
+
+After adding or changing interface copy, update and verify the production catalog:
+
+```sh
+scripts/localizations.sh sync
+scripts/localizations.sh check
+```
+
+Both modes perform a Release extraction with Xcode and use `jq` to preserve explicit editable English source values. `check` works on a temporary copy and fails if the committed catalog has missing or stale production keys; DEBUG-only fixture copy is excluded. If `jq` is not installed, run either command through `nix shell nixpkgs#jq -c`.
+
 ## Research and provenance
 
 This repository follows an inspect-first, reuse-first workflow. Start with:
 
 - `docs/research/development-handoff.md`
 - `docs/research/implementation-plan.md`
+- `docs/research/localization.md`
 - `docs/research/listenbrainz-feature-map.md`
 - `docs/research/listenbrainzkit-gap-analysis.md`
 - `docs/research/playlist-mutations.md`

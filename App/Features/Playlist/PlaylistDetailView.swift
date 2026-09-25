@@ -560,12 +560,14 @@ struct PlaylistDetailView: View {
 
     private func tracks(_ detail: PlaylistDetail) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(
-                title: "Tracks",
-                subtitle: detail.tracks.isEmpty
-                    ? "This playlist is empty"
-                    : "\(detail.tracks.count.formatted()) in playlist order"
-            )
+            if detail.tracks.isEmpty {
+                SectionHeader(title: "Tracks", subtitle: "This playlist is empty")
+            } else {
+                SectionHeader(
+                    title: "Tracks",
+                    subtitle: "\(detail.tracks.count) in playlist order"
+                )
+            }
 
             if detail.tracks.isEmpty {
                 ContentUnavailableView(

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LoadingStateView: View {
-    let title: String
+    let title: LocalizedStringResource
 
     var body: some View {
         VStack(spacing: 14) {
@@ -9,7 +9,7 @@ struct LoadingStateView: View {
                 .controlSize(.large)
             Text(title)
                 .font(.headline)
-            Text("ListenBrainz limits clients to one request per second. The first refresh can take a moment.")
+            Text("Loading listening data may take a moment.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

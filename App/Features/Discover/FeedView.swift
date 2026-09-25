@@ -234,7 +234,7 @@ struct FeedView: View {
         .background(.thinMaterial, in: .rect(cornerRadius: 14, style: .continuous))
     }
 
-    private var sectionTitle: String {
+    private var sectionTitle: LocalizedStringResource {
         switch mode {
         case .activity: "From your circle"
         case .following: "Recently heard by people you follow"
@@ -242,7 +242,7 @@ struct FeedView: View {
         }
     }
 
-    private var sectionSubtitle: String {
+    private var sectionSubtitle: LocalizedStringResource {
         switch mode {
         case .activity:
             "Pins, recommendations, follows, reviews, and thanks"

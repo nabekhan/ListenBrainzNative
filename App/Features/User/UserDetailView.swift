@@ -154,7 +154,7 @@ struct UserDetailView: View {
         VStack(alignment: .leading, spacing: 14) {
             SectionHeader(
                 title: "Recently played",
-                subtitle: "The latest moments in (model.user.username)’s listening history"
+                subtitle: "The latest moments in \(model.user.username)’s listening history"
             )
             if model.snapshot.recentListens.isEmpty {
                 ContentUnavailableView(

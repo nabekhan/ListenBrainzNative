@@ -249,15 +249,19 @@ struct RecommendationsView: View {
         }
     }
 
-    private var recommendationSubtitle: String {
-        var components: [String] = []
-        if model.totalCount > 0 {
-            components.append("\(model.totalCount.formatted()) available")
+    private var recommendationSubtitle: LocalizedStringResource? {
+        let count = model.totalCount
+        let updated = model.lastUpdated?.formatted(.relative(presentation: .named))
+        switch (count > 0, updated) {
+        case (true, let updated?):
+            return "\(count) available · Updated \(updated)"
+        case (true, nil):
+            return "\(count) available"
+        case (false, let updated?):
+            return "Updated \(updated)"
+        case (false, nil):
+            return nil
         }
-        if let lastUpdated = model.lastUpdated {
-            components.append("Updated \(lastUpdated.formatted(.relative(presentation: .named)))")
-        }
-        return components.joined(separator: " · ")
     }
 
     private func loading(_ title: String) -> some View {

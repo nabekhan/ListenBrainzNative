@@ -2,7 +2,7 @@ import SwiftUI
 
 struct FeaturedListenCard: View {
     let listen: Listen
-    let label: String
+    let label: LocalizedStringResource
     let systemImage: String
 
     var body: some View {
@@ -26,9 +26,14 @@ struct FeaturedListenCard: View {
                 .clipShape(.rect(cornerRadius: 24, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 5) {
-                    Label(label.uppercased(), systemImage: systemImage)
+                    Label {
+                        Text(label)
+                    } icon: {
+                        Image(systemName: systemImage)
+                    }
                         .font(.caption2.bold())
                         .tracking(1.1)
+                        .textCase(.uppercase)
                         .foregroundStyle(.white.opacity(0.8))
                     Text(listen.recording.title)
                         .font(.title.bold())
@@ -43,6 +48,10 @@ struct FeaturedListenCard: View {
             .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(label): \(listen.recording.title) by \(listen.recording.artistName)")
+        .accessibilityLabel(Text(accessibilityLabel))
+    }
+
+    private var accessibilityLabel: LocalizedStringResource {
+        "\(String(localized: label)): \(listen.recording.title) by \(listen.recording.artistName)"
     }
 }

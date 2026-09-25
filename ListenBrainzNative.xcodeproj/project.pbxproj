@@ -41,6 +41,7 @@
 		2E4C0A7F8A1F5EF01CCDE56C /* RadioModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B092450568E7F84906D24CD3 /* RadioModelTests.swift */; };
 		2FABAD1401B714CA233A26FD /* PlaylistItemRemovalModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94E78D2AC1FC46709A9EBFB /* PlaylistItemRemovalModelTests.swift */; };
 		3002EF16004350755B6B772C /* ArtistOriginsPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E890F8FCD510D360635E3CA0 /* ArtistOriginsPresentationTests.swift */; };
+		3026BED4266E50B22B781838 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AFBE76928AA6AEDA795142C2 /* Localizable.xcstrings */; };
 		3107631690C9193020632AD8 /* UserSocialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE22423B6C01A46B7FB43FDF /* UserSocialView.swift */; };
 		3143E0C5AFB100795C4E6D47 /* PlaylistCopyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8822B99415D79F97F612C24 /* PlaylistCopyTests.swift */; };
 		3199C180C78A004FDD9FC78C /* ConnectedServicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3A327C77A55F8E7C2E195F /* ConnectedServicesView.swift */; };
@@ -282,6 +283,7 @@
 		AA1C5A040A20E4AC83EA8139 /* PlaylistMetadataEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistMetadataEditorSheet.swift; sourceTree = "<group>"; };
 		ACFF4BBDD28BEEFEF51B89F5 /* EntityDetailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityDetailCache.swift; sourceTree = "<group>"; };
 		AE4FA132D7B80BBA0964F330 /* TopListenersModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopListenersModel.swift; sourceTree = "<group>"; };
+		AFBE76928AA6AEDA795142C2 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		B01F6810F96206B890B6EB9A /* ConnectedServicesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectedServicesTests.swift; sourceTree = "<group>"; };
 		B092450568E7F84906D24CD3 /* RadioModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioModelTests.swift; sourceTree = "<group>"; };
 		B2FEF7F142C7E8674B2F23D9 /* PlaylistItemRemovalModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistItemRemovalModel.swift; sourceTree = "<group>"; };
@@ -491,6 +493,7 @@
 				57BFA88C2956E4FDBF95B9B8 /* Features */,
 				A00D93DC35E344C9473182F1 /* Models */,
 				D92EAD1176989A32B8C8518F /* Navigation */,
+				B9662D52303DEE8E59788C64 /* Resources */,
 				3FC4464063112389F5B0C5DC /* Services */,
 			);
 			path = App;
@@ -596,6 +599,14 @@
 				8D518BA1B29B9EFC5B9F1519 /* ListenBrainzKit */,
 			);
 			path = Packages;
+			sourceTree = "<group>";
+		};
+		B9662D52303DEE8E59788C64 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				AFBE76928AA6AEDA795142C2 /* Localizable.xcstrings */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		D2EFD74F628240A14CA9E120 /* Domain */ = {
@@ -727,6 +738,7 @@
 			buildConfigurationList = 192EA45BA337C1829D464E87 /* Build configuration list for PBXNativeTarget "ListenBrainzNative" */;
 			buildPhases = (
 				BB6EBAC16C081454B022E421 /* Sources */,
+				6553DB100D4017AD7770CEC6 /* Resources */,
 				F5D5C2A8F54B06981B609370 /* Frameworks */,
 			);
 			buildRules = (
@@ -795,6 +807,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6553DB100D4017AD7770CEC6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3026BED4266E50B22B781838 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		AF7EA0D761608EB12237276A /* Sources */ = {
@@ -1036,6 +1059,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1104,7 +1128,9 @@
 				PRODUCT_BUNDLE_IDENTIFIER = dev.nabekhan.listenbrainznative;
 				PRODUCT_NAME = Brainz;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -1131,7 +1157,9 @@
 				PRODUCT_BUNDLE_IDENTIFIER = dev.nabekhan.listenbrainznative;
 				PRODUCT_NAME = Brainz;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -1184,6 +1212,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -160,7 +160,7 @@ struct ProfilePlaylistSection: View {
         HStack(spacing: 12) {
             ProgressView()
             VStack(alignment: .leading, spacing: 2) {
-                Text("Loading \(selection.shortTitle.lowercased()) playlists…")
+                Text(selection.loadingTitle)
                     .font(.subheadline.weight(.semibold))
                 Text("Only playlist details are fetched here; tracks load when opened.")
                     .font(.caption)
@@ -205,10 +205,10 @@ struct ProfilePlaylistSection: View {
         .background(.thinMaterial, in: .rect(cornerRadius: 16, style: .continuous))
     }
 
-    private var sectionSubtitle: String {
+    private var sectionSubtitle: LocalizedStringResource {
         let state = model.state(for: selection)
         if let totalCount = state.totalCount, state.phase == .ready {
-            return "\(totalCount.formatted()) \(selection.countLabel(for: totalCount))"
+            return selection.countLabel(for: totalCount)
         }
         return selection.description(isAuthenticated: viewer.isAuthenticated)
     }
@@ -388,21 +388,21 @@ private struct ProfilePlaylistRow: View {
 }
 
 private extension ProfilePlaylistCategory {
-    var title: String {
+    var title: LocalizedStringResource {
         switch self {
         case .owned: "Owned"
         case .collaborating: "Collaborating"
         }
     }
 
-    var shortTitle: String {
+    var loadingTitle: LocalizedStringResource {
         switch self {
-        case .owned: "Owned"
-        case .collaborating: "Shared"
+        case .owned: "Loading owned playlists…"
+        case .collaborating: "Loading shared playlists…"
         }
     }
 
-    func description(isAuthenticated: Bool) -> String {
+    func description(isAuthenticated: Bool) -> LocalizedStringResource {
         switch (self, isAuthenticated) {
         case (.owned, true): "Collections you created, including private playlists"
         case (.owned, false): "Public collections created by this listener"
@@ -411,7 +411,7 @@ private extension ProfilePlaylistCategory {
         }
     }
 
-    func emptyDescription(for viewer: Account) -> String {
+    func emptyDescription(for viewer: Account) -> LocalizedStringResource {
         switch (self, viewer.isAuthenticated) {
         case (.owned, true): "Playlists you create on ListenBrainz will appear here."
         case (.owned, false): "This listener has no public playlists."
@@ -420,11 +420,12 @@ private extension ProfilePlaylistCategory {
         }
     }
 
-    func countLabel(for count: Int) -> String {
-        let noun = count == 1 ? "playlist" : "playlists"
+    func countLabel(for count: Int) -> LocalizedStringResource {
         switch self {
-        case .owned: return "owned \(noun)"
-        case .collaborating: return "collaborative \(noun)"
+        case .owned:
+            return count == 1 ? "\(count) owned playlist" : "\(count) owned playlists"
+        case .collaborating:
+            return count == 1 ? "\(count) collaborative playlist" : "\(count) collaborative playlists"
         }
     }
 }

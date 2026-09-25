@@ -179,12 +179,14 @@ struct ReleaseDetailView: View {
     private var trackList: some View {
         if let detail = model.detail, !detail.media.isEmpty {
             VStack(alignment: .leading, spacing: 14) {
-                SectionHeader(
-                    title: "Track list",
-                    subtitle: dynamicTypeSize.isAccessibilitySize
-                        ? nil
-                        : "Ordered by this specific MusicBrainz edition"
-                )
+                if dynamicTypeSize.isAccessibilitySize {
+                    SectionHeader(title: "Track list")
+                } else {
+                    SectionHeader(
+                        title: "Track list",
+                        subtitle: "Ordered by this specific MusicBrainz edition"
+                    )
+                }
                 ForEach(detail.media) { medium in
                     VStack(alignment: .leading, spacing: 0) {
                         if detail.media.count > 1 || medium.format != nil || medium.title != nil {

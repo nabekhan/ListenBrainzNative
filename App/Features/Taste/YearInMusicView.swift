@@ -1175,7 +1175,7 @@ private struct YearInMusicAlbumsSection: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Number \(rank), \(release.title) by \(release.artistName), \(release.listenCount.formatted()) listens")
-        .accessibilityHint(release.searchSeed == nil ? "" : "Opens album details")
+        .accessibilityHint("Opens album details", isEnabled: release.searchSeed != nil)
     }
 
     private func albumArtwork(_ release: YearInMusicReport.ReleaseGroup, rank: Int) -> some View {
@@ -1322,7 +1322,10 @@ private struct YearInMusicReleasesSection: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Number \(rank), \(release.title) by \(release.artistName), \(release.listenCount.formatted()) listens")
-        .accessibilityHint(allowsNavigation && release.seed != nil ? "Opens release details" : "")
+        .accessibilityHint(
+            "Opens release details",
+            isEnabled: allowsNavigation && release.seed != nil
+        )
     }
 }
 
@@ -1498,7 +1501,7 @@ private struct YearInMusicPlaylistsSection: View {
         .padding(16)
         .background(.thinMaterial, in: .rect(cornerRadius: 22, style: .continuous))
         .accessibilityElement(children: .combine)
-        .accessibilityHint(allowsNavigation ? "Opens this saved track list." : "")
+        .accessibilityHint("Opens this saved track list.", isEnabled: allowsNavigation)
     }
 
     private func cardContent(_ playlist: YearInMusicReport.AnnualPlaylistSnapshot) -> some View {
