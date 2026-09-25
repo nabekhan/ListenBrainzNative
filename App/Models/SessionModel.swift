@@ -180,6 +180,7 @@ final class SessionModel {
                 || arguments.contains("-brainz-playlist-remove-review-demo")
                 || arguments.contains("-brainz-playlist-reorder-demo")
                 || arguments.contains("-brainz-playlist-reorder-review-demo")
+                || arguments.contains("-brainz-playlist-collaborator-picker-demo")
                 || arguments.contains("-brainz-following-pins-demo")
                 || arguments.contains("-brainz-following-pins-empty-demo")
                 || arguments.contains("-brainz-following-pins-failure-demo")

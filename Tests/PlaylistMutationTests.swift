@@ -511,13 +511,15 @@ final class PlaylistMutationTests: XCTestCase {
         model.title = "After"
         model.annotation = "Updated note"
         model.isPublic = true
+        model.removeCollaborator("Alice")
+        XCTAssertTrue(model.addCollaborator(.init(username: "Cara")))
 
         let result = await model.save()
 
         XCTAssertNil(result)
         XCTAssertEqual(model.title, "After")
         XCTAssertEqual(model.annotation, "Updated note")
-        XCTAssertEqual(model.collaborators, ["Alice", "Bob"])
+        XCTAssertEqual(model.collaborators, ["Bob", "Cara"])
         XCTAssertEqual(model.errorMessage, PlaylistMutationFixtureError.failed.localizedDescription)
         let operations = await provider.recordedOperations()
         XCTAssertEqual(operations, [
@@ -528,8 +530,82 @@ final class PlaylistMutationTests: XCTestCase {
                     title: "After",
                     annotation: "Updated note",
                     isPublic: true,
-                    collaborators: ["Alice", "Bob"]
+                    collaborators: ["Bob", "Cara"]
                 )
+            ),
+        ])
+    }
+
+    func testEditorAddsExactSearchUserAndRejectsOwnerAndCaseInsensitiveDuplicates() {
+        let model = PlaylistMetadataEditorModel(
+            account: Account(username: "listener", token: "token"),
+            draft: .init(title: "A playlist", collaborators: ["Alice"]),
+            provider: PlaylistMutationFixtureProvider()
+        )
+
+        XCTAssertFalse(model.addCollaborator(.init(username: "Listener")))
+        XCTAssertFalse(model.addCollaborator(.init(username: "alice")))
+        XCTAssertTrue(model.addCollaborator(.init(username: " Bob ")))
+        XCTAssertEqual(model.collaborators, ["Alice", "Bob"])
+    }
+
+    func testEditorRemovesCollaboratorLocally() {
+        let model = PlaylistMetadataEditorModel(
+            account: Account(username: "listener", token: "token"),
+            draft: .init(title: "A playlist", collaborators: ["Alice", "Bob"]),
+            provider: PlaylistMutationFixtureProvider()
+        )
+
+        model.removeCollaborator("alice")
+
+        XCTAssertEqual(model.collaborators, ["Bob"])
+    }
+
+    func testEditorFreezesCollaboratorsWhileSaveIsInFlight() async {
+        let provider = PlaylistMutationFixtureProvider(delay: .milliseconds(60))
+        let model = PlaylistMetadataEditorModel(
+            account: Account(username: "listener", token: "token"),
+            draft: .init(title: "A playlist", collaborators: ["Alice"]),
+            provider: provider
+        )
+
+        let save = Task { await model.save() }
+        await Task.yield()
+        XCTAssertTrue(model.isSaving)
+
+        XCTAssertFalse(model.addCollaborator(.init(username: "Bob")))
+        model.removeCollaborator("Alice")
+        XCTAssertEqual(model.collaborators, ["Alice"])
+
+        _ = await save.value
+    }
+
+    func testEditorSavesCollaboratorChangesAsOneFullSnapshot() async {
+        let mbid = UUID()
+        let provider = PlaylistMutationFixtureProvider()
+        let model = PlaylistMetadataEditorModel(
+            account: Account(username: "listener", token: "token"),
+            mode: .edit(mbid),
+            draft: .init(title: "A playlist", annotation: "Notes", isPublic: false, collaborators: ["Alice"]),
+            provider: provider
+        )
+        XCTAssertTrue(model.addCollaborator(.init(username: "Bob")))
+        model.removeCollaborator("Alice")
+
+        let result = await model.save()
+
+        XCTAssertEqual(result, .edited(.init(
+            title: "A playlist",
+            annotation: "Notes",
+            isPublic: false,
+            collaborators: ["Bob"]
+        )))
+        let operations = await provider.recordedOperations()
+        XCTAssertEqual(operations, [
+            .edit(
+                mbid,
+                "listener",
+                .init(title: "A playlist", annotation: "Notes", isPublic: false, collaborators: ["Bob"])
             ),
         ])
     }

@@ -307,6 +307,25 @@ final class MediaDetailModelTests: XCTestCase {
         XCTAssertTrue(calls.isEmpty)
     }
 
+    func testPlaylistEditRevalidationUsesFreshMutationInspection() async throws {
+        let mbid = UUID()
+        let provider = MediaDetailFixtureProvider(playlist: playlistDetail(mbid: mbid))
+        let model = PlaylistDetailModel(
+            seed: playlistSeed(mbid: mbid),
+            account: Account(username: "listener", token: "token"),
+            provider: provider,
+            cache: EntityDetailCache()
+        )
+
+        let detail = try await model.revalidateForEditing()
+
+        XCTAssertEqual(detail.mbid, mbid)
+        let ordinaryCalls = await provider.playlistCalls
+        let inspectionCalls = await provider.playlistInspectionCalls
+        XCTAssertTrue(ordinaryCalls.isEmpty)
+        XCTAssertEqual(inspectionCalls, [mbid])
+    }
+
     func testPlaylistCacheIsScopedByViewerAccess() async {
         let mbid = UUID()
         let cache = EntityDetailCache<PlaylistDetailCacheKey, PlaylistDetail>()
@@ -608,6 +627,7 @@ private actor MediaDetailFixtureProvider: ReleaseDetailProviding, ConcreteReleas
     private(set) var releaseCalls: [UUID] = []
     private(set) var concreteReleaseCalls: [UUID] = []
     private(set) var playlistCalls: [UUID] = []
+    private(set) var playlistInspectionCalls: [UUID] = []
     private let releaseValue: ReleaseGroupDetail?
     private let concreteReleaseValue: ReleaseDetail?
     private let playlistValue: PlaylistDetail?
@@ -640,6 +660,13 @@ private actor MediaDetailFixtureProvider: ReleaseDetailProviding, ConcreteReleas
 
     func playlist(mbid: UUID) async throws -> PlaylistDetail {
         playlistCalls.append(mbid)
+        if let error { throw error }
+        guard let playlistValue else { throw MediaDetailFixtureError.missingFixture }
+        return playlistValue
+    }
+
+    func playlistForMutationInspection(mbid: UUID) async throws -> PlaylistDetail {
+        playlistInspectionCalls.append(mbid)
         if let error { throw error }
         guard let playlistValue else { throw MediaDetailFixtureError.missingFixture }
         return playlistValue

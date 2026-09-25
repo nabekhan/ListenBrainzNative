@@ -1421,12 +1421,32 @@
         }
       }
     },
+    "Add %@ as collaborator": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add %@ as collaborator"
+          }
+        }
+      }
+    },
     "Add Another Copy": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Add Another Copy"
+          }
+        }
+      }
+    },
+    "Add Collaborator": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Collaborator"
           }
         }
       }
@@ -2821,6 +2841,16 @@
         }
       }
     },
+    "Collaborators can manage tracks. Only you can edit playlist details or collaborators.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collaborators can manage tracks. Only you can edit playlist details or collaborators."
+          }
+        }
+      }
+    },
     "Collections you created, including private playlists": {
       "localizations": {
         "en": {
@@ -4121,16 +4151,6 @@
         }
       }
     },
-    "Existing collaborators are preserved. Manage collaborators on the ListenBrainz website for now.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Existing collaborators are preserved. Manage collaborators on the ListenBrainz website for now."
-          }
-        }
-      }
-    },
     "Explains how to sign in for private feed access": {
       "localizations": {
         "en": {
@@ -4247,6 +4267,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Find MusicBrainz match"
+          }
+        }
+      }
+    },
+    "Find a collaborator": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find a collaborator"
           }
         }
       }
@@ -7931,6 +7961,16 @@
         }
       }
     },
+    "No collaborators yet": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No collaborators yet"
+          }
+        }
+      }
+    },
     "No connected services": {
       "localizations": {
         "en": {
@@ -8137,6 +8177,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No more pins right now."
+          }
+        }
+      }
+    },
+    "No new users found": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No new users found"
           }
         }
       }
@@ -10581,6 +10631,16 @@
         }
       }
     },
+    "Remove %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove %@"
+          }
+        }
+      }
+    },
     "Remove Track": {
       "localizations": {
         "en": {
@@ -11147,6 +11207,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Search followers"
+          }
+        }
+      }
+    },
+    "Search for a ListenBrainz user.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search for a ListenBrainz user."
           }
         }
       }
@@ -13917,6 +13987,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Try another release window or check again later."
+          }
+        }
+      }
+    },
+    "Try another username.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try another username."
           }
         }
       }

@@ -103,7 +103,16 @@ final class SearchModel {
         guard !request.query.isEmpty,
               request.query.count >= request.key.scope.minimumQueryLength
         else { return }
-        await search(request: request, requestID: requestID)
+        let id = requestID
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await search(request: request, requestID: id)
+        }
+        scheduledSearch = task
+        await task.value
+        if requestID == id {
+            scheduledSearch = nil
+        }
     }
 
     private func search(request: SearchRequest, requestID: UUID) async {

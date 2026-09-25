@@ -18,7 +18,7 @@ final class PlaylistMetadataEditorModel {
     var title: String
     var annotation: String
     var isPublic: Bool
-    let collaborators: [String]
+    private(set) var collaborators: [String]
     private(set) var isSaving = false
     private(set) var errorMessage: String?
     private(set) var requiresReconciliation = false
@@ -71,6 +71,28 @@ final class PlaylistMetadataEditorModel {
         case .create: String(localized: "Create")
         case .edit: String(localized: "Save")
         }
+    }
+
+    /// Collaborators are selected from a concrete ListenBrainz search result in
+    /// the UI. Keep the same owner and duplicate safeguards here as well so a
+    /// future presentation cannot accidentally put an invalid snapshot on the
+    /// mutation path.
+    @discardableResult
+    func addCollaborator(_ user: SearchUser) -> Bool {
+        let username = user.username.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !isSaving,
+              !username.isEmpty,
+              !isSameUsername(username, account.username),
+              !collaborators.contains(where: { isSameUsername($0, username) })
+        else { return false }
+
+        collaborators.append(username)
+        return true
+    }
+
+    func removeCollaborator(_ username: String) {
+        guard !isSaving else { return }
+        collaborators.removeAll { isSameUsername($0, username) }
     }
 
     func save() async -> PlaylistMetadataMutation? {
@@ -140,6 +162,11 @@ final class PlaylistMetadataEditorModel {
             errorMessage = error.localizedDescription
             return nil
         }
+    }
+
+    private func isSameUsername(_ lhs: String, _ rhs: String) -> Bool {
+        lhs.trimmingCharacters(in: .whitespacesAndNewlines)
+            .caseInsensitiveCompare(rhs.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
     }
 }
 

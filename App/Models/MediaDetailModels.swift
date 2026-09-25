@@ -234,7 +234,7 @@ final class PlaylistDetailModel {
         refreshMessage = nil
         phase = detail == nil ? .loading : .refreshing
         do {
-            let value = try await provider.playlist(mbid: mbid)
+            let value = try await provider.playlistForMutationInspection(mbid: mbid)
             try Task.checkCancellation()
             guard requestID == id else { throw CancellationError() }
             detail = value

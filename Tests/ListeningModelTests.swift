@@ -2102,6 +2102,28 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(cancellationCount, 1)
     }
 
+    func testChangingQueryCancelsAnInFlightRetry() async throws {
+        let provider = SearchFixtureProvider(delay: .seconds(2))
+        let model = SearchModel(
+            account: Account(username: "fixture", token: ""),
+            provider: provider
+        )
+        model.update(query: "first")
+        let retry = Task { await model.retry() }
+        try await ContinuousClock().sleep(for: .milliseconds(20))
+
+        model.update(query: "second")
+        try await ContinuousClock().sleep(for: .milliseconds(20))
+        model.cancel()
+        await retry.value
+
+        let queries = await provider.queries()
+        let cancellationCount = await provider.cancellationCount()
+        XCTAssertEqual(queries, ["first"])
+        XCTAssertEqual(cancellationCount, 1)
+        XCTAssertEqual(model.state, .idle)
+    }
+
     nonisolated func testRequestGateSpacesActualOperationStarts() async throws {
         let gate = RequestGate(minimumInterval: .milliseconds(40))
         let clock = ContinuousClock()
