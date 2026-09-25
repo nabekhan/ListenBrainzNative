@@ -5,23 +5,22 @@ Snapshot: 2026-09-24.
 ## Portable checkpoint
 
 - Branch: `main`
-- Last validated product commit: `4a80d4ddbf553b7f794c58a4f41a30a87d6392be`
+- Last validated product commit: `367eb2f8fdfbc3038908515cfed8e9f35b7657d8`
 - Remote: `https://github.com/nabekhan/ListenBrainzNative.git`
 - Remote `main` is verified after this handoff note is pushed.
-- No product feature is left partially applied. A user-requested localization-catalog migration is the next bounded engineering milestone.
+- No product feature is left partially applied. The localization foundation and its first shared/Home migration slice are complete; legacy computed-copy migration remains explicitly staged.
 
-That checkpoint adds the signed-in user's current pin to Home by reusing the root-owned `PinsModel` already shared with Profile. Initial Home/Profile appearances admit one guarded current-pin read, explicit Home refresh updates current state without loading pin history, and embedded metadata renders without row hydration. Nullable absence, inline failure/retry, owner context, and the existing recording/history destinations stay native.
+That checkpoint adds one translator-facing `Localizable.xcstrings` catalog with explicit editable English source values, compiler-backed Release extraction, generated-symbol support, and a reproducible sync/check helper. Shared section/loading/featured-listen boundaries plus Home/current-pin copy now use `LocalizedStringResource`; server/user/music metadata and fixtures remain verbatim. The catalog is production-only, so DEBUG visual-QA sample text does not leak into translation work.
 
 Final evidence:
 
-- the restored ListenBrainzKit package baseline passed 140 tests across 20 suites;
-- nine focused pin-model tests passed, including repeat-load, current-only refresh, and inline initial failure;
-- the complete app suite passed 552/552 with no failures or skips on an iPhone 17 Pro simulator;
-- the final Release simulator executable contains both `arm64` and `x86_64`;
-- populated, empty, failure, light, dark, accessibility, and iPhone SE fixture states were inspected; and
-- independent re-review returned READY after fixture-only tab and authentication escape hatches were closed.
+- the single catalog contains 914 exact Release-extracted keys, has no empty key, and gives every key an explicit English source value;
+- `scripts/localizations.sh check` rebuilt both simulator architectures and confirmed the committed catalog matches production compiler output;
+- the complete app suite passed 552/552 with no failures or skips on the final source;
+- normal and accented-pseudolocalized Home fixtures were inspected; app-owned copy transforms while usernames and music metadata remain verbatim; and
+- independent re-review returned READY after the full VoiceOver template, truthful loading copy, `jq` requirement, and empty-key handling were corrected.
 
-The Home fixture is tokenless, uses local providers and nil artwork/canonical media IDs, and locks selection to Home. It cannot start ListenBrainz, MusicBrainz, or artwork traffic through its reachable routes. No production mutation was exercised.
+The Home fixture remains tokenless, uses local providers and nil artwork/canonical media IDs, and locks selection to Home. Localization QA therefore made no ListenBrainz, MusicBrainz, or artwork request and exercised no production mutation.
 
 ## Resume on another Mac
 
@@ -36,9 +35,9 @@ open ListenBrainzNative.xcodeproj
 
 Install Xcode and a compatible iOS simulator runtime before building. Reinstall the MIT `content-designer/ux-writing-skill` before adding or revising user-facing strings. Donor clones can be recreated from the URLs recorded in the research documents; do not copy local build products, simulator devices, or credentials. No ListenBrainz token or other secret is stored in the repository.
 
-## Next unstarted product work
+## Next product work
 
-Centralize interface copy in one `Localizable.xcstrings` catalog. The inventory found no existing localization resources and roughly 800 SwiftUI-facing literals, including computed/plural/accessibility copy that needs more care than a blind text replacement. Introduce compiler-backed extraction and validation first, migrate shared components plus Home, then move through feature hotspots in reviewable passes while keeping server content, identifiers, and fixture data out of the catalog.
+Continue the catalog migration in reviewable feature passes. Prioritize Playlist Detail, Year in Music, Taste, Radio, History, Discover, model-authored notices, computed accessibility descriptions, and count/unit formatting. Keep server content, identifiers, and fixture data verbatim. Before shipping the first non-English locale, consolidate count strings into catalog plural variants and test dates, durations, possessives, capitalization, right-to-left layout, Dynamic Type, and real translations with native-language review.
 
 After localization, the separately researched advanced manual-mapping workflow remains a strong adjacent product candidate.
 
