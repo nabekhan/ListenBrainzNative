@@ -18,7 +18,7 @@ Snapshot: 2026-09-22. `Y` means source/API evidence exists; `P` means partial or
 | Inspect raw listen/mapping state | Y | Y | P | ? | P | P | P2 | Native read-only Listen details sheet preserves returned submitted metadata, MSID, mapping and source fields without a follow-up request |
 | Manual metadata mapping | Y | Y | ? | ? | Y | ? | P3 | Advanced workflow only |
 | Recording love/hate/clear feedback | Y | Y | P | P | Y | P | P1 | Optimistic action with rollback |
-| Pins/current pin/pin history/blurb | Y | Y | Y | Y | Y | Y | P1 | Native current/history, owner mutations, and Following Pins landed; the public Following Pins page stays aggregate and non-hydrating |
+| Pins/current pin/pin history/blurb | Y | Y | Y | Y | Y | Y | P1 | Home and Profile share one guarded current-pin read; history stays lazy, owner mutations are native, and Following Pins stays aggregate and non-hydrating |
 | Top artists | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
 | Top releases/albums | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |
 | Top release groups | Y | Y | Y | Y | Y | P | P1 | Lazy native Taste ranking; one cached aggregate read, canonical group routing, no row hydration, and no release-identity conflation |

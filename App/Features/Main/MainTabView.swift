@@ -20,6 +20,29 @@ struct MainTabView: View {
         self.account = account
         _session = Bindable(wrappedValue: session)
         #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-brainz-home-pin-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-home-pin-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-home-pin-failure-demo")
+            {
+                let visualAccount = Account(username: "visual-home", token: "")
+                _model = State(
+                    initialValue: ListeningModel(
+                        account: visualAccount,
+                        provider: VisualQAHomePinListeningProvider()
+                    ))
+                _pins = State(
+                    initialValue: PinsModel(
+                        account: visualAccount,
+                        provider: VisualQAHomePinProvider(
+                            result: ProcessInfo.processInfo.arguments.contains("-brainz-home-pin-empty-demo")
+                                ? .empty
+                                : ProcessInfo.processInfo.arguments.contains("-brainz-home-pin-failure-demo")
+                                    ? .failure
+                                    : .populated
+                        )
+                    ))
+                return
+            }
             if ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-edit-demo")
@@ -568,6 +591,9 @@ struct MainTabView: View {
                     {
                         selectedTab = .discover
                     }
+                    if isHomePinFixture {
+                        selectedTab = .home
+                    }
                     if ProcessInfo.processInfo.arguments.contains("-brainz-history-demo")
                         || ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo")
                         || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-demo")
@@ -645,7 +671,7 @@ struct MainTabView: View {
     }
 
     private var tabs: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: tabSelection) {
             Tab("Home", systemImage: "house.fill", value: .home) {
                 HomeView(model: model)
             }
@@ -664,7 +690,22 @@ struct MainTabView: View {
         }
     }
 
+    private var tabSelection: Binding<Destination> {
+        #if DEBUG
+            if isHomePinFixture {
+                return .constant(.home)
+            }
+        #endif
+        return $selectedTab
+    }
+
     #if DEBUG
+        private var isHomePinFixture: Bool {
+            ProcessInfo.processInfo.arguments.contains("-brainz-home-pin-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-home-pin-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-home-pin-failure-demo")
+        }
+
         private static func visualRadioSaveJournal() -> RadioPlaylistSaveJournal {
             let journal = RadioPlaylistSaveJournal()
             if ProcessInfo.processInfo.arguments.contains("-brainz-radio-save-review-demo") {
@@ -816,6 +857,47 @@ struct MainTabView: View {
         func unpin() async throws {}
         func updatePinBlurb(rowID: Int, blurb: String) async throws {}
         func deletePin(rowID: Int) async throws {}
+    }
+
+    private struct VisualQAHomePinProvider: PinProviding {
+        enum Result { case populated, empty, failure }
+
+        let result: Result
+
+        func currentPin(username: String) async throws -> PinnedRecording? {
+            switch result {
+            case .populated:
+                return PinnedRecording(
+                    rowID: 1,
+                    created: .now.addingTimeInterval(-3_600),
+                    pinnedUntil: .now.addingTimeInterval(7 * 86_400),
+                    blurb: "A small favorite for the week.",
+                    username: username,
+                    recording: VisualQAHomePinListeningProvider.recording,
+                    isCurrent: true
+                )
+            case .empty:
+                return nil
+            case .failure:
+                throw VisualQAHomePinError.unavailable
+            }
+        }
+
+        func pin(_ recording: Recording, blurb: String?) async throws -> PinnedRecording {
+            throw PinProviderError.pinNeedsIdentifier
+        }
+
+        func pinHistory(username: String, count: Int, offset: Int) async throws -> (
+            pins: [PinnedRecording], totalCount: Int
+        ) { ([], 0) }
+        func unpin() async throws {}
+        func updatePinBlurb(rowID: Int, blurb: String) async throws {}
+        func deletePin(rowID: Int) async throws {}
+    }
+
+    private enum VisualQAHomePinError: LocalizedError {
+        case unavailable
+        var errorDescription: String? { "The preview pin is unavailable." }
     }
 
     private struct VisualQARadioProvider: RadioProviding {
@@ -1230,6 +1312,40 @@ struct MainTabView: View {
                 )
             ]
         }
+        func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+            .init(period: period, from: .distantPast, to: .distantPast, lastUpdated: .now, buckets: [])
+        }
+        func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+        func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+    }
+
+    /// A complete local Home fixture: every artwork-bearing identifier is nil,
+    /// so previews cannot start remote artwork requests.
+    private struct VisualQAHomePinListeningProvider: ListeningProvider {
+        static let recording = Recording(
+            identity: .init(mbid: nil, msid: nil),
+            title: "Slow Morning",
+            artistName: "Harbor Lights",
+            artistMBIDs: [],
+            releaseTitle: "Window Seat",
+            releaseMBID: nil,
+            releaseGroupMBID: nil,
+            artworkReleaseMBID: nil,
+            durationMilliseconds: 227_000,
+            source: "Preview"
+        )
+
+        func validateToken() async throws -> String { "visual-home" }
+        func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] {
+            [Listen(recording: Self.recording, listenedAt: .now.addingTimeInterval(-420), insertedAt: nil, isPlayingNow: false)]
+        }
+        func playingNow(username: String) async throws -> Listen? { nil }
+        func listenCount(username: String) async throws -> Int { 1_284 }
+        func topArtists(username: String, count: Int) async throws -> [RankedArtist] {
+            [.init(mbid: nil, name: "Harbor Lights", listenCount: 84)]
+        }
+        func topReleases(username: String, count: Int) async throws -> [RankedRelease] { [] }
+        func topRecordings(username: String, count: Int) async throws -> [RankedRecording] { [] }
         func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
             .init(period: period, from: .distantPast, to: .distantPast, lastUpdated: .now, buckets: [])
         }

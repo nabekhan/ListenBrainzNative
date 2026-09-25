@@ -37,6 +37,45 @@ final class PinsModelTests: XCTestCase {
         XCTAssertEqual(model.history.count, 2)
     }
 
+    func testRepeatedCurrentLoadMakesOneRequest() async {
+        let provider = PinsFixtureProvider()
+        let model = PinsModel(account: .init(username: "fixture-pins", token: "token"), provider: provider)
+
+        await model.load()
+        await model.load()
+
+        let currentRequests = await provider.currentRequestCount
+        let historyRequests = await provider.historyRequestCount
+        XCTAssertEqual(currentRequests, 1)
+        XCTAssertEqual(historyRequests, 0)
+    }
+
+    func testCurrentOnlyRefreshDoesNotRequestHistory() async {
+        let provider = PinsFixtureProvider()
+        let model = PinsModel(account: .init(username: "fixture-pins", token: "token"), provider: provider)
+
+        await model.load()
+        await model.loadHistory()
+        await model.refreshCurrent()
+
+        let currentRequests = await provider.currentRequestCount
+        let historyRequests = await provider.historyRequestCount
+        XCTAssertEqual(currentRequests, 2)
+        XCTAssertEqual(historyRequests, 1)
+    }
+
+    func testInitialCurrentFailureUsesInlineStateWithoutGlobalAlert() async {
+        let provider = PinsFixtureProvider(failCurrent: true)
+        let model = PinsModel(account: .init(username: "fixture-pins", token: "token"), provider: provider)
+
+        await model.load()
+
+        XCTAssertEqual(model.phase, .failed("Fixture failure"))
+        XCTAssertNil(model.actionError)
+        let historyRequests = await provider.historyRequestCount
+        XCTAssertEqual(historyRequests, 0)
+    }
+
     func testUnpinOptimisticallyClearsThenRestoresOnFailure() async {
         let provider = PinsFixtureProvider(failUnpin: true)
         let model = PinsModel(account: .init(username: "fixture-pins", token: "token"), provider: provider)
@@ -100,6 +139,7 @@ final class PinsModelTests: XCTestCase {
 }
 
 private actor PinsFixtureProvider: PinProviding {
+    private let failCurrent: Bool
     private let failUnpin: Bool
     private let failUpdate: Bool
     private let failDelete: Bool
@@ -113,12 +153,14 @@ private actor PinsFixtureProvider: PinProviding {
     private(set) var deleteRequestCount = 0
 
     init(
+        failCurrent: Bool = false,
         failUnpin: Bool = false,
         failUpdate: Bool = false,
         failDelete: Bool = false,
         delayRefreshCurrent: Bool = false,
         delayLoadMore: Bool = false
     ) {
+        self.failCurrent = failCurrent
         self.failUnpin = failUnpin
         self.failUpdate = failUpdate
         self.failDelete = failDelete
@@ -134,6 +176,7 @@ private actor PinsFixtureProvider: PinProviding {
 
     func currentPin(username: String) async throws -> PinnedRecording? {
         currentRequestCount += 1
+        if failCurrent { throw FixtureError.failed }
         if delayRefreshCurrent, currentRequestCount > 1 {
             try await ContinuousClock().sleep(for: .milliseconds(100))
         }

@@ -160,6 +160,13 @@ final class SessionModel {
     #if DEBUG
         private func restoreFixtureAccount() -> Bool {
             let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("-brainz-home-pin-demo")
+                || arguments.contains("-brainz-home-pin-empty-demo")
+                || arguments.contains("-brainz-home-pin-failure-demo")
+            {
+                state = .active(Account(username: "visual-home", token: ""))
+                return true
+            }
             if arguments.contains("-brainz-profile-playlists-demo")
                 || arguments.contains("-brainz-profile-playlists-collab-demo")
                 || arguments.contains("-brainz-playlist-edit-demo")

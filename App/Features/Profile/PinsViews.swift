@@ -2,18 +2,30 @@ import SwiftUI
 
 struct CurrentPinSection: View {
     @Environment(PinsModel.self) private var pins
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let isOwner: Bool
+    let subtitle: String
+
+    init(isOwner: Bool, subtitle: String? = nil) {
+        self.isOwner = isOwner
+        self.subtitle = subtitle ?? (isOwner
+            ? "A note you want visitors to hear"
+            : "A track this listener wants to share")
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                SectionHeader(
-                    title: "Pinned track",
-                    subtitle: isOwner ? "A note you want visitors to hear" : "A track this listener wants to share"
-                )
-                Spacer()
-                NavigationLink("History") { PinsHistoryView() }
-                    .font(.subheadline.weight(.semibold))
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    header
+                    historyLink
+                }
+            } else {
+                HStack(alignment: .top) {
+                    header
+                    Spacer(minLength: 12)
+                    historyLink
+                }
             }
             switch pins.phase {
             case .idle where pins.currentPin == nil, .loading where pins.currentPin == nil:
@@ -22,21 +34,31 @@ struct CurrentPinSection: View {
                 ContentUnavailableView {
                     Label("Pins unavailable", systemImage: "pin.slash")
                 } description: {
-                    Text("ListenBrainz did not return this profile's current pin.")
+                    Text("We couldn’t load this pinned track. Try again in a moment.")
                 } actions: {
-                    Button("Try Again") { Task { await pins.refresh() } }
+                    Button("Try again") { Task { await pins.refreshCurrent() } }
                 }
                     .frame(maxWidth: .infinity, minHeight: 120)
             default:
                 if let pin = pins.currentPin {
                     PinCard(pin: pin, isOwner: isOwner)
                 } else {
-                    ContentUnavailableView("No pinned track", systemImage: "pin", description: Text(isOwner ? "Pin a recording to make it stand out here." : "This listener does not have a current pin."))
+                    ContentUnavailableView("No pinned track", systemImage: "pin", description: Text(isOwner ? "Pin a track to share it here." : "This listener does not have a current pin."))
                         .frame(maxWidth: .infinity, minHeight: 130)
                         .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
                 }
             }
         }
+    }
+
+    private var header: some View {
+        SectionHeader(title: "Pinned track", subtitle: subtitle)
+    }
+
+    private var historyLink: some View {
+        NavigationLink("History") { PinsHistoryView() }
+            .font(.subheadline.weight(.semibold))
+            .accessibilityLabel("View pinned track history")
     }
 }
 
@@ -67,7 +89,7 @@ struct PinsHistoryView: View {
                         ContentUnavailableView {
                             Label("Pin history unavailable", systemImage: "wifi.exclamationmark")
                         } actions: {
-                            Button("Try Again") { Task { await pins.refreshHistory() } }
+                            Button("Try again") { Task { await pins.refreshHistory() } }
                         }
                         .listRowBackground(Color.clear)
                     case .ready:
@@ -125,25 +147,11 @@ private struct PinCard: View {
     let pin: PinnedRecording
     let isOwner: Bool
     @Environment(PinsModel.self) private var pins
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
-            NavigationLink(value: pin.recording) {
-                HStack(alignment: .top, spacing: 13) {
-                    ArtworkView(url: pin.recording.artworkURL, title: pin.recording.title, cornerRadius: 12)
-                        .frame(width: 74, height: 74)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label("Pinned now", systemImage: "pin.fill").font(.caption.weight(.bold)).foregroundStyle(AppTheme.accent)
-                        Text(pin.recording.title).font(.headline).lineLimit(2)
-                        Text(pin.recording.artistName).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-                        if let until = pin.pinnedUntil { Text("Until \(until, format: .dateTime.month(.abbreviated).day())").font(.caption).foregroundStyle(.secondary) }
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-            }
+            NavigationLink(value: pin.recording) { pinDestination }
             .buttonStyle(.plain)
             if let blurb = pin.blurb, !blurb.isEmpty { Text(blurb).font(.subheadline).foregroundStyle(.secondary) }
             if isOwner {
@@ -154,6 +162,41 @@ private struct PinCard: View {
         }
         .padding(15)
         .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+    }
+
+    @ViewBuilder private var pinDestination: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 12) {
+                ArtworkView(url: pin.recording.artworkURL, title: pin.recording.title, cornerRadius: 12)
+                    .frame(width: 74, height: 74)
+                pinDetails
+            }
+        } else {
+            HStack(alignment: .top, spacing: 13) {
+                ArtworkView(url: pin.recording.artworkURL, title: pin.recording.title, cornerRadius: 12)
+                    .frame(width: 74, height: 74)
+                pinDetails
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    private var pinDetails: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label("Pinned now", systemImage: "pin.fill")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(AppTheme.accent)
+            Text(pin.recording.title).font(.headline).lineLimit(2)
+            Text(pin.recording.artistName).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+            if let until = pin.pinnedUntil {
+                Text("Until \(until, format: .dateTime.month(.abbreviated).day())")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }
 

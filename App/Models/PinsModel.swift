@@ -42,6 +42,33 @@ final class PinsModel {
         }
     }
 
+    /// Refreshes only the current pin. Pin history stays lazy unless its own
+    /// screen explicitly asks for it.
+    func refreshCurrent() async {
+        guard !isRefreshingCurrent, !isMutating else { return }
+        isRefreshingCurrent = true
+        defer { isRefreshingCurrent = false }
+        phase = .loading
+        do {
+            let newCurrent = try await provider.currentPin(username: account.username)
+            currentPin = newCurrent
+            if didLoadHistory {
+                history = markCurrent(history, current: newCurrent)
+            }
+            phase = .ready
+        } catch is CancellationError {
+            didLoadCurrent = false
+            phase = currentPin == nil ? .idle : .ready
+        } catch {
+            if currentPin == nil {
+                phase = .failed(error.localizedDescription)
+            } else {
+                phase = .ready
+                actionError = error.localizedDescription
+            }
+        }
+    }
+
     func loadHistory() async {
         guard !didLoadHistory else { return }
         didLoadHistory = true
@@ -63,27 +90,6 @@ final class PinsModel {
             historyPhase = history.isEmpty ? .idle : .ready
         } catch {
             historyPhase = history.isEmpty ? .failed(error.localizedDescription) : .ready
-            actionError = error.localizedDescription
-        }
-    }
-
-    private func refreshCurrent() async {
-        guard !isRefreshingCurrent, !isMutating else { return }
-        isRefreshingCurrent = true
-        defer { isRefreshingCurrent = false }
-        phase = .loading
-        do {
-            let newCurrent = try await provider.currentPin(username: account.username)
-            currentPin = newCurrent
-            if didLoadHistory {
-                history = markCurrent(history, current: newCurrent)
-            }
-            phase = .ready
-        } catch is CancellationError {
-            didLoadCurrent = false
-            phase = currentPin == nil ? .idle : .ready
-        } catch {
-            phase = currentPin == nil ? .failed(error.localizedDescription) : .ready
             actionError = error.localizedDescription
         }
     }

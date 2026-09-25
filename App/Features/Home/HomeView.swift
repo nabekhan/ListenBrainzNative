@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Bindable var model: ListeningModel
+    @Environment(PinsModel.self) private var pins
     @State private var isLogListenPresented = false
 
     var body: some View {
@@ -12,7 +13,7 @@ struct HomeView: View {
                      .loading where model.snapshot.recentListens.isEmpty:
                     LoadingStateView(title: "Loading your music life")
                 case let .failed(message) where model.snapshot.recentListens.isEmpty:
-                    FailureStateView(message: message) { await model.refresh() }
+                    FailureStateView(message: message) { await refreshHome() }
                 default:
                     content
                 }
@@ -27,7 +28,7 @@ struct HomeView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { Task { await model.refresh() } } label: {
+                    Button { Task { await refreshHome() } } label: {
                         if model.phase == .refreshing {
                             ProgressView()
                         } else {
@@ -39,6 +40,7 @@ struct HomeView: View {
             }
             .mediaDestinations(model: model)
             .sheet(isPresented: $isLogListenPresented) { LogListenSheet(account: model.account) }
+            .task { await pins.load() }
         }
     }
 
@@ -59,6 +61,13 @@ struct HomeView: View {
 
                 snapshotStrip
 
+                CurrentPinSection(
+                    isOwner: showsOwnerPinContext,
+                    subtitle: showsOwnerPinContext
+                        ? "A track you want to share"
+                        : "A track this listener wants to share"
+                )
+
                 if !model.snapshot.recentListens.isEmpty {
                     recentSection
                 }
@@ -78,7 +87,25 @@ struct HomeView: View {
             .padding(.horizontal, 18)
             .padding(.bottom, 36)
         }
-        .refreshable { await model.refresh() }
+        .refreshable { await refreshHome() }
+    }
+
+    private func refreshHome() async {
+        await model.refresh()
+        await pins.refreshCurrent()
+    }
+
+    private var showsOwnerPinContext: Bool {
+        #if DEBUG
+            let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("-brainz-home-pin-demo")
+                || arguments.contains("-brainz-home-pin-empty-demo")
+                || arguments.contains("-brainz-home-pin-failure-demo")
+            {
+                return true
+            }
+        #endif
+        return model.account.isAuthenticated
     }
 
     private var snapshotStrip: some View {

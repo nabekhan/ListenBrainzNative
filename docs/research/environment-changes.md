@@ -1,8 +1,18 @@
 # Environment and cleanup log
 
-Updated: 2026-09-22
+Updated: 2026-09-24
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
+
+## Rebuild after portable cleanup — 2026-09-24
+
+- Xcode 27.0 (`27A266a`) was already present at `/Applications/Xcode.app`; its command-line selection and completed first-launch state were verified. No second Xcode application was installed.
+- The iOS 27.0 Simulator runtime (`24A434`, arm64) was downloaded again with `xcodebuild -downloadPlatform iOS` (8.05 GB). Cleanup: remove this runtime through Xcode's Platforms settings or the supported `xcrun simctl runtime delete` workflow after development is complete.
+- `ux-writing` from `content-designer/ux-writing-skill` (MIT) was restored at `/Users/nabeel/.codex/skills/ux-writing/`. Cleanup: remove only that exact skill directory when it is no longer wanted.
+- XcodeGen was reused through `nix shell nixpkgs#xcodegen`; missing content-addressed XcodeGen/Swift paths were fetched into `/nix/store`, with no profile package installed. Cleanup is optional and should use normal Nix garbage collection rather than manually deleting store paths.
+- `ListenBrainzNative.xcodeproj/` was regenerated from `project.yml`. The build and package checks created `.derived-data/rebuild-baseline/` and `Packages/ListenBrainzKit/.build/`; both are disposable exact-directory build caches.
+- `.derived-data/home-pin-focused/`, `.derived-data/home-pin-full/`, `.derived-data/home-pin-release/`, `/tmp/brainz-home-pin-*.png`, and `/tmp/brainz-home-pin-*stdout`, `/tmp/brainz-home-pin-*stderr` contain the Home current-pin focused/full tests, universal Release build, fixture launches, and light/dark/empty/failure/accessibility/iPhone SE visual evidence. Cleanup: remove only these exact or matching paths. The accepted fixture uses local providers, nil artwork identifiers, and a Home-locked tab binding, so it performs no ListenBrainz, MusicBrainz, or artwork request and uses no real token.
+- Disposable QA devices `Brainz Home Pin Pro` (`65C44BB4-3A35-4578-9F7E-E1C69A460779`) and `Brainz Home Pin SE` (`C535738A-BA1E-4633-994A-842D6FAAF815`) were created on iOS 27.0. Cleanup: shut down and delete only these two named devices after the Home-pin milestone is accepted.
 
 ## Portable cleanup performed
 
