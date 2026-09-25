@@ -289,8 +289,8 @@ struct ListenBrainzRecommendationsProvider: RecommendationsProviding {
         let artist = metadata?.artist
         let recording = Recording(
             identity: .init(mbid: recommendation.recordingMBID, msid: nil),
-            title: nonempty(metadata?.recording.name) ?? "Metadata unavailable",
-            artistName: nonempty(artist?.name) ?? "MusicBrainz recording",
+            title: nonempty(metadata?.recording.name) ?? String(localized: "Metadata unavailable"),
+            artistName: nonempty(artist?.name) ?? String(localized: "MusicBrainz recording"),
             artistMBIDs: artist?.artists.map(\.id) ?? [],
             releaseTitle: nonempty(release?.name),
             releaseMBID: release?.mbid,
@@ -320,9 +320,9 @@ enum RecommendationsProviderError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidAuthentication:
-            "Your ListenBrainz sign-in is no longer valid. Reconnect your token to tune recommendations."
+            String(localized: "Your ListenBrainz sign-in is no longer valid. Reconnect your token to tune recommendations.")
         case .invalidMutationResponse:
-            "ListenBrainz did not confirm the recommendation update."
+            String(localized: "ListenBrainz did not confirm the recommendation update.")
         }
     }
 }

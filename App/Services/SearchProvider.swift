@@ -74,9 +74,9 @@ enum MusicBrainzSearchError: LocalizedError, Sendable {
 
     var errorDescription: String? {
         switch self {
-        case let .rateLimited(seconds): "MusicBrainz is busy. Try again in about \(seconds) seconds."
-        case let .unavailable(seconds): "MusicBrainz is temporarily unavailable. Try again in about \(seconds) seconds."
-        case .invalidResponse: "MusicBrainz returned an unexpected response."
+        case let .rateLimited(seconds): String(localized: "MusicBrainz is busy. Try again in about \(seconds) seconds.")
+        case let .unavailable(seconds): String(localized: "MusicBrainz is temporarily unavailable. Try again in about \(seconds) seconds.")
+        case .invalidResponse: String(localized: "MusicBrainz returned an unexpected response.")
         }
     }
 }

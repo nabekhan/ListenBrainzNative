@@ -89,8 +89,8 @@ struct ListenBrainzPinProvider: PinProviding {
         let additional = metadata?.additionalInfo
         let recording = fallbackRecording ?? Recording(
             identity: .init(mbid: pin.recordingMBID ?? mapped?.recordingMbid ?? additional?.recordingMbid, msid: pin.recordingMSID),
-            title: mapped?.recordingName ?? metadata?.track ?? "Unknown recording",
-            artistName: metadata?.artist ?? "Unknown artist",
+            title: mapped?.recordingName ?? metadata?.track ?? String(localized: "Unknown recording"),
+            artistName: metadata?.artist ?? String(localized: "Unknown artist"),
             artistMBIDs: mapped?.artistMbids ?? additional?.artistMbids ?? [],
             releaseTitle: metadata?.release,
             releaseMBID: mapped?.releaseMbid ?? additional?.releaseMbid,
@@ -108,8 +108,8 @@ enum PinProviderError: LocalizedError {
     case blurbTooLong
     var errorDescription: String? {
         switch self {
-        case .pinNeedsIdentifier: "ListenBrainz cannot pin this unmapped recording yet."
-        case .blurbTooLong: "A pin note can be up to 280 characters."
+        case .pinNeedsIdentifier: String(localized: "ListenBrainz cannot pin this unmapped recording yet.")
+        case .blurbTooLong: String(localized: "A pin note can be up to 280 characters.")
         }
     }
 }

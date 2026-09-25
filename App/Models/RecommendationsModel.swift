@@ -145,11 +145,11 @@ final class RecommendationsModel {
         for recommendation: RecommendedRecording
     ) async {
         guard account.isAuthenticated else {
-            feedbackActionError = "Sign in with a token to tune your recommendations."
+            feedbackActionError = String(localized: "Sign in with a token to tune your recommendations.")
             return
         }
         guard let mbid = recommendation.recording.identity.mbid else {
-            feedbackActionError = "ListenBrainz needs a MusicBrainz recording ID before it can save recommendation feedback."
+            feedbackActionError = String(localized: "ListenBrainz needs a MusicBrainz recording ID before it can save recommendation feedback.")
             return
         }
         guard pendingRecommendationFeedback.insert(recommendation.id).inserted else { return }

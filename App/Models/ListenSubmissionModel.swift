@@ -102,7 +102,7 @@ final class ListenSubmissionModel {
             frozenPayload = nil
             phase = .editing
         } else {
-            phase = .failed("Brainz couldn’t reset its safety record. Manual listens remain paused.")
+            phase = .failed(String(localized: "Brainz couldn’t reset its safety record. Manual listens remain paused."))
         }
     }
 
@@ -151,7 +151,7 @@ final class ListenSubmissionModel {
     private func sendPlayingNow(_ payload: ListenSubmissionPayload) async {
         let fingerprint = ListenSubmissionJournal.fingerprint(account: account.username, payload: payload)
         guard await playingNowClaims.claim(fingerprint: fingerprint) else {
-            phase = .failed("This Playing Now update was just sent.")
+            phase = .failed(String(localized: "This Playing Now update was just sent."))
             return
         }
         do {
@@ -191,8 +191,9 @@ final class ListenSubmissionModel {
         phase = .editing
     }
 
-    private static let safetyUnavailableMessage =
-        "Brainz couldn’t safely check for a duplicate. Manual listens are paused."
+    private static let safetyUnavailableMessage = String(
+        localized: "Brainz couldn’t safely check for a duplicate. Manual listens are paused."
+    )
 
     #if DEBUG
         func installFixturePhase(_ value: ListenSubmissionPhase) { phase = value }

@@ -78,14 +78,14 @@ enum ProviderError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidToken: "ListenBrainz couldn’t verify this token. Check the token and try again."
-        case .feedbackNeedsIdentifier: "ListenBrainz cannot rate this unmapped recording yet."
-        case .deleteListenRejected: "ListenBrainz couldn’t schedule this deletion. Refresh your history and try again."
-        case .deleteListenUnavailable: "Deletion isn’t available in this build."
+        case .invalidToken: String(localized: "ListenBrainz couldn’t verify this token. Check the token and try again.")
+        case .feedbackNeedsIdentifier: String(localized: "ListenBrainz cannot rate this unmapped recording yet.")
+        case .deleteListenRejected: String(localized: "ListenBrainz couldn’t schedule this deletion. Refresh your history and try again.")
+        case .deleteListenUnavailable: String(localized: "Deletion isn’t available in this build.")
         case .deleteListenOutcomeUnknown:
-            "We couldn’t confirm the deletion. Wait until shortly after the next hour, then refresh before trying again."
-        case .missingUsername: "Enter a ListenBrainz username."
-        case let .rateLimited(seconds): "ListenBrainz is busy. Try again in about \(seconds) seconds."
+            String(localized: "We couldn’t confirm the deletion. Wait until shortly after the next hour, then refresh before trying again.")
+        case .missingUsername: String(localized: "Enter a ListenBrainz username.")
+        case let .rateLimited(seconds): String(localized: "ListenBrainz is busy. Try again in about \(seconds) seconds.")
         }
     }
 }

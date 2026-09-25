@@ -257,7 +257,7 @@ final class PlaylistItemRemovalModel {
         guard canResetSafetyRecord(playlistMBID: playlistMBID) else { return false }
         guard journal.resetRecovery(username: account.username, playlistMBID: playlistMBID) else {
             notice = .needsReview(
-                "Brainz couldn’t reset this playlist’s track-change safety record. Try again before changing tracks.")
+                String(localized: "Brainz couldn’t reset this playlist’s track-change safety record. Try again before changing tracks."))
             return false
         }
         reviewedPairs.remove(playlistMBID)
@@ -291,7 +291,7 @@ final class PlaylistItemRemovalModel {
             }
             guard journal.begin(username: account.username, playlistMBID: seed.mbid) else {
                 notice = .needsReview(
-                    "Track changes are paused because their safety record can’t be read. Reset it only after reviewing this playlist on ListenBrainz."
+                    String(localized: "Track changes are paused because their safety record can’t be read. Reset it only after reviewing this playlist on ListenBrainz.")
                 )
                 return latest
             }
@@ -301,7 +301,7 @@ final class PlaylistItemRemovalModel {
             } catch is CancellationError {
                 if !journal.cancelBeforeDispatch(username: account.username, playlistMBID: seed.mbid) {
                     notice = .needsReview(
-                        "The change was canceled, but its safety record could not be cleared. Refresh and review the playlist before changing tracks again."
+                        String(localized: "The change was canceled, but its safety record could not be cleared. Refresh and review the playlist before changing tracks again.")
                     )
                 }
                 return nil
@@ -317,7 +317,7 @@ final class PlaylistItemRemovalModel {
                 return nil
             } catch {
                 notice = .needsReview(
-                    "ListenBrainz may have moved or removed a track, but the response was lost. Refresh the playlist before changing tracks again."
+                    String(localized: "ListenBrainz may have moved or removed a track, but the response was lost. Refresh the playlist before changing tracks again.")
                 )
                 return latest
             }
@@ -327,13 +327,13 @@ final class PlaylistItemRemovalModel {
                 let canonical = try await detailProvider.playlistForMutationInspection(mbid: seed.mbid)
                 guard Self.isExactRemoval(of: selected, from: latest, canonical: canonical) else {
                     notice = .needsReview(
-                        "The playlist changed while a track was being removed. Review the current order before changing tracks again."
+                        String(localized: "The playlist changed while a track was being removed. Review the current order before changing tracks again.")
                     )
                     return canonical
                 }
                 guard journal.resolveAfterInspection(username: account.username, playlistMBID: seed.mbid) else {
                     notice = .needsReview(
-                        "The track was removed, but its safety record could not be cleared. Refresh and review the playlist before changing tracks again."
+                        String(localized: "The track was removed, but its safety record could not be cleared. Refresh and review the playlist before changing tracks again.")
                     )
                     return canonical
                 }
@@ -344,7 +344,7 @@ final class PlaylistItemRemovalModel {
                     return await recordAccessLoss(error, playlistMBID: seed.mbid)
                 }
                 notice = .needsReview(
-                    "The playlist could not be refreshed after removal. Refresh and review it before changing tracks again."
+                    String(localized: "The playlist could not be refreshed after removal. Refresh and review it before changing tracks again.")
                 )
                 return nil
             }
@@ -363,7 +363,7 @@ final class PlaylistItemRemovalModel {
             let detail = try await detailProvider.playlistForMutationInspection(mbid: playlistMBID)
             guard detail.mbid == playlistMBID else {
                 notice = .needsReview(
-                    "Brainz refreshed a different playlist. Try again before changing tracks."
+                    String(localized: "Brainz refreshed a different playlist. Try again before changing tracks.")
                 )
                 return nil
             }
@@ -372,7 +372,7 @@ final class PlaylistItemRemovalModel {
                 !journal.resolveAfterInspection(username: account.username, playlistMBID: playlistMBID)
             {
                 notice = .needsReview(
-                    "The playlist was refreshed, but its safety record could not be cleared. Reset it before changing tracks again."
+                    String(localized: "The playlist was refreshed, but its safety record could not be cleared. Reset it before changing tracks again.")
                 )
                 return detail
             }
@@ -382,7 +382,7 @@ final class PlaylistItemRemovalModel {
             if PlaylistAccessFailurePolicy.requiresPurge(error) {
                 return await recordAccessLoss(error, playlistMBID: playlistMBID)
             }
-            notice = .needsReview("The playlist could not be refreshed. Try again before changing tracks.")
+            notice = .needsReview(String(localized: "The playlist could not be refreshed. Try again before changing tracks."))
             return nil
         }
     }
@@ -414,13 +414,13 @@ final class PlaylistItemRemovalModel {
             let canonical = try await detailProvider.playlistForMutationInspection(mbid: playlistMBID)
             guard canonical.mbid == playlistMBID else {
                 notice = .needsReview(
-                    "Brainz refreshed a different playlist. Try again before changing tracks."
+                    String(localized: "Brainz refreshed a different playlist. Try again before changing tracks.")
                 )
                 return latest
             }
             guard journal.cancelBeforeDispatch(username: account.username, playlistMBID: playlistMBID) else {
                 notice = .needsReview(
-                    "ListenBrainz rejected the removal, but its safety record could not be cleared. Refresh and review the playlist before removing another track."
+                    String(localized: "ListenBrainz rejected the removal, but its safety record could not be cleared. Refresh and review the playlist before removing another track.")
                 )
                 return canonical
             }
@@ -432,7 +432,7 @@ final class PlaylistItemRemovalModel {
                 return await recordAccessLoss(error, playlistMBID: playlistMBID)
             }
             notice = .needsReview(
-                "ListenBrainz rejected the removal, but Brainz couldn’t refresh the playlist. Refresh it before trying again."
+                String(localized: "ListenBrainz rejected the removal, but Brainz couldn’t refresh the playlist. Refresh it before trying again.")
             )
             return latest
         }
@@ -523,7 +523,7 @@ final class PlaylistItemReorderModel {
             else { notice = .stale; return preflight }
             try Task.checkCancellation()
             guard journal.begin(username: account.username, playlistMBID: baseline.mbid) else {
-                notice = .needsReview("Track changes need review. Refresh the playlist before changing its order.")
+                notice = .needsReview(String(localized: "Track changes need review. Refresh the playlist before changing its order."))
                 return preflight
             }
             do {
@@ -531,7 +531,7 @@ final class PlaylistItemReorderModel {
                 try await provider.moveItem(recordingMBID: sourceMBID, from: from, to: to, in: baseline.mbid)
             } catch is CancellationError {
                 if !journal.cancelBeforeDispatch(username: account.username, playlistMBID: baseline.mbid) {
-                    notice = .needsReview("Track changes need review. Refresh the playlist before changing it again.")
+                    notice = .needsReview(String(localized: "Track changes need review. Refresh the playlist before changing it again."))
                 }
                 return nil
             } catch PlaylistMutationProviderError.notCollaborator {
@@ -542,13 +542,13 @@ final class PlaylistItemReorderModel {
                 return await accessLost(error, playlistMBID: baseline.mbid)
             } catch let error as PlaylistMutationProviderError where !error.isIndeterminate {
                 guard journal.cancelBeforeDispatch(username: account.username, playlistMBID: baseline.mbid) else {
-                    notice = .needsReview("ListenBrainz rejected the change, but Brainz couldn’t clear its safety record. Refresh and review the playlist before changing tracks again.")
+                    notice = .needsReview(String(localized: "ListenBrainz rejected the change, but Brainz couldn’t clear its safety record. Refresh and review the playlist before changing tracks again."))
                     return nil
                 }
                 notice = .failed(error.localizedDescription); return nil
             } catch let ProviderError.rateLimited(seconds) {
                 guard journal.cancelBeforeDispatch(username: account.username, playlistMBID: baseline.mbid) else {
-                    notice = .needsReview("The change did not start, but Brainz couldn’t clear its safety record. Refresh and review the playlist before changing tracks again.")
+                    notice = .needsReview(String(localized: "The change did not start, but Brainz couldn’t clear its safety record. Refresh and review the playlist before changing tracks again."))
                     return nil
                 }
                 notice = .failed(ProviderError.rateLimited(retryAfterSeconds: seconds).localizedDescription)
@@ -572,15 +572,15 @@ final class PlaylistItemReorderModel {
         do {
             let detail = try await detailProvider.playlistForMutationInspection(mbid: playlistMBID)
             guard detail.mbid == playlistMBID else {
-                notice = .needsReview("Brainz refreshed a different playlist. Try again before changing tracks.")
+                notice = .needsReview(String(localized: "Brainz refreshed a different playlist. Try again before changing tracks."))
                 return nil
             }
             guard journal.resolveAfterInspection(username: account.username, playlistMBID: playlistMBID) else {
-                notice = .needsReview("Track changes need review. Refresh the playlist before changing it again.")
+                notice = .needsReview(String(localized: "Track changes need review. Refresh the playlist before changing it again."))
                 return detail
             }
             return detail
-        } catch { if PlaylistAccessFailurePolicy.requiresPurge(error) { return await accessLost(error, playlistMBID: playlistMBID) }; notice = .needsReview("Couldn’t refresh this playlist. Try again before changing tracks."); return nil }
+        } catch { if PlaylistAccessFailurePolicy.requiresPurge(error) { return await accessLost(error, playlistMBID: playlistMBID) }; notice = .needsReview(String(localized: "Couldn’t refresh this playlist. Try again before changing tracks.")); return nil }
     }
 
     private func postflight(_ preflight: PlaylistDetail, from: Int, to: Int) async -> PlaylistDetail? {
@@ -590,32 +590,32 @@ final class PlaylistItemReorderModel {
             guard canonical.mbid == preflight.mbid,
                   Self.isExactMove(from: preflight.tracks, from: from, to: to, canonical: canonical.tracks)
             else {
-                notice = .needsReview("This playlist changed. Track changes need review before you change its order again.")
+                notice = .needsReview(String(localized: "This playlist changed. Track changes need review before you change its order again."))
                 return canonical
             }
             guard journal.resolveAfterInspection(username: account.username, playlistMBID: preflight.mbid) else {
-                notice = .needsReview("The order was saved, but its safety record could not be cleared. Refresh and review the playlist before changing tracks again.")
+                notice = .needsReview(String(localized: "The order was saved, but its safety record could not be cleared. Refresh and review the playlist before changing tracks again."))
                 return canonical
             }
             notice = .confirmed; return canonical
-        } catch { if PlaylistAccessFailurePolicy.requiresPurge(error) { return await accessLost(error, playlistMBID: preflight.mbid) }; notice = .needsReview("Track changes need review. Refresh the playlist before changing it again."); return nil }
+        } catch { if PlaylistAccessFailurePolicy.requiresPurge(error) { return await accessLost(error, playlistMBID: preflight.mbid) }; notice = .needsReview(String(localized: "Track changes need review. Refresh the playlist before changing it again.")); return nil }
     }
     private func reconcilePermissionDenied(_ latest: PlaylistDetail, playlistMBID: UUID) async -> PlaylistDetail? {
         isReconciling = true; defer { isReconciling = false }
         do {
             let canonical = try await detailProvider.playlistForMutationInspection(mbid: playlistMBID)
             guard canonical.mbid == playlistMBID else {
-                notice = .needsReview("Brainz refreshed a different playlist. Try again before changing tracks.")
+                notice = .needsReview(String(localized: "Brainz refreshed a different playlist. Try again before changing tracks."))
                 return latest
             }
-            guard journal.cancelBeforeDispatch(username: account.username, playlistMBID: playlistMBID) else { notice = .needsReview("Track changes need review. Refresh the playlist before changing it again."); return canonical }
+            guard journal.cancelBeforeDispatch(username: account.username, playlistMBID: playlistMBID) else { notice = .needsReview(String(localized: "Track changes need review. Refresh the playlist before changing it again.")); return canonical }
             notice = .failed(PlaylistMutationProviderError.notCollaborator.localizedDescription); return canonical
         } catch {
             if PlaylistAccessFailurePolicy.requiresPurge(error) {
                 _ = journal.cancelBeforeDispatch(username: account.username, playlistMBID: playlistMBID)
                 return await accessLost(error, playlistMBID: playlistMBID)
             }
-            notice = .needsReview("Track changes need review. Refresh the playlist before changing it again.")
+            notice = .needsReview(String(localized: "Track changes need review. Refresh the playlist before changing it again."))
             return latest
         }
     }

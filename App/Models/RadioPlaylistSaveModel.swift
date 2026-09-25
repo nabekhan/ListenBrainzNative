@@ -410,7 +410,7 @@ final class RadioPlaylistSaveModel {
         } catch is CancellationError {
             if !journal.cancelBeforeDispatch(username: account.username) {
                 notice = .needsReview(
-                    "The request was cancelled before it started, but Brainz couldn’t clear its safety record. Check Owned Playlists before resetting it."
+                    String(localized: "The request was cancelled before it started, but Brainz couldn’t clear its safety record. Check Owned Playlists before resetting it.")
                 )
             }
         } catch let error as PlaylistMutationProviderError where !error.isIndeterminate {
@@ -418,7 +418,7 @@ final class RadioPlaylistSaveModel {
                 notice = .failed(error.localizedDescription)
             } else {
                 notice = .needsReview(
-                    "ListenBrainz rejected the save, but Brainz couldn’t clear its safety record. Check Owned Playlists before resetting it."
+                    String(localized: "ListenBrainz rejected the save, but Brainz couldn’t clear its safety record. Check Owned Playlists before resetting it.")
                 )
             }
         } catch let error as ProviderError {
@@ -426,7 +426,7 @@ final class RadioPlaylistSaveModel {
                 notice = .failed(error.localizedDescription)
             } else {
                 notice = .needsReview(
-                    "The save did not start, but Brainz couldn’t clear its safety record. Check Owned Playlists before resetting it."
+                    String(localized: "The save did not start, but Brainz couldn’t clear its safety record. Check Owned Playlists before resetting it.")
                 )
             }
         } catch {
@@ -456,7 +456,7 @@ final class RadioPlaylistSaveModel {
             reviewedPlaylists = []
             canResetAfterReview = false
             notice = .needsReview(
-                "Couldn’t load Owned Playlists. Reconnect, then check the list before saving this mix again.")
+                String(localized: "Couldn’t load Owned Playlists. Reconnect, then check the list before saving this mix again."))
         }
     }
 
@@ -468,7 +468,7 @@ final class RadioPlaylistSaveModel {
             : journal.resolveAfterReview(username: account.username)
         guard resolved else {
             notice = .needsReview(
-                "Brainz couldn’t reset its safety record. Playlist saving remains paused so it can’t create a duplicate."
+                String(localized: "Brainz couldn’t reset its safety record. Playlist saving remains paused so it can’t create a duplicate.")
             )
             return
         }

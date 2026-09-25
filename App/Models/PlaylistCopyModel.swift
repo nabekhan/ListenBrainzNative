@@ -342,7 +342,7 @@ final class PlaylistCopyModel {
         if destinationMBID == nil {
             message = PlaylistMutationProviderError.indeterminateCopy.localizedDescription
         } else {
-            message = "ListenBrainz created the copy, but its current details could not be loaded. Duplicate stays disabled until the returned playlist is verified."
+            message = String(localized: "ListenBrainz created the copy, but its current details could not be loaded. Duplicate stays disabled until the returned playlist is verified.")
         }
         notice = .verificationNeeded(
             id: UUID(),
@@ -399,11 +399,11 @@ private enum PlaylistCopyVerificationError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .mismatchedDestination:
-            "ListenBrainz returned details for a different playlist. The copy remains locked until it can be verified safely."
+            String(localized: "ListenBrainz returned details for a different playlist. The copy remains locked until it can be verified safely.")
         case .mismatchedOwner:
-            "The returned playlist is not owned by this account. The copy remains locked until it can be verified safely."
+            String(localized: "The returned playlist is not owned by this account. The copy remains locked until it can be verified safely.")
         case .mismatchedSource:
-            "The returned playlist does not identify this source playlist. The copy remains locked until it can be verified safely."
+            String(localized: "The returned playlist does not identify this source playlist. The copy remains locked until it can be verified safely.")
         }
     }
 }

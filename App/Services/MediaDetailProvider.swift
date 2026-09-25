@@ -83,8 +83,8 @@ struct ListenBrainzMediaDetailProvider: ReleaseDetailProviding, PlaylistDetailPr
                 let value = try await client.core.playlist(mbid: mbid)
                 let metadata = value.metadata
                 let tracks = value.tracks.enumerated().map { index, track in
-                    let title = Self.nonempty(track.title) ?? "Unknown recording"
-                    let artist = Self.nonempty(track.artistCreditName) ?? "Unknown artist"
+                    let title = Self.nonempty(track.title) ?? String(localized: "Unknown recording")
+                    let artist = Self.nonempty(track.artistCreditName) ?? String(localized: "Unknown artist")
                     let recording = Recording(
                         identity: .init(mbid: track.recordingMBID, msid: nil),
                         title: title,
@@ -176,9 +176,9 @@ enum MediaDetailError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .invalidPlaylistIdentifier:
-            "This result does not contain a valid ListenBrainz playlist ID."
+            String(localized: "This result does not contain a valid ListenBrainz playlist ID.")
         case .playlistUnavailable:
-            "This playlist is private, was removed, or is no longer available."
+            String(localized: "This playlist is private, was removed, or is no longer available.")
         }
     }
 }

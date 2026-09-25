@@ -274,13 +274,13 @@ enum FeedProviderError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidAuthentication:
-            "Your ListenBrainz sign-in is no longer valid. Reconnect your token to open this private feed."
+            String(localized: "Your ListenBrainz sign-in is no longer valid. Reconnect your token to open this private feed.")
         case .actionUnavailable:
-            "This feed action is unavailable right now."
+            String(localized: "This feed action is unavailable right now.")
         case .actionRejected:
-            "ListenBrainz couldn’t apply this action. It may no longer be available or permitted."
+            String(localized: "ListenBrainz couldn’t apply this action. It may no longer be available or permitted.")
         case .blurbTooLong:
-            "A thank-you note can be up to 280 characters."
+            String(localized: "A thank-you note can be up to 280 characters.")
         }
     }
 }

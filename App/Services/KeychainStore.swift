@@ -99,7 +99,7 @@ struct KeychainCredentialStore: CredentialStoring {
 enum CredentialStoreError: LocalizedError {
     case unrecognizedCredential
 
-    var errorDescription: String? { "We couldn’t restore your saved sign-in. Sign in again." }
+    var errorDescription: String? { String(localized: "We couldn’t restore your saved sign-in. Sign in again.") }
 }
 
 struct KeychainError: LocalizedError {

@@ -101,7 +101,7 @@ struct ListenBrainzRadioProvider: RadioProviding {
 
         return RadioMix(
             options: options,
-            title: Self.nonempty(generated.title) ?? "LB Radio mix",
+            title: Self.nonempty(generated.title) ?? String(localized: "LB Radio mix"),
             annotation: Self.nonempty(generated.annotation),
             feedback: Self.normalizedFeedback(generated.feedback),
             tracks: generated.tracks.enumerated().map { index, track in
@@ -155,8 +155,8 @@ struct ListenBrainzRadioProvider: RadioProviding {
         let releaseMBID = metadata?.releaseMBID ?? track.releaseMBID
         return Recording(
             identity: .init(mbid: track.recordingMBID, msid: nil),
-            title: nonempty(metadata?.title) ?? nonempty(track.title) ?? "Unknown recording",
-            artistName: nonempty(metadata?.artistName) ?? nonempty(track.artistCreditName) ?? "Unknown artist",
+            title: nonempty(metadata?.title) ?? nonempty(track.title) ?? String(localized: "Unknown recording"),
+            artistName: nonempty(metadata?.artistName) ?? nonempty(track.artistCreditName) ?? String(localized: "Unknown artist"),
             artistMBIDs: metadata?.artistMBIDs.isEmpty == false
                 ? metadata?.artistMBIDs ?? []
                 : track.artistMBIDs,
@@ -195,11 +195,11 @@ enum RadioProviderError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .invalidAuthentication:
-            "Your ListenBrainz sign-in is no longer valid. Reconnect your token to tune LB Radio."
+            String(localized: "Your ListenBrainz sign-in is no longer valid. Reconnect your token to tune LB Radio.")
         case .invalidPrompt:
-            "ListenBrainz could not understand that radio recipe. Adjust the source or prompt and try again."
+            String(localized: "ListenBrainz could not understand that radio recipe. Adjust the source or prompt and try again.")
         case .generationUnavailable:
-            "ListenBrainz could not generate this mix right now. Your previous mix, if any, is still here."
+            String(localized: "ListenBrainz could not generate this mix right now. Your previous mix, if any, is still here.")
         }
     }
 }

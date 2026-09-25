@@ -483,7 +483,7 @@ final class PlaylistDeletionModel {
     func resetSafetyRecord(playlistMBID: UUID) async -> Bool {
         guard canResetSafetyRecord(playlistMBID: playlistMBID) else {
             notice = .needsReview(
-                "Brainz couldn’t reset this playlist’s deletion safety record. Try again after checking the playlist."
+                String(localized: "Brainz couldn’t reset this playlist’s deletion safety record. Try again after checking the playlist.")
             )
             return false
         }
@@ -499,7 +499,7 @@ final class PlaylistDeletionModel {
               )
         else {
             notice = .needsReview(
-                "Brainz couldn’t reset this playlist’s deletion safety record. Try again after checking the playlist."
+                String(localized: "Brainz couldn’t reset this playlist’s deletion safety record. Try again after checking the playlist.")
             )
             return false
         }
@@ -514,11 +514,11 @@ final class PlaylistDeletionModel {
             )
         case let .exists(title):
             notice = .failed(
-                "“\(title)” still exists. You can delete it again when you’re ready."
+                String(localized: "“\(title)” still exists. You can delete it again when you’re ready.")
             )
         case nil:
             notice = .failed(
-                "The safety record was reset. Check the playlist again before deleting it."
+                String(localized: "The safety record was reset. Check the playlist again before deleting it.")
             )
         }
         return true
@@ -552,7 +552,7 @@ final class PlaylistDeletionModel {
             )
             guard canonical.mbid == seed.mbid else {
                 notice = .failed(
-                    "ListenBrainz returned a different playlist. Reload this page before deleting."
+                    String(localized: "ListenBrainz returned a different playlist. Reload this page before deleting.")
                 )
                 return false
             }
@@ -578,8 +578,8 @@ final class PlaylistDeletionModel {
         ) else {
             notice = .needsReview(
                 requiresRecovery(playlistMBID: seed.mbid)
-                    ? "Brainz can’t read this playlist’s deletion safety record. Check the playlist before resetting the record."
-                    : "A previous deletion still needs review. Check whether this playlist exists before deleting it again."
+                    ? String(localized: "Brainz can’t read this playlist’s deletion safety record. Check the playlist before resetting the record.")
+                    : String(localized: "A previous deletion still needs review. Check whether this playlist exists before deleting it again.")
             )
             return false
         }
@@ -589,7 +589,7 @@ final class PlaylistDeletionModel {
         } catch {
             guard clearReservation(playlistMBID: seed.mbid) else {
                 notice = .needsReview(
-                    "Deletion was canceled, but its safety record couldn’t be cleared. Check the playlist before deleting it again."
+                    String(localized: "Deletion was canceled, but its safety record couldn’t be cleared. Check the playlist before deleting it again.")
                 )
                 return false
             }
@@ -603,7 +603,7 @@ final class PlaylistDeletionModel {
             // returning before this call. A cancellation thrown from inside it
             // may follow dispatch, so preserve the durable barrier.
             notice = .needsReview(
-                "Deletion was canceled after it was prepared. Check whether this playlist still exists before deleting it again."
+                String(localized: "Deletion was canceled after it was prepared. Check whether this playlist still exists before deleting it again.")
             )
             return false
         } catch PlaylistMutationProviderError.indeterminateDeletion {
@@ -615,7 +615,7 @@ final class PlaylistDeletionModel {
             await evictConfirmedDeletionCaches()
             guard clearReservation(playlistMBID: seed.mbid) else {
                 notice = .needsReview(
-                    "The playlist is no longer available, but its safety record couldn’t be cleared. Check again before continuing."
+                    String(localized: "The playlist is no longer available, but its safety record couldn’t be cleared. Check again before continuing.")
                 )
                 return false
             }
@@ -631,7 +631,7 @@ final class PlaylistDeletionModel {
             )
             guard clearReservation(playlistMBID: seed.mbid) else {
                 notice = .needsReview(
-                    "ListenBrainz rejected the deletion, but its safety record couldn’t be cleared. Check this playlist before continuing."
+                    String(localized: "ListenBrainz rejected the deletion, but its safety record couldn’t be cleared. Check this playlist before continuing.")
                 )
                 return false
             }
@@ -643,7 +643,7 @@ final class PlaylistDeletionModel {
             let isAccessLoss = PlaylistAccessFailurePolicy.reason(for: error) != nil
             guard clearReservation(playlistMBID: seed.mbid) else {
                 notice = .needsReview(
-                    "ListenBrainz rejected the deletion, but its safety record couldn’t be cleared. Check this playlist before continuing."
+                    String(localized: "ListenBrainz rejected the deletion, but its safety record couldn’t be cleared. Check this playlist before continuing.")
                 )
                 return false
             }
@@ -657,7 +657,7 @@ final class PlaylistDeletionModel {
         await evictConfirmedDeletionCaches()
         guard clearReservation(playlistMBID: seed.mbid) else {
             notice = .needsReview(
-                "The playlist was deleted, but its safety record couldn’t be cleared. Check again before continuing."
+                String(localized: "The playlist was deleted, but its safety record couldn’t be cleared. Check again before continuing.")
             )
             return false
         }
@@ -692,7 +692,7 @@ final class PlaylistDeletionModel {
                   Self.canDelete(account: account, detail: detail)
             else {
                 notice = .needsReview(
-                    "This playlist no longer matches the account that started deletion. Its status still needs review."
+                    String(localized: "This playlist no longer matches the account that started deletion. Its status still needs review.")
                 )
                 return false
             }
@@ -704,14 +704,14 @@ final class PlaylistDeletionModel {
                 playlistMBID: playlistMBID
             ) else {
                 notice = .needsReview(
-                    "The playlist still exists, but its safety record couldn’t be cleared. Reset the record only after reviewing this result."
+                    String(localized: "The playlist still exists, but its safety record couldn’t be cleared. Reset the record only after reviewing this result.")
                 )
                 return false
             }
             reviewedPairs.remove(playlistMBID)
             reviewedOutcomes.removeValue(forKey: playlistMBID)
             notice = .failed(
-                "“\(detail.title)” still exists. You can delete it again when you’re ready."
+                String(localized: "“\(detail.title)” still exists. You can delete it again when you’re ready.")
             )
             return false
         } catch {
@@ -724,7 +724,7 @@ final class PlaylistDeletionModel {
                     playlistMBID: playlistMBID
                 ) else {
                     notice = .needsReview(
-                        "The playlist is no longer available, but its safety record couldn’t be cleared. Reset the record only after reviewing this result."
+                        String(localized: "The playlist is no longer available, but its safety record couldn’t be cleared. Reset the record only after reviewing this result.")
                     )
                     return false
                 }
@@ -739,7 +739,7 @@ final class PlaylistDeletionModel {
 
             await captureAccessLossIfNeeded(error, playlistMBID: playlistMBID)
             notice = .needsReview(
-                "Brainz couldn’t check this playlist. Check again before deleting it."
+                String(localized: "Brainz couldn’t check this playlist. Check again before deleting it.")
             )
             return false
         }

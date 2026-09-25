@@ -22,11 +22,11 @@ enum CritiqueBrainzProviderError: LocalizedError, Sendable {
 
     var errorDescription: String? {
         switch self {
-        case .invalidResponse: "CritiqueBrainz sent an unreadable response. Try again in a moment."
-        case .responseTooLarge: "CritiqueBrainz returned too much review data. Try again in a moment."
-        case let .rateLimited(seconds): "CritiqueBrainz is busy. Try again in about \(seconds) seconds."
-        case let .unavailable(seconds): "CritiqueBrainz is temporarily unavailable. Try again in about \(seconds) seconds."
-        case .server: "CritiqueBrainz couldn’t load reviews. Try again in a moment."
+        case .invalidResponse: String(localized: "CritiqueBrainz sent an unreadable response. Try again in a moment.")
+        case .responseTooLarge: String(localized: "CritiqueBrainz returned too much review data. Try again in a moment.")
+        case let .rateLimited(seconds): String(localized: "CritiqueBrainz is busy. Try again in about \(seconds) seconds.")
+        case let .unavailable(seconds): String(localized: "CritiqueBrainz is temporarily unavailable. Try again in about \(seconds) seconds.")
+        case .server: String(localized: "CritiqueBrainz couldn’t load reviews. Try again in a moment.")
         }
     }
 }

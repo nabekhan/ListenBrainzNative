@@ -203,9 +203,9 @@ enum ProfilePlaylistsProviderError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidAuthentication:
-            "Your ListenBrainz sign-in is no longer valid. Reconnect your token to view private playlists."
+            String(localized: "Your ListenBrainz sign-in is no longer valid. Reconnect your token to view private playlists.")
         case .profileUnavailable:
-            "ListenBrainz could not find playlists for this listener."
+            String(localized: "ListenBrainz could not find playlists for this listener.")
         }
     }
 }

@@ -150,9 +150,9 @@ enum PlaylistMetadataEditorError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .couldNotVerifyLatest:
-            "Couldn’t verify the latest playlist details, so nothing was changed. Try again when the playlist can be refreshed."
+            String(localized: "Couldn’t verify the latest playlist details, so nothing was changed. Try again when the playlist can be refreshed.")
         case .changedElsewhere:
-            "This playlist changed after the editor opened. Close and reopen the editor so nobody’s changes are overwritten."
+            String(localized: "This playlist changed after the editor opened. Close and reopen the editor so nobody’s changes are overwritten.")
         }
     }
 }

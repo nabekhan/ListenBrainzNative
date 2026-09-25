@@ -642,37 +642,37 @@ enum PlaylistMutationProviderError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .invalidAuthentication:
-            "Your ListenBrainz token no longer authorizes playlist changes."
+            String(localized: "Your ListenBrainz token no longer authorizes playlist changes.")
         case .notOwner:
-            "Only the playlist owner can change its name, description, or privacy."
+            String(localized: "Only the playlist owner can change its name, description, or privacy.")
         case .deleteNotOwner:
-            "Only the playlist owner can delete it."
+            String(localized: "Only the playlist owner can delete it.")
         case .notCollaborator:
-            "Only a playlist owner or collaborator can change its tracks."
+            String(localized: "Only a playlist owner or collaborator can change its tracks.")
         case .playlistUnavailable:
-            "This playlist was removed or is no longer available to your account."
+            String(localized: "This playlist was removed or is no longer available to your account.")
         case .rejected:
-            "ListenBrainz couldn’t save these playlist details. Check the name and try again."
+            String(localized: "ListenBrainz couldn’t save these playlist details. Check the name and try again.")
         case .copyRejected:
-            "ListenBrainz couldn’t duplicate this playlist. Reload it and try again."
+            String(localized: "ListenBrainz couldn’t duplicate this playlist. Reload it and try again.")
         case .indeterminateCreation:
-            "ListenBrainz may have created this playlist, but the response was lost. Check Owned Playlists before trying again so you don’t create a duplicate."
+            String(localized: "ListenBrainz may have created this playlist, but the response was lost. Check Owned Playlists before trying again so you don’t create a duplicate.")
         case .indeterminateEdit:
-            "ListenBrainz may have saved this edit, but the response was lost. Close this editor and reload the playlist before trying again."
+            String(localized: "ListenBrainz may have saved this edit, but the response was lost. Close this editor and reload the playlist before trying again.")
         case .indeterminateAppend:
-            "ListenBrainz may have added this recording, but the response was lost. Inspect the playlist before trying again so you don’t add a duplicate."
+            String(localized: "ListenBrainz may have added this recording, but the response was lost. Inspect the playlist before trying again so you don’t add a duplicate.")
         case .indeterminateCopy:
-            "ListenBrainz may have duplicated this playlist, but the response was lost. Check Owned Playlists before trying again so you don’t create another copy."
+            String(localized: "ListenBrainz may have duplicated this playlist, but the response was lost. Check Owned Playlists before trying again so you don’t create another copy.")
         case .indeterminateRemoval:
-            "ListenBrainz may have removed a track, but the response was lost. Refresh the playlist before removing another track."
+            String(localized: "ListenBrainz may have removed a track, but the response was lost. Refresh the playlist before removing another track.")
         case .reorderRejected:
-            "ListenBrainz couldn’t save this track order. Refresh the playlist and try again."
+            String(localized: "ListenBrainz couldn’t save this track order. Refresh the playlist and try again.")
         case .indeterminateReorder:
-            "Track changes need review. ListenBrainz may have moved or removed a track, so refresh the playlist before changing it again."
+            String(localized: "Track changes need review. ListenBrainz may have moved or removed a track, so refresh the playlist before changing it again.")
         case .deleteRejected:
-            "ListenBrainz couldn’t delete this playlist. Check it and try again."
+            String(localized: "ListenBrainz couldn’t delete this playlist. Check it and try again.")
         case .indeterminateDeletion:
-            "ListenBrainz may have deleted this playlist, but the response was lost. Check again before trying to delete it."
+            String(localized: "ListenBrainz may have deleted this playlist, but the response was lost. Check again before trying to delete it.")
         }
     }
 }

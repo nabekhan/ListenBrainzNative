@@ -109,8 +109,8 @@ final class PinsModel {
     }
 
     func pin(_ recording: Recording, blurb: String?) async {
-        guard account.isAuthenticated else { actionError = "Sign in with a token to pin recordings."; return }
-        guard blurb.map(\.count) ?? 0 <= 280 else { actionError = "A pin note can be up to 280 characters."; return }
+        guard account.isAuthenticated else { actionError = String(localized: "Sign in with a token to pin recordings."); return }
+        guard blurb.map(\.count) ?? 0 <= 280 else { actionError = String(localized: "A pin note can be up to 280 characters."); return }
         guard canMutate else { return }
         isMutating = true
         defer { isMutating = false }
@@ -158,8 +158,8 @@ final class PinsModel {
     }
 
     func updateBlurb(for pin: PinnedRecording, to blurb: String) async {
-        guard account.isAuthenticated else { actionError = "Sign in with a token to edit your pin."; return }
-        guard blurb.count <= 280 else { actionError = "A pin note can be up to 280 characters."; return }
+        guard account.isAuthenticated else { actionError = String(localized: "Sign in with a token to edit your pin."); return }
+        guard blurb.count <= 280 else { actionError = String(localized: "A pin note can be up to 280 characters."); return }
         guard canMutate else { return }
         isMutating = true
         defer { isMutating = false }
@@ -172,7 +172,7 @@ final class PinsModel {
     }
 
     func delete(_ pin: PinnedRecording) async {
-        guard account.isAuthenticated else { actionError = "Sign in with a token to delete pins."; return }
+        guard account.isAuthenticated else { actionError = String(localized: "Sign in with a token to delete pins."); return }
         guard canMutate else { return }
         isMutating = true
         defer { isMutating = false }

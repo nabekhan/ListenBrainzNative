@@ -91,13 +91,13 @@ final class ConnectedServicesModel {
                 await cache.removeValue(for: key)
                 guard requestID == id else { return }
                 refreshMessage = nil
-                phase = .failed("Your ListenBrainz sign-in needs attention. Sign in again to view connected services.")
+                phase = .failed(String(localized: "Your ListenBrainz sign-in needs attention. Sign in again to view connected services."))
                 return
             }
             if stale != nil {
-                refreshMessage = "Couldn’t refresh your connected services. Showing the last saved list."
+                refreshMessage = String(localized: "Couldn’t refresh your connected services. Showing the last saved list.")
             } else {
-                phase = .failed("Check your connection and try again.")
+                phase = .failed(String(localized: "Check your connection and try again."))
             }
         }
     }
@@ -105,7 +105,7 @@ final class ConnectedServicesModel {
     private func requireAuthenticatedAccount() -> Bool {
         guard account.isAuthenticated else {
             refreshMessage = nil
-            phase = .failed("Sign in to view the services linked to your ListenBrainz account.")
+            phase = .failed(String(localized: "Sign in to view the services linked to your ListenBrainz account."))
             return false
         }
         return true

@@ -151,11 +151,11 @@ enum GeneratedArtworkProviderError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .accessDenied:
-            "Your ListenBrainz account can’t create artwork for this playlist."
+            String(localized: "Your ListenBrainz account can’t create artwork for this playlist.")
         case .invalidArtwork:
-            "ListenBrainz returned artwork Brainz couldn’t open. Try again later."
+            String(localized: "ListenBrainz returned artwork Brainz couldn’t open. Try again later.")
         case .creationFailed:
-            "ListenBrainz couldn’t create this artwork. Try again."
+            String(localized: "ListenBrainz couldn’t create this artwork. Try again.")
         }
     }
 }

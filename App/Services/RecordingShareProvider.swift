@@ -201,15 +201,15 @@ enum RecordingShareProviderError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidAuthentication:
-            "Your ListenBrainz token no longer authorizes recommendations."
+            String(localized: "Your ListenBrainz token no longer authorizes recommendations.")
         case .missingRecordingIdentifier:
-            "This recording needs a MusicBrainz or MessyBrainz ID before it can be recommended."
+            String(localized: "This recording needs a MusicBrainz or MessyBrainz ID before it can be recommended.")
         case .noRecipients:
-            "Choose at least one follower."
+            String(localized: "Choose at least one follower.")
         case .blurbTooLong:
-            "A personal recommendation note can be up to 280 characters."
+            String(localized: "A personal recommendation note can be up to 280 characters.")
         case .actionRejected:
-            "ListenBrainz couldn’t share this recommendation. A selected listener may no longer follow you."
+            String(localized: "ListenBrainz couldn’t share this recommendation. A selected listener may no longer follow you.")
         }
     }
 }

@@ -133,13 +133,13 @@ final class RecordingShareModel {
             return false
         }
         guard !selectedFollowerIDs.isEmpty else {
-            notice = RecordingShareNotice(kind: .error, message: "Choose at least one follower.")
+            notice = RecordingShareNotice(kind: .error, message: String(localized: "Choose at least one follower."))
             return false
         }
         guard blurb.count <= 280 else {
             notice = RecordingShareNotice(
                 kind: .error,
-                message: "A personal recommendation note can be up to 280 characters."
+                message: String(localized: "A personal recommendation note can be up to 280 characters.")
             )
             return false
         }
@@ -212,9 +212,9 @@ final class RecordingShareModel {
 
     private var unavailableReason: String {
         if !account.isAuthenticated {
-            return "Sign in with a ListenBrainz token to recommend recordings."
+            return String(localized: "Sign in with a ListenBrainz token to recommend recordings.")
         }
-        return "This recording needs a MusicBrainz or MessyBrainz ID before it can be recommended."
+        return String(localized: "This recording needs a MusicBrainz or MessyBrainz ID before it can be recommended.")
     }
 
     private static func orderedUnique(_ users: [SearchUser]) -> [SearchUser] {

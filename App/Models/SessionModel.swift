@@ -70,7 +70,7 @@ final class SessionModel {
     func signIn(token rawToken: String) async {
         let token = rawToken.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !token.isEmpty else {
-            errorMessage = "Paste the user token from your ListenBrainz settings."
+            errorMessage = String(localized: "Paste the user token from your ListenBrainz settings.")
             return
         }
         isWorking = true

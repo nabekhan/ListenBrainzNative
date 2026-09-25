@@ -94,7 +94,7 @@ final class FollowingPinsModel {
         } catch {
             guard requestID == id else { return }
             if appending { loadMoreError = error.localizedDescription; phase = .ready }
-            else if hadStale { refreshMessage = "Couldn’t refresh. Showing saved pins."; phase = .ready }
+            else if hadStale { refreshMessage = String(localized: "Couldn’t refresh. Showing saved pins."); phase = .ready }
             else { phase = .failed(error.localizedDescription) }
         }
     }

@@ -107,9 +107,9 @@ enum SocialProviderError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .followRejected:
-            "ListenBrainz could not follow this listener. The relationship may already exist."
+            String(localized: "ListenBrainz could not follow this listener. The relationship may already exist.")
         case .invalidAuthentication:
-            "Your ListenBrainz token no longer authorizes social changes."
+            String(localized: "Your ListenBrainz token no longer authorizes social changes.")
         }
     }
 }

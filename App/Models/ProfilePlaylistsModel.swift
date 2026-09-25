@@ -302,7 +302,7 @@ final class ProfilePlaylistsModel {
                     current.isLoadingMore = false
                     current.loadMoreError = nil
                     current.loadMoreRetryOffset = nil
-                    current.refreshMessage = "Playlist access changed. Refresh to load the latest list."
+                    current.refreshMessage = String(localized: "Playlist access changed. Refresh to load the latest list.")
                 }
                 states[category] = current
                 resumeLoadWaiters(category: category)

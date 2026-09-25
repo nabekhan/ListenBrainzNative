@@ -83,11 +83,11 @@ enum SimilarArtistsProviderError: LocalizedError, Sendable {
 
     var errorDescription: String? {
         switch self {
-        case .invalidResponse: "ListenBrainz sent an unreadable artist response."
-        case .responseTooLarge: "ListenBrainz returned too much artist data."
-        case let .rateLimited(seconds): "ListenBrainz is busy. Try again in about \(seconds) seconds."
-        case let .unavailable(seconds): "ListenBrainz is temporarily unavailable. Try again in about \(seconds) seconds."
-        case .server: "ListenBrainz couldn’t load these artist details."
+        case .invalidResponse: String(localized: "ListenBrainz sent an unreadable artist response.")
+        case .responseTooLarge: String(localized: "ListenBrainz returned too much artist data.")
+        case let .rateLimited(seconds): String(localized: "ListenBrainz is busy. Try again in about \(seconds) seconds.")
+        case let .unavailable(seconds): String(localized: "ListenBrainz is temporarily unavailable. Try again in about \(seconds) seconds.")
+        case .server: String(localized: "ListenBrainz couldn’t load these artist details.")
         }
     }
 }

@@ -297,7 +297,7 @@ final class ListeningModel {
 
     func setFeedback(_ value: RecordingFeedback, for recording: Recording) async {
         guard account.isAuthenticated else {
-            actionError = "Sign in with a token to love or hate recordings."
+            actionError = String(localized: "Sign in with a token to love or hate recordings.")
             return
         }
         let previous = feedback[recording.id] ?? .none
@@ -333,7 +333,7 @@ final class ListeningModel {
 
     func resetDeletionSafetyData() {
         guard deletionJournal.resetUnreadableStorage() else {
-            actionError = "Brainz couldn’t reset its deletion record. Restart the app and try again."
+            actionError = String(localized: "Brainz couldn’t reset its deletion record. Restart the app and try again.")
             return
         }
         deletionSafetyRecoveryNeeded = false
@@ -341,15 +341,15 @@ final class ListeningModel {
 
     private func performListenDeletion(_ listen: Listen, retryingIndeterminateAttempt: Bool) async {
         guard account.isAuthenticated else {
-            actionError = "Sign in to delete this listen."
+            actionError = String(localized: "Sign in to delete this listen.")
             return
         }
         guard !listen.isPlayingNow else {
-            actionError = "Wait until this track appears in your history, then delete it."
+            actionError = String(localized: "Wait until this track appears in your history, then delete it.")
             return
         }
         guard let key = ListenDeletionKey(listen) else {
-            actionError = "ListenBrainz hasn’t assigned this listen an ID, so it can’t be deleted yet."
+            actionError = String(localized: "ListenBrainz hasn’t assigned this listen an ID, so it can’t be deleted yet.")
             return
         }
         guard !deletionRequestsInFlight.contains(key) else { return }
@@ -363,12 +363,12 @@ final class ListeningModel {
             recordingMSID: key.recordingMSID
         )
         guard priorState != .confirmed else {
-            actionError = "Deletion is already scheduled. This listen wasn’t sent again."
+            actionError = String(localized: "Deletion is already scheduled. This listen wasn’t sent again.")
             return
         }
 
         guard priorState != .indeterminate || retryingIndeterminateAttempt else {
-            actionError = "The first request couldn’t be confirmed, so Brainz didn’t send it again. Wait until after the next hour, then refresh."
+            actionError = String(localized: "The first request couldn’t be confirmed, so Brainz didn’t send it again. Wait until after the next hour, then refresh.")
             return
         }
 
@@ -380,7 +380,7 @@ final class ListeningModel {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .lowercased()
             guard canonicalUsername == account.username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
-                actionError = "No deletion was sent. This token belongs to another account. Sign in again."
+                actionError = String(localized: "No deletion was sent. This token belongs to another account. Sign in again.")
                 return
             }
 
@@ -394,13 +394,13 @@ final class ListeningModel {
             case let .reserved(previouslyIndeterminate):
                 reservedExistingIndeterminateAttempt = previouslyIndeterminate
             case .inFlight:
-                actionError = "This deletion is already in progress."
+                actionError = String(localized: "This deletion is already in progress.")
                 return
             case .confirmed:
-                actionError = "Deletion is already scheduled. This listen wasn’t sent again."
+                actionError = String(localized: "Deletion is already scheduled. This listen wasn’t sent again.")
                 return
             case .indeterminate:
-                actionError = "The first request couldn’t be confirmed, so Brainz didn’t send it again. Wait until after the next hour, then refresh."
+                actionError = String(localized: "The first request couldn’t be confirmed, so Brainz didn’t send it again. Wait until after the next hour, then refresh.")
                 return
             case .unavailable:
                 deletionSafetyRecoveryNeeded = true
@@ -421,7 +421,7 @@ final class ListeningModel {
                 recordingMSID: key.recordingMSID
             )
             removeDeletedListen(key)
-            deletionNotice = "ListenBrainz usually removes it shortly after the next hour. Statistics may update later."
+            deletionNotice = String(localized: "ListenBrainz usually removes it shortly after the next hour. Statistics may update later.")
             await saveSnapshot()
         } catch is CancellationError {
             // The delete transport never started. Clear only a new provisional
