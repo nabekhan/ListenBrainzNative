@@ -1,27 +1,27 @@
 # Development handoff
 
-Snapshot: 2026-09-22.
+Snapshot: 2026-09-24.
 
 ## Portable checkpoint
 
 - Branch: `main`
-- Last validated product commit: `6ccbf13dc4670ee12aea4f1354c2aec4e82ddb98`
+- Last validated product commit: `4a80d4ddbf553b7f794c58a4f41a30a87d6392be`
 - Remote: `https://github.com/nabekhan/ListenBrainzNative.git`
-- Remote `main` was verified at the product commit before this handoff note was added.
-- No feature implementation is in progress or left partially applied.
+- Remote `main` is verified after this handoff note is pushed.
+- No product feature is left partially applied. A user-requested localization-catalog migration is the next bounded engineering milestone.
 
-That checkpoint adds request-free Year in Music playlist snapshots for the current official **Top discoveries** and **Tracks you missed** reports. It decodes current direct JSPF and the archival 2021 nested shape, accepts scalar or array identifiers, preserves playlist order and duplicates, filters links to canonical ListenBrainz playlist and MusicBrainz recording URLs, and never exposes raw annotation HTML. Snapshot cards and the local detail view perform no playlist, artwork, metadata, or row-hydration request; navigation to mapped Recording detail or the canonical external playlist happens only after an explicit tap.
+That checkpoint adds the signed-in user's current pin to Home by reusing the root-owned `PinsModel` already shared with Profile. Initial Home/Profile appearances admit one guarded current-pin read, explicit Home refresh updates current state without loading pin history, and embedded metadata renders without row hydration. Nullable absence, inline failure/retry, owner context, and the existing recording/history destinations stay native.
 
-Final evidence before cleanup:
+Final evidence:
 
-- 29 focused ListenBrainzKit statistics tests passed;
-- 18 focused app Year in Music tests passed;
-- the complete app suite passed 549/549 with no failures or skips;
-- subsequent final Debug builds succeeded;
-- light, dark, local-detail, maximum-accessibility, and iPhone SE-sized fixture layouts were inspected; and
-- an independent re-review returned READY after the visible descriptions were corrected.
+- the restored ListenBrainzKit package baseline passed 140 tests across 20 suites;
+- nine focused pin-model tests passed, including repeat-load, current-only refresh, and inline initial failure;
+- the complete app suite passed 552/552 with no failures or skips on an iPhone 17 Pro simulator;
+- the final Release simulator executable contains both `arm64` and `x86_64`;
+- populated, empty, failure, light, dark, accessibility, and iPhone SE fixture states were inspected; and
+- independent re-review returned READY after fixture-only tab and authentication escape hatches were closed.
 
-A regular-width iPad visual pass for this addition was interrupted before cleanup and remains a narrow follow-up, not completed evidence.
+The Home fixture is tokenless, uses local providers and nil artwork/canonical media IDs, and locks selection to Home. It cannot start ListenBrainz, MusicBrainz, or artwork traffic through its reachable routes. No production mutation was exercised.
 
 ## Resume on another Mac
 
@@ -38,12 +38,14 @@ Install Xcode and a compatible iOS simulator runtime before building. Reinstall 
 
 ## Next unstarted product work
 
-The annual-playlist candidate is complete. The strongest adjacent candidates are a shared Home current-pin section and the separately researched advanced manual-mapping workflow. Reassess their user value against the current implementation plan before selecting one.
+Centralize interface copy in one `Localizable.xcstrings` catalog. The inventory found no existing localization resources and roughly 800 SwiftUI-facing literals, including computed/plural/accessibility copy that needs more care than a blind text replacement. Introduce compiler-backed extraction and validation first, migrate shared components plus Home, then move through feature hotspots in reviewable passes while keeping server content, identifiers, and fixture data out of the catalog.
+
+After localization, the separately researched advanced manual-mapping workflow remains a strong adjacent product candidate.
 
 Playback/content resolution, MusicKit capture, and Spotify-linked playback remain deliberately separate. Any libspot/librespot experiment starts only on its own branch after the core product is complete and after policy, licensing, account-security, App Store, and maintenance implications are reviewed.
 
 ## Local cleanup
 
-Disposable development downloads and generated artifacts were permanently removed after the product commit was pushed. This includes donor clones, Playwright/Chromium, project build products and result bundles, accumulated project Trash, Xcode and its downloaded simulator runtimes/support data, project-created Gradle/Kotlin toolchains, the local UX-writing skill, disposable simulators, fixture apps, logs, and screenshots. The cleanup reclaimed well over 100 GB by measured artifact sizes.
+The 2026-09-22 portable cleanup removed prior donor clones, browser tooling, builds, runtimes, skill installation, simulators, and other disposable artifacts. Development was rebuilt on 2026-09-24: Xcode 27 was already present; the iOS 27 runtime, UX-writing skill, ephemeral Nix XcodeGen paths, package/build caches, two disposable QA simulators, logs, and screenshots now exist again.
 
-The source checkout, Git history, tracked Xcode project, `project.yml`, Apple Command Line Tools, the shared Nix store, pre-existing developer data, user settings, credentials, personal files, and unrelated Trash contents were retained. Exact provenance is recorded in `environment-changes.md`.
+The source checkout, Git history, tracked Xcode project, `project.yml`, Apple Command Line Tools, shared Nix store, pre-existing developer data, user settings, credentials, personal files, and unrelated Trash contents remain preserved. Exact artifact paths and cleanup commands are recorded in `environment-changes.md`.
