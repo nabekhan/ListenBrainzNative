@@ -846,7 +846,7 @@ struct TasteView: View {
     private func eraActivityContext(_ activity: EraActivity) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             if let selectedEraDecade {
-                Text(verbatim: "\(selectedEraDecade)s")
+                Text(String(localized: "\(selectedEraDecade.calendarYearText)s"))
                     .font(.headline)
                 Text(String(localized: "\(activity.listenCount(in: selectedEraDecade).formatted()) listens across individual years"))
                     .font(.caption)
@@ -902,7 +902,7 @@ struct TasteView: View {
                 if selectedEraDecade != nil, let peakYear {
                     activitySummary(
                         peakYear.listenCount.formatted(),
-                        label: Text(String(localized: "Peak year · \(peakYear.year)")),
+                        label: Text(String(localized: "Peak year · \(peakYear.year.calendarYearText)")),
                         symbol: "calendar"
                     )
                 } else if let leading = activity.leadingDecade {
@@ -919,7 +919,7 @@ struct TasteView: View {
                 if selectedEraDecade != nil, let peakYear {
                     activitySummary(
                         peakYear.listenCount.formatted(),
-                        label: Text(String(localized: "Peak year · \(peakYear.year)")),
+                        label: Text(String(localized: "Peak year · \(peakYear.year.calendarYearText)")),
                         symbol: "calendar"
                     )
                 } else if let leading = activity.leadingDecade {
@@ -1043,7 +1043,7 @@ struct TasteView: View {
     private func eraChartPoints(_ activity: EraActivity) -> [EraChartPoint] {
         if let selectedEraDecade {
             return activity.years(in: selectedEraDecade).map {
-                EraChartPoint(value: $0.year, listenCount: $0.listenCount, label: String($0.year))
+                EraChartPoint(value: $0.year, listenCount: $0.listenCount, label: $0.year.calendarYearText)
             }
         }
         return activity.decades.map {
@@ -1061,7 +1061,7 @@ struct TasteView: View {
 
     private var eraActivityFootnote: String {
         if let selectedEraDecade {
-            return String(localized: "Showing every year in the \(selectedEraDecade)s, including years with no matched listens.")
+            return String(localized: "Showing every year in the \(selectedEraDecade.calendarYearText)s, including years with no matched listens.")
         }
         return String(localized: "Counts include listens whose recordings have original release-year metadata. Empty decades are kept within ordinary release-year spans.")
     }

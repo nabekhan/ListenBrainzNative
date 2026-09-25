@@ -184,7 +184,10 @@ final class FeedModel {
                 state.thankedEventIDs.insert(event.id)
                 states[mode] = state
             }
-            actionAlert = .init(kind: .confirmation, message: "Thank-you sent.")
+            actionAlert = .init(
+                kind: .confirmation,
+                message: String(localized: "Thank-you sent.")
+            )
             await cache.removeAll()
             return true
         } catch {

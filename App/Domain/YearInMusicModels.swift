@@ -129,7 +129,7 @@ struct YearInMusicReport: Hashable, Sendable {
         let listenCount: Int
 
         var id: Int { decade }
-        var label: String { String(localized: "\(decade)s") }
+        var label: String { String(localized: "\(decade.calendarYearText)s") }
     }
 
     struct ListeningDay: Identifiable, Hashable, Sendable {
@@ -260,7 +260,7 @@ struct YearInMusicReport: Hashable, Sendable {
 
             func explanation(year: Int) -> String {
                 switch self {
-                case .discoveries: String(localized: "Your top tracks first heard in \(year).")
+                case .discoveries: String(localized: "Your top tracks first heard in \(year.calendarYearText).")
                 case .missedRecordings: String(localized: "A discovery playlist based on similar listeners.")
                 }
             }

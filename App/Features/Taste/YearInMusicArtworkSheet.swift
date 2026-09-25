@@ -132,7 +132,7 @@ struct YearInMusicArtworkSheet: View {
                         .font(.headline)
                         .foregroundStyle(AppTheme.accent)
                 }
-                Text(String(localized: "Generated from your \(report.year) listening report."))
+                Text(String(localized: "Generated from your \(report.year.calendarYearText) listening report."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -164,10 +164,10 @@ struct YearInMusicArtworkSheet: View {
                         data: pngData,
                         fileName: "ListenBrainz-Year-in-Music-\(report.year).png"
                     ),
-                    subject: Text(String(localized: "My \(report.year) Year in Music")),
-                    message: Text(String(localized: "My \(report.year) listening story on ListenBrainz: \(reportURL.absoluteString)")),
+                    subject: Text(String(localized: "My \(report.year.calendarYearText) Year in Music")),
+                    message: Text(String(localized: "My \(report.year.calendarYearText) listening story on ListenBrainz: \(reportURL.absoluteString)")),
                     preview: SharePreview(
-                        String(localized: "ListenBrainz Year in Music \(report.year)"),
+                        String(localized: "ListenBrainz Year in Music \(report.year.calendarYearText)"),
                         image: Image(uiImage: shareImage)
                     )
                 ) {
@@ -249,7 +249,7 @@ struct YearInMusicArtworkSheet: View {
 
     private var artworkAccessibilityLabel: String {
         var parts = [
-            String(localized: "Official ListenBrainz Year in Music \(report.year) artwork"),
+            String(localized: "Official ListenBrainz Year in Music \(report.year.calendarYearText) artwork"),
             listenCountLabel(report.totals.listenCount),
             artistCountLabel(report.totals.artistCount),
         ]

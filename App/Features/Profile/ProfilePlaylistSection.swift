@@ -184,9 +184,9 @@ struct ProfilePlaylistSection: View {
     }
 
     private func issueCard(
-        title: String,
+        title: LocalizedStringResource,
         message: String,
-        actionTitle: String,
+        actionTitle: LocalizedStringResource,
         action: @escaping @MainActor () async -> Void
     ) -> some View {
         VStack(alignment: .leading, spacing: 9) {

@@ -199,7 +199,10 @@ struct ReleaseGroupDetailView: View {
     private var facts: some View {
         detailSection("MusicBrainz identity") {
             VStack(alignment: .leading, spacing: 12) {
-                Label(displayType ?? "Release group", systemImage: "square.stack.3d.up")
+                Label(
+                    displayType ?? String(localized: "Release group"),
+                    systemImage: "square.stack.3d.up"
+                )
                 Link(destination: group.musicBrainzURL) {
                     Label("Open release group", systemImage: "arrow.up.right.square")
                 }
@@ -225,13 +228,14 @@ struct ReleaseGroupDetailView: View {
     }
 
     private func detailSection<Content: View>(
-        _ title: String,
+        _ title: LocalizedStringResource,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title.uppercased())
+            Text(title)
                 .font(.caption.bold())
                 .foregroundStyle(.secondary)
+                .textCase(.uppercase)
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -254,7 +258,10 @@ struct ReleaseGroupDetailView: View {
         .background(.thinMaterial, in: .rect(cornerRadius: 18, style: .continuous))
     }
 
-    private func notice(title: String, message: String) -> some View {
+    private func notice(
+        title: LocalizedStringResource,
+        message: LocalizedStringResource
+    ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).font(.headline)
             Text(message).font(.subheadline).foregroundStyle(.secondary)

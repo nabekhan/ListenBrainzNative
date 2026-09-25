@@ -4,18 +4,18 @@ struct ArtistHeroPresentation: Equatable {
     let artistName: String
     let identity: ArtistPageIdentity?
 
-    var artworkAccessibilityLabel: String { "Artwork for \(artistName)" }
+    var artworkAccessibilityLabel: String { String(localized: "Artwork for \(artistName)") }
 
     var metadataLine: String? {
         guard let identity else { return nil }
         var details: [String] = []
         switch (identity.beginYear, identity.endYear) {
         case let (.some(begin), .some(end)):
-            details.append("\(begin)–\(end)")
+            details.append("\(begin.calendarYearText)–\(end.calendarYearText)")
         case let (.some(begin), .none):
-            details.append("Since \(begin)")
+            details.append(String(localized: "Since \(begin.calendarYearText)"))
         case let (.none, .some(end)):
-            details.append("Until \(end)")
+            details.append(String(localized: "Until \(end.calendarYearText)"))
         case (.none, .none):
             break
         }
@@ -449,7 +449,9 @@ struct ArtistDetailView: View {
     }
 
     private func listenCountLabel(_ count: Int) -> String {
-        "\(count.formatted()) \(count == 1 ? "listen" : "listens")"
+        count == 1
+            ? String(localized: "\(count.formatted()) listen")
+            : String(localized: "\(count.formatted()) listens")
     }
 
     @ViewBuilder

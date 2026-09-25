@@ -286,7 +286,7 @@ struct UserDetailView: View {
         .background(.thinMaterial, in: .rect(cornerRadius: 14, style: .continuous))
     }
 
-    private func metric(_ value: String, label: String) -> some View {
+    private func metric(_ value: String, label: LocalizedStringResource) -> some View {
         VStack(spacing: 3) {
             Text(value)
                 .font(.headline.monospacedDigit())
@@ -300,7 +300,7 @@ struct UserDetailView: View {
     }
 
     private var latestActivityDescription: String {
-        if model.snapshot.playingNow != nil { return "Now" }
+        if model.snapshot.playingNow != nil { return String(localized: "Now") }
         guard let date = model.snapshot.recentListens.first?.listenedAt else { return "—" }
         return date.formatted(.relative(presentation: .named))
     }
@@ -400,12 +400,14 @@ private struct UserProfileTopReleasesList: View {
         .contentShape(.rect)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(release.name), \(release.artistName), \(listenCountLabel(release.listenCount))"
+            String(localized: "\(release.name), \(release.artistName), \(listenCountLabel(release.listenCount))")
         )
     }
 
     private func listenCountLabel(_ count: Int) -> String {
-        "\(count.formatted()) \(count == 1 ? "listen" : "listens")"
+        count == 1
+            ? String(localized: "\(count.formatted()) listen")
+            : String(localized: "\(count.formatted()) listens")
     }
 }
 
@@ -517,13 +519,17 @@ struct UserProfileTopRecordingsList: View {
     }
 
     private func accessibilityLabel(for recording: RankedRecording) -> String {
-        [recording.title, recording.artistName, recording.releaseTitle, listenCountLabel(recording.listenCount)]
-            .compactMap { $0 }
-            .joined(separator: ", ")
+        let count = listenCountLabel(recording.listenCount)
+        if let releaseTitle = recording.releaseTitle {
+            return String(localized: "\(recording.title), \(recording.artistName), \(releaseTitle), \(count)")
+        }
+        return String(localized: "\(recording.title), \(recording.artistName), \(count)")
     }
 
     private func listenCountLabel(_ count: Int) -> String {
-        "\(count.formatted()) \(count == 1 ? "listen" : "listens")"
+        count == 1
+            ? String(localized: "\(count.formatted()) listen")
+            : String(localized: "\(count.formatted()) listens")
     }
 }
 
@@ -597,7 +603,9 @@ private struct DefiningArtistsCarousel: View {
             .background(.thinMaterial, in: .rect(cornerRadius: 18, style: .continuous))
             .contentShape(.rect)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(artist.name), \(listenCountLabel(artist.listenCount))")
+            .accessibilityLabel(
+                String(localized: "\(artist.name), \(listenCountLabel(artist.listenCount))")
+            )
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 ArtistArtworkView(artist: artist)
@@ -611,12 +619,16 @@ private struct DefiningArtistsCarousel: View {
             }
             .frame(width: 116, alignment: .leading)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(artist.name), \(listenCountLabel(artist.listenCount))")
+            .accessibilityLabel(
+                String(localized: "\(artist.name), \(listenCountLabel(artist.listenCount))")
+            )
         }
     }
 
     private func listenCountLabel(_ count: Int) -> String {
-        "\(count.formatted()) \(count == 1 ? "listen" : "listens")"
+        count == 1
+            ? String(localized: "\(count.formatted()) listen")
+            : String(localized: "\(count.formatted()) listens")
     }
 }
 

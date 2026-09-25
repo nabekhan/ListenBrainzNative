@@ -117,7 +117,7 @@ final class RecordingShareModel {
             await feedCache.removeAll()
             notice = RecordingShareNotice(
                 kind: .confirmation,
-                message: "Recommended to your followers."
+                message: String(localized: "Recommended to your followers.")
             )
             return true
         } catch {
@@ -160,8 +160,8 @@ final class RecordingShareModel {
             notice = RecordingShareNotice(
                 kind: .confirmation,
                 message: recipients.count == 1
-                    ? "Personal recommendation sent."
-                    : "Sent to \(recipients.count) followers."
+                    ? String(localized: "Personal recommendation sent.")
+                    : String(localized: "Sent to \(recipients.count) followers.")
             )
             return true
         } catch {

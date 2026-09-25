@@ -897,7 +897,7 @@ struct MainTabView: View {
 
     private enum VisualQAHomePinError: LocalizedError {
         case unavailable
-        var errorDescription: String? { "The preview pin is unavailable." }
+        var errorDescription: String? { String(localized: "The preview pin is unavailable.") }
     }
 
     private struct VisualQARadioProvider: RadioProviding {
@@ -1149,7 +1149,7 @@ struct MainTabView: View {
 
     private enum VisualQAArtistHighlightsError: LocalizedError {
         case unavailable
-        var errorDescription: String? { "Fixture artist highlights unavailable." }
+        var errorDescription: String? { String(localized: "Fixture artist highlights unavailable.") }
     }
 
     private struct VisualQACritiqueBrainzReviewsProvider: CritiqueBrainzReviewsProviding {
@@ -1270,12 +1270,12 @@ struct MainTabView: View {
     private enum VisualQAConnectedServicesError: LocalizedError {
         case unavailable
 
-        var errorDescription: String? { "The preview service is unavailable." }
+        var errorDescription: String? { String(localized: "The preview service is unavailable.") }
     }
 
     private enum VisualQACritiqueBrainzError: LocalizedError {
         case unavailable
-        var errorDescription: String? { "Check your connection, then try again." }
+        var errorDescription: String? { String(localized: "Check your connection, then try again.") }
     }
 
     private struct VisualQAPopularityListeningProvider: ListeningProvider {

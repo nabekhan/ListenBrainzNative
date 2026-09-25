@@ -131,7 +131,7 @@ struct ConnectedServicesView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         serviceIcon(service)
-                        Text(service.label ?? "Other service")
+                        Text(service.label ?? String(localized: "Other service"))
                             .font(.body.weight(.semibold))
                     }
                     serviceStatus(service)
@@ -141,7 +141,7 @@ struct ConnectedServicesView: View {
                     serviceIcon(service)
                         .frame(width: 28)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(service.label ?? "Other service")
+                        Text(service.label ?? String(localized: "Other service"))
                             .font(.body.weight(.semibold))
                         serviceStatus(service)
                     }

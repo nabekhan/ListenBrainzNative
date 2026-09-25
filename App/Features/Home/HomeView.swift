@@ -18,8 +18,8 @@ struct HomeView: View {
                     content
                 }
             }
-            .navigationTitle(Text(greeting))
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle("Home")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if model.account.isAuthenticated {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -47,9 +47,15 @@ struct HomeView: View {
     private var content: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 30) {
-                Text("@\(model.account.username)")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(greeting)
+                        .font(.largeTitle.bold())
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("@\(model.account.username)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 if let listen = model.snapshot.playingNow ?? model.snapshot.recentListens.first {
                     FeaturedListenCard(

@@ -259,7 +259,7 @@ final class PlaylistCopyModel {
                     notice = .verificationNeeded(
                         id: UUID(),
                         destinationMBID: nil,
-                        message: "No matching recent copy was verified in your newest Owned Playlists. Duplicate stays disabled so another playlist cannot be created accidentally."
+                        message: String(localized: "No matching recent copy was verified in your newest Owned Playlists. Duplicate stays disabled so another playlist cannot be created accidentally.")
                     )
                     return
                 }

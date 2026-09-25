@@ -66,14 +66,14 @@ struct YearInMusicView: View {
                 stateContent
             }
         }
-        .navigationTitle(String(localized: "Year in Music \(selectedYear)"))
+        .navigationTitle(String(localized: "Year in Music \(selectedYear.calendarYearText)"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Menu {
                     Picker("Year", selection: $selectedYear) {
                         ForEach([2025, 2024, 2023, 2022, 2021], id: \.self) { year in
-                            Text(String(year)).tag(year)
+                            Text(year.calendarYearText).tag(year)
                         }
                     }
                 } label: {
@@ -87,8 +87,8 @@ struct YearInMusicView: View {
                     Menu {
                         ShareLink(
                             item: url,
-                            subject: Text(String(localized: "My \(report.year) Year in Music")),
-                            message: Text(String(localized: "My \(report.year) listening story on ListenBrainz"))
+                            subject: Text(String(localized: "My \(report.year.calendarYearText) Year in Music")),
+                            message: Text(String(localized: "My \(report.year.calendarYearText) listening story on ListenBrainz"))
                         ) {
                             Label("Share report link", systemImage: "link")
                         }
@@ -300,7 +300,7 @@ struct YearInMusicView: View {
             VStack(spacing: 18) {
                 ProgressView()
                     .controlSize(.large)
-                Text(String(localized: "Building your \(model.year) listening story…"))
+                Text(String(localized: "Building your \(model.year.calendarYearText) listening story…"))
                     .font(.headline)
                 Text("One ListenBrainz report powers the whole retrospective.")
                     .font(.subheadline)
@@ -312,7 +312,7 @@ struct YearInMusicView: View {
             .accessibilityElement(children: .combine)
         case .unavailable:
             ContentUnavailableView {
-                Label(String(localized: "No \(model.year) report yet"), systemImage: "sparkles.rectangle.stack")
+                Label(String(localized: "No \(model.year.calendarYearText) report yet"), systemImage: "sparkles.rectangle.stack")
             } description: {
                 Text("ListenBrainz has not generated a Year in Music report for this account.")
             } actions: {
@@ -368,7 +368,7 @@ private struct YearInMusicArtistEvolutionSection: View {
                         activity: activity,
                         artists: artists,
                         selectedTimeUnit: $selectedTimeUnit,
-                        accessibilityTitle: String(localized: "\(report.year) artist evolution")
+                        accessibilityTitle: String(localized: "\(report.year.calendarYearText) artist evolution")
                     )
                     ArtistEvolutionArtistLegend(artists: artists)
                     selectedBreakdown(activity, artists: artists)
@@ -406,7 +406,7 @@ private struct YearInMusicArtistEvolutionSection: View {
 
     private var reportContext: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(String(report.year))
+            Text(report.year.calendarYearText)
                 .font(.headline)
             Text("Tap the chart to inspect a time slice")
                 .font(.caption)
@@ -483,14 +483,14 @@ struct YearInMusicTeaserCard: View {
             .clipShape(.rect(cornerRadius: 24, style: .continuous))
             .contentShape(.rect(cornerRadius: 24, style: .continuous))
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(String(localized: "Year in Music \(year)"))
+            .accessibilityLabel(String(localized: "Year in Music \(year.calendarYearText)"))
             .accessibilityHint("Opens your annual ListenBrainz retrospective")
     }
 
     private var teaserContent: some View {
         HStack(alignment: .bottom, spacing: 14) {
             VStack(alignment: .leading, spacing: dynamicTypeSize.isAccessibilitySize ? 10 : 5) {
-                Text(String(localized: "YOUR \(year)"))
+                Text(String(localized: "YOUR \(year.calendarYearText)"))
                     .font(.caption.bold())
                     .tracking(1.2)
                     .foregroundStyle(.white.opacity(0.78))
@@ -555,7 +555,7 @@ private struct YearInMusicHero: View {
     private var heroContent: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(String(localized: "YOUR \(report.year)"))
+                Text(String(localized: "YOUR \(report.year.calendarYearText)"))
                     .font(.caption.bold())
                     .tracking(1.4)
                     .foregroundStyle(.white.opacity(0.76))
@@ -645,7 +645,7 @@ private struct YearInMusicHero: View {
         } else {
             duration = String(localized: "Listening duration unavailable")
         }
-        var summary = String(localized: "Year in Music \(report.year). \(duration). \(report.totals.listenCount.formatted()) listens")
+        var summary = String(localized: "Year in Music \(report.year.calendarYearText). \(duration). \(report.totals.listenCount.formatted()) listens")
         if report.totals.hasArtistCount { summary += String(localized: ", \(report.totals.artistCount.formatted()) artists") }
         if report.totals.hasReleaseCount { summary += String(localized: ", \(report.totals.releaseGroupCount.formatted()) releases") }
         if report.totals.hasRecordingCount { summary += String(localized: ", and \(report.totals.recordingCount.formatted()) tracks") }
@@ -958,13 +958,9 @@ private struct YearInMusicHeatmap: View {
 
                 HStack(alignment: .top, spacing: 5) {
                     VStack(spacing: spacing) {
-                        dayLabel("M", size: cellSize)
-                        dayLabel("", size: cellSize)
-                        dayLabel("W", size: cellSize)
-                        dayLabel("", size: cellSize)
-                        dayLabel("F", size: cellSize)
-                        dayLabel("", size: cellSize)
-                        dayLabel("", size: cellSize)
+                        ForEach(Array(weekdayLabels.enumerated()), id: \.offset) { _, label in
+                            dayLabel(label, size: cellSize)
+                        }
                     }
                     .frame(width: labelWidth)
 
@@ -986,10 +982,20 @@ private struct YearInMusicHeatmap: View {
     }
 
     private func dayLabel(_ label: String, size: CGFloat) -> some View {
-        Text(label)
+        Text(verbatim: label)
             .font(.system(size: 7, weight: .medium, design: .rounded))
             .foregroundStyle(.secondary)
             .frame(width: labelWidth, height: size)
+    }
+
+    private var weekdayLabels: [String] {
+        let symbols = Calendar.autoupdatingCurrent.veryShortStandaloneWeekdaySymbols
+        guard symbols.count >= 7 else {
+            return [String(localized: "M"), "", String(localized: "W"), "", String(localized: "F"), "", ""]
+        }
+        // Foundation orders weekday symbols Sunday through Saturday. The
+        // ListenBrainz heatmap is Monday through Sunday and only labels M/W/F.
+        return [symbols[1], "", symbols[3], "", symbols[5], "", ""]
     }
 
     @ViewBuilder
@@ -1068,9 +1074,9 @@ struct YearInMusicCalendarLayout: Equatable {
 
     var accessibilitySummary: String {
         if let busiestDay {
-            return String(localized: "Listening calendar for \(year), \(activeDayCount.formatted()) active days. Busiest day was \(longDayLabel(busiestDay.date)) with \(busiestDay.listenCount.formatted()) listens.")
+            return String(localized: "Listening calendar for \(year.calendarYearText), \(activeDayCount.formatted()) active days. Busiest day was \(longDayLabel(busiestDay.date)) with \(busiestDay.listenCount.formatted()) listens.")
         }
-        return String(localized: "Listening calendar for \(year), with no active days in the report.")
+        return String(localized: "Listening calendar for \(year.calendarYearText), with no active days in the report.")
     }
 
     func shortDayLabel(_ date: Date) -> String {
@@ -1083,7 +1089,9 @@ struct YearInMusicCalendarLayout: Equatable {
 
     private static func utcDayLabel(_ date: Date, template: String) -> String {
         let formatter = DateFormatter()
-        formatter.calendar = utcCalendar
+        var displayCalendar = utcCalendar
+        displayCalendar.locale = .autoupdatingCurrent
+        formatter.calendar = displayCalendar
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.locale = .autoupdatingCurrent
         formatter.setLocalizedDateFormatFromTemplate(template)
@@ -1269,7 +1277,7 @@ private struct YearInMusicNewReleasesSection: View {
         VStack(alignment: .leading, spacing: 14) {
             SectionHeader(
                 title: "New from top artists",
-                subtitle: "Albums and singles released in \(year)"
+                subtitle: "Albums and singles released in \(year.calendarYearText)"
             )
 
             LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
@@ -1504,7 +1512,7 @@ private struct YearInMusicRankBadge: View {
     }
 }
 
-private func sectionEmpty(_ message: String) -> some View {
+private func sectionEmpty(_ message: LocalizedStringResource) -> some View {
     Text(message)
         .font(.subheadline)
         .foregroundStyle(.secondary)

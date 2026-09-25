@@ -825,7 +825,7 @@ private struct FreshReleaseFiltersSheet: View {
 
     @ViewBuilder
     private func adaptivePicker<Selection: Hashable, Content: View>(
-        _ title: String,
+        _ title: LocalizedStringResource,
         selection: Binding<Selection>,
         @ViewBuilder content: () -> Content
     ) -> some View {
@@ -833,13 +833,17 @@ private struct FreshReleaseFiltersSheet: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
                     .font(.headline)
-                Picker(title, selection: selection, content: content)
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Picker(selection: selection, content: content) {
+                    Text(title)
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         } else {
-            Picker(title, selection: selection, content: content)
+            Picker(selection: selection, content: content) {
+                Text(title)
+            }
         }
     }
 
@@ -867,7 +871,7 @@ private struct FreshReleaseFiltersSheet: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    private func filterLinkLabel(_ title: String, count: Int) -> some View {
+    private func filterLinkLabel(_ title: LocalizedStringResource, count: Int) -> some View {
         HStack {
             Text(title)
             Spacer()

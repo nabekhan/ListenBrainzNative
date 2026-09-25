@@ -145,24 +145,24 @@ final class PlaylistAddSheetModel {
                     // response was lost, so never attribute ambiguous work to
                     // this client or enable a replay.
                     didBecomeIndeterminate = true
-                    message = "The recording is in the playlist now, but ListenBrainz did not confirm whether this add completed. Inspect the playlist before trying again."
+                    message = String(localized: "The recording is in the playlist now, but ListenBrainz did not confirm whether this add completed. Inspect the playlist before trying again.")
                 } else {
                     didComplete = true
-                    message = "Added to \(detail.title)."
+                    message = String(localized: "Added to \(detail.title).")
                 }
             } else if indeterminate {
                 didBecomeIndeterminate = true
-                message = "ListenBrainz did not confirm this add. Inspect the playlist before trying again."
+                message = String(localized: "ListenBrainz did not confirm this add. Inspect the playlist before trying again.")
             } else {
                 didBecomeIndeterminate = true
-                message = "ListenBrainz accepted the request but the playlist did not update yet. Inspect it before trying again."
+                message = String(localized: "ListenBrainz accepted the request but the playlist did not update yet. Inspect it before trying again.")
             }
         } catch {
             didBecomeIndeterminate = true
             await discardAccessSensitiveStateIfNeeded(error)
             message = PlaylistAccessFailurePolicy.requiresPurge(error)
                 ? error.localizedDescription
-                : "Couldn’t verify this add. Inspect the playlist before trying again."
+                : String(localized: "Couldn’t verify this add. Inspect the playlist before trying again.")
         }
     }
 

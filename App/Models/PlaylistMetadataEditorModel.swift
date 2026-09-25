@@ -68,8 +68,8 @@ final class PlaylistMetadataEditorModel {
 
     var actionTitle: String {
         switch mode {
-        case .create: "Create"
-        case .edit: "Save"
+        case .create: String(localized: "Create")
+        case .edit: String(localized: "Save")
         }
     }
 

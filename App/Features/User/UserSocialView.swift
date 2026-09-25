@@ -37,7 +37,7 @@ struct UserSocialView: View {
         ) {
             Button("OK") { model.dismissActionError() }
         } message: {
-            Text(model.actionError ?? "ListenBrainz did not accept the change.")
+            Text(model.actionError ?? String(localized: "ListenBrainz did not accept the change."))
         }
     }
 
@@ -227,7 +227,7 @@ struct UserSocialView: View {
     }
 
     private func retryRow(
-        title: String,
+        title: LocalizedStringResource,
         message: String,
         retry: @escaping @MainActor () async -> Void
     ) -> some View {

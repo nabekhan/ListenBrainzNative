@@ -319,7 +319,9 @@ struct RecordingDetailView: View {
             }
             detailRow(
                 "Metadata",
-                value: recording.identity.mbid == nil ? "Unmapped recording" : "MusicBrainz mapped",
+                value: recording.identity.mbid == nil
+                    ? String(localized: "Unmapped recording")
+                    : String(localized: "MusicBrainz mapped"),
                 icon: recording.identity.mbid == nil ? "questionmark.diamond" : "checkmark.seal.fill"
             )
         }

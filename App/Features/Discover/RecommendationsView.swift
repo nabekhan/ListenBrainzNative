@@ -383,7 +383,7 @@ private struct RecommendationFeedbackControl: View {
             if isUpdating {
                 ProgressView().controlSize(.small)
             }
-            Text(selected?.confirmationTitle ?? "Tune this pick")
+            Text(selected?.confirmationTitle ?? String(localized: "Tune this pick"))
                 .font(.caption.weight(.medium))
                 .foregroundStyle(selected == nil ? Color.secondary : Color.primary)
                 .lineLimit(2)

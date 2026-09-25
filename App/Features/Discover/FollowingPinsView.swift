@@ -283,5 +283,9 @@ private struct FollowingPinsPreviewProvider: FollowingPinsProviding {
         PinnedRecording(rowID: row, created: .now.addingTimeInterval(TimeInterval(-row * 3_600)), pinnedUntil: nil, blurb: blurb, username: user, recording: .init(identity: .init(mbid: nil, msid: nil), title: title, artistName: artist, artistMBIDs: [], releaseTitle: nil, releaseMBID: nil, releaseGroupMBID: nil, artworkReleaseMBID: nil, durationMilliseconds: nil, source: nil), isCurrent: true)
     }
 }
-private enum FollowingPinsPreviewError: LocalizedError { case unavailable; var errorDescription: String? { "Check your connection, then try again." } }
+private enum FollowingPinsPreviewError: LocalizedError {
+    case unavailable
+
+    var errorDescription: String? { String(localized: "Check your connection, then try again.") }
+}
 #endif

@@ -121,24 +121,12 @@ struct ReleaseDetailView: View {
     @ViewBuilder
     private var facts: some View {
         if let detail = model.detail {
-            let values: [(String, String, String)] = [
-                ("Tracks", detail.trackCount.formatted(), "music.note.list"),
-                ("Duration", detail.totalDurationMilliseconds.map(durationLabel) ?? "—", "timer"),
-                ("Country", detail.country ?? "—", "globe"),
-                ("Status", detail.status ?? "—", "checkmark.seal"),
-            ]
             section("Release details") {
                 LazyVGrid(columns: factColumns, spacing: 14) {
-                    ForEach(values, id: \.0) { value in
-                        Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(value.0).font(.caption).foregroundStyle(.secondary)
-                                Text(value.1).font(.subheadline.weight(.semibold)).lineLimit(2)
-                            }
-                        } icon: {
-                            Image(systemName: value.2).foregroundStyle(AppTheme.accent)
-                        }
-                    }
+                    fact("Tracks", value: detail.trackCount.formatted(), systemImage: "music.note.list")
+                    fact("Duration", value: detail.totalDurationMilliseconds.map(durationLabel) ?? "—", systemImage: "timer")
+                    fact("Country", value: detail.country ?? "—", systemImage: "globe")
+                    fact("Status", value: detail.status ?? "—", systemImage: "checkmark.seal")
                 }
                 if let releaseGroupSeed {
                     Divider().padding(.vertical, 2)
@@ -290,18 +278,22 @@ struct ReleaseDetailView: View {
     }
 
     private func mediumTitle(_ medium: ReleaseMedium) -> String {
-        let label = medium.title ?? medium.format ?? "Disc \(medium.position)"
-        return detailMediaPrefix(medium) + label
+        guard let label = medium.title ?? medium.format else {
+            return String(localized: "Disc \(medium.position)")
+        }
+        guard (model.detail?.media.count ?? 0) > 1 else { return label }
+        return String(localized: "Disc \(medium.position) · \(label)")
     }
 
-    private func detailMediaPrefix(_ medium: ReleaseMedium) -> String {
-        guard (model.detail?.media.count ?? 0) > 1, medium.title != nil || medium.format != nil else { return "" }
-        return "Disc \(medium.position) · "
-    }
-
-    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func section<Content: View>(
+        _ title: LocalizedStringResource,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title.uppercased()).font(.caption.bold()).foregroundStyle(.secondary)
+            Text(title)
+                .font(.caption.bold())
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -320,7 +312,10 @@ struct ReleaseDetailView: View {
         .background(.thinMaterial, in: .rect(cornerRadius: 18, style: .continuous))
     }
 
-    private func notice(title: String, message: String) -> some View {
+    private func notice(
+        title: LocalizedStringResource,
+        message: LocalizedStringResource
+    ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).font(.headline)
             Text(message).font(.subheadline).foregroundStyle(.secondary)
@@ -328,6 +323,21 @@ struct ReleaseDetailView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(.thinMaterial, in: .rect(cornerRadius: 18, style: .continuous))
+    }
+
+    private func fact(
+        _ label: LocalizedStringResource,
+        value: String,
+        systemImage: String
+    ) -> some View {
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).font(.caption).foregroundStyle(.secondary)
+                Text(value).font(.subheadline.weight(.semibold)).lineLimit(2)
+            }
+        } icon: {
+            Image(systemName: systemImage).foregroundStyle(AppTheme.accent)
+        }
     }
 
     private func durationLabel(_ milliseconds: Int) -> String {
@@ -359,7 +369,9 @@ struct ReleaseDiscoveryContextContent: View {
         VStack(alignment: .leading, spacing: 10) {
             if let count = context.listenCount {
                 Label(
-                    "\(count.formatted()) ListenBrainz \(count == 1 ? "listen" : "listens")",
+                    count == 1
+                        ? String(localized: "\(count.formatted()) ListenBrainz listen")
+                        : String(localized: "\(count.formatted()) ListenBrainz listens"),
                     systemImage: "waveform"
                 )
                 .font(.subheadline.weight(.semibold))

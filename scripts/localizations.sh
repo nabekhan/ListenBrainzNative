@@ -33,18 +33,21 @@ make_source_copy_editable() {
     local destination="$1"
     local normalized="$temporary_root/normalized.xcstrings"
     jq '
-        .strings |= with_entries(
-            .key as $key
-            | if $key != "" and (.value.localizations.en? == null) then
-                .value.localizations.en = {
-                    "stringUnit": {
-                        "state": "translated",
-                        "value": $key
+        .strings |= (
+            with_entries(select(.value.extractionState? != "stale"))
+            | with_entries(
+                .key as $key
+                | if $key != "" and (.value.localizations.en? == null) then
+                    .value.localizations.en = {
+                        "stringUnit": {
+                            "state": "translated",
+                            "value": $key
+                        }
                     }
-                }
-            else
-                .
-            end
+                else
+                    .
+                end
+            )
         )
     ' "$destination" > "$normalized"
     cp "$normalized" "$destination"
@@ -59,9 +62,75 @@ validate_catalog() {
         and (
             .strings
             | to_entries
+            | all(.value.extractionState? != "stale")
+        )
+        and (
+            .strings
+            | to_entries
             | all(.value.localizations.en.stringUnit.value | type == "string")
         )
     ' "$candidate_catalog" >/dev/null
+}
+
+validate_source_boundaries() {
+    local failed=0
+
+    scan_boundary() {
+        local description="$1"
+        local pattern="$2"
+        shift 2
+
+        local matches
+        matches="$(rg -n -U --pcre2 --glob '*.swift' "$pattern" "$@" || true)"
+        if [[ -n "$matches" ]]; then
+            print -u2 "Localization boundary check failed: $description"
+            print -u2 -- "$matches"
+            print -u2 ""
+            failed=1
+        fi
+    }
+
+    local -a ui_sources=(App/Features App/Components App/Models App/Services)
+
+    # Xcode extracts direct SwiftUI literals. These checks cover high-confidence
+    # patterns where a literal becomes an ordinary String before presentation.
+    scan_boundary \
+        "LocalizedError copy must use String(localized:)." \
+        'errorDescription\s*:\s*String\?\s*\{(?:\s|\n)*"' \
+        "${ui_sources[@]}"
+    scan_boundary \
+        "User-facing model state must use String(localized:)." \
+        '\b(?:actionError|refreshMessage)\s*=\s*"' \
+        App/Models App/Services
+    scan_boundary \
+        "Model notices must localize app-authored message literals." \
+        '\bmessage\s*:\s*"[^"\n]*\s+[^"\n]*"' \
+        App/Models App/Services
+    scan_boundary \
+        "User-facing message assignments must use String(localized:)." \
+        '\bmessage\s*=\s*"[^"\n]*[A-Za-z][^"\n]*"' \
+        "${ui_sources[@]}"
+    scan_boundary \
+        "Localize literal branches before assigning conditional user-facing messages." \
+        '\bmessage\s*=\s*[^\n]+\n\s*\?\s*[^\n]+\n\s*:\s*"' \
+        "${ui_sources[@]}"
+    scan_boundary \
+        "Human-readable fallback copy must use String(localized:)." \
+        '\?\?\s*"[A-Za-z][^"\n]*\s+[^"\n]*"' \
+        "${ui_sources[@]}"
+    scan_boundary \
+        "Localize the literal branch before mixing it with dynamic SwiftUI text." \
+        '\b(?:Text|Label|navigationTitle|accessibilityLabel|accessibilityHint|ProgressView)\s*\([^?\n]*\?\s*"[^"]+"\s*:\s*[A-Za-z_]' \
+        App/Features App/Components
+    scan_boundary \
+        "Localize the literal branch before mixing it with dynamic SwiftUI text." \
+        '\b(?:Text|Label|navigationTitle|accessibilityLabel|accessibilityHint|ProgressView)\s*\([^?\n]*\?\s*[A-Za-z_][A-Za-z0-9_.]*(?:\([^)]*\))?\s*:\s*"[^"]+"' \
+        App/Features App/Components
+
+    if (( failed != 0 )); then
+        print -u2 "Use LocalizedStringResource for UI-copy parameters or String(localized:) when a rendered String is required."
+        return 1
+    fi
 }
 
 typeset -a catalogs
@@ -73,6 +142,8 @@ if (( ${#catalogs[@]} != 1 )) || [[ "${catalogs[1]:-}" != "App/Resources/Localiz
     print -u2 "Expected exactly one app string catalog at App/Resources/Localizable.xcstrings."
     exit 1
 fi
+
+validate_source_boundaries
 
 xcodebuild \
     -project ListenBrainzNative.xcodeproj \

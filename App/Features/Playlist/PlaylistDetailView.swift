@@ -149,7 +149,9 @@ struct PlaylistDetailView: View {
                     )
                 )
         }
-        .navigationTitle(model.accessWasLost ? "Playlist Unavailable" : displayTitle)
+        .navigationTitle(
+            model.accessWasLost ? String(localized: "Playlist Unavailable") : displayTitle
+        )
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showsArtwork) {
             if let detail = model.detail,
@@ -296,12 +298,16 @@ struct PlaylistDetailView: View {
         .alert(item: copyNoticeBinding) { notice in
             switch notice {
             case let .confirmed(copiedPlaylist):
-                let visibility = copiedPlaylist.isPublic ? "public" : "private"
+                let message = copiedPlaylist.isPublic
+                    ? String(
+                        localized: "“\(copiedPlaylist.title)” was created as a public playlist and is now in Owned Playlists."
+                    )
+                    : String(
+                        localized: "“\(copiedPlaylist.title)” was created as a private playlist and is now in Owned Playlists."
+                    )
                 return Alert(
                     title: Text("Playlist Duplicated"),
-                    message: Text(
-                        "“\(copiedPlaylist.title)” was created as a \(visibility) playlist and is now in Owned Playlists."
-                    ),
+                    message: Text(message),
                     primaryButton: .default(Text("Open Copy")) {
                         copyModel.acknowledgeConfirmedCopy()
                         copyDestination = copiedPlaylist
@@ -348,9 +354,9 @@ struct PlaylistDetailView: View {
                 let message: String
                 switch outcome {
                 case let .deleted(title):
-                    message = "“\(title)” was permanently deleted from ListenBrainz."
+                    message = String(localized: "“\(title)” was permanently deleted from ListenBrainz.")
                 case .noLongerAvailable:
-                    message = "This playlist is no longer available in ListenBrainz."
+                    message = String(localized: "This playlist is no longer available in ListenBrainz.")
                 }
                 return Alert(
                     title: Text("Playlist deleted"),
@@ -513,8 +519,12 @@ struct PlaylistDetailView: View {
 
     @ViewBuilder
     private func metrics(_ detail: PlaylistDetail) -> some View {
+        let trackCount = detail.tracks.count
+        let trackCountLabel = trackCount == 1
+            ? String(localized: "1 track")
+            : String(localized: "\(trackCount) tracks")
         Label(
-            "\(detail.tracks.count.formatted()) \(detail.tracks.count == 1 ? "track" : "tracks")",
+            trackCountLabel,
             systemImage: "music.note.list"
         )
         .fixedSize(horizontal: true, vertical: false)

@@ -135,20 +135,24 @@ struct PopularitySummaryView: View {
         if let count = presentation.listenCount {
             metric(
                 count: presentation.compact(count),
-                label: count == 1 ? String(localized: "Listen") : String(localized: "Listens"),
+                label: count == 1 ? "Listen" : "Listens",
                 systemImage: "waveform"
             )
         }
         if let count = presentation.listenerCount {
             metric(
                 count: presentation.compact(count),
-                label: count == 1 ? String(localized: "Listener") : String(localized: "Listeners"),
+                label: count == 1 ? "Listener" : "Listeners",
                 systemImage: "person.2.fill"
             )
         }
     }
 
-    private func metric(count: String, label: String, systemImage: String) -> some View {
+    private func metric(
+        count: String,
+        label: LocalizedStringResource,
+        systemImage: String
+    ) -> some View {
         HStack(spacing: 10) {
             Image(systemName: systemImage)
                 .font(.title3)

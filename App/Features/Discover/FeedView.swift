@@ -430,7 +430,7 @@ private struct FeedEventCard: View {
             HStack(spacing: 10) {
                 FeedAvatar(username: event.userName, symbol: eventSymbol)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(isViewer ? "You" : event.userName)
+                    Text(isViewer ? String(localized: "You") : event.userName)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
@@ -459,7 +459,10 @@ private struct FeedEventCard: View {
         case .follow:
             followContent
         case .notification:
-            messageContent(event.message ?? "ListenBrainz shared an update.", symbol: "bell.fill")
+            messageContent(
+                event.message ?? String(localized: "ListenBrainz shared an update."),
+                symbol: "bell.fill"
+            )
         case .critiquebrainzReview:
             reviewContent
         case .thanks:
@@ -596,7 +599,10 @@ private struct FeedEventCard: View {
 
     private var reviewContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label(event.entityName ?? "Music review", systemImage: "quote.bubble.fill")
+            Label(
+                event.entityName ?? String(localized: "Music review"),
+                systemImage: "quote.bubble.fill"
+            )
                 .font(.headline)
             if let rating = event.rating {
                 HStack(spacing: 3) {

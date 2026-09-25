@@ -1,5 +1,12 @@
 import Foundation
 
+extension Int {
+    /// Calendar years are locale-aware but never use thousands separators.
+    var calendarYearText: String {
+        formatted(.number.grouping(.never))
+    }
+}
+
 enum CoverArtArchiveURL {
     static func release(_ mbid: UUID) -> URL? {
         URL(string: "https://coverartarchive.org/release/\(mbid.uuidString.lowercased())/front-500")
@@ -802,7 +809,7 @@ struct EraActivity: Hashable, Sendable {
         let listenCount: Int
 
         var id: Int { year }
-        var title: String { String(localized: "\(year)s") }
+        var title: String { String(localized: "\(year.calendarYearText)s") }
     }
 
     let period: ListeningActivityPeriod
