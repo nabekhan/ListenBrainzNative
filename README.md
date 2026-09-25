@@ -55,7 +55,7 @@ The SwiftUI presentation depends on the small `ListeningProvider` boundary rathe
 
 ## Localization
 
-The app uses one translator-facing source of truth: `App/Resources/Localizable.xcstrings`. It stores an explicit editable English source value for every nonempty production key. SwiftUI literals are compiler-extracted, while reusable components accept `LocalizedStringResource` so copy does not disappear behind `String`-typed boundaries. New app-owned interface copy must follow the same path; existing computed and formatted copy is being migrated in reviewable feature passes. Server responses, usernames, music metadata, identifiers, and test fixtures remain verbatim rather than becoming translation keys.
+The app uses one translator-facing source of truth: `App/Resources/Localizable.xcstrings`. It stores an explicit editable English value for every production key, so product copy can be revised or translated in one file. SwiftUI literals are compiler-extracted, while reusable components use `LocalizedStringResource` and rendered model copy uses `String(localized:)` so text does not disappear behind ordinary `String` boundaries. The production UI has been audited for this contract, and the helper rejects common bypass patterns. Server responses, usernames, music metadata, identifiers, and test fixtures remain verbatim rather than becoming translation keys.
 
 After adding or changing interface copy, update and verify the production catalog:
 
@@ -64,7 +64,7 @@ scripts/localizations.sh sync
 scripts/localizations.sh check
 ```
 
-Both modes perform a Release extraction with Xcode and use `jq` to preserve explicit editable English source values. `check` works on a temporary copy and fails if the committed catalog has missing or stale production keys; DEBUG-only fixture copy is excluded. If `jq` is not installed, run either command through `nix shell nixpkgs#jq -c`.
+Both modes perform a Release extraction with Xcode and use `jq` to preserve explicit editable English values and remove compiler-marked stale keys. `check` works on a temporary copy and fails if the committed catalog has missing or stale production keys; DEBUG-only fixture copy is excluded. If `jq` is not installed, run either command through `nix shell nixpkgs#jq -c`.
 
 ## Research and provenance
 
