@@ -45,6 +45,7 @@ struct MainTabView: View {
             }
             if ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-visitor-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-edit-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-add-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo")
@@ -138,6 +139,7 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-new-releases-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-playlists-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-playlist-detail-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-visited-demo")
             {
                 let visualAccount = Account(username: "visual-taste", token: "visual-taste")
                 _model = State(
@@ -199,6 +201,7 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-zoom-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-taste-era-card-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-user-explore-demo")
             {
                 let visualAccount = Account(username: "visual-taste", token: "visual-taste")
                 _model = State(
@@ -289,11 +292,15 @@ struct MainTabView: View {
                 PlaylistAddVisualQAScreen()
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-visitor-demo")
             {
                 ProfilePlaylistVisualQAScreen(
                     selection: ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo")
                         ? .collaborating
-                        : .owned
+                        : .owned,
+                    isVisitedProfile: ProcessInfo.processInfo.arguments.contains(
+                        "-brainz-profile-playlists-visitor-demo"
+                    )
                 )
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-fresh-releases-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-fresh-releases-filters-demo")
@@ -315,6 +322,9 @@ struct MainTabView: View {
             {
                 TasteView(model: model)
                     .task { await model.load() }
+                    .environment(pins)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-user-explore-demo") {
+                UserProfileExploreVisualQAScreen(listeningModel: model)
                     .environment(pins)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-user-defining-artists-demo") {
                 UserDefiningArtistsVisualQAScreen(model: model)
@@ -489,12 +499,17 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-playlists-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-playlist-detail-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2021-demo")
-                || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2024-demo") {
+                || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2024-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-visited-demo") {
                 NavigationStack {
                     let visualYear = ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2021-demo") ? 2021 : ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-2024-demo") ? 2024 : 2025
+                    let visualSubject = ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-visited-demo")
+                        ? "music-friend"
+                        : account.username
                     if ProcessInfo.processInfo.arguments.contains("-brainz-year-in-music-art-demo") {
                         YearInMusicView(
                             account: account,
+                            subjectUsername: visualSubject,
                             listeningModel: model,
                             year: visualYear,
                             provider: VisualQAYearInMusicProvider(),
@@ -504,6 +519,7 @@ struct MainTabView: View {
                     } else {
                         YearInMusicView(
                             account: account,
+                            subjectUsername: visualSubject,
                             listeningModel: model,
                             year: visualYear,
                             provider: VisualQAYearInMusicProvider(),

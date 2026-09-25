@@ -12,6 +12,7 @@ struct YearInMusicView: View {
     static let latestSupportedYear = 2025
 
     let listeningModel: ListeningModel
+    private let subjectUsername: String
     private let artworkProvider: any YearInMusicArtworkProviding
     private let reportProvider: any YearInMusicProviding
     private let currentReportCache: EntityDetailCache<YearInMusicCacheKey, YearInMusicReport>
@@ -25,6 +26,7 @@ struct YearInMusicView: View {
 
     init(
         account: Account,
+        subjectUsername: String? = nil,
         listeningModel: ListeningModel,
         year: Int = Self.latestSupportedYear,
         provider: (any YearInMusicProviding)? = nil,
@@ -32,6 +34,12 @@ struct YearInMusicView: View {
         cache: EntityDetailCache<YearInMusicCacheKey, YearInMusicReport>? = nil
     ) {
         self.listeningModel = listeningModel
+        if let requestedSubject = subjectUsername?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !requestedSubject.isEmpty {
+            self.subjectUsername = requestedSubject
+        } else {
+            self.subjectUsername = account.username
+        }
         reportProvider = provider ?? ListenBrainzYearInMusicProvider(token: account.token)
         let currentCache = cache ?? YearInMusicCaches.reports
         let archiveCache = cache ?? YearInMusicCaches.archives
@@ -50,6 +58,7 @@ struct YearInMusicView: View {
         _model = State(
             initialValue: YearInMusicModel(
                 account: account,
+                subjectUsername: self.subjectUsername,
                 year: year,
                 provider: reportProvider,
                 cache: (2021 ... 2024).contains(year) ? archiveCache : currentCache
@@ -66,7 +75,7 @@ struct YearInMusicView: View {
                 stateContent
             }
         }
-        .navigationTitle(String(localized: "Year in Music \(selectedYear.calendarYearText)"))
+        .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -82,13 +91,14 @@ struct YearInMusicView: View {
                 .accessibilityLabel("Choose Year in Music year")
             }
             if let report = model.report,
-               let url = reportURL(username: report.username ?? model.account.username) {
+               let url = reportURL(username: report.username ?? subjectUsername) {
+                let reportOwner = report.username ?? subjectUsername
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         ShareLink(
                             item: url,
-                            subject: Text(String(localized: "My \(report.year.calendarYearText) Year in Music")),
-                            message: Text(String(localized: "My \(report.year.calendarYearText) listening story on ListenBrainz"))
+                            subject: Text(String(localized: "\(reportOwner)’s \(report.year.calendarYearText) Year in Music")),
+                            message: Text(String(localized: "\(reportOwner)’s \(report.year.calendarYearText) listening story on ListenBrainz"))
                         ) {
                             Label("Share report link", systemImage: "link")
                         }
@@ -106,10 +116,10 @@ struct YearInMusicView: View {
         }
         .sheet(isPresented: $showsArtwork) {
             if let report = model.report,
-               let url = reportURL(username: report.username ?? model.account.username) {
+               let url = reportURL(username: report.username ?? subjectUsername) {
                 YearInMusicArtworkSheet(
                     report: report,
-                    username: report.username ?? model.account.username,
+                    username: report.username ?? subjectUsername,
                     reportURL: url,
                     provider: artworkProvider
                 )
@@ -120,6 +130,7 @@ struct YearInMusicView: View {
             showsArtwork = false
             model = YearInMusicModel(
                 account: model.account,
+                subjectUsername: subjectUsername,
                 year: year,
                 provider: reportProvider,
                 cache: (2021 ... 2024).contains(year) ? archiveReportCache : currentReportCache
@@ -173,7 +184,7 @@ struct YearInMusicView: View {
 
                 visibleSections(report)
 
-                Text("Calculated by ListenBrainz from your submitted listening history.")
+                Text("Calculated by ListenBrainz from submitted listening history.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -300,7 +311,7 @@ struct YearInMusicView: View {
             VStack(spacing: 18) {
                 ProgressView()
                     .controlSize(.large)
-                Text(String(localized: "Building your \(model.year.calendarYearText) listening story…"))
+                Text(String(localized: "Building the \(model.year.calendarYearText) listening story…"))
                     .font(.headline)
                 Text("One ListenBrainz report powers the whole retrospective.")
                     .font(.subheadline)
@@ -314,7 +325,7 @@ struct YearInMusicView: View {
             ContentUnavailableView {
                 Label(String(localized: "No \(model.year.calendarYearText) report yet"), systemImage: "sparkles.rectangle.stack")
             } description: {
-                Text("ListenBrainz has not generated a Year in Music report for this account.")
+                Text("ListenBrainz has not generated a Year in Music report for this listener.")
             } actions: {
                 Button("Try Again") { Task { await model.refresh() } }
             }
@@ -343,6 +354,13 @@ struct YearInMusicView: View {
         components.path = "/user/\(username)/year-in-music\(archivePath)/\(model.year)/"
         return components.url
     }
+
+    private var navigationTitle: String {
+        if SearchUser(username: subjectUsername).isSameListener(as: model.account) {
+            return String(localized: "Year in Music \(selectedYear.calendarYearText)")
+        }
+        return String(localized: "\(subjectUsername) · \(selectedYear.calendarYearText)")
+    }
 }
 
 private struct YearInMusicArtistEvolutionSection: View {
@@ -359,7 +377,7 @@ private struct YearInMusicArtistEvolutionSection: View {
             VStack(alignment: .leading, spacing: 14) {
                 SectionHeader(
                     title: "Artists through the year",
-                    subtitle: "See how your favorites changed month by month."
+                    subtitle: "See how favorite artists changed month by month."
                 )
 
                 VStack(alignment: .leading, spacing: 18) {
@@ -555,7 +573,7 @@ private struct YearInMusicHero: View {
     private var heroContent: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(String(localized: "YOUR \(report.year.calendarYearText)"))
+                Text(String(localized: "YEAR IN MUSIC · \(report.year.calendarYearText)"))
                     .font(.caption.bold())
                     .tracking(1.4)
                     .foregroundStyle(.white.opacity(0.76))
@@ -659,8 +677,8 @@ private struct YearInMusicIdentitySection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             SectionHeader(
-                title: "How you listened",
-                subtitle: "A few patterns from your annual report"
+                title: "Listening patterns",
+                subtitle: "Highlights from the annual report"
             )
 
             VStack(alignment: .leading, spacing: 12) {
@@ -694,11 +712,11 @@ private struct YearInMusicIdentitySection: View {
         YearInMusicIdentityCard(icon: "calendar", title: "Most active weekday") {
             Text(weekday.localizedName)
                 .font(.title3.bold())
-            Text("Your busiest day for listening.")
+            Text("The busiest day for listening.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         } accessibilityLabel: {
-            String(localized: "Most active weekday. \(weekday.localizedName) was your busiest day for listening.")
+            String(localized: "Most active weekday. \(weekday.localizedName) was the busiest day for listening.")
         }
     }
 
@@ -722,7 +740,7 @@ private struct YearInMusicIdentitySection: View {
         YearInMusicIdentityCard(
             icon: "clock.arrow.circlepath",
             title: "Release decades",
-            subtitle: "Release years for the music you played"
+            subtitle: "Release years for the music played"
         ) {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(report.releaseDecades.prefix(6)) { decade in
@@ -890,7 +908,7 @@ private struct YearInMusicCalendarSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             SectionHeader(
-                title: "Your year at a glance",
+                title: "The year at a glance",
                 subtitle: "Every listening day · UTC"
             )
 
@@ -1112,7 +1130,7 @@ private struct YearInMusicArtistsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "Top artists", subtitle: "The voices that stayed with you")
+            SectionHeader(title: "Top artists", subtitle: "The most-played artists")
 
             if artists.isEmpty {
                 sectionEmpty("No artist ranking was included in this report.")
@@ -1183,7 +1201,7 @@ private struct YearInMusicAlbumsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "Top albums", subtitle: "The records you returned to")
+            SectionHeader(title: "Top albums", subtitle: "The most-played albums")
 
             if releases.isEmpty {
                 sectionEmpty("No album ranking was included in this report.")
@@ -1349,7 +1367,7 @@ private struct YearInMusicReleasesSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "Top releases", subtitle: "The editions you returned to")
+            SectionHeader(title: "Top releases", subtitle: "The most-played editions")
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 18) {
                 ForEach(Array(releases.prefix(6).enumerated()), id: \.offset) { index, release in
                     Group {
@@ -1396,7 +1414,7 @@ private struct YearInMusicTracksSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "Top tracks", subtitle: "Your most-played tracks")
+            SectionHeader(title: "Top tracks", subtitle: "The most-played tracks")
 
             if recordings.isEmpty {
                 sectionEmpty("No track ranking was included in this report.")
@@ -1533,8 +1551,8 @@ private struct YearInMusicPlaylistsSection: View {
         if !playlists.isEmpty {
             VStack(alignment: .leading, spacing: 14) {
                 SectionHeader(
-                    title: "Revisit your year",
-                    subtitle: "Playlists from your annual report."
+                    title: "Revisit the year",
+                    subtitle: "Playlists from the annual report."
                 )
                 if horizontalSizeClass == .regular, !dynamicTypeSize.isAccessibilitySize {
                     HStack(alignment: .top, spacing: 12) {
@@ -1761,12 +1779,12 @@ private enum YearInMusicPalette {
 #if DEBUG
 struct VisualQAYearInMusicProvider: YearInMusicProviding {
     func report(username: String, year: Int) async throws -> YearInMusicReport? {
-        .visualQA(year: year)
+        .visualQA(username: username, year: year)
     }
 }
 
 private extension YearInMusicReport {
-    static func visualQA(year: Int) -> Self {
+    static func visualQA(username: String, year: Int) -> Self {
         let artistIDs = [
             UUID(uuidString: "28cbf94d-0700-4095-a188-37e15f5c3c45"),
             UUID(uuidString: "10adbe5d-305b-4b75-9415-f00a3f2ed75e"),
@@ -1829,7 +1847,7 @@ private extension YearInMusicReport {
             )
         } : []
         return YearInMusicReport(
-            username: "visual-taste",
+            username: username,
             year: year,
             source: archive ? .archive : .current,
             totals: Totals(

@@ -1,5 +1,12 @@
 import SwiftUI
 
+enum ProfilePlaylistAudience {
+    static func hasOwnerAccess(profileUsername: String, viewer: Account) -> Bool {
+        viewer.isAuthenticated
+            && SearchUser(username: profileUsername).isSameListener(as: viewer)
+    }
+}
+
 struct ProfilePlaylistSection: View {
     @Bindable var model: ProfilePlaylistsModel
     @Binding var selection: ProfilePlaylistCategory
@@ -176,7 +183,7 @@ struct ProfilePlaylistSection: View {
         ContentUnavailableView(
             selection == .owned ? "No playlists yet" : "No collaborations yet",
             systemImage: selection == .owned ? "music.note.list" : "person.2.wave.2",
-            description: Text(selection.emptyDescription(for: viewer))
+            description: Text(selection.emptyDescription(hasOwnerAccess: hasOwnerAccess))
         )
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
@@ -210,11 +217,18 @@ struct ProfilePlaylistSection: View {
         if let totalCount = state.totalCount, state.phase == .ready {
             return selection.countLabel(for: totalCount)
         }
-        return selection.description(isAuthenticated: viewer.isAuthenticated)
+        return selection.description(hasOwnerAccess: hasOwnerAccess)
     }
 
     private var canCreate: Bool {
-        selection == .owned && viewer.isAuthenticated
+        selection == .owned && hasOwnerAccess
+    }
+
+    private var hasOwnerAccess: Bool {
+        ProfilePlaylistAudience.hasOwnerAccess(
+            profileUsername: model.account.username,
+            viewer: viewer
+        )
     }
 
     private var resolvedMutationProvider: any PlaylistMutationProviding {
@@ -406,17 +420,17 @@ private extension ProfilePlaylistCategory {
         }
     }
 
-    func description(isAuthenticated: Bool) -> LocalizedStringResource {
-        switch (self, isAuthenticated) {
+    func description(hasOwnerAccess: Bool) -> LocalizedStringResource {
+        switch (self, hasOwnerAccess) {
         case (.owned, true): "Collections you created, including private playlists"
         case (.owned, false): "Public collections created by this listener"
         case (.collaborating, true): "Collections you help shape with other listeners"
-        case (.collaborating, false): "Public collections shared with other listeners"
+        case (.collaborating, false): "Public collections this listener helps shape"
         }
     }
 
-    func emptyDescription(for viewer: Account) -> LocalizedStringResource {
-        switch (self, viewer.isAuthenticated) {
+    func emptyDescription(hasOwnerAccess: Bool) -> LocalizedStringResource {
+        switch (self, hasOwnerAccess) {
         case (.owned, true): "Playlists you create on ListenBrainz will appear here."
         case (.owned, false): "This listener has no public playlists."
         case (.collaborating, true): "Playlists shared with you will appear here."
@@ -442,13 +456,20 @@ private extension ProfilePlaylistCategory {
 struct ProfilePlaylistVisualQAScreen: View {
     @State private var model: ProfilePlaylistsModel
     @State private var selection: ProfilePlaylistCategory
-    private let account = Account(username: "visual-listener", token: "visual-token")
+    private let viewer: Account
+    private let isVisitedProfile: Bool
 
-    init(selection: ProfilePlaylistCategory) {
+    init(selection: ProfilePlaylistCategory, isVisitedProfile: Bool = false) {
+        let viewer = Account(
+            username: isVisitedProfile ? "visual-viewer" : "visual-listener",
+            token: "visual-token"
+        )
+        self.viewer = viewer
+        self.isVisitedProfile = isVisitedProfile
         _selection = State(initialValue: selection)
         _model = State(initialValue: ProfilePlaylistsModel(
             account: Account(username: "visual-listener", token: "visual-token"),
-            provider: VisualQAProfilePlaylistsProvider(),
+            provider: VisualQAProfilePlaylistsProvider(includesPrivate: !isVisitedProfile),
             cache: EntityDetailCache(),
             pageSize: 20
         ))
@@ -460,26 +481,33 @@ struct ProfilePlaylistVisualQAScreen: View {
                 ProfilePlaylistSection(
                     model: model,
                     selection: $selection,
-                    viewer: account,
+                    viewer: viewer,
                     mutationProvider: VisualQAPlaylistMutationProvider()
                 )
                     .padding(.horizontal, 18)
                     .padding(.vertical, 24)
             }
-            .navigationTitle("Profile")
+            .navigationTitle(
+                isVisitedProfile
+                    ? String(localized: "visual-listener’s playlists")
+                    : String(localized: "Profile")
+            )
             .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
 
 private struct VisualQAProfilePlaylistsProvider: ProfilePlaylistsProviding {
+    let includesPrivate: Bool
+
     func page(
         username: String,
         category: ProfilePlaylistCategory,
         offset: Int,
         count: Int
     ) async throws -> ProfilePlaylistPage {
-        let rows = category == .owned ? Self.owned : Self.collaborating
+        let allRows = category == .owned ? Self.owned : Self.collaborating
+        let rows = allRows.filter { includesPrivate || $0.isPublic }
         let page = Array(rows.dropFirst(offset).prefix(count))
         return ProfilePlaylistPage(
             username: username,

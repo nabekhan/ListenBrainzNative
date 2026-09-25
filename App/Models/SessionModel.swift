@@ -169,6 +169,7 @@ final class SessionModel {
             }
             if arguments.contains("-brainz-profile-playlists-demo")
                 || arguments.contains("-brainz-profile-playlists-collab-demo")
+                || arguments.contains("-brainz-profile-playlists-visitor-demo")
                 || arguments.contains("-brainz-playlist-edit-demo")
                 || arguments.contains("-brainz-playlist-add-demo")
                 || arguments.contains("-brainz-playlist-copy-demo")
@@ -242,7 +243,8 @@ final class SessionModel {
                 || arguments.contains("-brainz-year-in-music-playlists-demo")
                 || arguments.contains("-brainz-year-in-music-playlist-detail-demo")
                 || arguments.contains("-brainz-year-in-music-2021-demo")
-                || arguments.contains("-brainz-year-in-music-2024-demo") {
+                || arguments.contains("-brainz-year-in-music-2024-demo")
+                || arguments.contains("-brainz-year-in-music-visited-demo") {
                 state = .active(Account(username: "visual-taste", token: "visual-taste"))
                 return true
             }
@@ -258,6 +260,7 @@ final class SessionModel {
                 || arguments.contains("-brainz-taste-era-demo")
                 || arguments.contains("-brainz-taste-era-zoom-demo")
                 || arguments.contains("-brainz-taste-era-card-demo")
+                || arguments.contains("-brainz-user-explore-demo")
             {
                 state = .active(Account(username: "visual-taste", token: "visual-taste"))
                 return true

@@ -511,6 +511,46 @@
         }
       }
     },
+    "%@’s %@ Year in Music": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@’s %2$@ Year in Music"
+          }
+        }
+      }
+    },
+    "%@’s %@ listening story on ListenBrainz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@’s %2$@ listening story on ListenBrainz"
+          }
+        }
+      }
+    },
+    "%@’s %@ listening story on ListenBrainz: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@’s %2$@ listening story on ListenBrainz: %3$@"
+          }
+        }
+      }
+    },
+    "%@’s playlists": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@’s playlists"
+          }
+        }
+      }
+    },
     "%lld": {
       "localizations": {
         "en": {
@@ -997,16 +1037,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "A discovery playlist based on similar listeners."
-          }
-        }
-      }
-    },
-    "A few patterns from your annual report": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A few patterns from your annual report"
           }
         }
       }
@@ -1517,6 +1547,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "An earlier listen may already have been sent. Check History first. Resetting could let you send it twice."
+          }
+        }
+      }
+    },
+    "Annual listening stories": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annual listening stories"
           }
         }
       }
@@ -2131,12 +2171,12 @@
         }
       }
     },
-    "Building your %@ listening story…": {
+    "Building the %@ listening story…": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Building your %@ listening story…"
+            "value": "Building the %@ listening story…"
           }
         }
       }
@@ -2181,12 +2221,12 @@
         }
       }
     },
-    "Calculated by ListenBrainz from your submitted listening history.": {
+    "Calculated by ListenBrainz from submitted listening history.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Calculated by ListenBrainz from your submitted listening history."
+            "value": "Calculated by ListenBrainz from submitted listening history."
           }
         }
       }
@@ -3087,16 +3127,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Creating artwork…"
-          }
-        }
-      }
-    },
-    "Creating your artwork…": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Creating your artwork…"
           }
         }
       }
@@ -4231,12 +4261,12 @@
         }
       }
     },
-    "Generated from your %@ listening report.": {
+    "Generated from %@’s %@ listening report.": {
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Generated from your %@ listening report."
+            "state": "new",
+            "value": "Generated from %1$@’s %2$@ listening report."
           }
         }
       }
@@ -4327,6 +4357,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Global totals · refreshed daily"
+          }
+        }
+      }
+    },
+    "Go deeper into %@’s music life": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go deeper into %@’s music life"
           }
         }
       }
@@ -4451,6 +4491,16 @@
         }
       }
     },
+    "Highlights from the annual report": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Highlights from the annual report"
+          }
+        }
+      }
+    },
     "History": {
       "localizations": {
         "en": {
@@ -4507,16 +4557,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "How to read this"
-          }
-        }
-      }
-    },
-    "How you listened": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "How you listened"
           }
         }
       }
@@ -5401,12 +5441,12 @@
         }
       }
     },
-    "ListenBrainz has not generated a Year in Music report for this account.": {
+    "ListenBrainz has not generated a Year in Music report for this listener.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "ListenBrainz has not generated a Year in Music report for this account."
+            "value": "ListenBrainz has not generated a Year in Music report for this listener."
           }
         }
       }
@@ -6037,6 +6077,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Listening network"
+          }
+        }
+      }
+    },
+    "Listening patterns": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listening patterns"
           }
         }
       }
@@ -6741,6 +6791,16 @@
         }
       }
     },
+    "Missed tracks": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Missed tracks"
+          }
+        }
+      }
+    },
     "Mix not updated": {
       "localizations": {
         "en": {
@@ -6781,6 +6841,16 @@
         }
       }
     },
+    "More to explore": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More to explore"
+          }
+        }
+      }
+    },
     "Morning": {
       "localizations": {
         "en": {
@@ -6801,12 +6871,12 @@
         }
       }
     },
-    "Most active weekday. %@ was your busiest day for listening.": {
+    "Most active weekday. %@ was the busiest day for listening.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Most active weekday. %@ was your busiest day for listening."
+            "value": "Most active weekday. %@ was the busiest day for listening."
           }
         }
       }
@@ -7017,36 +7087,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "MusicBrainz returned an unexpected response."
-          }
-        }
-      }
-    },
-    "My %@ Year in Music": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "My %@ Year in Music"
-          }
-        }
-      }
-    },
-    "My %@ listening story on ListenBrainz": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "My %@ listening story on ListenBrainz"
-          }
-        }
-      }
-    },
-    "My %@ listening story on ListenBrainz: %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "My %1$@ listening story on ListenBrainz: %2$@"
           }
         }
       }
@@ -8351,6 +8391,26 @@
         }
       }
     },
+    "Opens %@’s Year in Music": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens %@’s Year in Music"
+          }
+        }
+      }
+    },
+    "Opens %@’s playlists": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens %@’s playlists"
+          }
+        }
+      }
+    },
     "Opens ListenBrainz in your browser": {
       "localizations": {
         "en": {
@@ -9001,12 +9061,12 @@
         }
       }
     },
-    "Playlists from your annual report.": {
+    "Playlists from the annual report.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Playlists from your annual report."
+            "value": "Playlists from the annual report."
           }
         }
       }
@@ -9171,6 +9231,16 @@
         }
       }
     },
+    "Public collections and collaborations": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Public collections and collaborations"
+          }
+        }
+      }
+    },
     "Public collections created by this listener": {
       "localizations": {
         "en": {
@@ -9181,12 +9251,12 @@
         }
       }
     },
-    "Public collections shared with other listeners": {
+    "Public collections this listener helps shape": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Public collections shared with other listeners"
+            "value": "Public collections this listener helps shape"
           }
         }
       }
@@ -9921,12 +9991,12 @@
         }
       }
     },
-    "Release years for the music you played": {
+    "Release years for the music played": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Release years for the music you played"
+            "value": "Release years for the music played"
           }
         }
       }
@@ -10231,12 +10301,12 @@
         }
       }
     },
-    "Revisit your year": {
+    "Revisit the year": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Revisit your year"
+            "value": "Revisit the year"
           }
         }
       }
@@ -10531,22 +10601,22 @@
         }
       }
     },
+    "See how favorite artists changed month by month.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See how favorite artists changed month by month."
+          }
+        }
+      }
+    },
     "See how the artists at the center of your listening change through time.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "See how the artists at the center of your listening change through time."
-          }
-        }
-      }
-    },
-    "See how your favorites changed month by month.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "See how your favorites changed month by month."
           }
         }
       }
@@ -11761,6 +11831,16 @@
         }
       }
     },
+    "The busiest day for listening.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The busiest day for listening."
+          }
+        }
+      }
+    },
     "The change did not start, but Brainz couldn’t clear its safety record. Refresh and review the playlist before changing tracks again.": {
       "localizations": {
         "en": {
@@ -11787,16 +11867,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "The copy response was lost. A fresh Owned Playlists check is required; another copy stays disabled unless a matching destination is verified."
-          }
-        }
-      }
-    },
-    "The editions you returned to": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The editions you returned to"
           }
         }
       }
@@ -11847,6 +11917,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "The mix was generated, but optional artwork and detail enrichment did not finish. The original radio tracks are still shown."
+          }
+        }
+      }
+    },
+    "The most-played albums": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The most-played albums"
+          }
+        }
+      }
+    },
+    "The most-played artists": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The most-played artists"
+          }
+        }
+      }
+    },
+    "The most-played editions": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The most-played editions"
+          }
+        }
+      }
+    },
+    "The most-played tracks": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The most-played tracks"
           }
         }
       }
@@ -11961,12 +12071,12 @@
         }
       }
     },
-    "The records you returned to": {
+    "The report link is still available from the Year in Music screen.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The records you returned to"
+            "value": "The report link is still available from the Year in Music screen."
           }
         }
       }
@@ -12071,12 +12181,12 @@
         }
       }
     },
-    "The voices that stayed with you": {
+    "The year at a glance": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The voices that stayed with you"
+            "value": "The year at a glance"
           }
         }
       }
@@ -12671,6 +12781,16 @@
         }
       }
     },
+    "Top tracks first heard in %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Top tracks first heard in %@."
+          }
+        }
+      }
+    },
     "Top-artist listens": {
       "localizations": {
         "en": {
@@ -12897,16 +13017,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tracks unavailable"
-          }
-        }
-      }
-    },
-    "Tracks you missed": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tracks you missed"
           }
         }
       }
@@ -13671,6 +13781,16 @@
         }
       }
     },
+    "YEAR IN MUSIC · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "YEAR IN MUSIC · %@"
+          }
+        }
+      }
+    },
     "YOUR %@": {
       "localizations": {
         "en": {
@@ -13767,16 +13887,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "You"
-          }
-        }
-      }
-    },
-    "You can still share the report link from the Year in Music screen.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You can still share the report link from the Year in Music screen."
           }
         }
       }
@@ -13941,16 +14051,6 @@
         }
       }
     },
-    "Your busiest day for listening.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your busiest day for listening."
-          }
-        }
-      }
-    },
     "Your feed is quiet": {
       "localizations": {
         "en": {
@@ -13997,16 +14097,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Your match"
-          }
-        }
-      }
-    },
-    "Your most-played tracks": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your most-played tracks"
           }
         }
       }
@@ -14081,32 +14171,12 @@
         }
       }
     },
-    "Your top tracks first heard in %@.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your top tracks first heard in %@."
-          }
-        }
-      }
-    },
     "Your year": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Your year"
-          }
-        }
-      }
-    },
-    "Your year at a glance": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your year at a glance"
           }
         }
       }

@@ -4,12 +4,14 @@ struct UserDetailView: View {
     let viewer: Account
     @State private var model: UserDetailModel
     @State private var pins: PinsModel
+    @State private var viewerListeningModel: ListeningModel
     @State private var isShowingSocial = false
 
     init(user: SearchUser, viewer: Account) {
         self.viewer = viewer
         _model = State(initialValue: UserDetailModel(user: user, token: viewer.token))
         _pins = State(initialValue: PinsModel(account: Account(username: user.username, token: "")))
+        _viewerListeningModel = State(initialValue: ListeningModel(account: viewer))
     }
 
     var body: some View {
@@ -114,6 +116,11 @@ struct UserDetailView: View {
             .environment(pins)
 
         socialLink
+        UserProfileExploreSection(
+            user: model.user,
+            viewer: viewer,
+            listeningModel: viewerListeningModel
+        )
 
         recentListens
         topArtists

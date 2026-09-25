@@ -319,7 +319,7 @@ final class YearInMusicModelTests: XCTestCase {
         XCTAssertEqual(mapped.annualPlaylists[0].externalURL?.absoluteString, "https://listenbrainz.org/playlist/11111111-1111-1111-1111-111111111111")
         XCTAssertNil(mapped.annualPlaylists[0].tracks[0].recording)
         XCTAssertNil(mapped.annualPlaylists[1].externalURL)
-        XCTAssertEqual(mapped.annualPlaylists[0].kind.explanation(year: 2021), "Your top tracks first heard in 2021.")
+        XCTAssertEqual(mapped.annualPlaylists[0].kind.explanation(year: 2021), "Top tracks first heard in 2021.")
         XCTAssertEqual(mapped.annualPlaylists[1].kind.explanation(year: 2021), "A discovery playlist based on similar listeners.")
     }
 
@@ -426,6 +426,54 @@ final class YearInMusicModelTests: XCTestCase {
         await otherAuthenticatedCurrent.load()
         let authenticatedCurrentCallCount = await provider.callCount()
         XCTAssertEqual(authenticatedCurrentCallCount, 3, "Current reports remain isolated by authenticated scope")
+    }
+
+    func testModelLoadsAndCachesVisitedListenerUsingViewerScope() async throws {
+        let cache = EntityDetailCache<YearInMusicCacheKey, YearInMusicReport>()
+        let provider = YearInMusicFixtureProvider(result: .success(try mappedReport(listens: 4)))
+        let viewer = Account(username: "viewer", token: "viewer-token")
+
+        let first = YearInMusicModel(
+            account: viewer,
+            subjectUsername: " Music-Friend ",
+            year: 2025,
+            provider: provider,
+            cache: cache
+        )
+        await first.load()
+
+        XCTAssertEqual(first.account, viewer)
+        XCTAssertEqual(first.subjectUsername, "Music-Friend")
+        let firstRequests = await provider.requestedReports()
+        XCTAssertEqual(firstRequests, [.init(username: "Music-Friend", year: 2025)])
+
+        let sameSubject = YearInMusicModel(
+            account: viewer,
+            subjectUsername: "music-friend",
+            year: 2025,
+            provider: provider,
+            cache: cache
+        )
+        await sameSubject.load()
+        let sameSubjectCallCount = await provider.callCount()
+        XCTAssertEqual(sameSubjectCallCount, 1, "The normalized visited-listener key should reuse the report cache.")
+
+        let differentSubject = YearInMusicModel(
+            account: viewer,
+            subjectUsername: "another-listener",
+            year: 2025,
+            provider: provider,
+            cache: cache
+        )
+        await differentSubject.load()
+        let requestedReports = await provider.requestedReports()
+        XCTAssertEqual(
+            requestedReports,
+            [
+                .init(username: "Music-Friend", year: 2025),
+                .init(username: "another-listener", year: 2025),
+            ]
+        )
     }
 
     func testStaleReportRemainsVisibleOnRefreshFailure() async throws {
@@ -585,11 +633,17 @@ private final class CountingTransport: YearInMusicTransport, @unchecked Sendable
 }
 
 private actor YearInMusicFixtureProvider: YearInMusicProviding {
+    struct Request: Equatable, Sendable {
+        let username: String
+        let year: Int
+    }
+
     enum Result: Sendable { case success(YearInMusicReport), unavailable, failure }
     private var results: [Result]
     private var delays: [Duration]
     private let ignoresCancellation: Bool
     private var calls = 0
+    private var requests: [Request] = []
 
     init(result: Result, delay: Duration = .zero) {
         results = [result]
@@ -606,6 +660,7 @@ private actor YearInMusicFixtureProvider: YearInMusicProviding {
     func report(username: String, year: Int) async throws -> YearInMusicReport? {
         let index = calls
         calls += 1
+        requests.append(.init(username: username, year: year))
         let delay = delays.indices.contains(index) ? delays[index] : .zero
         if delay > .zero {
             do { try await Task.sleep(for: delay) }
@@ -620,6 +675,7 @@ private actor YearInMusicFixtureProvider: YearInMusicProviding {
     }
 
     func callCount() -> Int { calls }
+    func requestedReports() -> [Request] { requests }
 }
 
 private enum FixtureError: LocalizedError { case failed

@@ -254,13 +254,13 @@ struct YearInMusicReport: Hashable, Sendable {
             var title: String {
                 switch self {
                 case .discoveries: String(localized: "Top discoveries")
-                case .missedRecordings: String(localized: "Tracks you missed")
+                case .missedRecordings: String(localized: "Missed tracks")
                 }
             }
 
             func explanation(year: Int) -> String {
                 switch self {
-                case .discoveries: String(localized: "Your top tracks first heard in \(year.calendarYearText).")
+                case .discoveries: String(localized: "Top tracks first heard in \(year.calendarYearText).")
                 case .missedRecordings: String(localized: "A discovery playlist based on similar listeners.")
                 }
             }

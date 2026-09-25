@@ -6,6 +6,29 @@ import XCTest
 
 @MainActor
 final class ProfilePlaylistsModelTests: XCTestCase {
+    func testOwnerControlsRequireAuthenticatedMatchingViewer() {
+        XCTAssertTrue(
+            ProfilePlaylistAudience.hasOwnerAccess(
+                profileUsername: " Listener ",
+                viewer: .init(username: "listener", token: "token")
+            )
+        )
+        XCTAssertFalse(
+            ProfilePlaylistAudience.hasOwnerAccess(
+                profileUsername: "music-friend",
+                viewer: .init(username: "listener", token: "token")
+            ),
+            "A signed-in visitor must not receive playlist-owner controls or copy."
+        )
+        XCTAssertFalse(
+            ProfilePlaylistAudience.hasOwnerAccess(
+                profileUsername: "listener",
+                viewer: .init(username: "listener", token: "")
+            ),
+            "A matching public profile without credentials has no owner access."
+        )
+    }
+
     func testPlaylistAccessScopesSeparatePublicAndCredentialBoundPages() {
         let publicKey = ProfilePlaylistPageKey(
             username: "listener",

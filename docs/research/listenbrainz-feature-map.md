@@ -1,6 +1,6 @@
 # ListenBrainz capability map
 
-Snapshot: 2026-09-22. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
+Snapshot: 2026-09-24. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
 
 | User capability | API | Web | Android | iOS | LBKit | KMP | Priority | Product decision |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
@@ -10,7 +10,7 @@ Snapshot: 2026-09-22. `Y` means source/API evidence exists; `P` means partial or
 | Listen count | Y | Y | Y | Y | Y | Y | P0 | Profile/home summary |
 | Delete a listen | Y | Y | Y | — | Y | Y | P1 | Native authenticated History action landed with track-specific confirmation, exact timestamp/MSID identity, durable ambiguous-outcome protection, and no automatic replay |
 | Submit/batch-submit/Playing Now | Y | Y | Y | ? | Y | Y | P2 | Separate capture layer; do not block viewer |
-| User search and visited-user profiles | Y | Y | Y | Y | Y | Y | P1 | Native scoped search/profile landed with staged overview, independently lazy all-time artist, release, and track sections, bounded cache, canonical navigation, and no N+1 hydration |
+| User search and visited-user profiles | Y | Y | Y | Y | Y | Y | P1 | Native scoped search/profile landed with staged overview, independently lazy all-time artist, release, and track sections, plus explicit Playlists and Year in Music destinations; no destination request starts until it is opened |
 | Artist/release/recording search | Y* | Y | Y | — | — | Y | P1 | Native MusicBrainz scopes landed; `*` adjacent MB APIs |
 | Playlist search | Y | Y | Y | — | Y | Y | P1 | Public search added to LBKit and native scoped search |
 | Recording/release-group/artist metadata | Y | Y | Y | P | Y | Y | P0 | MBIDs are canonical identities |
@@ -33,7 +33,7 @@ Snapshot: 2026-09-22. `Y` means source/API evidence exists; `P` means partial or
 | Sitewide statistics/context | Y | Y | P | ? | P | P | P2 | Use sparingly for context |
 | Entity popularity/listener counts | Y | Y | Y | ? | Y | P | P1 | Native global listens/listeners context landed on canonical artist, recording, release, and release-group details; daily cache and no row hydration |
 | Artist/release-group top listeners | Y | Y | Y | — | Y | P | P1 | Native all-time rankings landed on canonical artist and release-group details; one cached aggregate read, local expand, and no row hydration |
-| Year in Music (2021–2025) | Y | Y | Y | Y | Y | P | P1 | Native current/archive story reuses one aggregate for identity, evolution, new releases, and read-only Discoveries/Missed playlist snapshots; canonical media identities remain distinct and no row hydration is added |
+| Year in Music (2021–2025) | Y | Y | Y | Y | Y | P | P1 | Native current/archive story works for the signed-in or a visited user, reuses one subject-keyed aggregate for identity, evolution, new releases, and read-only Discoveries/Missed playlist snapshots, and adds no row hydration |
 | Similar users and compatibility | Y | Y | Y | Y | Y | Y | P1 | Native Social destination landed without row hydration |
 | Followers/following | Y | Y | Y | Y | Y | Y | P1 | Complete native lists; typed Kit extension |
 | Follow/unfollow | Y | Y | Y | ? | Y | Y | P1 | Optimistic serialized mutation with rollback |
@@ -46,7 +46,7 @@ Snapshot: 2026-09-22. `Y` means source/API evidence exists; `P` means partial or
 | Recommendation feedback | Y | Y | P | P | Y | P | P1 | Native Hate/Dislike/Like/Love control with batched state reads, tap-again clear, optimistic rollback, and pending-action serialization |
 | Fresh Releases | Y | Y | P | P | Y | — | P1 | Native Discover grid with personalized/sitewide scope, supported 7/30/90-day windows, past/upcoming selection, server-backed ordering, and zero-request local type/tag filters |
 | Created For You/recommended playlists | Y | Y | Y | Y | Y | Y | P1 | Lazy native For You list uses server generator/expiry metadata and the shared playlist detail |
-| User/collaborator playlists | Y | Y | Y | Y | Y | Y | P1 | Native owned/collaborating Profile tabs landed with lazy server pagination, public browsing, and no row hydration |
+| User/collaborator playlists | Y | Y | Y | Y | Y | Y | P1 | Native owned/collaborating pages now open from both self and visited profiles with lazy server pagination, viewer-scoped private access, public fallback, and no row hydration |
 | Playlist detail/create/edit/delete | Y | Y | Y | P | P | Y | P2 | Native one-request detail, authenticated empty creation, owner metadata/privacy editing, and fail-closed creator-only deletion landed |
 | Add recording to playlist | Y | Y | Y | ? | Y | Y | P2 | Native append-only mapped-recording flow landed for owned/collaborating destinations, with best-effort duplicate preflight and no mutation replay |
 | Playlist copy/duplicate | Y | Y | Y | — | Y | Y | P2 | Native one-shot copy of any visible playlist landed with forced preflight, canonical returned-MBID navigation, and a persistent token-free ambiguous-result barrier |
@@ -73,6 +73,8 @@ Snapshot: 2026-09-22. `Y` means source/API evidence exists; `P` means partial or
 - The iOS product should start with high-value read paths, then add mutations to the same entity screens. Android-only notification-listener scrobbling and foreground playback services have no direct public-iOS equivalent.
 - Public API calls were checked against real ListenBrainz data and include messy but useful identity fields: recording MSID, mapped MBIDs, multi-artist credits, Cover Art Archive IDs, service/source metadata, and external URL relations.
 - The current Year in Music endpoint is one aggregate request whose 2025 payload can contain totals, UTC day activity, rankings, genres, weekday context, discovery data, release-year counts, similar users, and full JSPF playlists. The native story maps a presence-aware, identity-safe subset—including new artists, weekday, display-only genre tags, release decades, artist evolution, ordered new releases, and the two current annual playlist snapshots—without fanning out into row requests.
+- Year in Music reports are public and subject-keyed. The visited-profile destination therefore keeps the authenticated viewer scope for existing transport/cache policy while fetching and attributing the report to the visited username; the shared presentation uses neutral language rather than claiming another person's listening as the viewer's.
+- User playlist reads reveal private rows only when the authenticated viewer is the requested profile owner. Visited-profile browsing therefore carries the viewer token for server-authorized visibility but exposes owner-only creation/copy controls only when normalized viewer and subject usernames match.
 - LB Radio is an authenticated server-side JSPF generator with a separate five-per-five-second quota. The native slice generates only on an explicit tap, uses the bounded/coalescing shared read lane with global 429 deferral, performs at most one batch metadata enrichment, never auto-retries, and does not imply that an MBID is playable audio. A saved mix becomes one explicit, private populated-playlist POST; nil MBIDs are excluded and duplicate canonical occurrences remain ordered.
 - Artist Origins is a public aggregate statistics response built from up to a user's top 1,000 artists that have MusicBrainz country data. The native destination performs one cached user/range read, then ranks by artist or listen count and opens server-embedded country artists locally; it does not issue per-country or per-artist hydration requests.
 - Artist Activity is a bounded ranked response derived from mapped release-group statistics: at most 15 leading artists, each with its album/release-group breakdown. The native destination makes one cached user/range read, merges MBID-first identities locally, and opens only identifiers already present in the response; expanding albums makes no request.

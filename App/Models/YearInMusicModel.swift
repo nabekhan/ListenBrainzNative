@@ -38,7 +38,12 @@ enum YearInMusicCaches {
 @MainActor
 @Observable
 final class YearInMusicModel {
+    /// The signed-in (or anonymous) viewer supplies request credentials and
+    /// owns any media actions reached from the report.
     let account: Account
+    /// The listener whose annual report is being presented. This can differ
+    /// from `account.username` when browsing another listener's profile.
+    let subjectUsername: String
     let year: Int
 
     private let provider: any YearInMusicProviding
@@ -52,11 +57,18 @@ final class YearInMusicModel {
 
     init(
         account: Account,
+        subjectUsername: String? = nil,
         year: Int,
         provider: (any YearInMusicProviding)? = nil,
         cache: EntityDetailCache<YearInMusicCacheKey, YearInMusicReport> = YearInMusicCaches.reports
     ) {
         self.account = account
+        if let requestedSubject = subjectUsername?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !requestedSubject.isEmpty {
+            self.subjectUsername = requestedSubject
+        } else {
+            self.subjectUsername = account.username
+        }
         self.year = year
         self.provider = provider ?? ListenBrainzYearInMusicProvider(token: account.token)
         self.cache = cache
@@ -90,7 +102,7 @@ final class YearInMusicModel {
         let id = UUID()
         requestID = id
         do {
-            let result = try await provider.report(username: account.username, year: year)
+            let result = try await provider.report(username: subjectUsername, year: year)
             try Task.checkCancellation()
             guard requestID == id else { return }
             guard let result else {
@@ -121,7 +133,7 @@ final class YearInMusicModel {
 
     private var cacheKey: YearInMusicCacheKey {
         YearInMusicCacheKey(
-            username: account.username,
+            username: subjectUsername,
             scope: (2021 ... 2024).contains(year) ? .anonymous : .authenticated(token: account.token),
             year: year
         )

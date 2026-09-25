@@ -4,6 +4,7 @@ import SwiftUI
 struct YearInMusicArtworkSheet: View {
     let report: YearInMusicReport
     let reportURL: URL
+    let username: String
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -20,6 +21,7 @@ struct YearInMusicArtworkSheet: View {
     ) {
         self.report = report
         self.reportURL = reportURL
+        self.username = username
         _model = State(
             initialValue: YearInMusicArtworkModel(
                 options: .init(
@@ -83,7 +85,7 @@ struct YearInMusicArtworkSheet: View {
                     VStack(spacing: 14) {
                         ProgressView()
                             .controlSize(.large)
-                        Text("Creating your artwork…")
+                        Text("Creating artwork…")
                             .font(.headline)
                     }
                     .foregroundStyle(.secondary)
@@ -132,7 +134,7 @@ struct YearInMusicArtworkSheet: View {
                         .font(.headline)
                         .foregroundStyle(AppTheme.accent)
                 }
-                Text(String(localized: "Generated from your \(report.year.calendarYearText) listening report."))
+                Text(String(localized: "Generated from \(username)’s \(report.year.calendarYearText) listening report."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -164,8 +166,8 @@ struct YearInMusicArtworkSheet: View {
                         data: pngData,
                         fileName: "ListenBrainz-Year-in-Music-\(report.year).png"
                     ),
-                    subject: Text(String(localized: "My \(report.year.calendarYearText) Year in Music")),
-                    message: Text(String(localized: "My \(report.year.calendarYearText) listening story on ListenBrainz: \(reportURL.absoluteString)")),
+                    subject: Text(String(localized: "\(username)’s \(report.year.calendarYearText) Year in Music")),
+                    message: Text(String(localized: "\(username)’s \(report.year.calendarYearText) listening story on ListenBrainz: \(reportURL.absoluteString)")),
                     preview: SharePreview(
                         String(localized: "ListenBrainz Year in Music \(report.year.calendarYearText)"),
                         image: Image(uiImage: shareImage)
@@ -232,7 +234,7 @@ struct YearInMusicArtworkSheet: View {
             }
             .frame(minHeight: 340)
 
-            Text("You can still share the report link from the Year in Music screen.")
+            Text("The report link is still available from the Year in Music screen.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -302,7 +304,7 @@ struct VisualQAYearInMusicArtworkProvider: YearInMusicArtworkProviding {
           <path d="M-40 688 C170 582 322 786 526 650 S807 544 984 604" fill="none" stroke="#fff" stroke-opacity="0.1" stroke-width="3"/>
           <g fill="#fff" font-family="-apple-system, BlinkMacSystemFont, Helvetica Neue, sans-serif">
             <text x="64" y="78" font-size="22" font-weight="700" letter-spacing="5" opacity="0.72">LISTENBRAINZ</text>
-            <text x="64" y="206" font-size="25" font-weight="700" letter-spacing="5" opacity="0.72">YOUR \(options.year)</text>
+            <text x="64" y="206" font-size="25" font-weight="700" letter-spacing="5" opacity="0.72">YEAR IN MUSIC · \(options.year)</text>
             <text x="58" y="305" font-size="88" font-weight="800" letter-spacing="-4">YEAR IN</text>
             <text x="58" y="392" font-size="88" font-weight="800" letter-spacing="-4">MUSIC</text>
             <text x="64" y="508" font-size="58" font-weight="750">18,742</text>
