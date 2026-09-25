@@ -211,7 +211,124 @@ final class ListenInspectionTests: XCTestCase {
         let inspection = ListenBrainzProvider.inspection(metadata, msid: nil)
 
         XCTAssertEqual(recording.externalLink?.url, URL(string: "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"))
-        XCTAssertEqual(inspection.externalLink, recording.externalLink)
+        XCTAssertEqual(inspection.spotifyID, "4uLU6hMCjMI75M1A2tKUQC")
+    }
+
+    func testServerStreamingRelationshipsComeFirstAndFallbacksAreDeduplicated() throws {
+        let metadata = try decodeMetadata("""
+        {
+          "artist_name":"Artist", "track_name":"Track",
+          "additional_info": {
+            "spotify_id":"4uLU6hMCjMI75M1A2tKUQC",
+            "origin_url":"https://youtu.be/dQw4w9WgXcQ"
+          },
+          "mbid_mapping": {
+            "url_rels": [
+              {"type":"purchase for download", "url":"https://artist.bandcamp.com/track/deferred"},
+              {"type":"free streaming", "url":"https://www.deezer.com/track/3135556?utm=ignored"},
+              {"type":"streaming", "url":"https://tidal.com/track/123456?tracking=ignored"},
+              {"type":"streaming", "url":"https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"},
+              {"type":"streaming", "url":"https://unknown.example/track/1"},
+              {"type":42, "url":false}
+            ]
+          }
+        }
+        """)
+
+        let recording = ListenBrainzProvider.map(metadata, msid: nil)
+        let inspection = ListenBrainzProvider.inspection(metadata, msid: nil)
+        let expected = [
+            "https://www.deezer.com/track/3135556",
+            "https://tidal.com/track/123456",
+            "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC",
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        ]
+
+        XCTAssertEqual(recording.externalMediaLinks.map(\.url.absoluteString), expected)
+        XCTAssertEqual(inspection.spotifyID, "4uLU6hMCjMI75M1A2tKUQC")
+        XCTAssertEqual(recording.externalLink?.url.absoluteString, expected.first)
+        XCTAssertEqual(recording.externalMediaLinks.map(\.service), [.deezer, .tidal, .spotify, .youTube])
+    }
+
+    func testServerRelationshipWinsWhenSubmittedFallbackConflictsForSameService() throws {
+        let metadata = try decodeMetadata("""
+        {
+          "artist_name":"Artist", "track_name":"Track",
+          "additional_info":{"spotify_id":"4uLU6hMCjMI75M1A2tKUQC"},
+          "mbid_mapping":{"url_rels":[
+            {"type":"streaming","url":"https://open.spotify.com/track/7H7RaiZoTNPwjNLygV4fXQ"}
+          ]}
+        }
+        """)
+
+        let links = ListenBrainzProvider.map(metadata, msid: nil).externalMediaLinks
+
+        XCTAssertEqual(links.map(\.service), [.spotify])
+        XCTAssertEqual(links.first?.url.absoluteString, "https://open.spotify.com/track/7H7RaiZoTNPwjNLygV4fXQ")
+    }
+
+    func testExternalRelationshipsRejectUnsafeURLsAndNonListeningTypes() throws {
+        let metadata = try decodeMetadata("""
+        {
+          "artist_name":"Artist", "track_name":"Track",
+          "mbid_mapping": {
+            "url_rels": [
+              {"type":"streaming", "url":"http://www.deezer.com/track/3135556"},
+              {"type":"streaming", "url":"https://user:password@tidal.com/track/123456"},
+              {"type":"streaming", "url":"https://www.deezer.com/track/not-an-id"},
+              {"type":"streaming", "url":"https://tidal.com/album/123456"},
+              {"type":"purchase for download", "url":"https://www.deezer.com/track/3135556"}
+            ]
+          }
+        }
+        """)
+
+        XCTAssertTrue(ListenBrainzProvider.map(metadata, msid: nil).externalMediaLinks.isEmpty)
+    }
+
+    func testExternalRelationshipsBoundServerWorkAndVisibleDestinations() {
+        let relationships = [
+            ExternalMediaRelationship(type: "streaming", url: "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"),
+            ExternalMediaRelationship(type: "streaming", url: "https://youtu.be/dQw4w9WgXcQ"),
+            ExternalMediaRelationship(type: "streaming", url: "https://soundcloud.com/artist/track"),
+            ExternalMediaRelationship(type: "streaming", url: "https://music.apple.com/us/album/example/123456789?i=111"),
+            ExternalMediaRelationship(type: "streaming", url: "https://archive.org/details/example"),
+            ExternalMediaRelationship(type: "streaming", url: "https://artist.bandcamp.com/track/example"),
+            ExternalMediaRelationship(type: "streaming", url: "https://www.deezer.com/track/3135556"),
+            ExternalMediaRelationship(type: "streaming", url: "https://tidal.com/track/123456"),
+        ] + (1 ... 32).map {
+            ExternalMediaRelationship(type: "streaming", url: "https://www.deezer.com/track/\($0)")
+        }
+
+        let links = ExternalMediaLink.resolve(
+            urlRelationships: relationships,
+            spotifyID: nil,
+            originURL: nil
+        )
+
+        XCTAssertEqual(links.count, 8)
+        XCTAssertEqual(links.first?.service, .spotify)
+        XCTAssertEqual(links.last?.service, .tidal)
+    }
+
+    func testExternalRelationshipsIgnoreRowsBeyondInspectionBound() {
+        let relationships = (1 ... 32).map {
+            ExternalMediaRelationship(type: "streaming", url: "https://www.deezer.com/track/\($0)")
+        } + [
+            ExternalMediaRelationship(
+                type: "streaming",
+                url: "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"
+            ),
+        ]
+
+        let links = ExternalMediaLink.resolve(
+            urlRelationships: relationships,
+            spotifyID: nil,
+            originURL: nil
+        )
+
+        XCTAssertEqual(links.map(\.service), [.deezer])
+        XCTAssertEqual(links.first?.url.absoluteString, "https://www.deezer.com/track/1")
     }
 
     func testOlderCachedRecordingAndInspectionDecodeWithoutExternalLink() throws {
@@ -223,7 +340,66 @@ final class ListenInspectionTests: XCTestCase {
         """
 
         XCTAssertNil(try JSONDecoder().decode(Recording.self, from: Data(recordingJSON.utf8)).externalLink)
-        XCTAssertNil(try JSONDecoder().decode(ListenInspection.self, from: Data(inspectionJSON.utf8)).externalLink)
+        XCTAssertNoThrow(try JSONDecoder().decode(ListenInspection.self, from: Data(inspectionJSON.utf8)))
+    }
+
+    func testNewExternalLinksCacheKeepsLegacySingleLinkCompatible() throws {
+        let recordingJSON = """
+        {"identity":{"mbid":null,"msid":null},"title":"Track","artistName":"Artist","artistMBIDs":[],"releaseTitle":null,"releaseMBID":null,"releaseGroupMBID":null,"artworkReleaseMBID":null,"durationMilliseconds":null,"source":null,"externalLink":{"service":"spotify","url":"https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"},"externalLinks":[{"service":"spotify","url":"https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"},{"service":"deezer","url":"https://www.deezer.com/track/3135556"}]}
+        """
+        let recording = try JSONDecoder().decode(Recording.self, from: Data(recordingJSON.utf8))
+
+        XCTAssertEqual(recording.externalLink?.service, .spotify)
+        XCTAssertEqual(recording.externalMediaLinks.map(\.service), [.spotify, .deezer])
+    }
+
+    func testCanonicalExternalLinksOverrideConflictingLegacyCacheField() throws {
+        let recordingJSON = """
+        {"identity":{"mbid":null,"msid":null},"title":"Track","artistName":"Artist","artistMBIDs":[],"releaseTitle":null,"releaseMBID":null,"releaseGroupMBID":null,"artworkReleaseMBID":null,"durationMilliseconds":null,"source":null,"externalLink":{"service":"spotify","url":"https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"},"externalLinks":[{"service":"deezer","url":"https://www.deezer.com/track/3135556"}]}
+        """
+
+        let recording = try JSONDecoder().decode(Recording.self, from: Data(recordingJSON.utf8))
+
+        XCTAssertEqual(recording.externalMediaLinks.map(\.service), [.deezer])
+        XCTAssertEqual(recording.externalLink?.service, .deezer)
+    }
+
+    func testRecordingCacheRoundTripPersistsOnlyCanonicalExternalLinks() throws {
+        let links = ExternalMediaLink.resolve(
+            urlRelationships: [
+                ExternalMediaRelationship(
+                    type: "streaming",
+                    url: "https://www.deezer.com/track/3135556"
+                ),
+                ExternalMediaRelationship(
+                    type: "streaming",
+                    url: "https://tidal.com/track/123456"
+                ),
+            ],
+            spotifyID: nil,
+            originURL: nil
+        )
+        let recording = Recording(
+            identity: RecordingIdentity(mbid: nil, msid: nil),
+            title: "Track",
+            artistName: "Artist",
+            artistMBIDs: [],
+            releaseTitle: nil,
+            releaseMBID: nil,
+            releaseGroupMBID: nil,
+            artworkReleaseMBID: nil,
+            durationMilliseconds: nil,
+            source: nil,
+            externalLinks: links
+        )
+
+        let encoded = try JSONEncoder().encode(recording)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        let decoded = try JSONDecoder().decode(Recording.self, from: encoded)
+
+        XCTAssertNil(object["externalLink"])
+        XCTAssertNotNil(object["externalLinks"])
+        XCTAssertEqual(decoded, recording)
     }
 
     func testCachedExternalLinkMustStillBeCanonicalAndMatchItsService() throws {

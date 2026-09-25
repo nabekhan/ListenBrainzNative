@@ -82,6 +82,74 @@ public struct LBTrackMetadata: Codable, Equatable, Sendable {
         public let recordingName: String?
         public let caaId: Int?
         public let caaReleaseMbid: UUID?
+        /// Canonical external relationships resolved by ListenBrainz. These
+        /// are optional enrichment, so malformed individual values must not
+        /// make an otherwise usable listen undecodable.
+        public let urlRels: [URLRelationship]
+
+        enum CodingKeys: String, CodingKey {
+            case artistMbids
+            case artists
+            case recordingMbid
+            case releaseMbid
+            case releaseGroupMbid
+            case recordingName
+            case caaId
+            case caaReleaseMbid
+            case urlRels
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            artistMbids = try container.decodeIfPresent([UUID].self, forKey: .artistMbids)
+            artists = try container.decodeIfPresent([MbidMappingArtist].self, forKey: .artists)
+            recordingMbid = try container.decodeIfPresent(UUID.self, forKey: .recordingMbid)
+            releaseMbid = try container.decodeIfPresent(UUID.self, forKey: .releaseMbid)
+            releaseGroupMbid = try container.decodeIfPresent(UUID.self, forKey: .releaseGroupMbid)
+            recordingName = try container.decodeIfPresent(String.self, forKey: .recordingName)
+            caaId = try container.decodeIfPresent(Int.self, forKey: .caaId)
+            caaReleaseMbid = try container.decodeIfPresent(UUID.self, forKey: .caaReleaseMbid)
+            urlRels = (try? container.decode(BoundedURLRelationships.self, forKey: .urlRels))?.values ?? []
+        }
+    }
+
+    /// A ListenBrainz/MusicBrainz URL relationship. The server may add new
+    /// relationship types over time, so both fields remain optional and
+    /// consumers must decide which values they can safely support.
+    public struct URLRelationship: Codable, Equatable, Sendable {
+        public let type: String?
+        public let url: String?
+
+        enum CodingKeys: String, CodingKey {
+            case type
+            case url
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            type = try? container.decode(String.self, forKey: .type)
+            url = try? container.decode(String.self, forKey: .url)
+        }
+    }
+
+    private struct BoundedURLRelationships: Decodable {
+        let values: [URLRelationship]
+
+        init(from decoder: Decoder) throws {
+            var container = try decoder.unkeyedContainer()
+            var values: [URLRelationship] = []
+            values.reserveCapacity(min(container.count ?? 0, 32))
+
+            var inspectedCount = 0
+            while !container.isAtEnd, inspectedCount < 32 {
+                let element = try container.superDecoder()
+                if let relationship = try? URLRelationship(from: element) {
+                    values.append(relationship)
+                }
+                inspectedCount += 1
+            }
+            self.values = values
+        }
     }
 
     public struct MbidMappingArtist: Codable, Equatable, Sendable {

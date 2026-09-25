@@ -175,18 +175,7 @@ struct RecordingDetailView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                if let externalLink = recording.externalLink {
-                    Link(destination: externalLink.url) {
-                        Label(externalLink.actionTitle, systemImage: "arrow.up.right.square")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .buttonBorderShape(.roundedRectangle(radius: 13))
-                    .tint(AppTheme.accent)
-                    .accessibilityHint(externalLink.accessibilityHint)
-                }
+                ExternalMediaDestinationButton(links: recording.externalMediaLinks)
             }
         }
     }

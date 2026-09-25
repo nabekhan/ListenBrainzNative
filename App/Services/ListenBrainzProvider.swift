@@ -455,6 +455,7 @@ struct ListenBrainzProvider: ListeningProvider {
     static func map(_ metadata: LBTrackMetadata, msid: UUID?) -> Recording {
         let mapped = metadata.mbidMapping
         let additional = metadata.additionalInfo
+        let externalLinks = externalLinks(mapped: mapped, additional: additional)
         return Recording(
             identity: .init(mbid: mapped?.recordingMbid ?? additional?.recordingMbid, msid: msid),
             title: mapped?.recordingName ?? metadata.track,
@@ -469,10 +470,7 @@ struct ListenBrainzProvider: ListeningProvider {
                 ?? additional?.musicService
                 ?? additional?.submissionClient
                 ?? additional?.mediaPlayer,
-            externalLink: ExternalMediaLink.resolve(
-                spotifyID: additional?.spotifyId,
-                originURL: additional?.originUrl
-            )
+            externalLinks: externalLinks
         )
     }
 
@@ -513,11 +511,20 @@ struct ListenBrainzProvider: ListeningProvider {
             musicService: additional?.musicService,
             musicServiceName: additional?.musicServiceName,
             originURL: sanitizedOriginURL(additional?.originUrl),
-            durationMilliseconds: durationMilliseconds(from: additional),
-            externalLink: ExternalMediaLink.resolve(
-                spotifyID: additional?.spotifyId,
-                originURL: additional?.originUrl
-            )
+            durationMilliseconds: durationMilliseconds(from: additional)
+        )
+    }
+
+    private static func externalLinks(
+        mapped: LBTrackMetadata.MbidMapping?,
+        additional: LBAdditionalInfo?
+    ) -> [ExternalMediaLink] {
+        ExternalMediaLink.resolve(
+            urlRelationships: (mapped?.urlRels ?? []).map {
+                ExternalMediaRelationship(type: $0.type, url: $0.url)
+            },
+            spotifyID: additional?.spotifyId,
+            originURL: additional?.originUrl
         )
     }
 

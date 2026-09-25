@@ -2411,6 +2411,16 @@
         }
       }
     },
+    "Choose a service to open in another app or browser": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a service to open in another app or browser"
+          }
+        }
+      }
+    },
     "Choose a source and how far ListenBrainz should wander. Nothing is generated until you ask.": {
       "localizations": {
         "en": {
@@ -3287,6 +3297,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Decade listens"
+          }
+        }
+      }
+    },
+    "Deezer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deezer"
           }
         }
       }
@@ -4977,6 +4997,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Listen details"
+          }
+        }
+      }
+    },
+    "Listen elsewhere": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listen elsewhere"
           }
         }
       }
@@ -11677,6 +11707,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sunday"
+          }
+        }
+      }
+    },
+    "TIDAL": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TIDAL"
           }
         }
       }

@@ -766,9 +766,23 @@ struct MainTabView: View {
                 artworkReleaseMBID: nil,
                 durationMilliseconds: 196_000,
                 source: "Spotify",
-                externalLink: ExternalMediaLink.resolve(
-                    spotifyID: "4uLU6hMCjMI75M1A2tKUQC",
-                    originURL: nil
+                externalLinks: ExternalMediaLink.resolve(
+                    urlRelationships: [
+                        ExternalMediaRelationship(
+                            type: "free streaming",
+                            url: "https://www.deezer.com/track/3135556"
+                        ),
+                        ExternalMediaRelationship(
+                            type: "streaming",
+                            url: "https://tidal.com/track/123456"
+                        ),
+                        ExternalMediaRelationship(
+                            type: "streaming",
+                            url: "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"
+                        ),
+                    ],
+                    spotifyID: nil,
+                    originURL: "https://youtu.be/dQw4w9WgXcQ"
                 )
             ),
             listenedAt: .now,
@@ -1874,12 +1888,7 @@ private struct MiniListenBar: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Playing now: \(listen.recording.title) by \(listen.recording.artistName)")
         .contextMenu {
-            if let externalLink = listen.recording.externalLink ?? listen.inspection?.externalLink {
-                Link(destination: externalLink.url) {
-                    Label(externalLink.actionTitle, systemImage: "arrow.up.right.square")
-                }
-                .accessibilityHint(externalLink.accessibilityHint)
-            }
+            ExternalMediaDestinationActions.menuItems(listen.recording.externalMediaLinks)
         }
     }
 }

@@ -1,6 +1,6 @@
 # ListenBrainz capability map
 
-Snapshot: 2026-09-24. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
+Snapshot: 2026-09-25. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
 
 | User capability | API | Web | Android | iOS | LBKit | KMP | Priority | Product decision |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
@@ -54,7 +54,7 @@ Snapshot: 2026-09-24. `Y` means source/API evidence exists; `P` means partial or
 | Playlist import/export/service sync | Y | Y | P | ? | — | P | P3 | Advanced feature |
 | LB Radio generation/tags/artist radio | Y | Y | P | — | Y | — | P2 | Native explicit recipe generation, ordered canonical-track private-playlist saves, and playlist browsing landed; playback/content resolution remains separate |
 | BrainzPlayer queue/content resolution | Y | Y | Y | P | — | P | P2 | Keep modular; viewing is not blocked |
-| Apple/Spotify/YouTube/etc. external play | Y/P | Y | P | P | — | P | P2 | Resolve/open externally before full player |
+| Apple/Spotify/YouTube/etc. external play | Y/P | Y | P | P | P* | P | P2 | Native zero-request actions now open strict canonical Spotify, YouTube, SoundCloud, Apple Music, Internet Archive, Bandcamp, Deezer, and TIDAL destinations already embedded in listen metadata; one action stays direct and multiple services use one menu. `*` is a small local URL-relationship decoding extension; content search, account linking, and in-app playback remain staged |
 | Linked music services | Y (own authenticated account) | Y | Y | P | Y | P | P2 | Lazy native status list and canonical settings handoff; endpoint has no permission detail |
 | Shareable art/stat grids/YiM art | Y | Y | P | P | P | P | P1 | Explicit native stats, artist, playlist, and YiM SVG previews/PNG sharing landed; the generic custom-art creator remains staged |
 | HueSound/color exploration | Y | Y | — | — | — | — | P3 | Delightful but niche |

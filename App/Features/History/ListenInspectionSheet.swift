@@ -127,18 +127,13 @@ struct ListenInspectionSheet: View {
         let client = versioned(details.submissionClient, version: details.submissionClientVersion)
         let player = versioned(details.mediaPlayer, version: details.mediaPlayerVersion)
         let service = details.musicServiceName ?? details.musicService
-        if client != nil || player != nil || service != nil || details.originURL != nil || details.externalLink != nil {
+        if client != nil || player != nil || service != nil || details.originURL != nil || !listen.recording.externalMediaLinks.isEmpty {
             Section("Source") {
                 if let client { valueRow("Submission client", value: client) }
                 if let player { valueRow("Media player", value: player) }
                 if let service { valueRow("Music service", value: service) }
                 if let originURL = details.originURL { identifierRow("Origin URL", value: originURL) }
-                if let externalLink = details.externalLink {
-                    Link(destination: externalLink.url) {
-                        Label(externalLink.actionTitle, systemImage: "arrow.up.right.square")
-                    }
-                    .accessibilityHint(externalLink.accessibilityHint)
-                }
+                ExternalMediaDestinationActions.linkItems(listen.recording.externalMediaLinks)
             }
         }
     }

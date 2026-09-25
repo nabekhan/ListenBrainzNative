@@ -7,6 +7,15 @@ import Foundation
 import Testing
 
 @Suite struct LBCoreTests {
+    @Test("Listen payloads have bounded response bodies")
+    func listenPayloadResponseBounds() {
+        let listens = UserListensRequest(username: "listener", latest: nil, earliest: nil, count: 100)
+        let playingNow = UserPlayingNowRequest(username: "listener")
+
+        #expect(listens.data.maximumResponseBytes == UserListensRequest.maximumPayloadSize)
+        #expect(playingNow.data.maximumResponseBytes == UserPlayingNowRequest.maximumPayloadSize)
+    }
+
     @Test("User services encodes a username as one path segment")
     func userServicesEncodesUsernamePathSegment() async throws {
         let mock = MockAPIClient(result: .success(UserServicesRequest.Result(

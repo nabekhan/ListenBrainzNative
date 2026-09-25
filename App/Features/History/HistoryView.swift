@@ -377,12 +377,7 @@ struct HistoryView: View {
 
     @ViewBuilder
     private func externalLinkAction(for listen: Listen) -> some View {
-        if let externalLink = listen.recording.externalLink ?? listen.inspection?.externalLink {
-            Link(destination: externalLink.url) {
-                Label(externalLink.actionTitle, systemImage: "arrow.up.right.square")
-            }
-            .accessibilityHint(externalLink.accessibilityHint)
-        }
+        ExternalMediaDestinationActions.menuItems(listen.recording.externalMediaLinks)
     }
 
     private var historyDatePicker: some View {

@@ -9,6 +9,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Paginated, date-grouped history with exact local-day navigation and adjacent-day browsing
 - Safe authenticated listen deletion with explicit confirmation, asynchronous-status copy, and a durable no-replay barrier for uncertain outcomes
 - Recording and artist detail views
+- Zero-request **Listen elsewhere** actions for strict canonical service links already embedded in ListenBrainz metadata; one service opens directly and multiple services use one native menu
 - Global ListenBrainz listen/listener context on canonical artist, recording, release, and release-group pages
 - Listen count and top artist, album, and recording rankings
 - Server-calculated listening-activity charts, a selectable 7×24 UTC listening heatmap, local-daypart Genre Activity, Music by Decade with year drill-down, and on-demand Artist Evolution across seven ListenBrainz periods
@@ -55,7 +56,7 @@ The SwiftUI presentation depends on the small `ListeningProvider` boundary rathe
 
 ## Localization
 
-The app uses one translator-facing source of truth: `App/Resources/Localizable.xcstrings`. It stores an explicit editable English value for every production key, so product copy can be revised or translated in one file. SwiftUI literals are compiler-extracted, while reusable components use `LocalizedStringResource` and rendered model copy uses `String(localized:)` so text does not disappear behind ordinary `String` boundaries. The production UI has been audited for this contract, and the helper rejects common bypass patterns. Server responses, usernames, music metadata, identifiers, and test fixtures remain verbatim rather than becoming translation keys.
+The app uses exactly one translator-facing source of truth: `App/Resources/Localizable.xcstrings`. Every app-authored production UI string has an explicit editable English value there, so product copy can be revised or translated in one file. SwiftUI literals are compiler-extracted, while reusable components use `LocalizedStringResource` and rendered model copy uses `String(localized:)` so text does not disappear behind ordinary `String` boundaries. The production UI has been audited for this contract, and the helper rejects extra catalogs, missing or stale keys, empty English values, and common bypass patterns. Server responses, usernames, music metadata, identifiers, URLs, technical constants, and test fixtures remain verbatim rather than becoming translation keys.
 
 After adding or changing interface copy, update and verify the production catalog:
 

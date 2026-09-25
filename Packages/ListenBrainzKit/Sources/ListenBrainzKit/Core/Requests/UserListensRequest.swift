@@ -6,6 +6,7 @@ import Foundation
 
 struct UserListensRequest: APIRequest {
     typealias Result = LBUserListens
+    static let maximumPayloadSize = 4 * 1_024 * 1_024
 
     let data: APIRequestData<NoBody>
 
@@ -18,6 +19,7 @@ struct UserListensRequest: APIRequest {
         self.data = .init(path: "/1/user/\(username)/listens",
                           method: .get,
                           queryItems: query,
-                          statusErrors: [404: .notFound])
+                          statusErrors: [404: .notFound],
+                          maximumResponseBytes: Self.maximumPayloadSize)
     }
 }

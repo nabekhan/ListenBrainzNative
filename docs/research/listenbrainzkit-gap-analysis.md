@@ -1,6 +1,6 @@
 # ListenBrainzKit gap analysis
 
-Snapshot: 2026-09-19. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-05) plus the local audited extensions.
+Snapshot: 2026-09-25. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-05) plus the local audited extensions.
 
 | Area | Classification | Current finding | Decision |
 |---|---|---|---|
@@ -12,6 +12,7 @@ Snapshot: 2026-09-19. Server `e83a7ab`; ListenBrainzKit base `c06b12f` (2025-02-
 | Followers/following/follow/unfollow | SUPPORTED | Typed social client with endpoint-specific status handling | Reuse native Social slice; upstream candidate |
 | Connected services/latest import | SUPPORTED | Core client methods; services username path is now segment-safe in the vendored Kit | Reused for the authenticated native status list; latest import remains staged |
 | Metadata lookup/manual mapping | SUPPORTED | Recording, release group, artist, bulk/fuzzy mapping | Reuse behind metadata resolver |
+| Listen metadata URL relationships | SUPPORTED (local extension) | `mbid_mapping.url_rels` now decodes malformed rows lossily, inspects at most 32 entries, and is covered by generous 4 MiB recent-listen and 1 MiB Playing Now response ceilings | Reuse only already-loaded streaming/free-streaming relationships through the app's strict provider allowlist; no provider lookup or hydration; extension is an upstream candidate |
 | Concrete release/ordered track lookup | MISSING | Kit `releaseGroup` metadata does not model a MusicBrainz edition or its media/tracks | Use one separately gated MusicBrainz release lookup; do not mislabel group metadata or hydrate tracks individually |
 | Top artist/release/release-group/recording | SUPPORTED | User and sitewide | Reuse |
 | Listening activity | SUPPORTED | User and sitewide | Reuse |

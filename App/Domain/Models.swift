@@ -28,6 +28,14 @@ struct RecordingIdentity: Hashable, Codable, Sendable {
     let msid: UUID?
 }
 
+/// App-owned, read-only representation of a canonical ListenBrainz URL
+/// relationship. The provider translates upstream models at this boundary so
+/// the UI and persisted domain models do not depend on a specific API client.
+struct ExternalMediaRelationship: Hashable, Sendable {
+    let type: String?
+    let url: String?
+}
+
 /// A verified, web-only destination supplied in ListenBrainz metadata.
 ///
 /// This deliberately recognizes a small allowlist rather than treating an
@@ -42,6 +50,8 @@ struct ExternalMediaLink: Hashable, Codable, Sendable {
         case appleMusic
         case internetArchive
         case bandcamp
+        case deezer
+        case tidal
 
         var displayName: String {
             switch self {
@@ -51,6 +61,8 @@ struct ExternalMediaLink: Hashable, Codable, Sendable {
             case .appleMusic: String(localized: "Apple Music")
             case .internetArchive: String(localized: "Internet Archive")
             case .bandcamp: String(localized: "Bandcamp")
+            case .deezer: String(localized: "Deezer")
+            case .tidal: String(localized: "TIDAL")
             }
         }
     }
@@ -100,6 +112,24 @@ struct ExternalMediaLink: Hashable, Codable, Sendable {
     /// metadata. A recognized public origin is used only as a fallback.
     static func resolve(spotifyID: String?, originURL: String?) -> ExternalMediaLink? {
         spotify(spotifyID) ?? origin(originURL)
+    }
+
+    /// Resolves only the server's canonical streaming relationships, then
+    /// preserves the legacy explicit Spotify ID and submitted-origin fallbacks.
+    /// This is intentionally local validation and canonicalization: it never
+    /// follows a redirect, searches a catalog, or issues a network request.
+    static func resolve(
+        urlRelationships: [ExternalMediaRelationship],
+        spotifyID: String?,
+        originURL: String?
+    ) -> [ExternalMediaLink] {
+        let serverLinks = urlRelationships.prefix(32).compactMap { relationship -> ExternalMediaLink? in
+            guard let type = normalizedRelationshipType(relationship.type),
+                  type == "streaming" || type == "free streaming"
+            else { return nil }
+            return origin(relationship.url)
+        }
+        return canonicalized(serverLinks + [spotify(spotifyID), origin(originURL)].compactMap { $0 })
     }
 
     private static func spotify(_ value: String?) -> ExternalMediaLink? {
@@ -163,7 +193,34 @@ struct ExternalMediaLink: Hashable, Codable, Sendable {
         if isBandcampHost(host), path.count >= 2, ["album", "track"].contains(path[0]) {
             return destination(.bandcamp, host: host, path: path)
         }
+
+        if ["deezer.com", "www.deezer.com"].contains(host),
+           path.count == 2, path[0] == "track", isNumericIdentifier(path[1]) {
+            return destination(.deezer, host: "www.deezer.com", path: ["track", path[1]])
+        }
+
+        if ["tidal.com", "www.tidal.com"].contains(host),
+           let tidalTrackID = tidalTrackID(from: path) {
+            return destination(.tidal, host: "tidal.com", path: ["track", tidalTrackID])
+        }
         return nil
+    }
+
+    private static func normalizedRelationshipType(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.utf8.count <= 64 else { return nil }
+        return trimmed.lowercased()
+    }
+
+    /// Keeps the first trusted destination for each service. Server-resolved
+    /// relationships are passed first, so a stale submitted fallback cannot
+    /// create an indistinguishable second action for the same provider.
+    static func canonicalized(_ links: [ExternalMediaLink]) -> [ExternalMediaLink] {
+        links.reduce(into: []) { result, link in
+            guard result.count < 8, !result.contains(where: { $0.service == link.service }) else { return }
+            result.append(link)
+        }
     }
 
     private static func normalizedInput(_ value: String?) -> String? {
@@ -213,6 +270,11 @@ struct ExternalMediaLink: Hashable, Codable, Sendable {
     }
 
     private static func isSpotifyTrackID(_ value: String) -> Bool { matches(value, pattern: "^[A-Za-z0-9]{22}$") }
+    private static func tidalTrackID(from path: [String]) -> String? {
+        if path.count == 2, path[0] == "track", isNumericIdentifier(path[1]) { return path[1] }
+        if path.count == 3, path[0] == "browse", path[1] == "track", isNumericIdentifier(path[2]) { return path[2] }
+        return nil
+    }
     private static func spotifyTrackID(from path: [String]) -> String? {
         if path.count == 2, path[0] == "track", isSpotifyTrackID(path[1]) {
             return path[1]
@@ -257,7 +319,9 @@ struct Recording: Identifiable, Hashable, Codable, Sendable {
     let artworkReleaseMBID: UUID?
     let durationMilliseconds: Int?
     let source: String?
-    let externalLink: ExternalMediaLink?
+    /// The sole persisted external-destination representation. Custom decoding
+    /// wraps the former single-link field only when this array is absent.
+    let externalLinks: [ExternalMediaLink]
 
     init(
         identity: RecordingIdentity,
@@ -270,7 +334,8 @@ struct Recording: Identifiable, Hashable, Codable, Sendable {
         artworkReleaseMBID: UUID?,
         durationMilliseconds: Int?,
         source: String?,
-        externalLink: ExternalMediaLink? = nil
+        externalLink: ExternalMediaLink? = nil,
+        externalLinks: [ExternalMediaLink]? = nil
     ) {
         self.identity = identity
         self.title = title
@@ -282,7 +347,60 @@ struct Recording: Identifiable, Hashable, Codable, Sendable {
         self.artworkReleaseMBID = artworkReleaseMBID
         self.durationMilliseconds = durationMilliseconds
         self.source = source
-        self.externalLink = externalLink
+        let links = externalLinks ?? externalLink.map { [$0] } ?? []
+        self.externalLinks = ExternalMediaLink.canonicalized(links)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case identity
+        case title
+        case artistName
+        case artistMBIDs
+        case releaseTitle
+        case releaseMBID
+        case releaseGroupMBID
+        case artworkReleaseMBID
+        case durationMilliseconds
+        case source
+        case externalLink
+        case externalLinks
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        identity = try container.decode(RecordingIdentity.self, forKey: .identity)
+        title = try container.decode(String.self, forKey: .title)
+        artistName = try container.decode(String.self, forKey: .artistName)
+        artistMBIDs = try container.decode([UUID].self, forKey: .artistMBIDs)
+        releaseTitle = try container.decodeIfPresent(String.self, forKey: .releaseTitle)
+        releaseMBID = try container.decodeIfPresent(UUID.self, forKey: .releaseMBID)
+        releaseGroupMBID = try container.decodeIfPresent(UUID.self, forKey: .releaseGroupMBID)
+        artworkReleaseMBID = try container.decodeIfPresent(UUID.self, forKey: .artworkReleaseMBID)
+        durationMilliseconds = try container.decodeIfPresent(Int.self, forKey: .durationMilliseconds)
+        source = try container.decodeIfPresent(String.self, forKey: .source)
+
+        if let links = try container.decodeIfPresent([ExternalMediaLink].self, forKey: .externalLinks) {
+            externalLinks = ExternalMediaLink.canonicalized(links)
+        } else if let legacy = try container.decodeIfPresent(ExternalMediaLink.self, forKey: .externalLink) {
+            externalLinks = [legacy]
+        } else {
+            externalLinks = []
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(identity, forKey: .identity)
+        try container.encode(title, forKey: .title)
+        try container.encode(artistName, forKey: .artistName)
+        try container.encode(artistMBIDs, forKey: .artistMBIDs)
+        try container.encodeIfPresent(releaseTitle, forKey: .releaseTitle)
+        try container.encodeIfPresent(releaseMBID, forKey: .releaseMBID)
+        try container.encodeIfPresent(releaseGroupMBID, forKey: .releaseGroupMBID)
+        try container.encodeIfPresent(artworkReleaseMBID, forKey: .artworkReleaseMBID)
+        try container.encodeIfPresent(durationMilliseconds, forKey: .durationMilliseconds)
+        try container.encodeIfPresent(source, forKey: .source)
+        try container.encode(externalLinks, forKey: .externalLinks)
     }
 
     var id: String {
@@ -295,6 +413,9 @@ struct Recording: Identifiable, Hashable, Codable, Sendable {
         guard let id = artworkReleaseMBID ?? releaseMBID else { return nil }
         return CoverArtArchiveURL.release(id)
     }
+
+    var externalLink: ExternalMediaLink? { externalLinks.first }
+    var externalMediaLinks: [ExternalMediaLink] { externalLinks }
 }
 
 struct Listen: Identifiable, Hashable, Codable, Sendable {
@@ -374,8 +495,6 @@ struct ListenInspection: Hashable, Codable, Sendable {
     let musicServiceName: String?
     let originURL: String?
     let durationMilliseconds: Int?
-    /// Optional so previously cached inspection snapshots remain decodable.
-    var externalLink: ExternalMediaLink? = nil
 
     var mappingStatus: MappingStatus {
         if resolvedRecordingMBID != nil || resolvedReleaseMBID != nil || resolvedReleaseGroupMBID != nil || !resolvedArtistMBIDs.isEmpty {

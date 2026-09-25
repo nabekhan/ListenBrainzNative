@@ -58,4 +58,36 @@ import Testing
         #expect(feedback.score == .love)
         #expect(feedback.trackMetadata?.mbidMapping?.releaseMbid == UUID(uuidString: "7421153c-1740-471e-ad2d-e3741b9a3b96")!)
     }
+
+    @Test("MBID mapping decodes URL relationships without failing a listen")
+    func decodeURLRelationships() throws {
+        let raw = """
+        {"artist_name":"Artist","track_name":"Track","mbid_mapping":{"url_rels":[
+          {"type":"free streaming","url":"https://www.deezer.com/track/3135556"},
+          42,
+          {"type":42,"url":false}
+        ]}}
+        """
+
+        let metadata = try JSONDecoder.ListenBrainz.decode(LBTrackMetadata.self, from: raw.data(using: .utf8)!)
+
+        #expect(metadata.mbidMapping?.urlRels.count == 2)
+        #expect(metadata.mbidMapping?.urlRels.first?.type == "free streaming")
+        #expect(metadata.mbidMapping?.urlRels.first?.url == "https://www.deezer.com/track/3135556")
+        #expect(metadata.mbidMapping?.urlRels.last?.type == nil)
+        #expect(metadata.mbidMapping?.urlRels.last?.url == nil)
+    }
+
+    @Test("MBID mapping bounds URL relationship decoding")
+    func boundsURLRelationships() throws {
+        let relationships = (1 ... 40)
+            .map { #"{"type":"streaming","url":"https://www.deezer.com/track/\#($0)"}"# }
+            .joined(separator: ",")
+        let raw = #"{"artist_name":"Artist","track_name":"Track","mbid_mapping":{"url_rels":[\#(relationships)]}}"#
+
+        let metadata = try JSONDecoder.ListenBrainz.decode(LBTrackMetadata.self, from: Data(raw.utf8))
+
+        #expect(metadata.mbidMapping?.urlRels.count == 32)
+        #expect(metadata.mbidMapping?.urlRels.last?.url == "https://www.deezer.com/track/32")
+    }
 }
