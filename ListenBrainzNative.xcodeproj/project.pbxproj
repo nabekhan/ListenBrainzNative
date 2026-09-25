@@ -12,6 +12,7 @@
 		01AB414CFDFAE764C451F01E /* PopularityProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3C329C8B2BF423D0F69C4E0 /* PopularityProviderTests.swift */; };
 		02B36A26FB69AAA6223D43AC /* LogListenSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20B4D80C68CF87C0B4EF809D /* LogListenSheet.swift */; };
 		03D19877F8BDD6E321146321 /* SessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44F89EA5D5E0E0647DB6755B /* SessionModel.swift */; };
+		0910DF720100CCEF9EA4688F /* CustomArtworkComposerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6C65A4B830B86DCB231CB5D /* CustomArtworkComposerSheet.swift */; };
 		0915988C2802793F801AB873 /* EntityDetailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACFF4BBDD28BEEFEF51B89F5 /* EntityDetailCache.swift */; };
 		099A1939CE7D6089A7FC540F /* SnapshotCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 659F6BF93F2ADE29B73AC2E5 /* SnapshotCache.swift */; };
 		09E6583D6C50625EFD154E38 /* ArtistOriginsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBC40D304913135CE6F60A53 /* ArtistOriginsView.swift */; };
@@ -34,6 +35,7 @@
 		1ED7049EEC1FC93DD48527C8 /* FollowingPinsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A31783EBD66F5D59FD659FC /* FollowingPinsProvider.swift */; };
 		214B180599F8A6E8D9A79AB5 /* PopularityProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA7E3672121191838F7E5951 /* PopularityProvider.swift */; };
 		23B85D10A2C5F56661AC0EF8 /* ConnectedServicesModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EA009B49FF4D2482FB1D05F /* ConnectedServicesModel.swift */; };
+		249B9CAB570617A7D40AEA75 /* CustomArtworkComposerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C18F25BBA202D2152BDA0C /* CustomArtworkComposerTests.swift */; };
 		256C40B6DC2B996C16D40756 /* PlaylistMutationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445829BC50154244B5591728 /* PlaylistMutationTests.swift */; };
 		29B645DBF921F0BBC957C07F /* GeneratedArtworkModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1515EAD260E36F91A29FAF5 /* GeneratedArtworkModelTests.swift */; };
 		2A8E1BB1202E6CB8253E5221 /* ProfilePlaylistsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66F0C5093821A3A87343832 /* ProfilePlaylistsProvider.swift */; };
@@ -312,9 +314,11 @@
 		BE57C410D01822F08E5275BE /* ProfilePlaylistsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePlaylistsModel.swift; sourceTree = "<group>"; };
 		BFA5781A5723D50654D8F20F /* FeedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedModels.swift; sourceTree = "<group>"; };
 		C17AE2E58FCE6A9891346B9E /* YearInMusicProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearInMusicProvider.swift; sourceTree = "<group>"; };
+		C1C18F25BBA202D2152BDA0C /* CustomArtworkComposerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomArtworkComposerTests.swift; sourceTree = "<group>"; };
 		C47DB8E8CDB8B6E43A990514 /* TopListenersSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopListenersSummaryView.swift; sourceTree = "<group>"; };
 		C5B5A4E8ABF99C74E9414899 /* ListenInspectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenInspectionTests.swift; sourceTree = "<group>"; };
 		C66659BEA6FA5A39F7B86E21 /* ArtistActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtistActivityView.swift; sourceTree = "<group>"; };
+		C6C65A4B830B86DCB231CB5D /* CustomArtworkComposerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomArtworkComposerSheet.swift; sourceTree = "<group>"; };
 		C70C4CBCF073E23C0527B17F /* GenreActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenreActivityView.swift; sourceTree = "<group>"; };
 		C8352DE46FA96033C0B5B26F /* TopListenersProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopListenersProvider.swift; sourceTree = "<group>"; };
 		C93089B0F4FF96EC2558216C /* ListenBrainzProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenBrainzProvider.swift; sourceTree = "<group>"; };
@@ -537,6 +541,7 @@
 				C66659BEA6FA5A39F7B86E21 /* ArtistActivityView.swift */,
 				39D9AE00EC9D869B559DF005 /* ArtistEvolutionView.swift */,
 				BBC40D304913135CE6F60A53 /* ArtistOriginsView.swift */,
+				C6C65A4B830B86DCB231CB5D /* CustomArtworkComposerSheet.swift */,
 				C70C4CBCF073E23C0527B17F /* GenreActivityView.swift */,
 				DD7922B1A50A81DDEBC647D3 /* TasteView.swift */,
 				A3DCB8190155CAD286FB1CC7 /* YearInMusicArtworkSheet.swift */,
@@ -683,6 +688,7 @@
 				F3289FD954EA81207EF7F88C /* ArtistOriginsTests.swift */,
 				B01F6810F96206B890B6EB9A /* ConnectedServicesTests.swift */,
 				BACA106E2982676DD0874D3F /* CritiqueBrainzReviewTests.swift */,
+				C1C18F25BBA202D2152BDA0C /* CustomArtworkComposerTests.swift */,
 				40281433B1E545409C40ED2B /* FeedModelTests.swift */,
 				737A22B06AF4C9477BFEBB56 /* FollowingPinsModelTests.swift */,
 				D1515EAD260E36F91A29FAF5 /* GeneratedArtworkModelTests.swift */,
@@ -848,6 +854,7 @@
 				32882BFC39635FECFA19C13C /* ArtistOriginsTests.swift in Sources */,
 				3B6FA3E2DEB0D19408C92B4B /* ConnectedServicesTests.swift in Sources */,
 				3266B0083863E11323404327 /* CritiqueBrainzReviewTests.swift in Sources */,
+				249B9CAB570617A7D40AEA75 /* CustomArtworkComposerTests.swift in Sources */,
 				145D15276FBD99C26B84D139 /* FeedModelTests.swift in Sources */,
 				546C8CE4E690858441829B14 /* FollowingPinsModelTests.swift in Sources */,
 				29B645DBF921F0BBC957C07F /* GeneratedArtworkModelTests.swift in Sources */,
@@ -906,6 +913,7 @@
 				FD23804ABC5D382099BAF7B1 /* CritiqueBrainzReviewModel.swift in Sources */,
 				DF358064D605FDB37903FF4A /* CritiqueBrainzReviewSummaryView.swift in Sources */,
 				7404EDC89F01ECB4C104CEF1 /* CritiqueBrainzReviewsProvider.swift in Sources */,
+				0910DF720100CCEF9EA4688F /* CustomArtworkComposerSheet.swift in Sources */,
 				6D27D69B7A9910C603E276AE /* DiscoverView.swift in Sources */,
 				0915988C2802793F801AB873 /* EntityDetailCache.swift in Sources */,
 				CD437890960782CD99E5BA1D /* ExternalMediaDestinationActions.swift in Sources */,

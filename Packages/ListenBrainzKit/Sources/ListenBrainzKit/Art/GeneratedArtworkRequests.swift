@@ -159,6 +159,98 @@ struct ArtistGridArtworkRequest: APIRequest {
     }
 }
 
+struct CustomGridArtworkRequest: APIRequest {
+    let data: APIRequestData<Body>
+
+    init(
+        items: LBCustomArtGridItems,
+        dimension: Int,
+        layout: LBArtGridLayout,
+        imageSize: Int,
+        background: LBArtGridBackground,
+        captions: Bool,
+        skipMissing: Bool,
+        showMissingCoverPlaceholder: Bool,
+        coverArtSize: LBArtCoverSize
+    ) throws {
+        try validateGrid(
+            dimension: dimension,
+            layout: layout,
+            imageSize: imageSize
+        )
+
+        let releaseMBIDs: [String]?
+        let releaseGroupMBIDs: [String]?
+        switch items {
+        case let .releases(values):
+            guard !values.isEmpty, values.count <= 100 else {
+                throw LBError.invalidParam
+            }
+            releaseMBIDs = values.map { $0.uuidString.lowercased() }
+            releaseGroupMBIDs = nil
+        case let .releaseGroups(values):
+            guard !values.isEmpty, values.count <= 100 else {
+                throw LBError.invalidParam
+            }
+            releaseMBIDs = nil
+            releaseGroupMBIDs = values.map { $0.uuidString.lowercased() }
+        }
+
+        data = .init(
+            path: "/1/art/grid/",
+            method: .post,
+            body: Body(
+                background: try background.requestValue(),
+                imageSize: imageSize,
+                dimension: dimension,
+                skipMissing: skipMissing,
+                showMissingCoverPlaceholder: showMissingCoverPlaceholder,
+                captions: captions,
+                layout: layout.rawValue,
+                releaseMBIDs: releaseMBIDs,
+                releaseGroupMBIDs: releaseGroupMBIDs,
+                coverArtSize: coverArtSize.rawValue
+            ),
+            statusErrors: [400: .badRequest],
+            preservesTrailingSlash: true,
+            maximumResponseBytes: ArtSVGResponseDecoder.maximumPayloadSize
+        )
+    }
+
+    func decodeResponse(
+        _ data: Data,
+        response: HTTPURLResponse?
+    ) throws -> LBGeneratedArtwork? {
+        try ArtSVGResponseDecoder.artwork(from: data, response: response)
+    }
+
+    struct Body: Encodable {
+        let background: String
+        let imageSize: Int
+        let dimension: Int
+        let skipMissing: Bool
+        let showMissingCoverPlaceholder: Bool
+        let captions: Bool
+        let layout: Int
+        let releaseMBIDs: [String]?
+        let releaseGroupMBIDs: [String]?
+        let coverArtSize: Int
+
+        enum CodingKeys: String, CodingKey {
+            case background
+            case imageSize = "image_size"
+            case dimension
+            case skipMissing = "skip-missing"
+            case showMissingCoverPlaceholder = "show-caa"
+            case captions = "caption"
+            case layout
+            case releaseMBIDs = "release_mbids"
+            case releaseGroupMBIDs = "release_group_mbids"
+            case coverArtSize = "cover_art_size"
+        }
+    }
+}
+
 struct PlaylistArtworkRequest: APIRequest {
     let data: APIRequestData<NoBody>
 

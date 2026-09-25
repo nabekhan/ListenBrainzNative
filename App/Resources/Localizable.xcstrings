@@ -61,6 +61,16 @@
         }
       }
     },
+    "%@ albums you chose from your listening history.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ albums you chose from your listening history."
+          }
+        }
+      }
+    },
     "%@ artist": {
       "localizations": {
         "en": {
@@ -191,6 +201,16 @@
         }
       }
     },
+    "%@ matched albums are ready": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ matched albums are ready"
+          }
+        }
+      }
+    },
     "%@ new artist discovered": {
       "localizations": {
         "en": {
@@ -207,6 +227,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ new artists discovered"
+          }
+        }
+      }
+    },
+    "%@ of %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ of %2$@"
           }
         }
       }
@@ -971,6 +1001,96 @@
         }
       }
     },
+    "2 × 2 grid": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2 × 2 grid"
+          }
+        }
+      }
+    },
+    "3 × 3 grid": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3 × 3 grid"
+          }
+        }
+      }
+    },
+    "3 × 3 left feature": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3 × 3 left feature"
+          }
+        }
+      }
+    },
+    "3 × 3 right feature": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3 × 3 right feature"
+          }
+        }
+      }
+    },
+    "4 × 4 centered": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 × 4 centered"
+          }
+        }
+      }
+    },
+    "4 × 4 feature": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 × 4 feature"
+          }
+        }
+      }
+    },
+    "4 × 4 grid": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 × 4 grid"
+          }
+        }
+      }
+    },
+    "4 × 4 split": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 × 4 split"
+          }
+        }
+      }
+    },
+    "5 × 5 feature": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 × 5 feature"
+          }
+        }
+      }
+    },
     "6 AM–12 PM": {
       "localizations": {
         "en": {
@@ -1361,6 +1481,16 @@
         }
       }
     },
+    "Adds this album to the collage": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adds this album to the collage"
+          }
+        }
+      }
+    },
     "Advanced": {
       "localizations": {
         "en": {
@@ -1377,6 +1507,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Afternoon"
+          }
+        }
+      }
+    },
+    "Album collage": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Album collage"
           }
         }
       }
@@ -1491,6 +1631,16 @@
         }
       }
     },
+    "All covers selected. Arrange them before creating your artwork.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All covers selected. Arrange them before creating your artwork."
+          }
+        }
+      }
+    },
     "All decades": {
       "localizations": {
         "en": {
@@ -1541,6 +1691,16 @@
         }
       }
     },
+    "An album collage from my ListenBrainz history: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An album collage from my ListenBrainz history: %@"
+          }
+        }
+      }
+    },
     "An earlier listen may already have been sent. Check History first. Resetting could let you send it twice.": {
       "localizations": {
         "en": {
@@ -1587,6 +1747,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apply"
+          }
+        }
+      }
+    },
+    "Arrange covers": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrange covers"
+          }
+        }
+      }
+    },
+    "Arrange your top albums into shareable artwork": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrange your top albums into shareable artwork"
           }
         }
       }
@@ -1917,6 +2097,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Back"
+          }
+        }
+      }
+    },
+    "Background": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Background"
           }
         }
       }
@@ -2291,6 +2481,16 @@
         }
       }
     },
+    "Change layout": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change layout"
+          }
+        }
+      }
+    },
     "Check Again": {
       "localizations": {
         "en": {
@@ -2401,6 +2601,16 @@
         }
       }
     },
+    "Choose %@ more albums.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose %@ more albums."
+          }
+        }
+      }
+    },
     "Choose Another Day": {
       "localizations": {
         "en": {
@@ -2507,6 +2717,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Choose date"
+          }
+        }
+      }
+    },
+    "Choose layout": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose layout"
+          }
+        }
+      }
+    },
+    "Choose one more album.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose one more album."
           }
         }
       }
@@ -3071,12 +3301,42 @@
         }
       }
     },
+    "Cover order": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cover order"
+          }
+        }
+      }
+    },
+    "Covers follow this order. Some layouts feature more than one.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Covers follow this order. Some layouts feature more than one."
+          }
+        }
+      }
+    },
     "Create": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Create"
+          }
+        }
+      }
+    },
+    "Create album collage": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create album collage"
           }
         }
       }
@@ -3297,6 +3557,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Daily Jams"
+          }
+        }
+      }
+    },
+    "Dark": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dark"
           }
         }
       }
@@ -4881,6 +5151,16 @@
         }
       }
     },
+    "Layout": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layout"
+          }
+        }
+      }
+    },
     "Leading artists": {
       "localizations": {
         "en": {
@@ -4977,6 +5257,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "License %@"
+          }
+        }
+      }
+    },
+    "Light": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light"
           }
         }
       }
@@ -5097,6 +5387,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "ListenBrainz accepted the request but the playlist did not update yet. Inspect it before trying again."
+          }
+        }
+      }
+    },
+    "ListenBrainz album collage with %@ covers": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz album collage with %@ covers"
+          }
+        }
+      }
+    },
+    "ListenBrainz album collage with one cover": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz album collage with one cover"
           }
         }
       }
@@ -5767,6 +6077,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ListenBrainz may need more listening history before it can build this view."
+          }
+        }
+      }
+    },
+    "ListenBrainz needs MusicBrainz matches for your top albums before it can build a collage.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz needs MusicBrainz matches for your top albums before it can build a collage."
           }
         }
       }
@@ -7241,6 +7561,16 @@
         }
       }
     },
+    "My ListenBrainz album collage": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My ListenBrainz album collage"
+          }
+        }
+      }
+    },
     "My ListenBrainz listening stats — %@: %@": {
       "localizations": {
         "en": {
@@ -7741,6 +8071,16 @@
         }
       }
     },
+    "No matched albums yet": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No matched albums yet"
+          }
+        }
+      }
+    },
     "No matches in loaded listens": {
       "localizations": {
         "en": {
@@ -8137,6 +8477,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "One ListenBrainz report powers the whole retrospective."
+          }
+        }
+      }
+    },
+    "One album you chose from your listening history.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One album you chose from your listening history."
+          }
+        }
+      }
+    },
+    "One matched album is ready": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One matched album is ready"
           }
         }
       }
@@ -8617,6 +8977,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Opens release group details"
+          }
+        }
+      }
+    },
+    "Opens the album collage editor": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens the album collage editor"
           }
         }
       }
@@ -10241,6 +10611,16 @@
         }
       }
     },
+    "Removes this album from the collage": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removes this album from the collage"
+          }
+        }
+      }
+    },
     "Removes “%@” from your history, usually shortly after the next hour. Statistics may update later.": {
       "localizations": {
         "en": {
@@ -10951,6 +11331,16 @@
         }
       }
     },
+    "Selected as cover %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected as cover %@"
+          }
+        }
+      }
+    },
     "Selected time": {
       "localizations": {
         "en": {
@@ -11237,6 +11627,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Show %lld albums"
+          }
+        }
+      }
+    },
+    "Show album and artist names": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show album and artist names"
           }
         }
       }
@@ -11761,6 +12161,16 @@
         }
       }
     },
+    "Single cover": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Single cover"
+          }
+        }
+      }
+    },
     "Social": {
       "localizations": {
         "en": {
@@ -11897,6 +12307,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Still learning your taste"
+          }
+        }
+      }
+    },
+    "Style": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Style"
           }
         }
       }
@@ -13901,6 +14321,26 @@
         }
       }
     },
+    "Uses %@ album covers": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uses %@ album covers"
+          }
+        }
+      }
+    },
+    "Uses one album cover": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uses one album cover"
+          }
+        }
+      }
+    },
     "View Day": {
       "localizations": {
         "en": {
@@ -13987,6 +14427,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wait until this track appears in your history, then delete it."
+          }
+        }
+      }
+    },
+    "Waiting for matched top albums": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for matched top albums"
           }
         }
       }

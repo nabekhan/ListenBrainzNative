@@ -37,6 +37,46 @@ final class GeneratedArtworkProviderTests: XCTestCase {
         XCTAssertEqual(calls, 1)
     }
 
+    func testCustomArtworkUsesAnonymousScopeAndOrderedRequestIdentity() async throws {
+        let transport = RecordingGeneratedArtworkTransport(
+            outcome: .artwork("<svg id=\"custom\"/>")
+        )
+        let gate = RequestGate(minimumInterval: .zero)
+        let cache = GeneratedArtworkCache()
+        let firstProvider = ListenBrainzGeneratedArtworkProvider(
+            transport: transport,
+            gate: gate,
+            cache: cache,
+            authenticatedScope: .authenticated(token: "fixture-token-a")
+        )
+        let secondProvider = ListenBrainzGeneratedArtworkProvider(
+            transport: transport,
+            gate: gate,
+            cache: cache,
+            authenticatedScope: .authenticated(token: "fixture-token-b")
+        )
+        let first = UUID()
+        let second = UUID()
+        let request = GeneratedArtworkRequest.custom(
+            releaseMBIDs: [first, second],
+            dimension: 2,
+            layout: .zero
+        )
+
+        _ = try await firstProvider.artwork(for: request)
+        _ = try await secondProvider.artwork(for: request)
+        _ = try await firstProvider.artwork(
+            for: .custom(
+                releaseMBIDs: [second, first],
+                dimension: 2,
+                layout: .zero
+            )
+        )
+
+        let calls = await transport.callCount()
+        XCTAssertEqual(calls, 2)
+    }
+
     func testPlaylistArtworkDoesNotCrossAuthenticatedScopes() async throws {
         let transport = RecordingGeneratedArtworkTransport(
             outcome: .artwork("<svg/>")

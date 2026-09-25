@@ -758,6 +758,23 @@ actor RequestGate {
             case let .statistics(user, range, dimension, layout, imageSize, options): return endpoint(scope, .artworkGenerated, ["stats", userID(user), range.rawValue, String(dimension), String(layout.rawValue), String(imageSize)] + artOptions(options))
             case let .artist(mbid, dimension, layout, imageSize, options): return endpoint(scope, .artworkGenerated, ["artist", uuid(mbid), String(dimension), String(layout.rawValue), String(imageSize)] + artOptions(options))
             case let .playlist(mbid, dimension, layout): return endpoint(scope, .artworkGenerated, ["playlist", uuid(mbid), String(dimension), String(layout.rawValue)])
+            case let .custom(releaseMBIDs, dimension, layout, imageSize, background, captions, skipMissing, showMissingCoverPlaceholder, coverArtSize):
+                return endpoint(
+                    scope,
+                    .artworkGenerated,
+                    ["custom"]
+                        + releaseMBIDs.map(uuid)
+                        + [
+                            String(dimension),
+                            String(layout.rawValue),
+                            String(imageSize),
+                            artBackground(background),
+                            String(captions),
+                            String(skipMissing),
+                            String(showMissingCoverPlaceholder),
+                            String(coverArtSize.rawValue),
+                        ]
+                )
             }
         }
         static func critiqueBrainzReviews(_ scope: ReadScope, entity: CritiqueBrainzEntity) -> Self {
@@ -771,6 +788,14 @@ actor RequestGate {
         }
         private static func uuid(_ id: UUID) -> String { id.uuidString.lowercased() }
         private static func artOptions(_ value: LBArtGridOptions) -> [String] { [String(value.captions), String(value.skipMissing), String(value.showRank), String(value.showListenCount), String(value.showRelease), String(value.showArtist)] }
+        private static func artBackground(_ value: LBArtGridBackground) -> String {
+            switch value {
+            case .transparent: "transparent"
+            case .white: "white"
+            case .black: "black"
+            case let .hex(color): "hex:\(color.lowercased())"
+            }
+        }
         // Usernames stay byte-for-byte aligned with the value sent by the
         // provider. Normalizing only the key could merge distinct wire URLs.
         private static func userID(_ user: String) -> String { user }

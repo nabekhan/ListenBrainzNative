@@ -44,6 +44,28 @@ private struct LiveGeneratedArtworkTransport: GeneratedArtworkTransport {
                 dimension: dimension,
                 layout: layout
             )
+        case let .custom(
+            releaseMBIDs,
+            dimension,
+            layout,
+            imageSize,
+            background,
+            captions,
+            skipMissing,
+            showMissingCoverPlaceholder,
+            coverArtSize
+        ):
+            try await anonymousClient.art.customGrid(
+                items: .releases(releaseMBIDs),
+                dimension: dimension,
+                layout: layout,
+                imageSize: imageSize,
+                background: background,
+                captions: captions,
+                skipMissing: skipMissing,
+                showMissingCoverPlaceholder: showMissingCoverPlaceholder,
+                coverArtSize: coverArtSize
+            )
         }
     }
 }

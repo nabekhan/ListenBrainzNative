@@ -179,7 +179,7 @@ Running integration tests requires setting a ListenBrainz token in the environme
     - [x] GET  /1/recommendation/feedback/user/(user_name)
     - [x] GET  /1/recommendation/feedback/user/(user_name)/recordings
 - Art
-  - [ ] POST /1/art/grid/
+  - [x] POST /1/art/grid/
   - [x] GET  /1/art/grid-stats/(user_name)/(time_range)/(int: dimension)/(int: layout)/(int: image_size)
   - [x] GET  /1/art/artist-grid/(artist_mbid)/(int: dimension)/(int: layout)/(int: image_size)
   - [x] POST /1/art/playlist/(playlist_mbid)/(int: dimension)/(int: layout)

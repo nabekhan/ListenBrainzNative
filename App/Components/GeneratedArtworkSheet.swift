@@ -54,6 +54,27 @@ struct GeneratedArtworkPresentation: Equatable, Sendable {
         )
     }
 
+    static func customAlbumCollage(
+        username: String,
+        albumCount: Int
+    ) -> Self {
+        let sourceURL = listenBrainzURL(path: "/user/\(username)/stats/")
+        let detail = albumCount == 1
+            ? String(localized: "One album you chose from your listening history.")
+            : String(localized: "\(albumCount.formatted()) albums you chose from your listening history.")
+        let accessibilityLabel = albumCount == 1
+            ? String(localized: "ListenBrainz album collage with one cover")
+            : String(localized: "ListenBrainz album collage with \(albumCount.formatted()) covers")
+        return Self(
+            title: String(localized: "Album collage"),
+            detail: detail,
+            accessibilityLabel: accessibilityLabel,
+            shareSubject: String(localized: "My ListenBrainz album collage"),
+            shareMessage: String(localized: "An album collage from my ListenBrainz history: \(sourceURL.absoluteString)"),
+            fileName: "ListenBrainz-album-collage.png"
+        )
+    }
+
     private static func listenBrainzURL(path: String) -> URL {
         var components = URLComponents()
         components.scheme = "https"
@@ -316,7 +337,33 @@ struct GenericArtVisualQAScreen: View {
     }
 }
 
-private struct VisualQAGeneratedArtworkProvider: GeneratedArtworkProviding {
+struct CustomArtPreviewVisualQAScreen: View {
+    var body: some View {
+        GeneratedArtworkSheet(
+            presentation: .customAlbumCollage(
+                username: "visual-listener",
+                albumCount: Self.releaseMBIDs.count
+            ),
+            request: .custom(
+                releaseMBIDs: Self.releaseMBIDs,
+                dimension: 3,
+                layout: .one
+            ),
+            provider: VisualQAGeneratedArtworkProvider(fixture: .populated)
+        )
+    }
+
+    private static let releaseMBIDs = (1 ... 6).map { number in
+        UUID(
+            uuidString: String(
+                format: "00000000-0000-0000-0000-%012d",
+                number
+            )
+        )!
+    }
+}
+
+struct VisualQAGeneratedArtworkProvider: GeneratedArtworkProviding {
     let fixture: GenericArtVisualQAScreen.Fixture
 
     func artwork(

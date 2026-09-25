@@ -264,6 +264,10 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-manual-mapping-review-demo")
             {
                 ManualMappingVisualQAScreen()
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-custom-art-composer-demo") {
+                CustomArtworkComposerVisualQAScreen()
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-custom-art-preview-demo") {
+                CustomArtPreviewVisualQAScreen()
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-generic-art-demo") {
                 GenericArtVisualQAScreen(fixture: .populated)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-generic-art-unavailable-demo") {

@@ -25,6 +25,7 @@ struct TasteView: View {
     @State private var selectedDailyCellID: DailyActivity.Cell.ID?
     @State private var selectedEraDecade: Int?
     @State private var showsStatsArtwork = false
+    @State private var showsCustomArtwork = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -45,6 +46,7 @@ struct TasteView: View {
                         rankings
                     } else {
                         overview
+                        albumCollage
                         yearInMusic
                         periodControls
                         dailyListeningHours
@@ -60,6 +62,7 @@ struct TasteView: View {
                     }
                     #else
                     overview
+                    albumCollage
                     yearInMusic
                     periodControls
                     dailyListeningHours
@@ -131,6 +134,15 @@ struct TasteView: View {
                 ),
                 request: .statistics(username: model.account.username, range: activityPeriod.artRange),
                 provider: ListenBrainzGeneratedArtworkProvider(token: model.account.token)
+            )
+        }
+        .sheet(isPresented: $showsCustomArtwork) {
+            CustomArtworkComposerSheet(
+                username: model.account.username,
+                albums: customArtworkAlbums,
+                provider: ListenBrainzGeneratedArtworkProvider(
+                    token: model.account.token
+                )
             )
         }
     }
@@ -233,6 +245,65 @@ struct TasteView: View {
             } else {
                 HStack(spacing: 12) { overviewMetrics }
             }
+        }
+    }
+
+    private var albumCollage: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Album collage",
+                subtitle: "Arrange your top albums into shareable artwork"
+            )
+
+            Button { showsCustomArtwork = true } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "square.grid.3x3.fill")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 58, height: 58)
+                        .background(
+                            AppTheme.artworkGradient(seed: "Album collage"),
+                            in: .rect(cornerRadius: 16, style: .continuous)
+                        )
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Create album collage")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Text(customArtworkAvailabilityLabel)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.leading)
+                    }
+
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.bold())
+                        .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
+                }
+                .padding(14)
+                .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens the album collage editor")
+        }
+    }
+
+    private var customArtworkAlbums: [CustomArtworkAlbum] {
+        CustomArtworkAlbum.candidates(from: model.snapshot.topReleases)
+    }
+
+    private var customArtworkAvailabilityLabel: String {
+        switch customArtworkAlbums.count {
+        case 0:
+            String(localized: "Waiting for matched top albums")
+        case 1:
+            String(localized: "One matched album is ready")
+        default:
+            String(localized: "\(customArtworkAlbums.count.formatted()) matched albums are ready")
         }
     }
 

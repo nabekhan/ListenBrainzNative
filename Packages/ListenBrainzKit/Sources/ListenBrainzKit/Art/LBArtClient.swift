@@ -46,6 +46,46 @@ public enum LBArtGridLayout: Int, CaseIterable, Sendable {
     }
 }
 
+/// The background accepted by ListenBrainz's custom cover-grid endpoint.
+public enum LBArtGridBackground: Hashable, Sendable {
+    case transparent
+    case white
+    case black
+    case hex(String)
+
+    func requestValue() throws -> String {
+        switch self {
+        case .transparent:
+            "transparent"
+        case .white:
+            "white"
+        case .black:
+            "black"
+        case let .hex(value):
+            if value.range(
+                of: #"^#[0-9A-Fa-f]{6}$"#,
+                options: .regularExpression
+            ) != nil {
+                value.lowercased()
+            } else {
+                throw LBError.invalidParam
+            }
+        }
+    }
+}
+
+/// The source-cover size supported by ListenBrainz's art compositor.
+public enum LBArtCoverSize: Int, CaseIterable, Sendable {
+    case compact = 250
+    case large = 500
+}
+
+/// One canonical entity kind for an ordered custom cover grid.
+public enum LBCustomArtGridItems: Hashable, Sendable {
+    case releases([UUID])
+    case releaseGroups([UUID])
+}
+
 public enum LBStatsArtRange: String, CaseIterable, Sendable {
     case thisWeek = "this_week"
     case thisMonth = "this_month"
@@ -164,6 +204,35 @@ public struct LBArtClient: Sendable {
                 layout: layout,
                 imageSize: imageSize,
                 options: options
+            )
+        )
+    }
+
+    /// Generate a custom grid from an ordered list of concrete releases or
+    /// release groups. The endpoint is public; callers should use an
+    /// unauthenticated client when the result does not depend on an account.
+    public func customGrid(
+        items: LBCustomArtGridItems,
+        dimension: Int,
+        layout: LBArtGridLayout,
+        imageSize: Int = 924,
+        background: LBArtGridBackground = .black,
+        captions: Bool = false,
+        skipMissing: Bool = false,
+        showMissingCoverPlaceholder: Bool = true,
+        coverArtSize: LBArtCoverSize = .large
+    ) async throws -> LBGeneratedArtwork? {
+        try await apiClient.execute(
+            try CustomGridArtworkRequest(
+                items: items,
+                dimension: dimension,
+                layout: layout,
+                imageSize: imageSize,
+                background: background,
+                captions: captions,
+                skipMissing: skipMissing,
+                showMissingCoverPlaceholder: showMissingCoverPlaceholder,
+                coverArtSize: coverArtSize
             )
         )
     }

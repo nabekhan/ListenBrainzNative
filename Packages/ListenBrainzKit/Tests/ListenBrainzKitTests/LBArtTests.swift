@@ -146,6 +146,86 @@ struct LBArtTests {
         #expect(playlist.data.statusErrors[404] == .notFound)
     }
 
+    @Test("Custom grid art sends one bounded ordered JSON request")
+    func customGridSemantics() throws {
+        let first = UUID(uuidString: "11111111-2222-4333-8444-555555555555")!
+        let second = UUID(uuidString: "AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE")!
+        let request = try CustomGridArtworkRequest(
+            items: .releases([first, second]),
+            dimension: 3,
+            layout: .one,
+            imageSize: 924,
+            background: .hex("#AbC123"),
+            captions: true,
+            skipMissing: false,
+            showMissingCoverPlaceholder: true,
+            coverArtSize: .large
+        )
+        let urlRequest = try makeURLRequest(request)
+        let bodyData = try #require(urlRequest.httpBody)
+        let body = try #require(
+            try JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+        )
+
+        #expect(urlRequest.httpMethod == "POST")
+        let url = try #require(urlRequest.url)
+        let components = try #require(
+            URLComponents(url: url, resolvingAgainstBaseURL: false)
+        )
+        #expect(components.percentEncodedPath == "/1/art/grid/")
+        #expect(urlRequest.url?.query?.isEmpty != false)
+        #expect(
+            urlRequest.value(forHTTPHeaderField: "Content-Type")
+                == "application/json"
+        )
+        #expect(body["background"] as? String == "#abc123")
+        #expect(body["image_size"] as? Int == 924)
+        #expect(body["dimension"] as? Int == 3)
+        #expect(body["layout"] as? Int == 1)
+        #expect(body["caption"] as? Bool == true)
+        #expect(body["skip-missing"] as? Bool == false)
+        #expect(body["show-caa"] as? Bool == true)
+        #expect(body["cover_art_size"] as? Int == 500)
+        #expect(body["release_mbids"] as? [String] == [
+            "11111111-2222-4333-8444-555555555555",
+            "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        ])
+        #expect(body["release_group_mbids"] == nil)
+        #expect(request.data.statusErrors == [400: .badRequest])
+        #expect(
+            request.data.maximumResponseBytes
+                == ArtSVGResponseDecoder.maximumPayloadSize
+        )
+    }
+
+    @Test("Custom grid art keeps release-group identity separate")
+    func customGridReleaseGroupSemantics() throws {
+        let mbid = UUID(uuidString: "11111111-2222-4333-8444-555555555555")!
+        let request = try CustomGridArtworkRequest(
+            items: .releaseGroups([mbid]),
+            dimension: 1,
+            layout: .zero,
+            imageSize: 128,
+            background: .transparent,
+            captions: false,
+            skipMissing: true,
+            showMissingCoverPlaceholder: false,
+            coverArtSize: .compact
+        )
+        let urlRequest = try makeURLRequest(request)
+        let bodyData = try #require(urlRequest.httpBody)
+        let body = try #require(
+            try JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+        )
+
+        #expect(body["release_mbids"] == nil)
+        #expect(body["release_group_mbids"] as? [String] == [
+            "11111111-2222-4333-8444-555555555555",
+        ])
+        #expect(body["background"] as? String == "transparent")
+        #expect(body["cover_art_size"] as? Int == 250)
+    }
+
     @Test("Every documented dimension and layout combination is accepted")
     func validGridBounds() throws {
         let valid: [(Int, [LBArtGridLayout])] = [
@@ -220,6 +300,38 @@ struct LBArtTests {
                     options: .nativeDefault
                 )
             }
+        }
+
+        for items in [
+            LBCustomArtGridItems.releases([]),
+            .releaseGroups(Array(repeating: UUID(), count: 101)),
+        ] {
+            #expect(throws: LBError.invalidParam) {
+                _ = try CustomGridArtworkRequest(
+                    items: items,
+                    dimension: 3,
+                    layout: .zero,
+                    imageSize: 924,
+                    background: .black,
+                    captions: false,
+                    skipMissing: false,
+                    showMissingCoverPlaceholder: true,
+                    coverArtSize: .large
+                )
+            }
+        }
+        #expect(throws: LBError.invalidParam) {
+            _ = try CustomGridArtworkRequest(
+                items: .releases([UUID()]),
+                dimension: 3,
+                layout: .zero,
+                imageSize: 924,
+                background: .hex("not-a-color"),
+                captions: false,
+                skipMissing: false,
+                showMissingCoverPlaceholder: true,
+                coverArtSize: .large
+            )
         }
     }
 
@@ -375,6 +487,16 @@ struct LBArtTests {
             ) == genericExpected
         )
         #expect(playlistMock.request is PlaylistArtworkRequest)
+
+        let customMock = MockAPIClient(result: .success(genericExpected))
+        #expect(
+            try await LBArtClient(customMock).customGrid(
+                items: .releases([UUID()]),
+                dimension: 1,
+                layout: .zero
+            ) == genericExpected
+        )
+        #expect(customMock.request is CustomGridArtworkRequest)
     }
 
     private func makeURLRequest<Request: APIRequest>(
