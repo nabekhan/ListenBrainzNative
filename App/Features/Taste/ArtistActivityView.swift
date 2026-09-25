@@ -195,7 +195,7 @@ struct ArtistActivityView: View {
         }
     }
 
-    private func summary(value: Int, label: String, symbol: String) -> some View {
+    private func summary(value: Int, label: LocalizedStringResource, symbol: String) -> some View {
         HStack(spacing: 10) {
             Image(systemName: symbol)
                 .font(.system(size: 20, weight: .semibold))
@@ -275,7 +275,7 @@ struct ArtistActivityView: View {
     private func artistHeader(_ artist: ArtistActivity.Artist, rank: Int) -> some View {
         let content = artistHeaderContent(artist, rank: rank)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(rank). \(artist.name), \(artist.listenCount) listens")
+            .accessibilityLabel(String(localized: "\(rank). \(artist.name), \(artist.listenCount) listens"))
 
         if artist.mbid != nil {
             NavigationLink(value: artist.rankedArtist) { content }
@@ -294,7 +294,7 @@ struct ArtistActivityView: View {
                     rankLabel(rank)
                     artistName(artist)
                 }
-                Text("\(artist.listenCount.formatted()) listens")
+                Text(listenCountLabel(artist.listenCount))
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -303,7 +303,7 @@ struct ArtistActivityView: View {
                 rankLabel(rank)
                 artistName(artist)
                 Spacer(minLength: 8)
-                Text("\(artist.listenCount.formatted()) listens")
+                Text(listenCountLabel(artist.listenCount))
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -326,7 +326,7 @@ struct ArtistActivityView: View {
             if let canonical = artist.canonicalName,
                canonical.localizedCaseInsensitiveCompare(artist.creditedName) != .orderedSame
             {
-                Text("Credited as \(artist.creditedName)")
+                Text(String(localized: "Credited as \(artist.creditedName)"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -356,14 +356,14 @@ struct ArtistActivityView: View {
         }
         .frame(height: 7)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Album mix across \(albums.count) \(albums.count == 1 ? "album" : "albums")")
+        .accessibilityLabel(albumMixAccessibilityLabel(albums.count))
     }
 
     @ViewBuilder
     private func albumRow(_ album: ArtistActivity.Album, artist: ArtistActivity.Artist) -> some View {
         let content = albumRowContent(album)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(album.name), \(album.listenCount) listens")
+            .accessibilityLabel(String(localized: "\(album.name), \(album.listenCount) listens"))
 
         if let group = album.releaseGroup(artistName: artist.name) {
             NavigationLink(value: group) { content }
@@ -381,7 +381,7 @@ struct ArtistActivityView: View {
                 Text(album.name)
                     .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("\(album.listenCount.formatted()) listens")
+                Text(listenCountLabel(album.listenCount))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -399,15 +399,29 @@ struct ArtistActivityView: View {
     }
 
     private func albumDisclosureTitle(albumCount: Int, isExpanded: Bool) -> String {
-        if isExpanded { return "Hide albums" }
-        return "Show \(albumCount) \(albumCount == 1 ? "album" : "albums")"
+        if isExpanded { return String(localized: "Hide albums") }
+        return albumCount == 1
+            ? String(localized: "Show \(albumCount) album")
+            : String(localized: "Show \(albumCount) albums")
     }
 
     private func dateRange(_ activity: ArtistActivity) -> String {
         guard activity.from != .distantPast, activity.to != .distantPast else {
-            return "Calculated by ListenBrainz"
+            return String(localized: "Calculated by ListenBrainz")
         }
-        return "\(activity.from.formatted(date: .abbreviated, time: .omitted)) – \(activity.to.formatted(date: .abbreviated, time: .omitted)) · calculated by ListenBrainz"
+        return String(localized: "\(activity.from.formatted(date: .abbreviated, time: .omitted)) – \(activity.to.formatted(date: .abbreviated, time: .omitted)) · calculated by ListenBrainz")
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        count == 1
+            ? String(localized: "\(count) listen")
+            : String(localized: "\(count) listens")
+    }
+
+    private func albumMixAccessibilityLabel(_ count: Int) -> String {
+        count == 1
+            ? String(localized: "Album mix across \(count) album")
+            : String(localized: "Album mix across \(count) albums")
     }
 
     private func showExpandedFixtureIfRequested() {

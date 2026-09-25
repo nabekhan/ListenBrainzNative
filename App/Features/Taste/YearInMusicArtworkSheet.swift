@@ -132,7 +132,7 @@ struct YearInMusicArtworkSheet: View {
                         .font(.headline)
                         .foregroundStyle(AppTheme.accent)
                 }
-                Text("Generated from your \(String(report.year)) listening report.")
+                Text(String(localized: "Generated from your \(report.year) listening report."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -164,10 +164,10 @@ struct YearInMusicArtworkSheet: View {
                         data: pngData,
                         fileName: "ListenBrainz-Year-in-Music-\(report.year).png"
                     ),
-                    subject: Text("My \(String(report.year)) Year in Music"),
-                    message: Text("My \(String(report.year)) listening story on ListenBrainz: \(reportURL.absoluteString)"),
+                    subject: Text(String(localized: "My \(report.year) Year in Music")),
+                    message: Text(String(localized: "My \(report.year) listening story on ListenBrainz: \(reportURL.absoluteString)")),
                     preview: SharePreview(
-                        "ListenBrainz Year in Music \(String(report.year))",
+                        String(localized: "ListenBrainz Year in Music \(report.year)"),
                         image: Image(uiImage: shareImage)
                     )
                 ) {
@@ -181,7 +181,7 @@ struct YearInMusicArtworkSheet: View {
                 .tint(AppTheme.accent)
                 .accessibilityHint("Shares a PNG copy and the ListenBrainz report link")
             } else {
-                snapshotFailure("Brainz couldn’t encode the artwork as a PNG.")
+                snapshotFailure(String(localized: "Brainz couldn’t encode the artwork as a PNG."))
             }
         case let .failed(message):
             snapshotFailure(message)
@@ -249,14 +249,26 @@ struct YearInMusicArtworkSheet: View {
 
     private var artworkAccessibilityLabel: String {
         var parts = [
-            "Official ListenBrainz Year in Music \(String(report.year)) artwork",
-            "\(report.totals.listenCount.formatted()) listens",
-            "\(report.totals.artistCount.formatted()) artists",
+            String(localized: "Official ListenBrainz Year in Music \(report.year) artwork"),
+            listenCountLabel(report.totals.listenCount),
+            artistCountLabel(report.totals.artistCount),
         ]
         if let artist = report.topArtists.first?.name {
-            parts.append("top artist \(artist)")
+            parts.append(String(localized: "top artist \(artist)"))
         }
-        return parts.joined(separator: ", ")
+        return parts.joined(separator: String(localized: ", "))
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        count == 1
+            ? String(localized: "\(count.formatted()) listen")
+            : String(localized: "\(count.formatted()) listens")
+    }
+
+    private func artistCountLabel(_ count: Int) -> String {
+        count == 1
+            ? String(localized: "\(count.formatted()) artist")
+            : String(localized: "\(count.formatted()) artists")
     }
 
     private func beginRetry() {

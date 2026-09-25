@@ -6,6 +6,13 @@ enum ArtistOriginsMetric: String, CaseIterable, Identifiable {
 
     var id: Self { self }
 
+    var title: LocalizedStringResource {
+        switch self {
+        case .artists: "Artists"
+        case .listens: "Listens"
+        }
+    }
+
     func value(for country: ArtistOrigins.Country) -> Int {
         switch self {
         case .artists: country.artistCount
@@ -15,8 +22,10 @@ enum ArtistOriginsMetric: String, CaseIterable, Identifiable {
 
     func unit(for count: Int) -> String {
         switch self {
-        case .artists: count == 1 ? "artist" : "artists"
-        case .listens: count == 1 ? "listen" : "listens"
+        case .artists:
+            return count == 1 ? String(localized: "artist") : String(localized: "artists")
+        case .listens:
+            return count == 1 ? String(localized: "listen") : String(localized: "listens")
         }
     }
 }
@@ -53,7 +62,7 @@ struct ArtistOriginsPresentation {
     }
 
     static func countryName(code: String?, locale: Locale = .autoupdatingCurrent) -> String {
-        guard let code else { return "Unknown origin" }
+        guard let code else { return String(localized: "Unknown origin") }
         let localized = locale.localizedString(forRegionCode: code)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard let localized, !localized.isEmpty else { return code }
@@ -239,7 +248,7 @@ struct ArtistOriginsView: View {
         return VStack(alignment: .leading, spacing: 18) {
             Picker("Rank countries by", selection: $metric) {
                 ForEach(ArtistOriginsMetric.allCases) { value in
-                    Text(value.rawValue).tag(value)
+                    Text(value.title).tag(value)
                 }
             }
             .pickerStyle(.segmented)
@@ -293,7 +302,7 @@ struct ArtistOriginsView: View {
         }
     }
 
-    private func summary(value: String, label: String, symbol: String) -> some View {
+    private func summary(value: String, label: LocalizedStringResource, symbol: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Image(systemName: symbol)
                 .foregroundStyle(AppTheme.secondary)
@@ -350,7 +359,7 @@ struct ArtistOriginsView: View {
                 .frame(height: 7)
                 .accessibilityHidden(true)
 
-                Text("\(row.country.artistCount.formatted()) artists · \(row.country.listenCount.formatted()) listens")
+                Text(countryCountsLabel(row.country))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -360,9 +369,7 @@ struct ArtistOriginsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            "\(rank). \(row.name). \(row.country.artistCount) artists, \(row.country.listenCount) listens"
-        )
+        .accessibilityLabel(countryAccessibilityLabel(row, rank: rank))
         .accessibilityHint("Shows the artists from this country")
     }
 
@@ -397,9 +404,29 @@ struct ArtistOriginsView: View {
 
     private func dateRange(_ origins: ArtistOrigins) -> String {
         guard origins.from != .distantPast, origins.to != .distantPast else {
-            return "Calculated by ListenBrainz"
+            return String(localized: "Calculated by ListenBrainz")
         }
-        return "\(origins.from.formatted(date: .abbreviated, time: .omitted)) – \(origins.to.formatted(date: .abbreviated, time: .omitted)) · calculated by ListenBrainz"
+        return String(localized: "\(origins.from.formatted(date: .abbreviated, time: .omitted)) – \(origins.to.formatted(date: .abbreviated, time: .omitted)) · calculated by ListenBrainz")
+    }
+
+    private func countryCountsLabel(_ country: ArtistOrigins.Country) -> String {
+        let artists = country.artistCount == 1
+            ? String(localized: "\(country.artistCount) artist")
+            : String(localized: "\(country.artistCount) artists")
+        let listens = country.listenCount == 1
+            ? String(localized: "\(country.listenCount) listen")
+            : String(localized: "\(country.listenCount) listens")
+        return String(localized: "\(artists) · \(listens)")
+    }
+
+    private func countryAccessibilityLabel(_ row: ArtistOriginsPresentation.Row, rank: Int) -> String {
+        let artists = row.country.artistCount == 1
+            ? String(localized: "\(row.country.artistCount) artist")
+            : String(localized: "\(row.country.artistCount) artists")
+        let listens = row.country.listenCount == 1
+            ? String(localized: "\(row.country.listenCount) listen")
+            : String(localized: "\(row.country.listenCount) listens")
+        return String(localized: "\(rank). \(row.name). \(artists), \(listens)")
     }
 
     private func showCountryFixtureIfRequested() {
@@ -471,7 +498,7 @@ private struct ArtistOriginsCountryView: View {
         metric(value: country.listenCount.formatted(), label: "Listens", symbol: "waveform")
     }
 
-    private func metric(value: String, label: String, symbol: String) -> some View {
+    private func metric(value: String, label: LocalizedStringResource, symbol: String) -> some View {
         HStack(spacing: 10) {
             Image(systemName: symbol)
                 .foregroundStyle(AppTheme.secondary)
@@ -506,7 +533,7 @@ private struct ArtistOriginsCountryView: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(artist.name), \(artist.listenCount) listens")
+        .accessibilityLabel(String(localized: "\(artist.name), \(artist.listenCount) listens"))
 
         if let mbid = artist.mbid {
             NavigationLink(value: RankedArtist(mbid: mbid, name: artist.name, listenCount: artist.listenCount)) {

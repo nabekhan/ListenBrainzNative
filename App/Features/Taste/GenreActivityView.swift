@@ -10,19 +10,19 @@ enum GenreDaypart: String, CaseIterable, Identifiable, Hashable, Sendable {
 
     var title: String {
         switch self {
-        case .night: "Night"
-        case .morning: "Morning"
-        case .afternoon: "Afternoon"
-        case .evening: "Evening"
+        case .night: String(localized: "Night")
+        case .morning: String(localized: "Morning")
+        case .afternoon: String(localized: "Afternoon")
+        case .evening: String(localized: "Evening")
         }
     }
 
     var timeRange: String {
         switch self {
-        case .night: "12–6 AM"
-        case .morning: "6 AM–12 PM"
-        case .afternoon: "12–6 PM"
-        case .evening: "6 PM–12 AM"
+        case .night: String(localized: "12–6 AM")
+        case .morning: String(localized: "6 AM–12 PM")
+        case .afternoon: String(localized: "12–6 PM")
+        case .evening: String(localized: "6 PM–12 AM")
         }
     }
 
@@ -118,7 +118,7 @@ struct GenreActivityPresentation: Hashable, Sendable {
         locale: Locale = .autoupdatingCurrent
     ) -> String {
         guard activity.from != .distantPast, activity.to != .distantPast else {
-            return "Server-calculated by ListenBrainz"
+            return String(localized: "Server-calculated by ListenBrainz")
         }
         let style = Date.FormatStyle(
             date: .abbreviated,
@@ -127,7 +127,7 @@ struct GenreActivityPresentation: Hashable, Sendable {
             calendar: Calendar(identifier: .gregorian),
             timeZone: timeZone
         )
-        return "\(activity.from.formatted(style)) – \(activity.to.formatted(style)) · calculated by ListenBrainz"
+        return String(localized: "\(activity.from.formatted(style)) – \(activity.to.formatted(style)) · calculated by ListenBrainz")
     }
 
     private static func localHour(
@@ -406,7 +406,7 @@ struct GenreActivityView: View {
                     Text(item.daypart.timeRange)
                         .font(.caption)
                         .foregroundStyle(isSelected ? Color.white.opacity(0.78) : .secondary)
-                    Text(item.leadingGenre?.name ?? "No mapped genres")
+                    Text(item.leadingGenre?.name ?? String(localized: "No mapped genres"))
                         .font(.caption.weight(.medium))
                         .foregroundStyle(isSelected ? .white : .primary)
                         .lineLimit(2)
@@ -427,10 +427,10 @@ struct GenreActivityView: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(item.daypart.title), \(item.daypart.timeRange)")
+        .accessibilityLabel(String(localized: "\(item.daypart.title), \(item.daypart.timeRange)"))
         .accessibilityValue(
-            item.leadingGenre.map { "Leading genre \($0.name), \($0.listenCount) matches" }
-                ?? "No mapped genres"
+            item.leadingGenre.map { String(localized: "Leading genre \($0.name), \($0.listenCount) matches") }
+                ?? String(localized: "No mapped genres")
         )
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
@@ -452,7 +452,7 @@ struct GenreActivityView: View {
                     .tracking(1.4)
                     .foregroundStyle(.white.opacity(0.78))
 
-                Text(leader?.name ?? "No mapped genres")
+                Text(leader?.name ?? String(localized: "No mapped genres"))
                     .font(.system(
                         size: dynamicTypeSize.isAccessibilitySize ? 38 : 46,
                         weight: .black,
@@ -464,11 +464,7 @@ struct GenreActivityView: View {
                     .minimumScaleFactor(0.62)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(
-                    dynamicTypeSize.isAccessibilitySize
-                        ? "Leading genre · \(item.daypart.timeRange)"
-                        : "Your leading mapped genre from \(item.daypart.timeRange)"
-                )
+                Text(daypartHeroSubtitle(for: item.daypart))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.white.opacity(0.82))
                     .fixedSize(horizontal: false, vertical: true)
@@ -481,9 +477,7 @@ struct GenreActivityView: View {
         .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? 330 : 250, alignment: .bottomLeading)
         .clipShape(.rect(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            "\(item.daypart.title), \(item.daypart.timeRange). Leading genre \(leader?.name ?? "none"), \(leader?.listenCount ?? 0) genre matches. \(item.genres.count) genres represented."
-        )
+        .accessibilityLabel(daypartHeroAccessibilityLabel(item, leader: leader))
     }
 
     @ViewBuilder
@@ -516,7 +510,7 @@ struct GenreActivityView: View {
         }
     }
 
-    private func accessibilityHeroMetric(value: String, label: String) -> some View {
+    private func accessibilityHeroMetric(value: String, label: LocalizedStringResource) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(value)
                 .font(.title2.monospacedDigit().weight(.bold))
@@ -529,7 +523,7 @@ struct GenreActivityView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func heroMetric(value: String, label: String) -> some View {
+    private func heroMetric(value: String, label: LocalizedStringResource) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value)
                 .font(.headline.monospacedDigit())
@@ -598,8 +592,8 @@ struct GenreActivityView: View {
             .frame(height: 8)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Rank \(rank), \(genre.name)")
-        .accessibilityValue("\(genre.listenCount) genre matches")
+        .accessibilityLabel(String(localized: "Rank \(rank), \(genre.name)"))
+        .accessibilityValue(String(localized: "\(genre.listenCount) genre matches"))
     }
 
     private func interpretation(_ activity: GenreActivity) -> some View {
@@ -618,7 +612,7 @@ struct GenreActivityView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text("UTC hour buckets are placed into \(timeZoneName(at: activity.to)) using the time-zone offset at the report’s end date. Dayparts are approximate when a period crosses a daylight-saving change.")
+            Text(String(localized: "UTC hour buckets are placed into \(timeZoneName(at: activity.to)) using the time-zone offset at the report’s end date. Dayparts are approximate when a period crosses a daylight-saving change."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -637,6 +631,20 @@ struct GenreActivityView: View {
             ? .daylightSaving
             : .standard
         return timeZone.localizedName(for: style, locale: .autoupdatingCurrent) ?? timeZone.identifier
+    }
+
+    private func daypartHeroSubtitle(for daypart: GenreDaypart) -> String {
+        dynamicTypeSize.isAccessibilitySize
+            ? String(localized: "Leading genre · \(daypart.timeRange)")
+            : String(localized: "Your leading mapped genre from \(daypart.timeRange)")
+    }
+
+    private func daypartHeroAccessibilityLabel(
+        _ item: GenreActivityPresentation.Daypart,
+        leader: GenreActivityPresentation.RankedGenre?
+    ) -> String {
+        let leadingGenre = leader?.name ?? String(localized: "none")
+        return String(localized: "\(item.daypart.title), \(item.daypart.timeRange). Leading genre \(leadingGenre), \(leader?.listenCount ?? 0) genre matches. \(item.genres.count) genres represented.")
     }
 
     private func resolvedSelection(in presentation: GenreActivityPresentation) -> GenreDaypart {

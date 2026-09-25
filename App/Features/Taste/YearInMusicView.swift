@@ -66,7 +66,7 @@ struct YearInMusicView: View {
                 stateContent
             }
         }
-        .navigationTitle("Year in Music \(String(selectedYear))")
+        .navigationTitle(String(localized: "Year in Music \(selectedYear)"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -87,8 +87,8 @@ struct YearInMusicView: View {
                     Menu {
                         ShareLink(
                             item: url,
-                            subject: Text("My \(String(report.year)) Year in Music"),
-                            message: Text("My \(String(report.year)) listening story on ListenBrainz")
+                            subject: Text(String(localized: "My \(report.year) Year in Music")),
+                            message: Text(String(localized: "My \(report.year) listening story on ListenBrainz"))
                         ) {
                             Label("Share report link", systemImage: "link")
                         }
@@ -300,7 +300,7 @@ struct YearInMusicView: View {
             VStack(spacing: 18) {
                 ProgressView()
                     .controlSize(.large)
-                Text("Building your \(String(model.year)) listening story…")
+                Text(String(localized: "Building your \(model.year) listening story…"))
                     .font(.headline)
                 Text("One ListenBrainz report powers the whole retrospective.")
                     .font(.subheadline)
@@ -312,7 +312,7 @@ struct YearInMusicView: View {
             .accessibilityElement(children: .combine)
         case .unavailable:
             ContentUnavailableView {
-                Label("No \(String(model.year)) report yet", systemImage: "sparkles.rectangle.stack")
+                Label(String(localized: "No \(model.year) report yet"), systemImage: "sparkles.rectangle.stack")
             } description: {
                 Text("ListenBrainz has not generated a Year in Music report for this account.")
             } actions: {
@@ -368,7 +368,7 @@ private struct YearInMusicArtistEvolutionSection: View {
                         activity: activity,
                         artists: artists,
                         selectedTimeUnit: $selectedTimeUnit,
-                        accessibilityTitle: "\(report.year) artist evolution"
+                        accessibilityTitle: String(localized: "\(report.year) artist evolution")
                     )
                     ArtistEvolutionArtistLegend(artists: artists)
                     selectedBreakdown(activity, artists: artists)
@@ -483,14 +483,14 @@ struct YearInMusicTeaserCard: View {
             .clipShape(.rect(cornerRadius: 24, style: .continuous))
             .contentShape(.rect(cornerRadius: 24, style: .continuous))
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Year in Music \(String(year))")
+            .accessibilityLabel(String(localized: "Year in Music \(year)"))
             .accessibilityHint("Opens your annual ListenBrainz retrospective")
     }
 
     private var teaserContent: some View {
         HStack(alignment: .bottom, spacing: 14) {
             VStack(alignment: .leading, spacing: dynamicTypeSize.isAccessibilitySize ? 10 : 5) {
-                Text("YOUR \(String(year))")
+                Text(String(localized: "YOUR \(year)"))
                     .font(.caption.bold())
                     .tracking(1.2)
                     .foregroundStyle(.white.opacity(0.78))
@@ -555,7 +555,7 @@ private struct YearInMusicHero: View {
     private var heroContent: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("YOUR \(String(report.year))")
+                Text(String(localized: "YOUR \(report.year)"))
                     .font(.caption.bold())
                     .tracking(1.4)
                     .foregroundStyle(.white.opacity(0.76))
@@ -597,8 +597,8 @@ private struct YearInMusicHero: View {
         if report.totals.hasRecordingCount { separator; heroMetric(report.totals.recordingCount, label: "tracks") }
     }
 
-    private func heroMetric(_ value: Int, label: String) -> some View {
-        Text("\(value.formatted(.number.notation(.compactName))) \(label)")
+    private func heroMetric(_ value: Int, label: LocalizedStringResource) -> some View {
+        Text("\(value.formatted(.number.notation(.compactName))) \(String(localized: label))")
             .font(.caption.weight(.medium))
             .foregroundStyle(.white.opacity(0.76))
             .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
@@ -621,32 +621,34 @@ private struct YearInMusicHero: View {
     }
 
     private var heroUnit: String {
-        guard report.totals.hasListeningTime, report.totals.listeningTime > 0 else { return "listens in the year" }
+        guard report.totals.hasListeningTime, report.totals.listeningTime > 0 else {
+            return String(localized: "listens in the year")
+        }
         let measurement = listeningDuration
-        return "\(measurement.unit) with music"
+        return String(localized: "\(measurement.unit) with music")
     }
 
     private var listeningDuration: (value: Int, unit: String) {
         if report.totals.listeningTime < 3_600 {
             let minutes = max(1, Int((report.totals.listeningTime / 60).rounded()))
-            return (minutes, minutes == 1 ? "minute" : "minutes")
+            return (minutes, minutes == 1 ? String(localized: "minute") : String(localized: "minutes"))
         }
         let hours = max(1, Int((report.totals.listeningTime / 3_600).rounded()))
-        return (hours, hours == 1 ? "hour" : "hours")
+        return (hours, hours == 1 ? String(localized: "hour") : String(localized: "hours"))
     }
 
     private var accessibilitySummary: String {
         let duration: String
         if report.totals.hasListeningTime, report.totals.listeningTime > 0 {
             let measurement = listeningDuration
-            duration = "\(measurement.value.formatted()) \(measurement.unit) with music"
+            duration = String(localized: "\(measurement.value.formatted()) \(measurement.unit) with music")
         } else {
-            duration = "Listening duration unavailable"
+            duration = String(localized: "Listening duration unavailable")
         }
-        var summary = "Year in Music \(report.year). \(duration). \(report.totals.listenCount.formatted()) listens"
-        if report.totals.hasArtistCount { summary += ", \(report.totals.artistCount.formatted()) artists" }
-        if report.totals.hasReleaseCount { summary += ", \(report.totals.releaseGroupCount.formatted()) releases" }
-        if report.totals.hasRecordingCount { summary += ", and \(report.totals.recordingCount.formatted()) tracks" }
+        var summary = String(localized: "Year in Music \(report.year). \(duration). \(report.totals.listenCount.formatted()) listens")
+        if report.totals.hasArtistCount { summary += String(localized: ", \(report.totals.artistCount.formatted()) artists") }
+        if report.totals.hasReleaseCount { summary += String(localized: ", \(report.totals.releaseGroupCount.formatted()) releases") }
+        if report.totals.hasRecordingCount { summary += String(localized: ", and \(report.totals.recordingCount.formatted()) tracks") }
         return summary + "."
     }
 }
@@ -680,23 +682,23 @@ private struct YearInMusicIdentitySection: View {
 
     private var newArtistsCard: some View {
         YearInMusicIdentityCard(icon: "person.badge.plus", title: "New artists") {
-            Text("\(report.totals.newArtistCount.formatted()) new \(report.totals.newArtistCount == 1 ? "artist" : "artists") discovered")
+            Text(newArtistDiscoveryLabel)
                 .font(.title3.bold().monospacedDigit())
                 .foregroundStyle(.primary)
         } accessibilityLabel: {
-            "New artists. \(report.totals.newArtistCount.formatted()) \(report.totals.newArtistCount == 1 ? "artist" : "artists") discovered."
+            String(localized: "New artists. \(newArtistDiscoveryLabel).")
         }
     }
 
     private func weekdayCard(_ weekday: YearInMusicReport.Weekday) -> some View {
         YearInMusicIdentityCard(icon: "calendar", title: "Most active weekday") {
-            Text(weekday.name)
+            Text(weekday.localizedName)
                 .font(.title3.bold())
             Text("Your busiest day for listening.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         } accessibilityLabel: {
-            "Most active weekday. \(weekday.name) was your busiest day for listening."
+            String(localized: "Most active weekday. \(weekday.localizedName) was your busiest day for listening.")
         }
     }
 
@@ -712,7 +714,7 @@ private struct YearInMusicIdentitySection: View {
                 }
             }
         } accessibilityLabel: {
-            "Top genre tags. " + report.topGenres.prefix(6).map(genreAccessibilitySummary).joined(separator: ". ")
+            String(localized: "Top genre tags. \(report.topGenres.prefix(6).map(genreAccessibilitySummary).joined(separator: ". "))")
         }
     }
 
@@ -728,7 +730,7 @@ private struct YearInMusicIdentitySection: View {
                 }
             }
         } accessibilityLabel: {
-            "Release decades. " + report.releaseDecades.prefix(6).map { "\($0.label), \($0.listenCount.formatted()) \($0.listenCount == 1 ? "listen" : "listens")" }.joined(separator: ". ")
+            String(localized: "Release decades. \(report.releaseDecades.prefix(6).map(releaseDecadeAccessibilitySummary).joined(separator: ". "))")
         }
     }
 
@@ -745,7 +747,7 @@ private struct YearInMusicIdentitySection: View {
         VStack(alignment: .leading, spacing: 6) {
             identityRowLabel(
                 decade.label,
-                detail: "\(decade.listenCount.formatted()) \(decade.listenCount == 1 ? "listen" : "listens")"
+                detail: listenCountLabel(decade.listenCount)
             )
             YearInMusicProportionBar(
                 value: Double(decade.listenCount) / Double(max(1, report.releaseDecades.map(\.listenCount).max() ?? 1))
@@ -786,7 +788,7 @@ private struct YearInMusicIdentitySection: View {
 
     private func genreDetail(_ genre: YearInMusicReport.Genre) -> String? {
         if genre.hasListenCount {
-            return "\(genre.listenCount.formatted()) \(genre.listenCount == 1 ? "listen" : "listens")"
+            return listenCountLabel(genre.listenCount)
         }
         if let percentage = genre.percentage {
             return (percentage / 100).formatted(.percent.precision(.fractionLength(0)))
@@ -795,25 +797,58 @@ private struct YearInMusicIdentitySection: View {
     }
 
     private func genreAccessibilitySummary(_ genre: YearInMusicReport.Genre) -> String {
-        if let detail = genreDetail(genre) { return "\(genre.name), \(detail)" }
+        if let detail = genreDetail(genre) { return String(localized: "\(genre.name), \(detail)") }
         return genre.name
+    }
+
+    private var newArtistDiscoveryLabel: String {
+        let count = report.totals.newArtistCount
+        return count == 1
+            ? String(localized: "\(count.formatted()) new artist discovered")
+            : String(localized: "\(count.formatted()) new artists discovered")
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        count == 1
+            ? String(localized: "\(count.formatted()) listen")
+            : String(localized: "\(count.formatted()) listens")
+    }
+
+    private func releaseDecadeAccessibilitySummary(_ decade: YearInMusicReport.ReleaseDecade) -> String {
+        String(localized: "\(decade.label), \(listenCountLabel(decade.listenCount))")
     }
 }
 
 private struct YearInMusicIdentityCard<Content: View>: View {
     let icon: String
-    let title: String
-    var subtitle: String? = nil
+    let title: Text
+    var subtitle: Text? = nil
     @ViewBuilder let content: Content
     let accessibilityLabel: () -> String
 
+    init(
+        icon: String,
+        title: LocalizedStringResource,
+        subtitle: LocalizedStringResource? = nil,
+        @ViewBuilder content: () -> Content,
+        accessibilityLabel: @escaping () -> String
+    ) {
+        self.icon = icon
+        self.title = Text(title)
+        self.subtitle = subtitle.map { Text($0) }
+        self.content = content()
+        self.accessibilityLabel = accessibilityLabel
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(title, systemImage: icon)
-                .font(.headline)
-                .foregroundStyle(AppTheme.accent)
+            Label { title } icon: {
+                Image(systemName: icon)
+            }
+            .font(.headline)
+            .foregroundStyle(AppTheme.accent)
             if let subtitle {
-                Text(subtitle)
+                subtitle
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -861,12 +896,12 @@ private struct YearInMusicCalendarSection: View {
 
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .firstTextBaseline) {
-                    calendarMetric(layout.activeDayCount.formatted(), label: "active days")
+                    calendarMetric(layout.activeDayCount.formatted(), label: Text("active days"))
                     Spacer()
                     if let busiest = layout.busiestDay {
                         calendarMetric(
                             busiest.listenCount.formatted(),
-                            label: "peak · \(layout.shortDayLabel(busiest.date))",
+                            label: Text(String(localized: "peak · \(layout.shortDayLabel(busiest.date))")),
                             alignment: .trailing
                         )
                     }
@@ -881,13 +916,13 @@ private struct YearInMusicCalendarSection: View {
 
     private func calendarMetric(
         _ value: String,
-        label: String,
+        label: Text,
         alignment: HorizontalAlignment = .leading
     ) -> some View {
         VStack(alignment: alignment, spacing: 2) {
             Text(value)
                 .font(.title3.bold().monospacedDigit())
-            Text(label)
+            label
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -1033,9 +1068,9 @@ struct YearInMusicCalendarLayout: Equatable {
 
     var accessibilitySummary: String {
         if let busiestDay {
-            return "Listening calendar for \(year), \(activeDayCount.formatted()) active days. Busiest day was \(longDayLabel(busiestDay.date)) with \(busiestDay.listenCount.formatted()) listens."
+            return String(localized: "Listening calendar for \(year), \(activeDayCount.formatted()) active days. Busiest day was \(longDayLabel(busiestDay.date)) with \(busiestDay.listenCount.formatted()) listens.")
         }
-        return "Listening calendar for \(year), with no active days in the report."
+        return String(localized: "Listening calendar for \(year), with no active days in the report.")
     }
 
     func shortDayLabel(_ date: Date) -> String {
@@ -1110,15 +1145,19 @@ private struct YearInMusicArtistsSection: View {
             Text(artist.name)
                 .font(.headline)
                 .lineLimit(2)
-            Text("\(artist.listenCount.formatted()) listens")
+            Text(listenCountLabel(artist.listenCount))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .frame(width: width, alignment: .leading)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "Number \(rank), \(artist.name), \(artist.listenCount.formatted()) \(artist.listenCount == 1 ? "listen" : "listens")"
-        )
+        .accessibilityLabel(String(localized: "Number \(rank), \(artist.name), \(listenCountLabel(artist.listenCount))"))
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        count == 1
+            ? String(localized: "\(count.formatted()) listen")
+            : String(localized: "\(count.formatted()) listens")
     }
 }
 
@@ -1174,7 +1213,7 @@ private struct YearInMusicAlbumsSection: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Number \(rank), \(release.title) by \(release.artistName), \(release.listenCount.formatted()) listens")
+        .accessibilityLabel(String(localized: "Number \(rank), \(release.title) by \(release.artistName), \(release.listenCount.formatted()) listens"))
         .accessibilityHint("Opens album details", isEnabled: release.searchSeed != nil)
     }
 
@@ -1198,11 +1237,17 @@ private struct YearInMusicAlbumsSection: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
-            Text("\(release.listenCount.formatted()) listens")
+            Text(listenCountLabel(release.listenCount))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        count == 1
+            ? String(localized: "\(count.formatted()) listen")
+            : String(localized: "\(count.formatted()) listens")
     }
 }
 
@@ -1318,14 +1363,20 @@ private struct YearInMusicReleasesSection: View {
             .aspectRatio(1, contentMode: .fit)
             Text(release.title).font(.headline).lineLimit(2)
             Text(release.artistName).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
-            Text("\(release.listenCount.formatted()) listens").font(.caption).foregroundStyle(.secondary)
+            Text(listenCountLabel(release.listenCount)).font(.caption).foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Number \(rank), \(release.title) by \(release.artistName), \(release.listenCount.formatted()) listens")
+        .accessibilityLabel(String(localized: "Number \(rank), \(release.title) by \(release.artistName), \(listenCountLabel(release.listenCount))"))
         .accessibilityHint(
             "Opens release details",
             isEnabled: allowsNavigation && release.seed != nil
         )
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        count == 1
+            ? String(localized: "\(count.formatted()) listen")
+            : String(localized: "\(count.formatted()) listens")
     }
 }
 
@@ -1381,7 +1432,7 @@ private struct YearInMusicTracksSection: View {
                                 .accessibilityHidden(true)
                         }
                     }
-                    Text("\(item.listenCount.formatted()) listens")
+                    Text(listenCountLabel(item.listenCount))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -1407,7 +1458,7 @@ private struct YearInMusicTracksSection: View {
         .padding(.vertical, 10)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Number \(rank), \(item.recording.title) by \(item.recording.artistName), \(item.listenCount.formatted()) listens")
+        .accessibilityLabel(String(localized: "Number \(rank), \(item.recording.title) by \(item.recording.artistName), \(listenCountLabel(item.listenCount))"))
     }
 
     private func trackIdentity(_ item: YearInMusicReport.TopRecording) -> some View {
@@ -1429,6 +1480,12 @@ private struct YearInMusicTracksSection: View {
             .foregroundStyle(rank <= 3 ? .black : AppTheme.accent)
             .frame(width: min(rankCircleSize, 72), height: min(rankCircleSize, 72))
             .background(rank <= 3 ? YearInMusicPalette.medal(rank) : AppTheme.accent.opacity(0.13), in: .circle)
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        count == 1
+            ? String(localized: "\(count.formatted()) listen")
+            : String(localized: "\(count.formatted()) listens")
     }
 }
 
@@ -1532,7 +1589,7 @@ private struct YearInMusicPlaylistsSection: View {
                 }
             }
             HStack(spacing: 8) {
-                Text("\(playlist.tracks.count.formatted()) \(playlist.tracks.count == 1 ? "track" : "tracks")")
+                Text(trackCountLabel(playlist.tracks.count))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 8)
@@ -1562,6 +1619,12 @@ private struct YearInMusicPlaylistsSection: View {
                 .font(.headline)
                 .foregroundStyle(.primary)
         }
+    }
+
+    private func trackCountLabel(_ count: Int) -> String {
+        count == 1
+            ? String(localized: "\(count.formatted()) track")
+            : String(localized: "\(count.formatted()) tracks")
     }
 }
 

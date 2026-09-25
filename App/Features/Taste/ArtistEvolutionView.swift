@@ -278,7 +278,7 @@ struct ArtistEvolutionView: View {
         }
     }
 
-    private func summary(value: String, label: String, symbol: String) -> some View {
+    private func summary(value: String, label: LocalizedStringResource, symbol: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: symbol)
                 .foregroundStyle(AppTheme.accent)
@@ -304,7 +304,7 @@ struct ArtistEvolutionView: View {
             activity: activity,
             artists: artists,
             selectedTimeUnit: $selectedTimeUnit,
-            accessibilityTitle: "\(period.title) artist evolution"
+            accessibilityTitle: String(localized: "\(period.title) artist evolution")
         )
     }
 
@@ -347,9 +347,9 @@ struct ArtistEvolutionView: View {
 
     private func dateRange(_ activity: ArtistEvolutionActivity) -> String {
         guard activity.from != .distantPast, activity.to != .distantPast else {
-            return "Server-calculated by ListenBrainz"
+            return String(localized: "Server-calculated by ListenBrainz")
         }
-        return "\(activity.from.formatted(date: .abbreviated, time: .omitted)) – \(activity.to.formatted(date: .abbreviated, time: .omitted)) · calculated by ListenBrainz"
+        return String(localized: "\(activity.from.formatted(date: .abbreviated, time: .omitted)) – \(activity.to.formatted(date: .abbreviated, time: .omitted)) · calculated by ListenBrainz")
     }
 
     private func saturatedSum(_ lhs: Int, _ rhs: Int) -> Int {
@@ -499,11 +499,11 @@ struct ArtistEvolutionArtistLegend: View {
                 if let destination = artist.rankedArtist.detailDestination() {
                     NavigationLink(value: destination) { row(artist, index: index, showsDisclosure: true) }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("\(artist.name), \(artist.listenCount.formatted()) \(artist.listenCount == 1 ? "listen" : "listens")")
+                        .accessibilityLabel(artistAccessibilityLabel(artist))
                         .accessibilityHint("Opens artist details")
                 } else {
                     row(artist, index: index, showsDisclosure: false)
-                        .accessibilityLabel("\(artist.name), \(artist.listenCount.formatted()) \(artist.listenCount == 1 ? "listen" : "listens")")
+                        .accessibilityLabel(artistAccessibilityLabel(artist))
                 }
             }
         }
@@ -559,6 +559,13 @@ struct ArtistEvolutionArtistLegend: View {
     }
 }
 
+private func artistAccessibilityLabel(_ artist: ArtistEvolutionActivity.Artist) -> String {
+    let count = artist.listenCount == 1
+        ? String(localized: "\(artist.listenCount.formatted()) listen")
+        : String(localized: "\(artist.listenCount.formatted()) listens")
+    return String(localized: "\(artist.name), \(count)")
+}
+
 struct ArtistEvolutionSelectedBreakdown: View {
     let period: ListeningActivityPeriod
     let selectedTimeUnit: String
@@ -605,7 +612,7 @@ struct ArtistEvolutionSelectedBreakdown: View {
         Text(selectedLabel)
             .font(.headline)
         if !dynamicTypeSize.isAccessibilitySize { Spacer() }
-        Text("\(total.formatted()) \(total == 1 ? "listen" : "listens")")
+        Text(listenCountLabel(total))
             .font(.caption.monospacedDigit())
             .foregroundStyle(.secondary)
     }
@@ -635,7 +642,7 @@ struct ArtistEvolutionSelectedBreakdown: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(artist.name), \(count.formatted()) \(count == 1 ? "listen" : "listens")")
+        .accessibilityLabel(artistCountAccessibilityLabel(artist, count: count))
     }
 
     private func countLabel(_ count: Int) -> some View {
@@ -646,10 +653,24 @@ struct ArtistEvolutionSelectedBreakdown: View {
 
     private var selectedLabel: String {
         switch period {
-        case .thisMonth, .lastMonth: "Day \(selectedTimeUnit)"
-        case .allTime: "Year \(selectedTimeUnit)"
+        case .thisMonth, .lastMonth: String(localized: "Day \(selectedTimeUnit)")
+        case .allTime: String(localized: "Year \(selectedTimeUnit)")
         case .thisWeek, .lastWeek, .thisYear, .lastYear: selectedTimeUnit
         }
+    }
+
+    private func listenCountLabel(_ count: Int) -> String {
+        count == 1
+            ? String(localized: "\(count.formatted()) listen")
+            : String(localized: "\(count.formatted()) listens")
+    }
+
+    private func artistCountAccessibilityLabel(
+        _ artist: ArtistEvolutionActivity.Artist,
+        count: Int
+    ) -> String {
+        let label = listenCountLabel(count)
+        return String(localized: "\(artist.name), \(label)")
     }
 }
 
@@ -661,12 +682,12 @@ private struct ArtistEvolutionDescriptor: AXChartDescriptorRepresentable {
     func makeChartDescriptor() -> AXChartDescriptor {
         let artists = activity.artists(limit: artistLimit)
         let xAxis = AXCategoricalDataAxisDescriptor(
-            title: "Time",
+            title: String(localized: "Time"),
             categoryOrder: activity.timeUnits
         )
         let maximum = Double(max(artists.flatMap(\.points).map(\.listenCount).max() ?? 0, 1))
         let yAxis = AXNumericDataAxisDescriptor(
-            title: "Listens",
+            title: String(localized: "Listens"),
             range: 0 ... maximum,
             gridlinePositions: []
         ) { $0.formatted() }
@@ -681,7 +702,7 @@ private struct ArtistEvolutionDescriptor: AXChartDescriptorRepresentable {
         }
         return AXChartDescriptor(
             title: title,
-            summary: "Listen counts for \(artists.count) leading artists across \(activity.timeUnits.count) time periods",
+            summary: String(localized: "Listen counts for \(artists.count) leading artists across \(activity.timeUnits.count) time periods"),
             xAxis: xAxis,
             yAxis: yAxis,
             additionalAxes: [],

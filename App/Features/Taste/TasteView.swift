@@ -8,6 +8,15 @@ struct TasteView: View {
         case releaseGroups = "Release groups"
         case recordings = "Tracks"
         var id: Self { self }
+
+        var title: LocalizedStringResource {
+            switch self {
+            case .artists: "Artists"
+            case .releases: "Albums"
+            case .releaseGroups: "Release groups"
+            case .recordings: "Tracks"
+            }
+        }
     }
 
     @Bindable var model: ListeningModel
@@ -246,7 +255,7 @@ struct TasteView: View {
         )
     }
 
-    private func tasteMetric(_ value: String, label: String, symbol: String) -> some View {
+    private func tasteMetric(_ value: String, label: LocalizedStringResource, symbol: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Image(systemName: symbol)
                 .font(.headline)
@@ -490,8 +499,8 @@ struct TasteView: View {
                                         .frame(width: heatmapCellSide, height: heatmapCellSide)
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel("\(weekday.rawValue), \(hourLabel(cell.hour)) UTC")
-                                .accessibilityValue("\(cell.listenCount) listens")
+                                .accessibilityLabel(String(localized: "\(weekday.title), \(hourLabel(cell.hour)) UTC"))
+                                .accessibilityValue(listenCountLabel(cell.listenCount))
                                 .accessibilityAddTraits(selected?.id == cell.id ? .isSelected : [])
                             }
                         }
@@ -505,12 +514,12 @@ struct TasteView: View {
 
             if let selected {
                 Label(
-                    "\(selected.weekday.rawValue), \(hourLabel(selected.hour)) UTC · \(selected.listenCount.formatted()) listens",
+                    String(localized: "\(selected.weekday.title), \(hourLabel(selected.hour)) UTC · \(listenCountLabel(selected.listenCount))"),
                     systemImage: "clock"
                 )
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
-                .accessibilityLabel("Selected: \(selected.weekday.rawValue), \(hourLabel(selected.hour)) UTC, \(selected.listenCount) listens")
+                .accessibilityLabel(String(localized: "Selected: \(selected.weekday.title), \(hourLabel(selected.hour)) UTC, \(listenCountLabel(selected.listenCount))"))
             }
 
             if let message = model.dailyActivityRefreshMessage(for: activityPeriod) {
@@ -546,22 +555,22 @@ struct TasteView: View {
         let peak = activity.cells.max(by: { $0.listenCount < $1.listenCount })
         if dynamicTypeSize.isAccessibilitySize {
             VStack(spacing: 12) {
-                activitySummary(activity.totalListens.formatted(), label: "Listens", symbol: "clock")
+                activitySummary(activity.totalListens.formatted(), label: Text("Listens"), symbol: "clock")
                 if let peak {
                     activitySummary(
                         peak.listenCount.formatted(),
-                        label: "Peak · \(peak.weekday.shortTitle) \(hourLabel(peak.hour))",
+                        label: Text(String(localized: "Peak · \(peak.weekday.shortTitle) \(hourLabel(peak.hour))")),
                         symbol: "sun.max.fill"
                     )
                 }
             }
         } else {
             HStack(spacing: 12) {
-                activitySummary(activity.totalListens.formatted(), label: "Listens", symbol: "clock")
+                activitySummary(activity.totalListens.formatted(), label: Text("Listens"), symbol: "clock")
                 if let peak {
                     activitySummary(
                         peak.listenCount.formatted(),
-                        label: "Peak · \(peak.weekday.shortTitle) \(hourLabel(peak.hour))",
+                        label: Text(String(localized: "Peak · \(peak.weekday.shortTitle) \(hourLabel(peak.hour))")),
                         symbol: "sun.max.fill"
                     )
                 }
@@ -591,9 +600,9 @@ struct TasteView: View {
 
     private func dailyActivitySummary(_ activity: DailyActivity) -> String {
         guard let peak = activity.cells.max(by: { $0.listenCount < $1.listenCount }) else {
-            return "Listening hours heatmap in UTC"
+            return String(localized: "Listening hours heatmap in UTC")
         }
-        return "\(activity.period.title) listening hours in UTC. \(activity.totalListens) listens. Peak: \(peak.weekday.rawValue) at \(hourLabel(peak.hour)), \(peak.listenCount) listens."
+        return String(localized: "\(activity.period.title) listening hours in UTC. \(listenCountLabel(activity.totalListens)). Peak: \(peak.weekday.title) at \(hourLabel(peak.hour)), \(listenCountLabel(peak.listenCount)).")
     }
 
     private var musicByDecade: some View {
@@ -839,7 +848,7 @@ struct TasteView: View {
             if let selectedEraDecade {
                 Text(verbatim: "\(selectedEraDecade)s")
                     .font(.headline)
-                Text("\(activity.listenCount(in: selectedEraDecade).formatted()) listens across individual years")
+                Text(String(localized: "\(activity.listenCount(in: selectedEraDecade).formatted()) listens across individual years"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -866,7 +875,7 @@ struct TasteView: View {
         } else {
             Menu {
                 ForEach(activity.decades.filter { $0.listenCount > 0 }) { decade in
-                    Button("\(decade.title) · \(decade.listenCount.formatted()) listens") {
+                    Button(String(localized: "\(decade.title) · \(listenCountLabel(decade.listenCount))")) {
                         withAnimation(.snappy) { selectedEraDecade = decade.year }
                     }
                 }
@@ -893,13 +902,13 @@ struct TasteView: View {
                 if selectedEraDecade != nil, let peakYear {
                     activitySummary(
                         peakYear.listenCount.formatted(),
-                        label: "Peak year · \(peakYear.year)",
+                        label: Text(String(localized: "Peak year · \(peakYear.year)")),
                         symbol: "calendar"
                     )
                 } else if let leading = activity.leadingDecade {
                     activitySummary(
                         leading.listenCount.formatted(),
-                        label: "Leading · \(leading.title)",
+                        label: Text(String(localized: "Leading · \(leading.title)")),
                         symbol: "sparkles"
                     )
                 }
@@ -910,13 +919,13 @@ struct TasteView: View {
                 if selectedEraDecade != nil, let peakYear {
                     activitySummary(
                         peakYear.listenCount.formatted(),
-                        label: "Peak year · \(peakYear.year)",
+                        label: Text(String(localized: "Peak year · \(peakYear.year)")),
                         symbol: "calendar"
                     )
                 } else if let leading = activity.leadingDecade {
                     activitySummary(
                         leading.listenCount.formatted(),
-                        label: "Leading · \(leading.title)",
+                        label: Text(String(localized: "Leading · \(leading.title)")),
                         symbol: "sparkles"
                     )
                 }
@@ -928,7 +937,7 @@ struct TasteView: View {
         let count = selectedEraDecade.map { activity.listenCount(in: $0) } ?? activity.totalListens
         return activitySummary(
             count.formatted(),
-            label: selectedEraDecade == nil ? "Dated listens" : "Decade listens",
+            label: selectedEraDecade == nil ? Text("Dated listens") : Text("Decade listens"),
             symbol: "opticaldisc"
         )
     }
@@ -943,7 +952,7 @@ struct TasteView: View {
                     )
                     .foregroundStyle(AppTheme.accent.gradient)
                     .cornerRadius(5)
-                    .accessibilityLabel("\(point.label): \(point.listenCount) listens")
+                    .accessibilityLabel(String(localized: "\(point.label): \(listenCountLabel(point.listenCount))"))
                 }
                 .chartXAxis {
                     AxisMarks(values: points.map(\.label)) { value in
@@ -1052,9 +1061,9 @@ struct TasteView: View {
 
     private var eraActivityFootnote: String {
         if let selectedEraDecade {
-            return "Showing every year in the \(selectedEraDecade)s, including years with no matched listens."
+            return String(localized: "Showing every year in the \(selectedEraDecade)s, including years with no matched listens.")
         }
-        return "Counts include listens whose recordings have original release-year metadata. Empty decades are kept within ordinary release-year spans."
+        return String(localized: "Counts include listens whose recordings have original release-year metadata. Empty decades are kept within ordinary release-year spans.")
     }
 
     fileprivate struct EraChartPoint: Identifiable, Hashable {
@@ -1070,7 +1079,7 @@ struct TasteView: View {
         locale: Locale = .autoupdatingCurrent
     ) -> String {
         guard activity.from != .distantPast, activity.to != .distantPast else {
-            return "Server-calculated listening hours · UTC"
+            return String(localized: "Server-calculated listening hours · UTC")
         }
         let style = Date.FormatStyle(
             date: .abbreviated,
@@ -1079,7 +1088,7 @@ struct TasteView: View {
             calendar: Calendar(identifier: .gregorian),
             timeZone: TimeZone(secondsFromGMT: 0)!
         )
-        return "\(activity.from.formatted(style)) – \(activity.to.formatted(style)) · UTC"
+        return String(localized: "\(activity.from.formatted(style)) – \(activity.to.formatted(style)) · UTC")
     }
 
     private var activityLoading: some View {
@@ -1133,7 +1142,7 @@ struct TasteView: View {
                 )
                 .foregroundStyle(AppTheme.accent.gradient)
                 .cornerRadius(4)
-                .accessibilityLabel("\(bucket.label): \(bucket.listenCount) listens")
+                .accessibilityLabel(String(localized: "\(bucket.label): \(listenCountLabel(bucket.listenCount))"))
             }
             .chartYAxis {
                 AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
@@ -1180,7 +1189,7 @@ struct TasteView: View {
         return labels
     }
 
-    private func activitySummary(_ value: String, label: String, symbol: String) -> some View {
+    private func activitySummary(_ value: String, label: Text, symbol: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: symbol)
                 .font(.subheadline)
@@ -1188,7 +1197,7 @@ struct TasteView: View {
                 .frame(width: 18)
             VStack(alignment: .leading, spacing: 2) {
                 Text(value).font(.headline.monospacedDigit())
-                Text(label)
+                label
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
@@ -1202,13 +1211,13 @@ struct TasteView: View {
     private func listeningActivitySummaries(_ activity: ListeningActivity) -> some View {
         activitySummary(
             activity.totalListens.formatted(),
-            label: "Listens",
+            label: Text("Listens"),
             symbol: "waveform"
         )
         if let busiest = activity.busiestBucket {
             activitySummary(
                 busiest.listenCount.formatted(),
-                label: "Peak · \(busiest.label)",
+                label: Text(String(localized: "Peak · \(busiest.label)")),
                 symbol: "chart.bar.fill"
             )
         }
@@ -1216,9 +1225,9 @@ struct TasteView: View {
 
     private func activityDateRange(_ activity: ListeningActivity) -> String {
         guard activity.from != .distantPast, activity.to != .distantPast else {
-            return "Server-calculated activity"
+            return String(localized: "Server-calculated activity")
         }
-        return "\(activity.from.formatted(date: .abbreviated, time: .omitted)) – \(activity.to.formatted(date: .abbreviated, time: .omitted))"
+        return String(localized: "\(activity.from.formatted(date: .abbreviated, time: .omitted)) – \(activity.to.formatted(date: .abbreviated, time: .omitted))")
     }
 
     private var rankings: some View {
@@ -1247,7 +1256,7 @@ struct TasteView: View {
                         Button {
                             ranking = value
                         } label: {
-                            Text(value.rawValue)
+                            Text(value.title)
                                 .font(.subheadline.weight(ranking == value ? .semibold : .regular))
                                 .foregroundStyle(ranking == value ? .white : .primary)
                                 .padding(.horizontal, 13)
@@ -1256,7 +1265,7 @@ struct TasteView: View {
                         }
                         .id(value)
                         .buttonStyle(.plain)
-                        .accessibilityLabel(value.rawValue)
+                        .accessibilityLabel(String(localized: value.title))
                         .accessibilityAddTraits(ranking == value ? .isSelected : [])
                     }
                 }
@@ -1366,7 +1375,7 @@ struct TasteView: View {
             ArtistArtworkView(artist: artist).frame(width: 50, height: 50)
             VStack(alignment: .leading, spacing: 3) {
                 Text(artist.name).font(.body.weight(.semibold)).lineLimit(1)
-                Text("\(artist.listenCount.formatted()) \(artist.listenCount == 1 ? "listen" : "listens")")
+                Text(listenCountLabel(artist.listenCount))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -1388,7 +1397,7 @@ struct TasteView: View {
             ArtworkView(url: release.artworkURL, title: release.name, cornerRadius: 8).frame(width: 50, height: 50)
             VStack(alignment: .leading, spacing: 3) {
                 Text(release.name).font(.body.weight(.semibold)).lineLimit(1)
-                Text("\(release.artistName) · \(release.listenCount.formatted()) listens")
+                Text(String(localized: "\(release.artistName) · \(listenCountLabel(release.listenCount))"))
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
@@ -1430,7 +1439,7 @@ struct TasteView: View {
                             .font(.body.weight(.semibold))
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text("\(group.artistName) · \(listenCountLabel(group.listenCount))")
+                        Text(String(localized: "\(group.artistName) · \(listenCountLabel(group.listenCount))"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
@@ -1449,7 +1458,7 @@ struct TasteView: View {
         .contentShape(.rect)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "Rank \(index + 1), \(group.name), \(group.artistName), \(listenCountLabel(group.listenCount))"
+            String(localized: "Rank \(index + 1), \(group.name), \(group.artistName), \(listenCountLabel(group.listenCount))")
         )
     }
 
@@ -1463,7 +1472,9 @@ struct TasteView: View {
     }
 
     private func listenCountLabel(_ count: Int) -> String {
-        "\(count.formatted()) \(count == 1 ? "listen" : "listens")"
+        count == 1
+            ? String(localized: "\(count.formatted()) listen")
+            : String(localized: "\(count.formatted()) listens")
     }
 
     private func rankedRecordingRow(
@@ -1500,7 +1511,7 @@ struct TasteView: View {
                     recordingArtwork(recording, size: 50, cornerRadius: 8)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(recording.title).font(.body.weight(.semibold)).lineLimit(1)
-                        Text("\(recording.artistName) · \(listenCountLabel(recording.listenCount))")
+                        Text(String(localized: "\(recording.artistName) · \(listenCountLabel(recording.listenCount))"))
                             .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }
                     Spacer()
@@ -1517,7 +1528,7 @@ struct TasteView: View {
         .contentShape(.rect)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "Rank \(index + 1), \(recording.title), \(recording.artistName), \(listenCountLabel(recording.listenCount))"
+            String(localized: "Rank \(index + 1), \(recording.title), \(recording.artistName), \(listenCountLabel(recording.listenCount))")
         )
     }
 
@@ -1548,12 +1559,12 @@ private struct ListeningActivityDescriptor: AXChartDescriptorRepresentable {
 
     func makeChartDescriptor() -> AXChartDescriptor {
         let xAxis = AXCategoricalDataAxisDescriptor(
-            title: "Time",
+            title: String(localized: "Time"),
             categoryOrder: activity.buckets.map(\.label)
         )
         let maximum = Double(activity.buckets.map(\.listenCount).max() ?? 1)
         let yAxis = AXNumericDataAxisDescriptor(
-            title: "Listens",
+            title: String(localized: "Listens"),
             range: 0 ... maximum,
             gridlinePositions: []
         ) { $0.formatted() }
@@ -1564,12 +1575,12 @@ private struct ListeningActivityDescriptor: AXChartDescriptorRepresentable {
             )
         }
         return AXChartDescriptor(
-            title: "\(activity.period.title) listening activity",
-            summary: "\(activity.totalListens) listens calculated by ListenBrainz",
+            title: String(localized: "\(activity.period.title) listening activity"),
+            summary: String(localized: "\(activity.totalListens) listens calculated by ListenBrainz"),
             xAxis: xAxis,
             yAxis: yAxis,
             additionalAxes: [],
-            series: [AXDataSeriesDescriptor(name: "Listens", isContinuous: false, dataPoints: points)]
+            series: [AXDataSeriesDescriptor(name: String(localized: "Listens"), isContinuous: false, dataPoints: points)]
         )
     }
 }
@@ -1590,28 +1601,29 @@ private struct EraActivityDescriptor: AXChartDescriptorRepresentable {
     }
 
     func makeChartDescriptor() -> AXChartDescriptor {
-        let axisTitle = selectedDecade == nil ? "Decade" : "Year"
+        let axisTitle = selectedDecade == nil ? String(localized: "Decade") : String(localized: "Year")
         let xAxis = AXCategoricalDataAxisDescriptor(
             title: axisTitle,
             categoryOrder: points.map(\.label)
         )
         let maximum = Double(max(points.map(\.listenCount).max() ?? 0, 1))
         let yAxis = AXNumericDataAxisDescriptor(
-            title: "Listens",
+            title: String(localized: "Listens"),
             range: 0 ... maximum,
             gridlinePositions: []
         ) { $0.formatted() }
         let dataPoints = points.map {
             AXDataPoint(x: $0.label, y: Double($0.listenCount))
         }
-        let scope = selectedDecade.map { "\($0)s release years" } ?? "music by decade"
+        let scope = selectedDecade.map { String(localized: "\($0)s release years") }
+            ?? String(localized: "music by decade")
         return AXChartDescriptor(
-            title: "\(period.title) \(scope)",
-            summary: "Listen counts grouped by original release year",
+            title: String(localized: "\(period.title) \(scope)"),
+            summary: String(localized: "Listen counts grouped by original release year"),
             xAxis: xAxis,
             yAxis: yAxis,
             additionalAxes: [],
-            series: [AXDataSeriesDescriptor(name: "Listens", isContinuous: false, dataPoints: dataPoints)]
+            series: [AXDataSeriesDescriptor(name: String(localized: "Listens"), isContinuous: false, dataPoints: dataPoints)]
         )
     }
 
