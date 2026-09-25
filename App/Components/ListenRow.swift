@@ -62,7 +62,7 @@ struct ListenRow: View {
     }
 
     private var timestamp: String {
-        if listen.isPlayingNow { return "Now" }
+        if listen.isPlayingNow { return String(localized: "Now") }
         return showsDate
             ? listen.listenedAt.formatted(date: .abbreviated, time: .shortened)
             : listen.listenedAt.formatted(date: .omitted, time: .shortened)

@@ -132,11 +132,11 @@ enum ListenSubmissionValidationError: LocalizedError, Equatable, Sendable {
     case trackRequired, artistRequired, timestampTooEarly, timestampInFuture, replayUnavailable
     var errorDescription: String? {
         switch self {
-        case .trackRequired: "Enter a track title."
-        case .artistRequired: "Enter an artist."
-        case .timestampTooEarly: "Choose a valid playback start time."
-        case .timestampInFuture: "Choose a playback start time that is not in the future."
-        case .replayUnavailable: "This listen can’t be sent again from this screen."
+        case .trackRequired: String(localized: "Enter a track title.")
+        case .artistRequired: String(localized: "Enter an artist.")
+        case .timestampTooEarly: String(localized: "Choose a valid playback start time.")
+        case .timestampInFuture: String(localized: "Choose a playback start time that is not in the future.")
+        case .replayUnavailable: String(localized: "This listen can’t be sent again from this screen.")
         }
     }
 }
@@ -145,11 +145,16 @@ enum ListenSubmissionError: LocalizedError, Equatable, Sendable {
     case rejected, authentication, forbidden, rateLimited(Int), indeterminate
     var errorDescription: String? {
         switch self {
-        case .rejected: "ListenBrainz couldn’t accept this listen. Check the details and try again."
-        case .authentication: "Your ListenBrainz sign-in needs attention. Sign in again before sending a listen."
-        case .forbidden: "Your ListenBrainz sign-in can’t send listens. Sign in again and try once more."
-        case let .rateLimited(seconds): "ListenBrainz is busy. Try again in about \(seconds) seconds."
-        case .indeterminate: "This request may have reached ListenBrainz. Check History or your profile before sending it again."
+        case .rejected:
+            String(localized: "ListenBrainz couldn’t accept this listen. Check the details and try again.")
+        case .authentication:
+            String(localized: "Your ListenBrainz sign-in needs attention. Sign in again before sending a listen.")
+        case .forbidden:
+            String(localized: "Your ListenBrainz sign-in can’t send listens. Sign in again and try once more.")
+        case let .rateLimited(seconds):
+            String(localized: "ListenBrainz is busy. Try again in about \(seconds) seconds.")
+        case .indeterminate:
+            String(localized: "This request may have reached ListenBrainz. Check History or your profile before sending it again.")
         }
     }
 }

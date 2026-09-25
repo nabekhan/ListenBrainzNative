@@ -99,7 +99,9 @@ enum ArtistHighlightsSelection: String, CaseIterable, Identifiable, Sendable {
     case releases
 
     var id: Self { self }
-    var title: String { self == .tracks ? "Tracks" : "Releases" }
+    var title: String {
+        self == .tracks ? String(localized: "Tracks") : String(localized: "Releases")
+    }
 }
 
 enum ArtistHighlightsPhase: Equatable {

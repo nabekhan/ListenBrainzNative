@@ -311,7 +311,7 @@ struct SVGArtworkPreview: UIViewRepresentable {
         guard SVGArtworkRenderingPolicy.permitsExternalResources(in: svg),
               let data = svg.data(using: .utf8)
         else {
-            onSnapshot(.failed("This artwork includes a resource Brainz can’t load safely."))
+            onSnapshot(.failed(String(localized: "This artwork includes a resource Brainz can’t load safely.")))
             return
         }
 
@@ -399,7 +399,7 @@ struct SVGArtworkPreview: UIViewRepresentable {
                     Self.logger.error(
                         "Artwork resource policy failed: \(error.localizedDescription, privacy: .public)"
                     )
-                    onSnapshot(.failed("Brainz couldn’t prepare the secure artwork preview."))
+                    onSnapshot(.failed(String(localized: "Brainz couldn’t prepare the secure artwork preview.")))
                 }
             }
         }
@@ -501,7 +501,7 @@ struct SVGArtworkPreview: UIViewRepresentable {
                                 "Artwork snapshot failed: \(error.localizedDescription, privacy: .public)"
                             )
                         }
-                        onSnapshot(.failed("Brainz couldn’t prepare a high-resolution copy."))
+                        onSnapshot(.failed(String(localized: "Brainz couldn’t prepare a high-resolution copy.")))
                     }
                 }
             }

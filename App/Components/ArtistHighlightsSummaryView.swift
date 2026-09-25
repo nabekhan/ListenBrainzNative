@@ -140,7 +140,7 @@ struct ArtistHighlightsSummaryView: View {
             .scrollIndicators(.hidden)
         }
 
-        expansionButton(total: recordings.count, noun: "tracks")
+        expansionButton(total: recordings.count, kind: .tracks)
     }
 
     @ViewBuilder
@@ -171,7 +171,7 @@ struct ArtistHighlightsSummaryView: View {
             .scrollIndicators(.hidden)
         }
 
-        expansionButton(total: releaseGroups.count, noun: "releases")
+        expansionButton(total: releaseGroups.count, kind: .releases)
     }
 
     private func recordingCell(_ recording: ArtistPopularRecording, rank: Int) -> some View {
@@ -240,7 +240,7 @@ struct ArtistHighlightsSummaryView: View {
             rank: rank,
             listens: recording.totalListenCount,
             listeners: recording.totalUserCount,
-            hint: "Opens recording details"
+            hint: String(localized: "Opens recording details")
         )
     }
 
@@ -252,7 +252,7 @@ struct ArtistHighlightsSummaryView: View {
             rank: rank,
             listens: releaseGroup.totalListenCount,
             listeners: releaseGroup.totalUserCount,
-            hint: "Opens release group details"
+            hint: String(localized: "Opens release group details")
         )
     }
 
@@ -322,17 +322,39 @@ struct ArtistHighlightsSummaryView: View {
     }
 
     @ViewBuilder
-    private func expansionButton(total: Int, noun: String) -> some View {
+    private func expansionButton(total: Int, kind: RankedContentKind) -> some View {
         if total > previewCount {
-            Button(showsAll ? "Show fewer \(noun)" : "Show all \(total) \(noun)") {
+            Button(expansionTitle(total: total, kind: kind)) {
                 withAnimation(.snappy) { showsAll.toggle() }
             }
             .buttonStyle(.bordered)
-            .accessibilityHint(
-                showsAll
-                    ? "Shows the first \(previewCount) \(noun)"
-                    : "Shows every \(noun.dropLast()) in this ListenBrainz ranking"
-            )
+            .accessibilityHint(expansionHint(kind: kind))
+        }
+    }
+
+    private func expansionTitle(total: Int, kind: RankedContentKind) -> String {
+        switch (showsAll, kind) {
+        case (true, .tracks):
+            String(localized: "Show fewer tracks")
+        case (true, .releases):
+            String(localized: "Show fewer releases")
+        case (false, .tracks):
+            String(localized: "Show all \(total) tracks")
+        case (false, .releases):
+            String(localized: "Show all \(total) releases")
+        }
+    }
+
+    private func expansionHint(kind: RankedContentKind) -> String {
+        switch (showsAll, kind) {
+        case (true, .tracks):
+            String(localized: "Shows the first \(previewCount) tracks")
+        case (true, .releases):
+            String(localized: "Shows the first \(previewCount) releases")
+        case (false, .tracks):
+            String(localized: "Shows every track in this ListenBrainz ranking")
+        case (false, .releases):
+            String(localized: "Shows every release in this ListenBrainz ranking")
         }
     }
 
@@ -444,8 +466,18 @@ struct ArtistHighlightsSummaryView: View {
         listeners: Int?,
         formatter: (Int) -> String
     ) -> String? {
-        let listenText = listens.map { "\(formatter($0)) \($0 == 1 ? "listen" : "listens")" }
-        let listenerText = listeners.map { "\(formatter($0)) \($0 == 1 ? "listener" : "listeners")" }
+        let listenText = listens.map {
+            let count = formatter($0)
+            return $0 == 1
+                ? String(localized: "\(count) listen")
+                : String(localized: "\(count) listens")
+        }
+        let listenerText = listeners.map {
+            let count = formatter($0)
+            return $0 == 1
+                ? String(localized: "\(count) listener")
+                : String(localized: "\(count) listeners")
+        }
         let values = [listenText, listenerText].compactMap { $0 }
         return values.isEmpty ? nil : values.joined(separator: " · ")
     }
@@ -457,9 +489,15 @@ struct ArtistHighlightsSummaryView: View {
         listens: Int?,
         listeners: Int?
     ) -> String {
-        let counts = fullCountSummary(listens: listens, listeners: listeners)
-            .map { ", \($0) across ListenBrainz" } ?? ""
-        return "\(rank). \(title), \(detail)\(counts)"
+        if let counts = fullCountSummary(listens: listens, listeners: listeners) {
+            return String(localized: "\(rank). \(title), \(detail), \(counts) across ListenBrainz")
+        }
+        return String(localized: "\(rank). \(title), \(detail)")
+    }
+
+    private enum RankedContentKind {
+        case tracks
+        case releases
     }
 
     private let artworkSize: CGFloat = 132

@@ -112,11 +112,19 @@ struct TopListenersSummaryView: View {
                 }
 
                 if result.listeners.count > 5 {
-                    Button(showsAll ? "Show fewer listeners" : "Show all available listeners") {
+                    Button(
+                        showsAll
+                            ? String(localized: "Show fewer listeners")
+                            : String(localized: "Show all available listeners")
+                    ) {
                         withAnimation(.snappy) { showsAll.toggle() }
                     }
                     .buttonStyle(.bordered)
-                    .accessibilityHint(showsAll ? "Shows the first five listeners" : "Shows every listener returned by ListenBrainz")
+                    .accessibilityHint(
+                        showsAll
+                            ? String(localized: "Shows the first five listeners")
+                            : String(localized: "Shows every listener returned by ListenBrainz")
+                    )
                 }
             }
         }
@@ -144,7 +152,9 @@ struct TopListenersSummaryView: View {
             }
             .padding(.vertical, 10)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(rank). \(listener.username), \(listenCountLabel(listener))")
+            .accessibilityLabel(
+                String(localized: "\(rank). \(listener.username), \(listenCountLabel(listener))")
+            )
             .accessibilityHint("Opens this listener’s profile")
         } else {
             HStack(spacing: 12) {
@@ -168,7 +178,9 @@ struct TopListenersSummaryView: View {
             }
             .padding(.vertical, 8)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(rank). \(listener.username), \(listenCountLabel(listener))")
+            .accessibilityLabel(
+                String(localized: "\(rank). \(listener.username), \(listenCountLabel(listener))")
+            )
             .accessibilityHint("Opens this listener’s profile")
         }
     }
@@ -194,7 +206,10 @@ struct TopListenersSummaryView: View {
     }
 
     private func listenCountLabel(_ listener: TopListener) -> String {
-        "\(listener.listenCount.formatted()) \(listener.listenCount == 1 ? "listen" : "listens")"
+        let count = listener.listenCount.formatted()
+        return listener.listenCount == 1
+            ? String(localized: "\(count) listen")
+            : String(localized: "\(count) listens")
     }
 
     private var failureCard: some View {

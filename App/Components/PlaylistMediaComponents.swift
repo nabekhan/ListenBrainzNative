@@ -32,7 +32,7 @@ struct PlaylistArtworkMosaic: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Artwork mosaic for \(title)")
+        .accessibilityLabel(String(localized: "Artwork mosaic for \(title)"))
     }
 
     @ViewBuilder
@@ -106,10 +106,12 @@ struct PlaylistTrackRow: View {
     }
 
     private var accessibilityHint: String {
-        if !showsDisclosure { return "Use the Move up or Move down action to change its position" }
+        if !showsDisclosure {
+            return String(localized: "Use the Move up or Move down action to change its position")
+        }
         return track.recording.identity.mbid == nil
-            ? "This playlist item is not mapped to MusicBrainz"
-            : "Open recording details"
+            ? String(localized: "This playlist item is not mapped to MusicBrainz")
+            : String(localized: "Open recording details")
     }
 
     private var durationDescription: String? {

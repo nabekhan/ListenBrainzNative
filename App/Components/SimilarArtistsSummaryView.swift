@@ -123,15 +123,19 @@ struct SimilarArtistsSummaryView: View {
                 Button {
                     withAnimation(.snappy) { showsAll.toggle() }
                 } label: {
-                    Text(showsAll ? "Show fewer artists" : "Show all similar artists")
+                    Text(
+                        showsAll
+                            ? String(localized: "Show fewer artists")
+                            : String(localized: "Show all similar artists")
+                    )
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .buttonStyle(.bordered)
                 .accessibilityHint(
                     showsAll
-                        ? "Shows the first five similar artists"
-                        : "Shows every similar artist returned by ListenBrainz"
+                        ? String(localized: "Shows the first five similar artists")
+                        : String(localized: "Shows every similar artist returned by ListenBrainz")
                 )
             }
         }

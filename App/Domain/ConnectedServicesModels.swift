@@ -10,18 +10,18 @@ struct ConnectedService: Identifiable, Hashable, Sendable {
     }
 
     static let knownLabels: [String: String] = [
-        "spotify": "Spotify",
-        "critiquebrainz": "CritiqueBrainz",
-        "lastfm": "Last.fm",
-        "librefm": "Libre.fm",
-        "soundcloud": "SoundCloud",
-        "apple": "Apple Music",
-        "funkwhale": "Funkwhale",
-        "navidrome": "Navidrome",
-        "musicbrainz": "MusicBrainz",
-        "musicbrainz-prod": "MusicBrainz",
-        "musicbrainz-beta": "MusicBrainz",
-        "musicbrainz-test": "MusicBrainz"
+        "spotify": String(localized: "Spotify"),
+        "critiquebrainz": String(localized: "CritiqueBrainz"),
+        "lastfm": String(localized: "Last.fm"),
+        "librefm": String(localized: "Libre.fm"),
+        "soundcloud": String(localized: "SoundCloud"),
+        "apple": String(localized: "Apple Music"),
+        "funkwhale": String(localized: "Funkwhale"),
+        "navidrome": String(localized: "Navidrome"),
+        "musicbrainz": String(localized: "MusicBrainz"),
+        "musicbrainz-prod": String(localized: "MusicBrainz"),
+        "musicbrainz-beta": String(localized: "MusicBrainz"),
+        "musicbrainz-test": String(localized: "MusicBrainz")
     ]
 }
 

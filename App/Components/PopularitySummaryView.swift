@@ -30,24 +30,33 @@ struct PopularitySummaryPresentation: Equatable {
 
     func accessibilityLabel(locale: Locale = .autoupdatingCurrent) -> String {
         let listens = listenCount.map {
-            "\($0.formatted(.number.grouping(.automatic).locale(locale))) \($0 == 1 ? "listen" : "listens")"
+            let count = $0.formatted(.number.grouping(.automatic).locale(locale))
+            return $0 == 1
+                ? String(localized: "\(count) listen", locale: locale)
+                : String(localized: "\(count) listens", locale: locale)
         }
         let listeners = listenerCount.map {
-            "\($0.formatted(.number.grouping(.automatic).locale(locale))) \($0 == 1 ? "listener" : "listeners")"
+            let count = $0.formatted(.number.grouping(.automatic).locale(locale))
+            return $0 == 1
+                ? String(localized: "\(count) listener", locale: locale)
+                : String(localized: "\(count) listeners", locale: locale)
         }
 
         let totals: String
         switch (listens, listeners) {
         case let (.some(listens), .some(listeners)):
-            totals = "\(listens) from \(listeners)"
+            totals = String(localized: "\(listens) from \(listeners)", locale: locale)
         case let (.some(listens), .none):
             totals = listens
         case let (.none, .some(listeners)):
             totals = listeners
         case (.none, .none):
-            totals = "Popularity unavailable"
+            totals = String(localized: "Popularity unavailable", locale: locale)
         }
-        return "Across ListenBrainz, \(totals). Global totals, refreshed daily."
+        return String(
+            localized: "Across ListenBrainz, \(totals). Global totals, refreshed daily.",
+            locale: locale
+        )
     }
 }
 
@@ -126,14 +135,14 @@ struct PopularitySummaryView: View {
         if let count = presentation.listenCount {
             metric(
                 count: presentation.compact(count),
-                label: count == 1 ? "Listen" : "Listens",
+                label: count == 1 ? String(localized: "Listen") : String(localized: "Listens"),
                 systemImage: "waveform"
             )
         }
         if let count = presentation.listenerCount {
             metric(
                 count: presentation.compact(count),
-                label: count == 1 ? "Listener" : "Listeners",
+                label: count == 1 ? String(localized: "Listener") : String(localized: "Listeners"),
                 systemImage: "person.2.fill"
             )
         }

@@ -9,9 +9,9 @@ enum FeedMode: String, CaseIterable, Hashable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .activity: "My Feed"
-        case .following: "Following"
-        case .similar: "Similar"
+        case .activity: String(localized: "My Feed")
+        case .following: String(localized: "Following")
+        case .similar: String(localized: "Similar")
         }
     }
 }

@@ -38,12 +38,12 @@ struct ExternalMediaLink: Hashable, Codable, Sendable {
 
         var displayName: String {
             switch self {
-            case .spotify: "Spotify"
-            case .youTube: "YouTube"
-            case .soundCloud: "SoundCloud"
-            case .appleMusic: "Apple Music"
-            case .internetArchive: "Internet Archive"
-            case .bandcamp: "Bandcamp"
+            case .spotify: String(localized: "Spotify")
+            case .youTube: String(localized: "YouTube")
+            case .soundCloud: String(localized: "SoundCloud")
+            case .appleMusic: String(localized: "Apple Music")
+            case .internetArchive: String(localized: "Internet Archive")
+            case .bandcamp: String(localized: "Bandcamp")
             }
         }
     }
@@ -84,8 +84,10 @@ struct ExternalMediaLink: Hashable, Codable, Sendable {
         try container.encode(url, forKey: .url)
     }
 
-    var actionTitle: String { "Open in \(service.displayName)" }
-    var accessibilityHint: String { "Opens \(service.displayName) in another app or browser" }
+    var actionTitle: String { String(localized: "Open in \(service.displayName)") }
+    var accessibilityHint: String {
+        String(localized: "Opens \(service.displayName) in another app or browser")
+    }
 
     /// A valid Spotify ID is preferred because it is explicit recording
     /// metadata. A recognized public origin is used only as a fallback.
@@ -330,9 +332,9 @@ struct ListenInspection: Hashable, Codable, Sendable {
 
         var title: String {
             switch self {
-            case .matchedByListenBrainz: "Matched by ListenBrainz"
-            case .musicBrainzIDsSubmitted: "MusicBrainz IDs in submitted metadata"
-            case .noMusicBrainzMatch: "No MusicBrainz match"
+            case .matchedByListenBrainz: String(localized: "Matched by ListenBrainz")
+            case .musicBrainzIDsSubmitted: String(localized: "MusicBrainz IDs in submitted metadata")
+            case .noMusicBrainzMatch: String(localized: "No MusicBrainz match")
             }
         }
     }
@@ -597,13 +599,13 @@ enum ListeningActivityPeriod: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .thisWeek: "This Week"
-        case .thisMonth: "This Month"
-        case .thisYear: "This Year"
-        case .lastWeek: "Last Week"
-        case .lastMonth: "Last Month"
-        case .lastYear: "Last Year"
-        case .allTime: "All Time"
+        case .thisWeek: String(localized: "This Week")
+        case .thisMonth: String(localized: "This Month")
+        case .thisYear: String(localized: "This Year")
+        case .lastWeek: String(localized: "Last Week")
+        case .lastMonth: String(localized: "Last Month")
+        case .lastYear: String(localized: "Last Year")
+        case .allTime: String(localized: "All Time")
         }
     }
 
@@ -650,8 +652,22 @@ enum ListeningWeekday: String, CaseIterable, Identifiable, Hashable, Sendable {
 
     var id: Self { self }
 
+    var title: String {
+        switch self {
+        case .monday: String(localized: "Monday")
+        case .tuesday: String(localized: "Tuesday")
+        case .wednesday: String(localized: "Wednesday")
+        case .thursday: String(localized: "Thursday")
+        case .friday: String(localized: "Friday")
+        case .saturday: String(localized: "Saturday")
+        case .sunday: String(localized: "Sunday")
+        }
+    }
+
     var shortTitle: String {
-        String(rawValue.prefix(3))
+        let symbols = Calendar.autoupdatingCurrent.shortWeekdaySymbols
+        let index = self == .sunday ? 0 : (Self.allCases.firstIndex(of: self) ?? 0) + 1
+        return symbols.indices.contains(index) ? symbols[index] : title
     }
 }
 
@@ -786,7 +802,7 @@ struct EraActivity: Hashable, Sendable {
         let listenCount: Int
 
         var id: Int { year }
-        var title: String { "\(year)s" }
+        var title: String { String(localized: "\(year)s") }
     }
 
     let period: ListeningActivityPeriod
@@ -1018,7 +1034,7 @@ struct ArtistEvolutionActivity: Hashable, Sendable {
                     return lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
                 }
                 return leftCount > rightCount
-            }.first ?? "Unknown artist"
+            }.first ?? String(localized: "Unknown artist")
             let points = orderedTimeUnits.map {
                 Point(timeUnit: $0, listenCount: accumulator.pointCounts[$0, default: 0])
             }
@@ -1395,7 +1411,7 @@ struct ArtistOrigins: Hashable, Sendable {
                     let right = accumulator.nameCounts[rhs, default: 0]
                     if left == right { return lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending }
                     return left > right
-                }.first ?? "Unknown artist"
+                }.first ?? String(localized: "Unknown artist")
                 return Artist(mbid: accumulator.mbid, name: name, listenCount: accumulator.listenCount)
             }.sorted { lhs, rhs in
                 if lhs.listenCount == rhs.listenCount { return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending }
@@ -1503,10 +1519,14 @@ struct ArtistActivity: Hashable, Sendable {
             grouped[key] = value
         }
         artists = grouped.values.map { value in
-            let credited = Self.bestName(value.credited) ?? "Unknown artist"
+            let credited = Self.bestName(value.credited) ?? String(localized: "Unknown artist")
             let canonical = Self.bestName(value.canonical)
             let albums = value.albums.values.map { album in
-                Album(name: Self.bestName(album.names) ?? "Unknown album", releaseGroupMBID: album.mbid, listenCount: album.listenCount)
+                Album(
+                    name: Self.bestName(album.names) ?? String(localized: "Unknown album"),
+                    releaseGroupMBID: album.mbid,
+                    listenCount: album.listenCount
+                )
             }.sorted(by: Self.albumOrder)
             return Artist(creditedName: credited, canonicalName: canonical, mbid: value.mbid, listenCount: value.listenCount, albums: albums)
         }.sorted { lhs, rhs in lhs.listenCount == rhs.listenCount ? lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending : lhs.listenCount > rhs.listenCount }
@@ -1663,7 +1683,7 @@ struct ReleaseSeed: Identifiable, Hashable, Sendable {
         guard let mbid = recording.releaseMBID else { return nil }
         self.init(
             mbid: mbid,
-            title: recording.releaseTitle ?? "Unknown release",
+            title: recording.releaseTitle ?? String(localized: "Unknown release"),
             artistName: recording.artistName,
             artistMBIDs: recording.artistMBIDs,
             releaseGroupMBID: recording.releaseGroupMBID,
@@ -1755,7 +1775,9 @@ enum FreshReleaseScope: String, CaseIterable, Identifiable, Sendable {
     case all
 
     var id: Self { self }
-    var title: String { self == .forYou ? "For You" : "All" }
+    var title: String {
+        self == .forYou ? String(localized: "For You") : String(localized: "All")
+    }
 }
 
 /// The complete server-side shape of a Fresh Releases read. Local presentation
@@ -1814,11 +1836,11 @@ enum SearchScope: String, CaseIterable, Identifiable, Sendable {
     var id: Self { self }
     var title: String {
         switch self {
-        case .users: "Users"
-        case .artists: "Artists"
-        case .releaseGroups: "Albums"
-        case .recordings: "Tracks"
-        case .playlists: "Playlists"
+        case .users: String(localized: "Users")
+        case .artists: String(localized: "Artists")
+        case .releaseGroups: String(localized: "Albums")
+        case .recordings: String(localized: "Tracks")
+        case .playlists: String(localized: "Playlists")
         }
     }
 
@@ -2039,15 +2061,18 @@ enum SearchResult: Identifiable, Hashable, Sendable {
 
     var subtitle: String? {
         switch self {
-        case .user: "ListenBrainz user"
-        case let .artist(value): value.listenCount > 0 ? "\(value.listenCount.formatted()) of your listens" : "MusicBrainz artist"
+        case .user: String(localized: "ListenBrainz user")
+        case let .artist(value):
+            value.listenCount > 0
+                ? String(localized: "\(value.listenCount.formatted()) of your listens")
+                : String(localized: "MusicBrainz artist")
         case let .releaseGroup(value): [value.artistName.nilIfEmpty, value.firstReleaseDate, value.primaryType]
                 .compactMap { $0 }
                 .joined(separator: " · ")
         case let .recording(value): [value.artistName.nilIfEmpty, value.releaseTitle]
                 .compactMap { $0 }
                 .joined(separator: " · ")
-        case let .playlist(value): "By \(value.creator)"
+        case let .playlist(value): String(localized: "By \(value.creator)")
         }
     }
 }

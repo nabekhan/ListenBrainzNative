@@ -62,7 +62,7 @@ struct CritiqueBrainzReviewSummaryView: View {
                         Label(averageRatingLabel(rating, count: count), systemImage: "star.fill")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .accessibilityLabel("Average CritiqueBrainz rating: \(rating.formatted(.number.precision(.fractionLength(1)))) out of 5, from \(count) \(count == 1 ? "rating" : "ratings")")
+                            .accessibilityLabel(averageRatingAccessibilityLabel(rating, count: count))
                     } else {
                         Text("Published community reviews").font(.caption).foregroundStyle(.secondary)
                     }
@@ -83,7 +83,9 @@ struct CritiqueBrainzReviewSummaryView: View {
                         CritiqueBrainzReviewReaderView(summary: summary)
                     } label: {
                         Label(
-                            summary.reviews.count == 1 ? "Read this review" : "Read these reviews",
+                            summary.reviews.count == 1
+                                ? String(localized: "Read this review")
+                                : String(localized: "Read these reviews"),
                             systemImage: "text.page"
                         )
                     }
@@ -119,7 +121,18 @@ struct CritiqueBrainzReviewSummaryView: View {
     }
 
     private func averageRatingLabel(_ rating: Double, count: Int) -> String {
-        "\(rating.formatted(.number.precision(.fractionLength(1)))) out of 5 · \(count.formatted()) \(count == 1 ? "rating" : "ratings")"
+        let ratingValue = rating.formatted(.number.precision(.fractionLength(1)))
+        let countValue = count.formatted()
+        return count == 1
+            ? String(localized: "\(ratingValue) out of 5 · \(countValue) rating")
+            : String(localized: "\(ratingValue) out of 5 · \(countValue) ratings")
+    }
+
+    private func averageRatingAccessibilityLabel(_ rating: Double, count: Int) -> String {
+        let ratingValue = rating.formatted(.number.precision(.fractionLength(1)))
+        return count == 1
+            ? String(localized: "Average CritiqueBrainz rating: \(ratingValue) out of 5, from \(count) rating")
+            : String(localized: "Average CritiqueBrainz rating: \(ratingValue) out of 5, from \(count) ratings")
     }
 
     private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -169,7 +182,7 @@ private struct CritiqueBrainzReviewCard: View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(review.author ?? "CritiqueBrainz member")
+                    Text(review.author ?? String(localized: "CritiqueBrainz member"))
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     if let publishedAt = review.publishedAt {
@@ -198,7 +211,7 @@ private struct CritiqueBrainzReviewCard: View {
                     Link(license, destination: url)
                         .font(.caption)
                         .lineLimit(1)
-                        .accessibilityLabel("License \(license)")
+                        .accessibilityLabel(String(localized: "License \(license)"))
                 } else if let license = review.licenseID {
                     Text(license).font(.caption).foregroundStyle(.secondary)
                 }
@@ -217,8 +230,8 @@ private struct CritiqueBrainzReviewCard: View {
     private var externalReviewAccessibilityLabel: String {
         guard let author = review.author?.trimmingCharacters(in: .whitespacesAndNewlines),
               !author.isEmpty else {
-            return "Read this review on CritiqueBrainz"
+            return String(localized: "Read this review on CritiqueBrainz")
         }
-        return "Read \(author)’s review on CritiqueBrainz"
+        return String(localized: "Read \(author)’s review on CritiqueBrainz")
     }
 }

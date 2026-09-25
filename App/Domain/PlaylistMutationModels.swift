@@ -86,7 +86,7 @@ enum PlaylistMetadataDraftError: LocalizedError, Sendable {
     case missingTitle
 
     var errorDescription: String? {
-        "Give this playlist a name before saving it."
+        String(localized: "Give this playlist a name before saving it.")
     }
 }
 

@@ -25,7 +25,11 @@ struct ArtworkView: View {
         }
         .clipShape(.rect(cornerRadius: cornerRadius, style: .continuous))
         .contentShape(.rect(cornerRadius: cornerRadius, style: .continuous))
-        .accessibilityLabel(url == nil ? "No artwork for \(title)" : "Artwork for \(title)")
+        .accessibilityLabel(
+            url == nil
+                ? String(localized: "No artwork for \(title)")
+                : String(localized: "Artwork for \(title)")
+        )
     }
 
     private var placeholder: some View {
@@ -54,8 +58,8 @@ struct ArtistArtworkView: View {
             }
             .accessibilityLabel(
                 artist.listenCount > 0
-                    ? "\(artist.name), \(artist.listenCount.formatted()) listens"
-                    : "\(artist.name), MusicBrainz artist"
+                    ? String(localized: "\(artist.name), \(artist.listenCount.formatted()) listens")
+                    : String(localized: "\(artist.name), MusicBrainz artist")
             )
     }
 }

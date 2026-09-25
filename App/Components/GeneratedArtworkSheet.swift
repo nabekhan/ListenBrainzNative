@@ -13,14 +13,14 @@ struct GeneratedArtworkPresentation: Equatable, Sendable {
         username: String,
         period: ListeningActivityPeriod
     ) -> Self {
-        let periodName = period.title.lowercased()
+        let periodName = period.title
         let sourceURL = listenBrainzURL(path: "/user/\(username)/stats/")
         return Self(
-            title: "Stats artwork",
-            detail: "Your listening for \(periodName).",
-            accessibilityLabel: "ListenBrainz stats artwork for \(periodName)",
-            shareSubject: "My ListenBrainz stats",
-            shareMessage: "My ListenBrainz listening stats for \(periodName): \(sourceURL.absoluteString)",
+            title: String(localized: "Stats artwork"),
+            detail: String(localized: "Listening period: \(periodName)"),
+            accessibilityLabel: String(localized: "ListenBrainz stats artwork. \(periodName)."),
+            shareSubject: String(localized: "My ListenBrainz stats"),
+            shareMessage: String(localized: "My ListenBrainz listening stats — \(periodName): \(sourceURL.absoluteString)"),
             fileName: "ListenBrainz-stats-\(period.artRange.rawValue).png"
         )
     }
@@ -30,11 +30,11 @@ struct GeneratedArtworkPresentation: Equatable, Sendable {
             path: "/artist/\(mbid.uuidString.lowercased())"
         )
         return Self(
-            title: "Artist artwork",
-            detail: "A cover grid for \(name).",
-            accessibilityLabel: "ListenBrainz cover grid for \(name)",
-            shareSubject: "\(name) on ListenBrainz",
-            shareMessage: "A ListenBrainz cover grid for \(name): \(sourceURL.absoluteString)",
+            title: String(localized: "Artist artwork"),
+            detail: String(localized: "A cover grid for \(name)."),
+            accessibilityLabel: String(localized: "ListenBrainz cover grid for \(name)"),
+            shareSubject: String(localized: "\(name) on ListenBrainz"),
+            shareMessage: String(localized: "A ListenBrainz cover grid for \(name): \(sourceURL.absoluteString)"),
             fileName: "ListenBrainz-artist-\(mbid.uuidString.lowercased()).png"
         )
     }
@@ -45,11 +45,11 @@ struct GeneratedArtworkPresentation: Equatable, Sendable {
         sourceURL: URL
     ) -> Self {
         Self(
-            title: "Playlist artwork",
-            detail: "Artwork for “\(title)”.",
-            accessibilityLabel: "ListenBrainz artwork for the playlist \(title)",
-            shareSubject: "\(title) on ListenBrainz",
-            shareMessage: "Artwork for “\(title)” on ListenBrainz: \(sourceURL.absoluteString)",
+            title: String(localized: "Playlist artwork"),
+            detail: String(localized: "Artwork for “\(title)”."),
+            accessibilityLabel: String(localized: "ListenBrainz artwork for the playlist \(title)"),
+            shareSubject: String(localized: "\(title) on ListenBrainz"),
+            shareMessage: String(localized: "Artwork for “\(title)” on ListenBrainz: \(sourceURL.absoluteString)"),
             fileName: "ListenBrainz-playlist-\(mbid.uuidString.lowercased()).png"
         )
     }
@@ -220,7 +220,7 @@ struct GeneratedArtworkSheet: View {
                 .tint(AppTheme.accent)
                 .accessibilityHint("Shares a PNG copy and its ListenBrainz link")
             } else {
-                snapshotFailure("Brainz couldn’t encode the artwork as a PNG.")
+                snapshotFailure(String(localized: "Brainz couldn’t encode the artwork as a PNG."))
             }
         case let .failed(message):
             snapshotFailure(message)

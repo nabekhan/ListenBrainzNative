@@ -100,6 +100,19 @@ struct YearInMusicReport: Hashable, Sendable {
     struct Weekday: Hashable, Sendable {
         let name: String
         let order: Int
+
+        var localizedName: String {
+            switch order {
+            case 0: String(localized: "Monday")
+            case 1: String(localized: "Tuesday")
+            case 2: String(localized: "Wednesday")
+            case 3: String(localized: "Thursday")
+            case 4: String(localized: "Friday")
+            case 5: String(localized: "Saturday")
+            case 6: String(localized: "Sunday")
+            default: name
+            }
+        }
     }
 
     struct Genre: Identifiable, Hashable, Sendable {
@@ -116,7 +129,7 @@ struct YearInMusicReport: Hashable, Sendable {
         let listenCount: Int
 
         var id: Int { decade }
-        var label: String { "\(decade)s" }
+        var label: String { String(localized: "\(decade)s") }
     }
 
     struct ListeningDay: Identifiable, Hashable, Sendable {
@@ -240,15 +253,15 @@ struct YearInMusicReport: Hashable, Sendable {
 
             var title: String {
                 switch self {
-                case .discoveries: "Top discoveries"
-                case .missedRecordings: "Tracks you missed"
+                case .discoveries: String(localized: "Top discoveries")
+                case .missedRecordings: String(localized: "Tracks you missed")
                 }
             }
 
             func explanation(year: Int) -> String {
                 switch self {
-                case .discoveries: "Your top tracks first heard in \(year)."
-                case .missedRecordings: "A discovery playlist based on similar listeners."
+                case .discoveries: String(localized: "Your top tracks first heard in \(year).")
+                case .missedRecordings: String(localized: "A discovery playlist based on similar listeners.")
                 }
             }
         }
@@ -396,7 +409,7 @@ struct YearInMusicReport: Hashable, Sendable {
         guard let source else { return nil }
         let tracks = source.tracks.enumerated().compactMap { index, track -> AnnualPlaylistSnapshot.Track? in
             guard let title = track.title?.trimmedNilIfEmpty else { return nil }
-            let artistName = track.creator?.trimmedNilIfEmpty ?? "Unknown artist"
+            let artistName = track.creator?.trimmedNilIfEmpty ?? String(localized: "Unknown artist")
             let recordingMBID = track.identifiers?.compactMap(strictRecordingMBID).first
             let recording = recordingMBID.map { mbid in
                 Recording(
@@ -674,7 +687,7 @@ struct YearInMusicReport: Hashable, Sendable {
         enum Key: Hashable { case mbid(UUID), fallback(String) }
         var values: [Key: ReleaseGroup] = [:]
         for row in source {
-            let title = row.name?.trimmedNilIfEmpty ?? "Untitled release"
+            let title = row.name?.trimmedNilIfEmpty ?? String(localized: "Untitled release")
             let artist = resolvedArtistName(row.artistName, credits: row.artists)
             let mbid = row.mbid.flatMap(UUID.init(uuidString:))
             let key = mbid.map(Key.mbid)
@@ -703,7 +716,7 @@ struct YearInMusicReport: Hashable, Sendable {
         enum Key: Hashable { case mbid(UUID), fallback(String) }
         var values: [Key: TopRecording] = [:]
         for row in source {
-            let title = row.trackName?.trimmedNilIfEmpty ?? "Untitled recording"
+            let title = row.trackName?.trimmedNilIfEmpty ?? String(localized: "Untitled recording")
             let artist = resolvedArtistName(row.artistName, credits: row.artists)
             let recordingMBID = row.recordingMBID.flatMap(UUID.init(uuidString:))
             let releaseMBID = row.releaseMBID.flatMap(UUID.init(uuidString:))
@@ -801,7 +814,7 @@ struct YearInMusicReport: Hashable, Sendable {
             guard let name = credit.name?.trimmedNilIfEmpty else { return nil }
             return name + (credit.joinPhrase ?? "")
         }.joined()
-        return credits?.trimmedNilIfEmpty ?? "Unknown artist"
+        return credits?.trimmedNilIfEmpty ?? String(localized: "Unknown artist")
     }
 
     private static func normalizedUUIDs(_ values: [String]?) -> [UUID] {
