@@ -1,5 +1,6 @@
 #!/bin/zsh
 
+emulate -LR zsh
 set -euo pipefail
 
 mode="${1:-check}"
@@ -133,13 +134,17 @@ validate_source_boundaries() {
     fi
 }
 
-typeset -a catalogs
+typeset -a localization_resources
 while IFS= read -r -d '' file; do
-    catalogs+=("$file")
-done < <(find App -type f -name '*.xcstrings' -print0)
+    localization_resources+=("$file")
+done < <(
+    find App -type f \
+        \( -name '*.xcstrings' -o -name '*.strings' -o -name '*.stringsdict' \) \
+        -print0
+)
 
-if (( ${#catalogs[@]} != 1 )) || [[ "${catalogs[1]:-}" != "App/Resources/Localizable.xcstrings" ]]; then
-    print -u2 "Expected exactly one app string catalog at App/Resources/Localizable.xcstrings."
+if (( ${#localization_resources[@]} != 1 )) || [[ "${localization_resources[1]:-}" != "App/Resources/Localizable.xcstrings" ]]; then
+    print -u2 "Expected App/Resources/Localizable.xcstrings to be the app's only localization resource."
     exit 1
 fi
 
