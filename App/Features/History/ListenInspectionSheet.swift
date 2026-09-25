@@ -2,14 +2,18 @@ import SwiftUI
 
 struct ListenInspectionSheet: View {
     let listen: Listen
+    let account: Account?
     private let startsAtMapping: Bool
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var isMappingPresented = false
+    @State private var savedManualMappingMBID: UUID?
 
     private var details: ListenInspection? { listen.inspection }
 
-    init(listen: Listen, startsAtMapping: Bool = false) {
+    init(listen: Listen, account: Account? = nil, startsAtMapping: Bool = false) {
         self.listen = listen
+        self.account = account
         self.startsAtMapping = startsAtMapping
     }
 
@@ -51,6 +55,14 @@ struct ListenInspectionSheet: View {
         .presentationDetents(
             dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large]
         )
+        .sheet(isPresented: $isMappingPresented) {
+            if let account {
+                ManualMappingSheet(listen: listen, account: account) { mbid in
+                    savedManualMappingMBID = mbid
+                }
+                .presentationDetents([.large])
+            }
+        }
     }
 
     private var listenSection: some View {
@@ -119,6 +131,39 @@ struct ListenInspectionSheet: View {
             musicBrainzIdentifier("Release MBID", id: details.resolvedReleaseMBID, path: "release")
             musicBrainzIdentifier("Release group MBID", id: details.resolvedReleaseGroupMBID, path: "release-group")
             musicBrainzIdentifiers("Artist MBID", ids: details.resolvedArtistMBIDs, path: "artist")
+            if let savedManualMappingMBID {
+                Label("Match saved", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                musicBrainzIdentifier("Saved recording MBID", id: savedManualMappingMBID, path: "recording")
+                Text("Refresh History to load the updated metadata.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            if let account {
+                let availability = ManualMappingModel.availability(account: account, listen: listen)
+                switch availability {
+                case let .available(_, currentMBID):
+                    Button {
+                        isMappingPresented = true
+                    } label: {
+                        if (savedManualMappingMBID ?? currentMBID) == nil {
+                            Label("Find MusicBrainz match", systemImage: "link.badge.plus")
+                        } else {
+                            Label("Change MusicBrainz match", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                    }
+                case let .unavailable(reason) where details.submittedRecordingMBID != nil:
+                    Label {
+                        Text(reason)
+                    } icon: {
+                        Image(systemName: "info.circle")
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                case .unavailable:
+                    EmptyView()
+                }
+            }
         }
     }
 
@@ -253,9 +298,29 @@ struct ListenInspectionVisualQAScreen: View {
         .sheet(isPresented: $isPresentingDetails) {
             ListenInspectionSheet(
                 listen: listen,
+                account: Account(username: "visual-listener", token: "visual-token"),
                 startsAtMapping: ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-scroll")
             )
         }
+    }
+
+    static func fixtureListen(unmapped: Bool = false) -> Listen {
+        let recording = Recording(
+            identity: .init(mbid: nil, msid: UUID(uuidString: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")),
+            title: "Visual track", artistName: "Visual artist", artistMBIDs: [], releaseTitle: "Visual release",
+            releaseMBID: nil, releaseGroupMBID: nil, artworkReleaseMBID: nil, durationMilliseconds: nil, source: nil
+        )
+        if !unmapped { return Listen(recording: recording, listenedAt: .now, insertedAt: nil, isPlayingNow: false) }
+        let inspection = ListenInspection(
+            submittedArtist: "Visual artist", submittedTrack: "Visual track", submittedRelease: "Visual release",
+            recordingMSID: UUID(uuidString: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"), submittedRecordingMSID: nil,
+            submittedArtistMBIDs: [], submittedRecordingMBID: nil, submittedReleaseMBID: nil, submittedReleaseGroupMBID: nil,
+            submittedTrackMBID: nil, submittedWorkMBIDs: [], resolvedArtistMBIDs: [], resolvedRecordingMBID: nil,
+            resolvedReleaseMBID: nil, resolvedReleaseGroupMBID: nil, resolvedRecordingName: nil, trackNumber: nil,
+            isrc: nil, spotifyID: nil, tags: [], mediaPlayer: nil, mediaPlayerVersion: nil, submissionClient: nil,
+            submissionClientVersion: nil, musicService: nil, musicServiceName: nil, originURL: nil, durationMilliseconds: nil
+        )
+        return Listen(recording: recording, listenedAt: .now, insertedAt: nil, isPlayingNow: false, inspection: inspection)
     }
 }
 #endif

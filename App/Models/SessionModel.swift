@@ -273,6 +273,8 @@ final class SessionModel {
             }
             if arguments.contains("-brainz-inspect-listen-demo")
                 || arguments.contains("-brainz-inspect-listen-unmapped-demo")
+                || arguments.contains("-brainz-manual-mapping-demo")
+                || arguments.contains("-brainz-manual-mapping-review-demo")
             {
                 state = .active(Account(username: "visual-inspection", token: "visual-inspection"))
                 return true

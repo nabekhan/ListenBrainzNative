@@ -260,6 +260,10 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-unmapped-demo")
             {
                 ListenInspectionVisualQAScreen(listen: VisualQAHistoryProvider.inspectionPreview())
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-manual-mapping-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-manual-mapping-review-demo")
+            {
+                ManualMappingVisualQAScreen()
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-generic-art-demo") {
                 GenericArtVisualQAScreen(fixture: .populated)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-generic-art-unavailable-demo") {

@@ -73,6 +73,8 @@ enum ProviderError: LocalizedError {
     case deleteListenRejected
     case deleteListenUnavailable
     case deleteListenOutcomeUnknown
+    case manualMappingRejected
+    case manualMappingOutcomeUnknown
     case missingUsername
     case rateLimited(retryAfterSeconds: Int)
 
@@ -84,6 +86,10 @@ enum ProviderError: LocalizedError {
         case .deleteListenUnavailable: String(localized: "Deletion isn’t available in this build.")
         case .deleteListenOutcomeUnknown:
             String(localized: "We couldn’t confirm the deletion. Wait until shortly after the next hour, then refresh before trying again.")
+        case .manualMappingRejected:
+            String(localized: "ListenBrainz didn’t accept this MusicBrainz match. Check the recording and try again.")
+        case .manualMappingOutcomeUnknown:
+            String(localized: "We couldn’t confirm whether the match was saved. Refresh later before sending it again.")
         case .missingUsername: String(localized: "Enter a ListenBrainz username.")
         case let .rateLimited(seconds): String(localized: "ListenBrainz is busy. Try again in about \(seconds) seconds.")
         }

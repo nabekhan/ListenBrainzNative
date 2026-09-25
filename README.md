@@ -8,6 +8,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Playing Now and recent-listening home screen
 - Paginated, date-grouped history with exact local-day navigation and adjacent-day browsing
 - Safe authenticated listen deletion with explicit confirmation, asynchronous-status copy, and a durable no-replay barrier for uncertain outcomes
+- Native manual MusicBrainz matching from Listen Details, with explicit recording search, side-by-side review, submitted-ID precedence, and a one-shot no-retry save
 - Recording and artist detail views
 - Zero-request **Listen elsewhere** actions for strict canonical service links already embedded in ListenBrainz metadata; one service opens directly and multiple services use one native menu
 - Global ListenBrainz listen/listener context on canonical artist, recording, release, and release-group pages

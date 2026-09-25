@@ -76,7 +76,7 @@ struct HistoryView: View {
         }
         .sheet(isPresented: $isDatePickerPresented) { historyDatePicker }
         .sheet(item: $inspectedListen) { listen in
-            ListenInspectionSheet(listen: listen)
+            ListenInspectionSheet(listen: listen, account: model.account)
         }
         .alert(item: historyAlertBinding) { alert in
             switch alert {
