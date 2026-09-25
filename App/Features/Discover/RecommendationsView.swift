@@ -6,7 +6,7 @@ struct RecommendationsView: View {
         case playlists
 
         var id: Self { self }
-        var title: String { self == .tracks ? "Tracks" : "Playlists" }
+        var title: String { self == .tracks ? String(localized: "Tracks") : String(localized: "Playlists") }
     }
 
     let account: Account
@@ -264,7 +264,7 @@ struct RecommendationsView: View {
         }
     }
 
-    private func loading(_ title: String) -> some View {
+    private func loading(_ title: LocalizedStringResource) -> some View {
         VStack(spacing: 12) {
             ProgressView()
             Text(title)
@@ -276,7 +276,7 @@ struct RecommendationsView: View {
     }
 
     private func failure(
-        title: String,
+        title: LocalizedStringResource,
         message: String,
         retry: @escaping @Sendable () async -> Void
     ) -> some View {
@@ -347,8 +347,8 @@ private struct RecommendationRow: View {
     }
 
     private var discoveryContext: String {
-        guard let date = recommendation.lastListenedAt else { return "New to your history" }
-        return "Last heard \(date.formatted(.relative(presentation: .named)))"
+        guard let date = recommendation.lastListenedAt else { return String(localized: "New to your history") }
+        return String(localized: "Last heard \(date.formatted(.relative(presentation: .named)))")
     }
 }
 
@@ -423,19 +423,19 @@ private struct RecommendationFeedbackControl: View {
 private extension RecommendationRating {
     var title: String {
         switch self {
-        case .hate: "Hate"
-        case .dislike: "Dislike"
-        case .like: "Like"
-        case .love: "Love"
+        case .hate: String(localized: "Hate")
+        case .dislike: String(localized: "Dislike")
+        case .like: String(localized: "Like")
+        case .love: String(localized: "Love")
         }
     }
 
     var confirmationTitle: String {
         switch self {
-        case .hate: "Marked as hated"
-        case .dislike: "Marked as disliked"
-        case .like: "Marked as liked"
-        case .love: "Marked as loved"
+        case .hate: String(localized: "Marked as hated")
+        case .dislike: String(localized: "Marked as disliked")
+        case .like: String(localized: "Marked as liked")
+        case .love: String(localized: "Marked as loved")
         }
     }
 
@@ -500,11 +500,11 @@ private struct RecommendationPlaylistCard: View {
 
     private var kindTitle: String {
         switch playlist.recommendationType {
-        case "weekly-jams": "Weekly Jams"
-        case "weekly-exploration": "Weekly Exploration"
-        case "daily-jams": "Daily Jams"
-        case let value? where value.hasPrefix("top-discoveries-of-"): "Top Discoveries"
-        case let value? where value.hasPrefix("top-missed-recordings-of-"): "Missed Tracks"
+        case "weekly-jams": String(localized: "Weekly Jams")
+        case "weekly-exploration": String(localized: "Weekly Exploration")
+        case "daily-jams": String(localized: "Daily Jams")
+        case let value? where value.hasPrefix("top-discoveries-of-"): String(localized: "Top Discoveries")
+        case let value? where value.hasPrefix("top-missed-recordings-of-"): String(localized: "Missed Tracks")
         default: playlist.title
         }
     }
@@ -520,12 +520,12 @@ private struct RecommendationPlaylistCard: View {
 
     private var detailText: String {
         if let expiresAt = playlist.expiresAt, expiresAt > .now {
-            return "Available \(expiresAt.formatted(.relative(presentation: .named)))"
+            return String(localized: "Available \(expiresAt.formatted(.relative(presentation: .named)))")
         }
         if let updated = playlist.lastModifiedAt {
-            return "Updated \(updated.formatted(.relative(presentation: .named)))"
+            return String(localized: "Updated \(updated.formatted(.relative(presentation: .named)))")
         }
-        return "By \(playlist.creator)"
+        return String(localized: "By \(playlist.creator)")
     }
 }
 

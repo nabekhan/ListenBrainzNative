@@ -354,10 +354,10 @@ private struct ProfilePlaylistRow: View {
 
     private var dateDescription: String? {
         if let updated = playlist.lastModifiedAt {
-            return "Updated \(updated.formatted(date: .abbreviated, time: .omitted))"
+            return String(localized: "Updated \(updated.formatted(date: .abbreviated, time: .omitted))")
         }
         if let created = playlist.createdAt {
-            return "Created \(created.formatted(date: .abbreviated, time: .omitted))"
+            return String(localized: "Created \(created.formatted(date: .abbreviated, time: .omitted))")
         }
         return nil
     }
@@ -367,17 +367,21 @@ private struct ProfilePlaylistRow: View {
         let totalMinutes = milliseconds / 60_000
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
-        return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
+        return hours > 0
+            ? String(localized: "\(hours)h \(minutes)m")
+            : String(localized: "\(minutes)m")
     }
 
     private var collaboratorDescription: String {
         let names = playlist.collaborators.prefix(2).joined(separator: ", ")
         let remainder = playlist.collaborators.count - min(playlist.collaborators.count, 2)
-        return remainder > 0 ? "With \(names) +\(remainder)" : "With \(names)"
+        return remainder > 0
+            ? String(localized: "With \(names) +\(remainder)")
+            : String(localized: "With \(names)")
     }
 
     private var accessibilityLabel: String {
-        var parts = [playlist.title, "by \(playlist.creator)", playlist.isPublic ? "Public" : "Private"]
+        var parts = [playlist.title, String(localized: "by \(playlist.creator)"), playlist.isPublic ? String(localized: "Public") : String(localized: "Private")]
         if let durationDescription { parts.append(durationDescription) }
         if let dateDescription { parts.append(dateDescription) }
         if category == .collaborating, !playlist.collaborators.isEmpty {
@@ -423,9 +427,13 @@ private extension ProfilePlaylistCategory {
     func countLabel(for count: Int) -> LocalizedStringResource {
         switch self {
         case .owned:
-            return count == 1 ? "\(count) owned playlist" : "\(count) owned playlists"
+            return count == 1
+                ? "1 owned playlist"
+                : "\(count) owned playlists"
         case .collaborating:
-            return count == 1 ? "\(count) collaborative playlist" : "\(count) collaborative playlists"
+            return count == 1
+                ? "1 collaborative playlist"
+                : "\(count) collaborative playlists"
         }
     }
 }

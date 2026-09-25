@@ -251,7 +251,7 @@ private struct FollowingPinCard: View {
     }
 
     private var pinnedTime: some View {
-        Text("Pinned \(pin.created.formatted(.relative(presentation: .named, unitsStyle: .abbreviated)))")
+        Text(String(localized: "Pinned \(pin.created.formatted(.relative(presentation: .named, unitsStyle: .abbreviated)))"))
             .font(.footnote)
             .foregroundStyle(.secondary)
             .lineLimit(1)

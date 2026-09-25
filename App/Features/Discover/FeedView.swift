@@ -255,20 +255,20 @@ struct FeedView: View {
 
     private var emptyTitle: String {
         switch mode {
-        case .activity: "Your feed is quiet"
-        case .following: "No recent listens from people you follow"
-        case .similar: "No recent listens from similar users"
+        case .activity: String(localized: "Your feed is quiet")
+        case .following: String(localized: "No recent listens from people you follow")
+        case .similar: String(localized: "No recent listens from similar users")
         }
     }
 
     private var emptyDescription: String {
         switch mode {
         case .activity:
-            "Follow listeners and share pins or recommendations on ListenBrainz to make this space more useful."
+            String(localized: "Follow listeners and share pins or recommendations on ListenBrainz to make this space more useful.")
         case .following:
-            "Recent plays will appear here when people in your network listen."
+            String(localized: "Recent plays will appear here when people in your network listen.")
         case .similar:
-            "ListenBrainz may need more listening history before it can build this view."
+            String(localized: "ListenBrainz may need more listening history before it can build this view.")
         }
     }
 
@@ -288,8 +288,8 @@ struct FeedView: View {
 
     private func dayTitle(_ day: Date) -> String {
         let calendar = Calendar.autoupdatingCurrent
-        if calendar.isDateInToday(day) { return "Today" }
-        if calendar.isDateInYesterday(day) { return "Yesterday" }
+        if calendar.isDateInToday(day) { return String(localized: "Today") }
+        if calendar.isDateInYesterday(day) { return String(localized: "Yesterday") }
         return day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())
     }
 }
@@ -644,23 +644,23 @@ private struct FeedEventCard: View {
     }
 
     private var genericContent: some View {
-        messageContent("New ListenBrainz activity is available. Open the website for any actions this app does not understand yet.", symbol: "sparkles")
+        messageContent(String(localized: "New ListenBrainz activity is available. Open the website for any actions this app does not understand yet."), symbol: "sparkles")
     }
 
     private var actionDescription: String {
         switch event.kind {
-        case .listen: "listened to"
-        case .recordingRecommendation: "recommended a track"
-        case .recordingPin: "pinned a track"
+        case .listen: String(localized: "listened to")
+        case .recordingRecommendation: String(localized: "recommended a track")
+        case .recordingPin: String(localized: "pinned a track")
         case .personalRecordingRecommendation:
             event.users.contains { normalized($0) == normalized(viewer.username) }
-                ? "sent you a recommendation"
-                : "shared a personal recommendation"
-        case .follow: "followed a listener"
-        case .notification: "shared an update"
-        case .critiquebrainzReview: "reviewed music"
-        case .thanks: "said thanks"
-        case .unknown: "shared new activity"
+                ? String(localized: "sent you a recommendation")
+                : String(localized: "shared a personal recommendation")
+        case .follow: String(localized: "followed a listener")
+        case .notification: String(localized: "shared an update")
+        case .critiquebrainzReview: String(localized: "reviewed music")
+        case .thanks: String(localized: "said thanks")
+        case .unknown: String(localized: "shared new activity")
         }
     }
 
@@ -679,16 +679,16 @@ private struct FeedEventCard: View {
 
     private var recipientDescription: String {
         let recipients = event.users
-        if recipients.count == 1, let first = recipients.first { return "Recommended to \(first)" }
-        return "Recommended to \(recipients.count) listeners"
+        if recipients.count == 1, let first = recipients.first { return String(localized: "Recommended to \(first)") }
+        return String(localized: "Recommended to \(recipients.count) listeners")
     }
 
     private var thanksDescription: String {
         let thanker = event.thankerUsername ?? event.userName
         if let thankee = event.thankeeUsername {
-            return "\(thanker) thanked \(thankee)"
+            return String(localized: "\(thanker) thanked \(thankee)")
         }
-        return "\(thanker) shared thanks"
+        return String(localized: "\(thanker) shared thanks")
     }
 
     private var isViewer: Bool { normalized(event.userName) == normalized(viewer.username) }
@@ -706,23 +706,23 @@ private enum FeedCardConfirmation: Identifiable, Equatable {
     var id: String { title }
     var title: String {
         switch self {
-        case .hide: "Hide this activity?"
-        case .unhide: "Show this activity again?"
-        case .delete: "Delete this activity?"
+        case .hide: String(localized: "Hide this activity?")
+        case .unhide: String(localized: "Show this activity again?")
+        case .delete: String(localized: "Delete this activity?")
         }
     }
     var message: String {
         switch self {
-        case .hide: "This hides the activity from your ListenBrainz feed. You can restore it here later."
-        case .unhide: "This makes the activity visible in your ListenBrainz feed again."
-        case .delete: "This permanently removes your activity from ListenBrainz."
+        case .hide: String(localized: "This hides the activity from your ListenBrainz feed. You can restore it here later.")
+        case .unhide: String(localized: "This makes the activity visible in your ListenBrainz feed again.")
+        case .delete: String(localized: "This permanently removes your activity from ListenBrainz.")
         }
     }
     var buttonTitle: String {
         switch self {
-        case .hide: "Hide Activity"
-        case .unhide: "Unhide Activity"
-        case .delete: "Delete"
+        case .hide: String(localized: "Hide Activity")
+        case .unhide: String(localized: "Unhide Activity")
+        case .delete: String(localized: "Delete")
         }
     }
     var isDestructive: Bool { self == .hide || self == .delete }
@@ -772,7 +772,7 @@ private struct FeedThanksEditor: View {
     }
 
     private var subjectName: String {
-        event.kind == .recordingPin ? "pin" : "recommendation"
+        event.kind == .recordingPin ? String(localized: "pin") : String(localized: "recommendation")
     }
 }
 

@@ -704,8 +704,8 @@ struct PlaylistDetailView: View {
         await model.discardAfterAccessLoss(message: message)
     }
 
-    private var removalConfirmationTitle: String { "Remove “\(trackPendingRemoval?.recording.title ?? "")”?" }
-    private var removalConfirmationMessage: String { "This removes one track from “\(displayTitle)” for everyone who uses it." }
+    private var removalConfirmationTitle: String { String(localized: "Remove “\(trackPendingRemoval?.recording.title ?? "")”?") }
+    private var removalConfirmationMessage: String { String(localized: "This removes one track from “\(displayTitle)” for everyone who uses it.") }
     private var removalNoticeBinding: Binding<PlaylistItemRemovalNotice?> { Binding(get: { removalModel.notice }, set: { if $0 == nil { removalModel.dismissNotice() } }) }
     private func removeSelectedTrack() async {
         guard let track = trackPendingRemoval, let detail = model.detail else { return }
@@ -729,7 +729,7 @@ struct PlaylistDetailView: View {
     }
 
     private var copyConfirmationMessage: String {
-        "Copies current tracks, details, and privacy. You own it; no collaborators."
+        String(localized: "Copies current tracks, details, and privacy. You own it; no collaborators.")
     }
 
     private var copyNoticeBinding: Binding<PlaylistCopyNotice?> {
@@ -841,9 +841,9 @@ struct PlaylistDetailView: View {
 
     private var copyReconciliationMessage: String {
         if copyModel.reconciliationRecord?.destinationMBID != nil {
-            return "ListenBrainz created a copy, but its current details still need verification. Another copy is disabled until the returned playlist loads."
+            return String(localized: "ListenBrainz created a copy, but its current details still need verification. Another copy is disabled until the returned playlist loads.")
         }
-        return "The copy response was lost. A fresh Owned Playlists check is required; another copy stays disabled unless a matching destination is verified."
+        return String(localized: "The copy response was lost. A fresh Owned Playlists check is required; another copy stays disabled unless a matching destination is verified.")
     }
 
     private func presentEditor() async {
@@ -863,7 +863,7 @@ struct PlaylistDetailView: View {
         }
     }
 
-    private func fact(_ label: String, _ value: String) -> some View {
+    private func fact(_ label: LocalizedStringResource, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label).font(.caption).foregroundStyle(.secondary)
             Text(value).font(.body)
@@ -871,13 +871,14 @@ struct PlaylistDetailView: View {
     }
 
     private func detailSection<Content: View>(
-        _ title: String,
+        _ title: LocalizedStringResource,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title.uppercased())
+            Text(title)
                 .font(.caption.bold())
                 .foregroundStyle(.secondary)
+                .textCase(.uppercase)
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -905,7 +906,9 @@ struct PlaylistDetailView: View {
         let totalMinutes = milliseconds / 60_000
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
-        return hours > 0 ? "\(hours) hr \(minutes) min" : "\(minutes) min"
+        return hours > 0
+            ? String(localized: "\(hours) hr \(minutes) min")
+            : String(localized: "\(minutes) min")
     }
 }
 

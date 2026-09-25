@@ -277,7 +277,7 @@ struct RecordingDetailView: View {
     @ViewBuilder
     private func feedbackButton(
         _ value: RecordingFeedback,
-        title: String,
+        title: LocalizedStringResource,
         systemImage: String
     ) -> some View {
         let selected = model.feedback[recording.id] == value
@@ -292,7 +292,7 @@ struct RecordingDetailView: View {
 
     private func feedbackAction(
         _ value: RecordingFeedback,
-        title: String,
+        title: LocalizedStringResource,
         systemImage: String,
         selected: Bool
     ) -> some View {
@@ -362,7 +362,7 @@ struct RecordingDetailView: View {
         }
     }
 
-    private func detailRow(_ label: String, value: String, icon: String) -> some View {
+    private func detailRow(_ label: LocalizedStringResource, value: String, icon: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .frame(width: 24)
@@ -376,13 +376,13 @@ struct RecordingDetailView: View {
     }
 
     private var identityLabel: String {
-        if let mbid = recording.identity.mbid { return "Recording MBID · \(mbid.uuidString)" }
-        if let msid = recording.identity.msid { return "Recording MSID · \(msid.uuidString)" }
-        return "No recording identifier"
+        if let mbid = recording.identity.mbid { return String(localized: "Recording MBID · \(mbid.uuidString)") }
+        if let msid = recording.identity.msid { return String(localized: "Recording MSID · \(msid.uuidString)") }
+        return String(localized: "No recording identifier")
     }
 
     private var shareText: String {
-        "\(recording.title) by \(recording.artistName)"
+        String(localized: "\(recording.title) by \(recording.artistName)")
     }
 
     private func durationLabel(_ milliseconds: Int) -> String {

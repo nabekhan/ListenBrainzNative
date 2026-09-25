@@ -317,7 +317,7 @@ struct RadioView: View {
         }
     }
 
-    private func sourceExplanation(icon: String, title: String, text: String) -> some View {
+    private func sourceExplanation(icon: String, title: LocalizedStringResource, text: LocalizedStringResource) -> some View {
         HStack(alignment: .top, spacing: 11) {
             Image(systemName: icon)
                 .foregroundStyle(AppTheme.accent)
@@ -615,9 +615,19 @@ struct RadioView: View {
 
     private func saveSummary(included: Int, excluded: Int) -> String {
         if excluded == 0 {
-            "Saves \(included.formatted()) \(included == 1 ? "track" : "tracks") in this order."
-        } else {
-            "Saves \(included.formatted()) \(included == 1 ? "track" : "tracks") in this order. \(excluded.formatted()) \(excluded == 1 ? "unmapped track is" : "unmapped tracks are") left out."
+            return included == 1
+                ? String(localized: "Saves 1 track in this order.")
+                : String(localized: "Saves \(included.formatted()) tracks in this order.")
+        }
+        switch (included == 1, excluded == 1) {
+        case (true, true):
+            return String(localized: "Saves 1 track in this order. 1 unmapped track is left out.")
+        case (true, false):
+            return String(localized: "Saves 1 track in this order. \(excluded.formatted()) unmapped tracks are left out.")
+        case (false, true):
+            return String(localized: "Saves \(included.formatted()) tracks in this order. 1 unmapped track is left out.")
+        case (false, false):
+            return String(localized: "Saves \(included.formatted()) tracks in this order. \(excluded.formatted()) unmapped tracks are left out.")
         }
     }
 
@@ -625,15 +635,19 @@ struct RadioView: View {
         let included = RadioPlaylistSaveModel.recordingMBIDs(in: mix).count
         let excluded = RadioPlaylistSaveModel.excludedTrackCount(in: mix)
         var lines = [
-            "“\(mix.title)”",
-            "\(included.formatted()) \(included == 1 ? "track" : "tracks") included in order.",
+            String(localized: "“\(mix.title)”"),
+            included == 1
+                ? String(localized: "1 track included in order.")
+                : String(localized: "\(included.formatted()) tracks included in order."),
         ]
         if excluded > 0 {
             lines.append(
-                "\(excluded.formatted()) unmapped \(excluded == 1 ? "track" : "tracks") left out."
+                excluded == 1
+                    ? String(localized: "1 unmapped track left out.")
+                    : String(localized: "\(excluded.formatted()) unmapped tracks left out.")
             )
         }
-        lines.append("One request to ListenBrainz.")
+        lines.append(String(localized: "One request to ListenBrainz."))
         return lines.joined(separator: "\n")
     }
 
@@ -792,11 +806,11 @@ struct RadioView: View {
     private var inputGuidance: String {
         switch source {
         case .artist:
-            "Use an exact MusicBrainz artist name or MBID. Parentheses belong in Advanced."
+            String(localized: "Use an exact MusicBrainz artist name or MBID. Parentheses belong in Advanced.")
         case .tag:
-            "Enter at least two characters. Use Advanced for combined tags or options."
+            String(localized: "Enter at least two characters. Use Advanced for combined tags or options.")
         case .advanced:
-            "Enter a Troi prompt of at least four characters."
+            String(localized: "Enter a Troi prompt of at least four characters.")
         case .listening, .recommendations:
             ""
         }
@@ -809,7 +823,7 @@ struct RadioView: View {
     }
 
     private func modeLabel(for mode: LBRadioMode) -> String {
-        "\(mode.displayTitle) distance"
+        String(localized: "\(mode.displayTitle) distance")
     }
 }
 
@@ -859,21 +873,21 @@ private struct RadioSourceCard: View {
 extension RadioPromptSource {
     fileprivate var title: String {
         switch self {
-        case .listening: "My listening"
-        case .recommendations: "New for me"
-        case .artist: "Artist"
-        case .tag: "Tag or mood"
-        case .advanced: "Advanced"
+        case .listening: String(localized: "My listening")
+        case .recommendations: String(localized: "New for me")
+        case .artist: String(localized: "Artist")
+        case .tag: String(localized: "Tag or mood")
+        case .advanced: String(localized: "Advanced")
         }
     }
 
     fileprivate var subtitle: String {
         switch self {
-        case .listening: "All-time stats"
-        case .recommendations: "Unheard picks"
-        case .artist: "Name or MBID"
-        case .tag: "One native seed"
-        case .advanced: "Full Troi recipe"
+        case .listening: String(localized: "All-time stats")
+        case .recommendations: String(localized: "Unheard picks")
+        case .artist: String(localized: "Name or MBID")
+        case .tag: String(localized: "One native seed")
+        case .advanced: String(localized: "Full Troi recipe")
         }
     }
 
@@ -891,28 +905,28 @@ extension RadioPromptSource {
 extension LBRadioMode {
     fileprivate var displayTitle: String {
         switch self {
-        case .easy: "Familiar"
-        case .medium: "Balanced"
-        case .hard: "Explore"
+        case .easy: String(localized: "Familiar")
+        case .medium: String(localized: "Balanced")
+        case .hard: String(localized: "Explore")
         }
     }
 
     fileprivate var shortExplanation: String {
         switch self {
-        case .easy: "Easy"
-        case .medium: "Medium"
-        case .hard: "Hard"
+        case .easy: String(localized: "Easy")
+        case .medium: String(localized: "Medium")
+        case .hard: String(localized: "Hard")
         }
     }
 
     fileprivate var longExplanation: String {
         switch self {
         case .easy:
-            "Leans toward the most relevant and recognizable recordings."
+            String(localized: "Leans toward the most relevant and recognizable recordings.")
         case .medium:
-            "Moves into the middle of ListenBrainz's ranked source lists."
+            String(localized: "Moves into the middle of ListenBrainz's ranked source lists.")
         case .hard:
-            "Searches deeper in the tail for a more adventurous mix."
+            String(localized: "Searches deeper in the tail for a more adventurous mix.")
         }
     }
 }

@@ -128,7 +128,7 @@ struct PlaylistMetadataEditorSheet: View {
         }
     }
 
-    private var navigationTitle: String {
+    private var navigationTitle: LocalizedStringResource {
         switch model.mode {
         case .create: "New Playlist"
         case .edit: "Edit Playlist"

@@ -144,7 +144,7 @@ struct ListenInspectionSheet: View {
     }
 
     @ViewBuilder
-    private func musicBrainzIdentifier(_ title: String, id: UUID?, path: String) -> some View {
+    private func musicBrainzIdentifier(_ title: LocalizedStringResource, id: UUID?, path: String) -> some View {
         if let id, let url = musicBrainzURL(path: path, id: id) {
             Link(destination: url) {
                 identifierRow(title, value: id.uuidString, showsDisclosure: true)
@@ -153,30 +153,32 @@ struct ListenInspectionSheet: View {
     }
 
     @ViewBuilder
-    private func musicBrainzIdentifiers(_ title: String, ids: [UUID], path: String) -> some View {
+    private func musicBrainzIdentifiers(_ title: LocalizedStringResource, ids: [UUID], path: String) -> some View {
         ForEach(ids, id: \.self) { id in
             musicBrainzIdentifier(title, id: id, path: path)
         }
     }
 
     @ViewBuilder
-    private func valueRow(_ title: String, value: String) -> some View {
+    private func valueRow(_ title: LocalizedStringResource, value: String) -> some View {
         if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: 4) {
                 rowTitle(title)
                 Text(value).textSelection(.enabled)
             }
         } else {
-            LabeledContent(title) {
+            LabeledContent {
                 Text(value)
                     .multilineTextAlignment(.trailing)
                     .textSelection(.enabled)
+            } label: {
+                Text(title)
             }
         }
     }
 
     @ViewBuilder
-    private func identifierRow(_ title: String, value: String, showsDisclosure: Bool = false) -> some View {
+    private func identifierRow(_ title: LocalizedStringResource, value: String, showsDisclosure: Bool = false) -> some View {
         if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: 4) {
                 rowTitle(title)
@@ -186,16 +188,18 @@ struct ListenInspectionSheet: View {
                 }
             }
         } else {
-            LabeledContent(title) {
+            LabeledContent {
                 HStack(spacing: 5) {
                     identifierText(value)
                     if showsDisclosure { Image(systemName: "arrow.up.right").font(.caption.weight(.semibold)) }
                 }
+            } label: {
+                Text(title)
             }
         }
     }
 
-    private func rowTitle(_ title: String) -> some View {
+    private func rowTitle(_ title: LocalizedStringResource) -> some View {
         Text(title)
             .font(.caption)
             .foregroundStyle(.secondary)

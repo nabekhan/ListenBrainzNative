@@ -145,7 +145,9 @@ struct DiscoverView: View {
 
     private var filterAccessibilityLabel: String {
         let count = appliedFilters.activeCount(for: scope)
-        return count == 0 ? "Fresh releases filters" : "Fresh releases filters, \(count) active"
+        return count == 0
+            ? String(localized: "Fresh releases filters")
+            : String(localized: "Fresh releases filters, \(count) active")
     }
 
     private func presentFilters() {
@@ -415,18 +417,18 @@ struct DiscoverView: View {
     }
 
     private var emptyTitle: String {
-        if activeQuery.includesUpcoming, !activeQuery.includesPast { return "No upcoming releases" }
-        if activeQuery.includesPast, !activeQuery.includesUpcoming { return "No recent releases" }
-        return scope == .forYou ? "Nothing fresh for you yet" : "No fresh releases right now"
+        if activeQuery.includesUpcoming, !activeQuery.includesPast { return String(localized: "No upcoming releases") }
+        if activeQuery.includesPast, !activeQuery.includesUpcoming { return String(localized: "No recent releases") }
+        return scope == .forYou ? String(localized: "Nothing fresh for you yet") : String(localized: "No fresh releases right now")
     }
 
     private var emptyDescription: String {
         if activeQuery.days == .seven {
-            return "Try a wider release window or another source."
+            return String(localized: "Try a wider release window or another source.")
         }
         return scope == .forYou
-            ? "Try All to explore releases from across ListenBrainz."
-            : "Try another release window or check again later."
+            ? String(localized: "Try All to explore releases from across ListenBrainz.")
+            : String(localized: "Try another release window or check again later.")
     }
 
     private func failure(_ message: String) -> some View {
@@ -542,9 +544,9 @@ enum FreshReleaseTiming: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .releasedAndUpcoming: "Released & upcoming"
-        case .released: "Released"
-        case .upcoming: "Upcoming"
+        case .releasedAndUpcoming: String(localized: "Released & upcoming")
+        case .released: String(localized: "Released")
+        case .upcoming: String(localized: "Upcoming")
         }
     }
 
@@ -552,7 +554,7 @@ enum FreshReleaseTiming: String, CaseIterable, Identifiable, Sendable {
     var includesUpcoming: Bool { self != .released }
 
     func pickerTitle(isAccessibilitySize: Bool) -> String {
-        isAccessibilitySize && self == .releasedAndUpcoming ? "Both" : title
+        isAccessibilitySize && self == .releasedAndUpcoming ? String(localized: "Both") : title
     }
 }
 
@@ -883,11 +885,11 @@ private struct FreshReleaseTagSelectionView: View {
         case include
         case exclude
 
-        var title: String { self == .include ? "Include tags" : "Exclude tags" }
+        var title: String { self == .include ? String(localized: "Include tags") : String(localized: "Exclude tags") }
         var footer: String {
             self == .include
-                ? "A release can match any selected tag."
-                : "Releases with any selected tag stay hidden."
+                ? String(localized: "A release can match any selected tag.")
+                : String(localized: "Releases with any selected tag stay hidden.")
         }
     }
 
@@ -973,16 +975,16 @@ private extension FreshRelease {
 }
 
 private extension FreshReleaseQuery.Days {
-    var title: String { "\(rawValue) days" }
+    var title: String { String(localized: "\(rawValue) days") }
 }
 
 private extension FreshReleaseQuery.Sort {
     var title: String {
         switch self {
-        case .releaseDate: "Release date"
-        case .artistCreditName: "Artist"
-        case .releaseName: "Release title"
-        case .confidence: "Best match"
+        case .releaseDate: String(localized: "Release date")
+        case .artistCreditName: String(localized: "Artist")
+        case .releaseName: String(localized: "Release title")
+        case .confidence: String(localized: "Best match")
         }
     }
 
@@ -995,12 +997,12 @@ private extension FreshReleaseQuery.Sort {
 
     func directionTitle(_ direction: FreshReleaseSortDirection) -> String {
         switch (self, direction) {
-        case (.releaseDate, .ascending): "Oldest first"
-        case (.releaseDate, .descending): "Newest first"
-        case (.artistCreditName, .ascending), (.releaseName, .ascending): "A–Z"
-        case (.artistCreditName, .descending), (.releaseName, .descending): "Z–A"
-        case (.confidence, .ascending): "Lowest match first"
-        case (.confidence, .descending): "Best match first"
+        case (.releaseDate, .ascending): String(localized: "Oldest first")
+        case (.releaseDate, .descending): String(localized: "Newest first")
+        case (.artistCreditName, .ascending), (.releaseName, .ascending): String(localized: "A–Z")
+        case (.artistCreditName, .descending), (.releaseName, .descending): String(localized: "Z–A")
+        case (.confidence, .ascending): String(localized: "Lowest match first")
+        case (.confidence, .descending): String(localized: "Best match first")
         }
     }
 

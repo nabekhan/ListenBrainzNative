@@ -162,7 +162,7 @@ struct ConnectedServicesView: View {
     }
 
     private func serviceStatus(_ service: ConnectedService) -> some View {
-        Text(service.label == nil ? service.identifier : "Connected to ListenBrainz")
+        Text(service.label == nil ? service.identifier : String(localized: "Connected to ListenBrainz"))
             .font(.subheadline)
             .foregroundStyle(.secondary)
             .textSelection(.enabled)

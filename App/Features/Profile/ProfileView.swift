@@ -110,7 +110,7 @@ struct ProfileView: View {
         .padding(.top, 12)
     }
 
-    private func profileMetric(_ value: String, label: String) -> some View {
+    private func profileMetric(_ value: String, label: LocalizedStringResource) -> some View {
         VStack(spacing: 3) {
             Text(value).font(.headline.monospacedDigit()).lineLimit(1).minimumScaleFactor(0.7)
             Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)

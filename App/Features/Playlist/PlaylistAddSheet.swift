@@ -241,7 +241,7 @@ struct PlaylistAddSheet: View {
     }
 
     @ViewBuilder
-    private func category(_ category: ProfilePlaylistCategory, title: String) -> some View {
+    private func category(_ category: ProfilePlaylistCategory, title: LocalizedStringResource) -> some View {
         let state = model.playlists.state(for: category)
         let filtered = state.playlists.filter(matchesSearch)
         Section(title) {

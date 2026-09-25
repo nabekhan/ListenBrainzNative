@@ -409,8 +409,8 @@ struct HistoryView: View {
         let grouped = Dictionary(grouping: filteredListens) { calendar.startOfDay(for: $0.listenedAt) }
         return grouped.keys.sorted(by: >).map { date in
             let title: String
-            if calendar.isDateInToday(date) { title = "Today" }
-            else if calendar.isDateInYesterday(date) { title = "Yesterday" }
+            if calendar.isDateInToday(date) { title = String(localized: "Today") }
+            else if calendar.isDateInYesterday(date) { title = String(localized: "Yesterday") }
             else { title = date.formatted(.dateTime.weekday(.wide).month(.wide).day()) }
             return (date, title, grouped[date] ?? [])
         }
@@ -422,7 +422,9 @@ struct HistoryView: View {
 
     private var loadedListenCountTitle: String {
         let count = model.selectedDayListens.count
-        return "\(count) \(count == 1 ? "listen" : "listens") loaded"
+        return count == 1
+            ? String(localized: "1 listen loaded")
+            : String(localized: "\(count) listens loaded")
     }
 
     private var historyAlertBinding: Binding<HistoryAlert?> {
@@ -451,15 +453,15 @@ struct HistoryView: View {
     private func deletionMessage(for confirmation: DeletionConfirmation) -> String {
         if dynamicTypeSize.isAccessibilitySize {
             return confirmation.isRetryAnyway
-                ? "ListenBrainz may already have this request. Wait until after the next hour and refresh first."
-                : "ListenBrainz usually removes this listen after the next hour. Statistics may update later."
+                ? String(localized: "ListenBrainz may already have this request. Wait until after the next hour and refresh first.")
+                : String(localized: "ListenBrainz usually removes this listen after the next hour. Statistics may update later.")
         }
 
         let title = confirmation.listen.recording.title
         let displayTitle = title.count > 36 ? "\(title.prefix(35))…" : title
         return confirmation.isRetryAnyway
-            ? "ListenBrainz may already have the request for “\(displayTitle)”. Wait until after the next hour and refresh first."
-            : "Removes “\(displayTitle)” from your history, usually shortly after the next hour. Statistics may update later."
+            ? String(localized: "ListenBrainz may already have the request for “\(displayTitle)”. Wait until after the next hour and refresh first.")
+            : String(localized: "Removes “\(displayTitle)” from your history, usually shortly after the next hour. Statistics may update later.")
     }
 
     private var isSelectedDayTodayOrLater: Bool {

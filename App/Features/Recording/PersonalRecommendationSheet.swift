@@ -51,7 +51,9 @@ struct PersonalRecommendationSheet: View {
                             ProgressView()
                                 .accessibilityLabel("Sending recommendation")
                         } else {
-                            Text("Send\(model.selectedCount > 0 ? " (\(model.selectedCount))" : "")")
+                            Text(model.selectedCount > 0
+                                ? String(localized: "Send (\(model.selectedCount))")
+                                : String(localized: "Send"))
                         }
                     }
                     .disabled(!model.canSendPersonally)
@@ -138,7 +140,9 @@ struct PersonalRecommendationSheet: View {
                 Text("Followers")
                 Spacer()
                 if model.selectedCount > 0 {
-                    Text("\(model.selectedCount) selected")
+                    Text(model.selectedCount == 1
+                        ? String(localized: "1 selected")
+                        : String(localized: "\(model.selectedCount) selected"))
                         .textCase(nil)
                 }
             }
@@ -162,11 +166,11 @@ struct PersonalRecommendationSheet: View {
                     .scrollContentBackground(.hidden)
                     .accessibilityLabel("Recommendation note")
             }
-            Text("\(model.blurb.count) / 280")
+            Text(String(localized: "\(model.blurb.count) / 280"))
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(model.blurb.count > 280 ? .red : .secondary)
                 .frame(maxWidth: .infinity, alignment: .trailing)
-                .accessibilityLabel("\(model.blurb.count) of 280 characters")
+                .accessibilityLabel(String(localized: "\(model.blurb.count) of 280 characters"))
         }
     }
 
