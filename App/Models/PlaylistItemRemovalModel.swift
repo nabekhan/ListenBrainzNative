@@ -202,6 +202,7 @@ typealias PlaylistItemRemovalJournal = PlaylistItemMutationJournal
 enum PlaylistItemRemovalNotice: Identifiable, Equatable {
     case stale
     case confirmed(track: String, playlist: String)
+    case confirmedRange(count: Int, playlist: String)
     case needsReview(String)
     case refreshed
     case failed(String)
@@ -210,11 +211,41 @@ enum PlaylistItemRemovalNotice: Identifiable, Equatable {
         switch self {
         case .stale: "stale"
         case .confirmed: "confirmed"
+        case .confirmedRange: "confirmed-range"
         case .needsReview(let message): "review:\(message)"
         case .refreshed: "refreshed"
         case .failed(let message): "failed:\(message)"
         case .accessLost(let message): "access:\(message)"
         }
+    }
+}
+
+/// A frozen, contiguous playlist range expressed in the server's zero-based
+/// coordinate system. Positional mutations fail closed when a snapshot is not
+/// canonically numbered or the proposed selection contains a gap.
+struct PlaylistItemRemovalSelection: Equatable, Sendable {
+    let index: Int
+    let tracks: [PlaylistTrack]
+
+    var count: Int { tracks.count }
+
+    init?(tracks selected: [PlaylistTrack], in detail: PlaylistDetail) {
+        guard !selected.isEmpty,
+              Set(selected).count == selected.count,
+              detail.tracks.enumerated().allSatisfy({ offset, track in
+                  track.position == offset + 1
+              })
+        else { return nil }
+
+        let selectedSet = Set(selected)
+        let indices = detail.tracks.indices.filter { selectedSet.contains(detail.tracks[$0]) }
+        guard indices.count == selected.count,
+              let first = indices.first,
+              indices == Array(first..<(first + indices.count))
+        else { return nil }
+
+        index = first
+        tracks = indices.map { detail.tracks[$0] }
     }
 }
 
@@ -274,7 +305,14 @@ final class PlaylistItemRemovalModel {
         return Self.canRemove(account: account, detail: detail)
     }
     func remove(_ selected: PlaylistTrack, from seed: PlaylistDetail) async -> PlaylistDetail? {
+        await remove([selected], from: seed)
+    }
+    func remove(_ selected: [PlaylistTrack], from seed: PlaylistDetail) async -> PlaylistDetail? {
         guard !isRemoving, !isReconciling, !requiresReview(playlistMBID: seed.mbid) else { return nil }
+        guard let seedSelection = PlaylistItemRemovalSelection(tracks: selected, in: seed) else {
+            notice = .failed(String(localized: "Select one continuous group of tracks."))
+            return nil
+        }
         isRemoving = true
         defer { isRemoving = false }
         do {
@@ -284,7 +322,9 @@ final class PlaylistItemRemovalModel {
                 notice = .failed(PlaylistMutationProviderError.notCollaborator.localizedDescription)
                 return latest
             }
-            guard let current = latest.tracks.first(where: { $0.position == selected.position }), current == selected
+            guard latest.mbid == seed.mbid,
+                  let currentSelection = PlaylistItemRemovalSelection(tracks: seedSelection.tracks, in: latest),
+                  currentSelection == seedSelection
             else {
                 notice = .stale
                 return latest
@@ -297,7 +337,11 @@ final class PlaylistItemRemovalModel {
             }
             do {
                 try Task.checkCancellation()
-                try await provider.removeItem(at: selected.position - 1, from: seed.mbid)
+                try await provider.removeItems(
+                    at: seedSelection.index,
+                    count: seedSelection.count,
+                    from: seed.mbid
+                )
             } catch is CancellationError {
                 if !journal.cancelBeforeDispatch(username: account.username, playlistMBID: seed.mbid) {
                     notice = .needsReview(
@@ -317,7 +361,7 @@ final class PlaylistItemRemovalModel {
                 return nil
             } catch {
                 notice = .needsReview(
-                    String(localized: "ListenBrainz may have moved or removed a track, but the response was lost. Refresh the playlist before changing tracks again.")
+                    String(localized: "ListenBrainz may have completed the removal, but the response was lost. Refresh the playlist before changing tracks again.")
                 )
                 return latest
             }
@@ -325,19 +369,23 @@ final class PlaylistItemRemovalModel {
             defer { isReconciling = false }
             do {
                 let canonical = try await detailProvider.playlistForMutationInspection(mbid: seed.mbid)
-                guard Self.isExactRemoval(of: selected, from: latest, canonical: canonical) else {
+                guard Self.isExactRemoval(of: currentSelection, from: latest, canonical: canonical) else {
                     notice = .needsReview(
-                        String(localized: "The playlist changed while a track was being removed. Review the current order before changing tracks again.")
+                        String(localized: "The playlist changed during removal. Review the current order before changing tracks again.")
                     )
                     return canonical
                 }
                 guard journal.resolveAfterInspection(username: account.username, playlistMBID: seed.mbid) else {
                     notice = .needsReview(
-                        String(localized: "The track was removed, but its safety record could not be cleared. Refresh and review the playlist before changing tracks again.")
+                        String(localized: "The removal succeeded, but its safety record could not be cleared. Refresh and review the playlist before changing tracks again.")
                     )
                     return canonical
                 }
-                notice = .confirmed(track: selected.recording.title, playlist: canonical.title)
+                if currentSelection.count == 1, let track = currentSelection.tracks.first {
+                    notice = .confirmed(track: track.recording.title, playlist: canonical.title)
+                } else {
+                    notice = .confirmedRange(count: currentSelection.count, playlist: canonical.title)
+                }
                 return canonical
             } catch {
                 if PlaylistAccessFailurePolicy.requiresPurge(error) {
@@ -438,13 +486,18 @@ final class PlaylistItemRemovalModel {
         }
     }
     private static func isExactRemoval(
-        of selected: PlaylistTrack, from preflight: PlaylistDetail, canonical: PlaylistDetail
+        of selection: PlaylistItemRemovalSelection,
+        from preflight: PlaylistDetail,
+        canonical: PlaylistDetail
     ) -> Bool {
-        guard canonical.mbid == preflight.mbid, let index = preflight.tracks.firstIndex(of: selected) else {
-            return false
-        }
+        guard canonical.mbid == preflight.mbid,
+              selection.index >= 0,
+              selection.count > 0,
+              selection.index + selection.count <= preflight.tracks.count,
+              Array(preflight.tracks[selection.index..<(selection.index + selection.count)]) == selection.tracks
+        else { return false }
         var expected = preflight.tracks
-        expected.remove(at: index)
+        expected.removeSubrange(selection.index..<(selection.index + selection.count))
         guard canonical.tracks.count == expected.count else { return false }
         return zip(expected.indices, canonical.tracks).allSatisfy { index, actual in
             let expectedTrack = expected[index]

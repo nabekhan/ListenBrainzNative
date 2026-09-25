@@ -351,6 +351,26 @@
         }
       }
     },
+    "%@ tracks selected.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ tracks selected."
+          }
+        }
+      }
+    },
+    "%@ tracks were removed from “%@”.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ tracks were removed from “%2$@”."
+          }
+        }
+      }
+    },
     "%@ unmapped tracks left out.": {
       "localizations": {
         "en": {
@@ -967,6 +987,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "1 track included in order."
+          }
+        }
+      }
+    },
+    "1 track selected.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 track selected."
           }
         }
       }
@@ -3201,16 +3231,6 @@
         }
       }
     },
-    "Couldn’t remove track": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn’t remove track"
-          }
-        }
-      }
-    },
     "Couldn’t save playlist. %@": {
       "localizations": {
         "en": {
@@ -3827,6 +3847,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Description (optional)"
+          }
+        }
+      }
+    },
+    "Deselect all": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deselect all"
           }
         }
       }
@@ -5601,6 +5631,16 @@
         }
       }
     },
+    "ListenBrainz couldn’t remove the selected tracks. Refresh the playlist and try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz couldn’t remove the selected tracks. Refresh the playlist and try again."
+          }
+        }
+      }
+    },
     "ListenBrainz couldn’t save these playlist details. Check the name and try again.": {
       "localizations": {
         "en": {
@@ -6041,6 +6081,26 @@
         }
       }
     },
+    "ListenBrainz may have completed the removal, but the response was lost. Refresh the playlist before changing tracks again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz may have completed the removal, but the response was lost. Refresh the playlist before changing tracks again."
+          }
+        }
+      }
+    },
+    "ListenBrainz may have completed the removal, but the response was lost. Refresh the playlist before removing more tracks.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz may have completed the removal, but the response was lost. Refresh the playlist before removing more tracks."
+          }
+        }
+      }
+    },
     "ListenBrainz may have created this playlist, but the response was lost. Check Owned Playlists before trying again so you don’t create a duplicate.": {
       "localizations": {
         "en": {
@@ -6067,26 +6127,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "ListenBrainz may have duplicated this playlist, but the response was lost. Check Owned Playlists before trying again so you don’t create another copy."
-          }
-        }
-      }
-    },
-    "ListenBrainz may have moved or removed a track, but the response was lost. Refresh the playlist before changing tracks again.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ListenBrainz may have moved or removed a track, but the response was lost. Refresh the playlist before changing tracks again."
-          }
-        }
-      }
-    },
-    "ListenBrainz may have removed a track, but the response was lost. Refresh the playlist before removing another track.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ListenBrainz may have removed a track, but the response was lost. Refresh the playlist before removing another track."
           }
         }
       }
@@ -10631,12 +10671,52 @@
         }
       }
     },
+    "Removal failed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removal failed"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove"
+          }
+        }
+      }
+    },
     "Remove %@": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Remove %@"
+          }
+        }
+      }
+    },
+    "Remove %@ tracks": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove %@ tracks"
+          }
+        }
+      }
+    },
+    "Remove %@ tracks?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove %@ tracks?"
           }
         }
       }
@@ -10657,6 +10737,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Remove from Playlist"
+          }
+        }
+      }
+    },
+    "Remove track": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove track"
           }
         }
       }
@@ -10687,6 +10777,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Removes “%@” from your history, usually shortly after the next hour. Statistics may update later."
+          }
+        }
+      }
+    },
+    "Removing tracks…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removing tracks…"
           }
         }
       }
@@ -11381,12 +11481,52 @@
         }
       }
     },
+    "Select all": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select all"
+          }
+        }
+      }
+    },
     "Select an hour to hear its listen count": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Select an hour to hear its listen count"
+          }
+        }
+      }
+    },
+    "Select one continuous group of tracks.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select one continuous group of tracks."
+          }
+        }
+      }
+    },
+    "Select one track or a continuous group.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select one track or a continuous group."
+          }
+        }
+      }
+    },
+    "Select tracks to remove": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select tracks to remove"
           }
         }
       }
@@ -11421,12 +11561,32 @@
         }
       }
     },
+    "Selected tracks must be next to each other in the playlist.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected tracks must be next to each other in the playlist."
+          }
+        }
+      }
+    },
     "Selected: %@, %@ UTC, %@": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "new",
             "value": "Selected: %1$@, %2$@ UTC, %3$@"
+          }
+        }
+      }
+    },
+    "Selects or deselects this track for removal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selects or deselects this track for removal"
           }
         }
       }
@@ -12781,12 +12941,12 @@
         }
       }
     },
-    "The playlist changed while a track was being removed. Review the current order before changing tracks again.": {
+    "The playlist changed during removal. Review the current order before changing tracks again.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The playlist changed while a track was being removed. Review the current order before changing tracks again."
+            "value": "The playlist changed during removal. Review the current order before changing tracks again."
           }
         }
       }
@@ -12881,6 +13041,16 @@
         }
       }
     },
+    "The removal succeeded, but its safety record could not be cleared. Refresh and review the playlist before changing tracks again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The removal succeeded, but its safety record could not be cleared. Refresh and review the playlist before changing tracks again."
+          }
+        }
+      }
+    },
     "The report link is still available from the Year in Music screen.": {
       "localizations": {
         "en": {
@@ -12967,16 +13137,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "The track order changed while you were editing. Review the latest order and try again."
-          }
-        }
-      }
-    },
-    "The track was removed, but its safety record could not be cleared. Refresh and review the playlist before changing tracks again.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The track was removed, but its safety record could not be cleared. Refresh and review the playlist before changing tracks again."
           }
         }
       }
@@ -13391,6 +13551,16 @@
         }
       }
     },
+    "This removes %@ tracks from “%@” for everyone who uses it.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This removes %1$@ tracks from “%2$@” for everyone who uses it."
+          }
+        }
+      }
+    },
     "This removes one track from “%@” for everyone who uses it.": {
       "localizations": {
         "en": {
@@ -13681,6 +13851,16 @@
         }
       }
     },
+    "Track %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Track %@"
+          }
+        }
+      }
+    },
     "Track MBID": {
       "localizations": {
         "en": {
@@ -13867,6 +14047,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tracks pinned by people you follow"
+          }
+        }
+      }
+    },
+    "Tracks removed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tracks removed"
           }
         }
       }

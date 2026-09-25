@@ -182,6 +182,176 @@ final class PlaylistItemRemovalModelTests: XCTestCase {
         guard case .confirmed = model.notice else { return XCTFail("Expected confirmed removal") }
     }
 
+    func testContiguousRangeRemovalUsesOneExactPostAndConfirmsCanonicalResult() async {
+        let id = UUID()
+        let first = track(position: 1, title: "First")
+        let second = track(position: 2, title: "Second")
+        let third = track(position: 3, title: "Third")
+        let fourth = track(position: 4, title: "Fourth")
+        let before = playlist(mbid: id, tracks: [first, second, third, fourth])
+        let canonical = playlist(mbid: id, tracks: [
+            reposition(first, to: 1),
+            reposition(fourth, to: 2),
+        ])
+        let journal = PlaylistItemRemovalJournal()
+        let provider = RemovalProviderSpy()
+        let model = removalModel(
+            detail: RemovalDetailProvider(values: [.success(before), .success(canonical)]),
+            provider: provider,
+            journal: journal
+        )
+
+        let returned = await model.remove([third, second], from: before)
+        let calls = await provider.calls()
+
+        XCTAssertEqual(returned, canonical)
+        XCTAssertEqual(
+            calls,
+            [.init(index: 1, count: 2, playlistMBID: id)]
+        )
+        XCTAssertFalse(model.requiresReview(playlistMBID: id))
+        XCTAssertEqual(model.notice, .confirmedRange(count: 2, playlist: "Playlist"))
+    }
+
+    func testTailRangeRemovalUsesExactBoundedCountAndConfirmsCanonicalResult() async {
+        let id = UUID()
+        let first = track(position: 1, title: "First")
+        let second = track(position: 2, title: "Second")
+        let third = track(position: 3, title: "Third")
+        let fourth = track(position: 4, title: "Fourth")
+        let before = playlist(mbid: id, tracks: [first, second, third, fourth])
+        let canonical = playlist(mbid: id, tracks: [
+            reposition(first, to: 1),
+            reposition(second, to: 2),
+        ])
+        let provider = RemovalProviderSpy()
+        let model = removalModel(
+            detail: RemovalDetailProvider(values: [.success(before), .success(canonical)]),
+            provider: provider
+        )
+
+        let returned = await model.remove([third, fourth], from: before)
+        let calls = await provider.calls()
+
+        XCTAssertEqual(returned, canonical)
+        XCTAssertEqual(calls, [.init(index: 2, count: 2, playlistMBID: id)])
+        XCTAssertFalse(model.requiresReview(playlistMBID: id))
+        XCTAssertEqual(model.notice, .confirmedRange(count: 2, playlist: "Playlist"))
+    }
+
+    func testNoncontiguousRangeIsRejectedBeforeInspectionOrPost() async {
+        let id = UUID()
+        let first = track(position: 1, title: "First")
+        let second = track(position: 2, title: "Second")
+        let third = track(position: 3, title: "Third")
+        let before = playlist(mbid: id, tracks: [first, second, third])
+        let detail = RemovalDetailProvider(values: [.success(before)])
+        let provider = RemovalProviderSpy()
+        let model = removalModel(detail: detail, provider: provider)
+
+        let returned = await model.remove([first, third], from: before)
+        let inspections = await detail.callCount()
+        let posts = await provider.callCount()
+
+        XCTAssertNil(returned)
+        XCTAssertEqual(inspections, 0)
+        XCTAssertEqual(posts, 0)
+        guard case .failed = model.notice else { return XCTFail("Expected selection failure") }
+    }
+
+    func testRangePreflightForDifferentPlaylistDispatchesNoPost() async {
+        let id = UUID()
+        let first = track(position: 1, title: "First")
+        let second = track(position: 2, title: "Second")
+        let before = playlist(mbid: id, tracks: [first, second])
+        let wrongPlaylist = playlist(mbid: UUID(), tracks: [first, second])
+        let provider = RemovalProviderSpy()
+        let model = removalModel(
+            detail: RemovalDetailProvider(values: [.success(wrongPlaylist)]),
+            provider: provider
+        )
+
+        let returned = await model.remove([first, second], from: before)
+        let calls = await provider.callCount()
+
+        XCTAssertEqual(returned, wrongPlaylist)
+        XCTAssertEqual(calls, 0)
+        XCTAssertEqual(model.notice, .stale)
+    }
+
+    func testRangeShiftedByPreflightInsertionDispatchesNoPost() async {
+        let id = UUID()
+        let first = track(position: 1, title: "First")
+        let second = track(position: 2, title: "Second")
+        let third = track(position: 3, title: "Third")
+        let seed = playlist(mbid: id, tracks: [first, second, third])
+        let inserted = track(position: 1, title: "Inserted")
+        let changed = playlist(mbid: id, tracks: [
+            inserted,
+            reposition(first, to: 2),
+            reposition(second, to: 3),
+            reposition(third, to: 4),
+        ])
+        let provider = RemovalProviderSpy()
+        let model = removalModel(
+            detail: RemovalDetailProvider(values: [.success(changed)]),
+            provider: provider
+        )
+
+        let returned = await model.remove([second, third], from: seed)
+        let calls = await provider.callCount()
+
+        XCTAssertEqual(returned, changed)
+        XCTAssertEqual(calls, 0)
+        XCTAssertEqual(model.notice, .stale)
+    }
+
+    func testRangePostflightPartialRemovalRetainsBarrier() async {
+        let id = UUID()
+        let first = track(position: 1, title: "First")
+        let second = track(position: 2, title: "Second")
+        let third = track(position: 3, title: "Third")
+        let before = playlist(mbid: id, tracks: [first, second, third])
+        let partial = playlist(mbid: id, tracks: [
+            reposition(first, to: 1),
+            reposition(third, to: 2),
+        ])
+        let provider = RemovalProviderSpy()
+        let model = removalModel(
+            detail: RemovalDetailProvider(values: [.success(before), .success(partial)]),
+            provider: provider
+        )
+
+        let returned = await model.remove([second, third], from: before)
+        let calls = await provider.callCount()
+
+        XCTAssertEqual(returned, partial)
+        XCTAssertEqual(calls, 1)
+        XCTAssertTrue(model.requiresReview(playlistMBID: id))
+        guard case .needsReview = model.notice else { return XCTFail("Expected review notice") }
+    }
+
+    func testRemovalSelectionRequiresCanonicalPositionsAndOrdersInputByPlaylist() {
+        let first = track(position: 1, title: "First")
+        let second = track(position: 2, title: "Second")
+        let third = track(position: 3, title: "Third")
+        let detail = playlist(tracks: [first, second, third])
+
+        let selection = PlaylistItemRemovalSelection(tracks: [third, second], in: detail)
+        XCTAssertEqual(selection?.index, 1)
+        XCTAssertEqual(selection?.count, 2)
+        XCTAssertEqual(selection?.tracks, [second, third])
+        XCTAssertNil(PlaylistItemRemovalSelection(tracks: [first, third], in: detail))
+        XCTAssertNil(PlaylistItemRemovalSelection(tracks: [second, second], in: detail))
+
+        let noncanonical = playlist(tracks: [
+            first,
+            reposition(second, to: 4),
+            third,
+        ])
+        XCTAssertNil(PlaylistItemRemovalSelection(tracks: [first], in: noncanonical))
+    }
+
     func testCanonicalMismatchRetainsBarrierAndNeverClaimsSuccess() async {
         let id = UUID()
         let selected = track(position: 1, title: "First")
@@ -269,7 +439,7 @@ final class PlaylistItemRemovalModelTests: XCTestCase {
         let id = UUID()
         let selected = track(position: 1, title: "First")
         let before = playlist(mbid: id, tracks: [selected])
-        let transport = RemovalProviderSpy(error: PlaylistMutationProviderError.rejected)
+        let transport = RemovalProviderSpy(error: PlaylistMutationProviderError.removalRejected)
         let model = removalModel(
             detail: RemovalDetailProvider(values: [.success(before)]),
             provider: transport
@@ -830,14 +1000,20 @@ private actor RemovalDetailProvider: PlaylistDetailProviding {
 }
 
 private actor RemovalProviderSpy: PlaylistItemRemovalProviding {
+    struct Call: Equatable, Sendable {
+        let index: Int
+        let count: Int
+        let playlistMBID: UUID
+    }
     private let error: (any Error & Sendable)?
-    private var calls = 0
+    private var values: [Call] = []
     init(error: (any Error & Sendable)? = nil) { self.error = error }
-    func removeItem(at index: Int, from playlistMBID: UUID) async throws {
-        calls += 1
+    func removeItems(at index: Int, count: Int, from playlistMBID: UUID) async throws {
+        values.append(.init(index: index, count: count, playlistMBID: playlistMBID))
         if let error { throw error }
     }
-    func callCount() -> Int { calls }
+    func callCount() -> Int { values.count }
+    func calls() -> [Call] { values }
 }
 
 private actor ReorderProviderSpy: PlaylistItemReorderingProviding {

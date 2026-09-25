@@ -54,6 +54,8 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-review-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-remove-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-remove-review-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-range-remove-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-range-remove-confirm-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-reorder-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-reorder-review-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-collaborator-picker-demo")
@@ -289,6 +291,10 @@ struct MainTabView: View {
                 PlaylistRemovalVisualQAScreen(
                     showsReview: ProcessInfo.processInfo.arguments.contains("-brainz-playlist-remove-review-demo")
                 )
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-range-remove-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-range-remove-confirm-demo")
+            {
+                PlaylistRangeRemovalVisualQAScreen()
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-reorder-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-reorder-review-demo")
             {

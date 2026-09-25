@@ -52,4 +52,6 @@ Creator-only playlist deletion follows that division: the app uses a small typed
 
 Playlist item movement reaches the same conclusion. Shared KMP already models the official positional move route and helped confirm product behavior, but importing the unbuildable full shared graph would be disproportionate to one request. The app therefore uses a small typed MPL-preserving ListenBrainzKit extension; app-owned Swift retains the non-atomic-operation safeguards, whole-order reconciliation, request budget, and native reorder sheet behind provider boundaries that can accept a future official implementation.
 
+Playlist item deletion's shared request model already carries `index` and `count`, but the current official Android ViewModel and UI always submit `count: 1`; the website also deletes one row at a time. The native app consumes the stable server count contract through its smaller Swift transport and exposes only one contiguous range per explicit action, with app-owned preflight, no-replay, and postflight safeguards. This does not justify importing the currently unbuildable shared framework.
+
 Evidence: `References/listenbrainz-android/shared/build.gradle.kts`, `shared/src/{commonMain,androidMain,iosMain}`, and official iOS/Android application source.

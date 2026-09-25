@@ -22,11 +22,17 @@ protocol PlaylistAppendTransport: Sendable {
 protocol PlaylistItemRemovalProviding: Sendable {
     /// A raw `CancellationError` means transport did not begin. Live providers
     /// translate cancellation after dispatch into an indeterminate mutation.
-    func removeItem(at index: Int, from playlistMBID: UUID) async throws
+    func removeItems(at index: Int, count: Int, from playlistMBID: UUID) async throws
 }
 
 protocol PlaylistItemRemovalTransport: Sendable {
-    func removeItem(at index: Int, from playlistMBID: UUID) async throws
+    func removeItems(at index: Int, count: Int, from playlistMBID: UUID) async throws
+}
+
+extension PlaylistItemRemovalProviding {
+    func removeItem(at index: Int, from playlistMBID: UUID) async throws {
+        try await removeItems(at: index, count: 1, from: playlistMBID)
+    }
 }
 
 /// A positional move is deliberately a one-shot operation. A raw
@@ -79,8 +85,8 @@ private struct LivePlaylistAppendTransport: PlaylistAppendTransport {
 private struct LivePlaylistItemRemovalTransport: PlaylistItemRemovalTransport {
     let client: LBClient
 
-    func removeItem(at index: Int, from playlistMBID: UUID) async throws {
-        try await client.core.removePlaylistItems(mbid: playlistMBID, index: index, count: 1)
+    func removeItems(at index: Int, count: Int, from playlistMBID: UUID) async throws {
+        try await client.core.removePlaylistItems(mbid: playlistMBID, index: index, count: count)
     }
 }
 
@@ -366,13 +372,13 @@ struct ListenBrainzPlaylistItemRemovalProvider: PlaylistItemRemovalProviding {
         self.profilePageCache = profilePageCache
     }
 
-    func removeItem(at index: Int, from playlistMBID: UUID) async throws {
-        guard index >= 0 else { throw PlaylistMutationProviderError.rejected }
+    func removeItems(at index: Int, count: Int, from playlistMBID: UUID) async throws {
+        guard index >= 0, count > 0 else { throw PlaylistMutationProviderError.removalRejected }
         let attempt = MutationAttemptState()
         do {
             try await gate.perform({
                 await attempt.markTransportStarted()
-                try await transport.removeItem(at: index, from: playlistMBID)
+                try await transport.removeItems(at: index, count: count, from: playlistMBID)
             }) { error in
                 guard case let LBError.rateLimited(resetIn) = error else { return nil }
                 return .seconds(max(resetIn, 1))
@@ -387,7 +393,7 @@ struct ListenBrainzPlaylistItemRemovalProvider: PlaylistItemRemovalProviding {
         } catch LBError.notFound {
             await invalidateCaches(); throw PlaylistMutationProviderError.playlistUnavailable
         } catch LBError.invalidJSON, LBError.badRequest, LBError.invalidParam {
-            throw PlaylistMutationProviderError.rejected
+            throw PlaylistMutationProviderError.removalRejected
         } catch is CancellationError {
             if await attempt.didStartTransport { await invalidateCaches(); throw PlaylistMutationProviderError.indeterminateRemoval }
             throw CancellationError()
@@ -621,6 +627,7 @@ enum PlaylistMutationProviderError: LocalizedError, Sendable {
     case notCollaborator
     case playlistUnavailable
     case rejected
+    case removalRejected
     case copyRejected
     case indeterminateCreation
     case indeterminateEdit
@@ -653,6 +660,8 @@ enum PlaylistMutationProviderError: LocalizedError, Sendable {
             String(localized: "This playlist was removed or is no longer available to your account.")
         case .rejected:
             String(localized: "ListenBrainz couldn’t save these playlist details. Check the name and try again.")
+        case .removalRejected:
+            String(localized: "ListenBrainz couldn’t remove the selected tracks. Refresh the playlist and try again.")
         case .copyRejected:
             String(localized: "ListenBrainz couldn’t duplicate this playlist. Reload it and try again.")
         case .indeterminateCreation:
@@ -664,7 +673,7 @@ enum PlaylistMutationProviderError: LocalizedError, Sendable {
         case .indeterminateCopy:
             String(localized: "ListenBrainz may have duplicated this playlist, but the response was lost. Check Owned Playlists before trying again so you don’t create another copy.")
         case .indeterminateRemoval:
-            String(localized: "ListenBrainz may have removed a track, but the response was lost. Refresh the playlist before removing another track.")
+            String(localized: "ListenBrainz may have completed the removal, but the response was lost. Refresh the playlist before removing more tracks.")
         case .reorderRejected:
             String(localized: "ListenBrainz couldn’t save this track order. Refresh the playlist and try again.")
         case .indeterminateReorder:

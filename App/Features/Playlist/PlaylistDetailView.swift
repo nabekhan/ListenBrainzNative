@@ -33,6 +33,7 @@ struct PlaylistDetailView: View {
     @State private var showsDeletionConfirmation = false
     @State private var showsArtwork = false
     @State private var showsReorder = false
+    @State private var showsTrackRemoval = false
 
     init(
         playlist: SearchPlaylist,
@@ -181,6 +182,13 @@ struct PlaylistDetailView: View {
                 }
             }
         }
+        .sheet(isPresented: $showsTrackRemoval) {
+            if let detail = model.detail {
+                PlaylistTrackRemovalSheet(detail: detail) { selected in
+                    await removeSelectedTracks(selected)
+                }
+            }
+        }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if canEdit {
@@ -206,8 +214,23 @@ struct PlaylistDetailView: View {
                                 : "Refreshing playlist before duplication"
                         )
                 }
-                if canCopy || canCreateArtwork || canDelete || canReorder || actionURL != nil {
+                if canCopy || canCreateArtwork || canDelete || canReorder || canSelectTracksForRemoval || actionURL != nil {
                     Menu {
+                        if canSelectTracksForRemoval {
+                            Button {
+                                removalModel.dismissNotice()
+                                showsTrackRemoval = true
+                            } label: {
+                                Label("Select tracks to remove", systemImage: "checklist")
+                            }
+                            .disabled(
+                                removalModel.isRemoving
+                                    || removalModel.isReconciling
+                                    || model.detail.map {
+                                        removalModel.requiresReview(playlistMBID: $0.mbid)
+                                    } ?? true
+                            )
+                        }
                         if canReorder {
                             Button {
                                 reorderModel.dismissNotice()
@@ -375,6 +398,12 @@ struct PlaylistDetailView: View {
                 Alert(title: Text("Playlist changed"), message: Text("The track order changed before anything was removed. Review the refreshed playlist and try again."), dismissButton: .default(Text("OK")))
             case let .confirmed(track, playlist):
                 Alert(title: Text("Track removed"), message: Text("“\(track)” was removed from “\(playlist)”."), dismissButton: .default(Text("OK")))
+            case let .confirmedRange(count, playlist):
+                Alert(
+                    title: Text("Tracks removed"),
+                    message: Text("\(count.formatted()) tracks were removed from “\(playlist)”."),
+                    dismissButton: .default(Text("OK"))
+                )
             case let .needsReview(message):
                 Alert(title: Text("Track changes need review"), message: Text(message), dismissButton: .default(Text("OK")))
             case .refreshed:
@@ -382,7 +411,7 @@ struct PlaylistDetailView: View {
             case let .accessLost(message):
                 Alert(title: Text("Playlist unavailable"), message: Text(message), dismissButton: .default(Text("OK")))
             case let .failed(message):
-                Alert(title: Text("Couldn’t remove track"), message: Text(message), dismissButton: .default(Text("OK")))
+                Alert(title: Text("Removal failed"), message: Text(message), dismissButton: .default(Text("OK")))
             }
         }
         .confirmationDialog("Reset safety record?", isPresented: $showsSafetyResetConfirmation, titleVisibility: .visible) {
@@ -633,6 +662,10 @@ struct PlaylistDetailView: View {
         !model.accessWasLost && removalModel.canAttemptRemoval(from: model.detail)
     }
 
+    private var canSelectTracksForRemoval: Bool {
+        canRemove && model.detail?.tracks.isEmpty == false
+    }
+
     private var canReorder: Bool {
         !model.accessWasLost && reorderModel.canAttemptReorder(model.detail)
     }
@@ -722,6 +755,15 @@ struct PlaylistDetailView: View {
         if let canonical = await removalModel.remove(track, from: detail) { await model.applyCanonicalDetail(canonical) }
         else { await discardRemovalAccessIfNeeded() }
         trackPendingRemoval = nil
+    }
+
+    private func removeSelectedTracks(_ tracks: [PlaylistTrack]) async {
+        guard let detail = model.detail else { return }
+        if let canonical = await removalModel.remove(tracks, from: detail) {
+            await model.applyCanonicalDetail(canonical)
+        } else {
+            await discardRemovalAccessIfNeeded()
+        }
     }
 
     private func discardRemovalAccessIfNeeded() async {
@@ -919,6 +961,170 @@ struct PlaylistDetailView: View {
         return hours > 0
             ? String(localized: "\(hours) hr \(minutes) min")
             : String(localized: "\(minutes) min")
+    }
+}
+
+private struct PlaylistTrackRemovalSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let detail: PlaylistDetail
+    let remove: @MainActor ([PlaylistTrack]) async -> Void
+    @State private var selection: Set<Int> = []
+    @State private var isSubmitting = false
+    @State private var showsConfirmation = false
+
+    init(
+        detail: PlaylistDetail,
+        initialSelection: Set<Int> = [],
+        initiallyShowsConfirmation: Bool = false,
+        remove: @escaping @MainActor ([PlaylistTrack]) async -> Void
+    ) {
+        self.detail = detail
+        self.remove = remove
+        _selection = State(initialValue: initialSelection)
+        _showsConfirmation = State(initialValue: initiallyShowsConfirmation)
+    }
+
+    private struct Entry: Identifiable {
+        let index: Int
+        let track: PlaylistTrack
+        var id: Int { index }
+    }
+
+    private var entries: [Entry] {
+        detail.tracks.enumerated().map { Entry(index: $0.offset, track: $0.element) }
+    }
+
+    private var selectedEntries: [Entry] {
+        entries.filter { selection.contains($0.id) }
+    }
+
+    private var selectedTracks: [PlaylistTrack] {
+        selectedEntries.map(\.track)
+    }
+
+    private var hasContiguousSelection: Bool {
+        let indices = selection.sorted()
+        guard let first = indices.first else { return false }
+        return indices == Array(first..<(first + indices.count))
+    }
+
+    private var selectionHelp: String {
+        guard !selection.isEmpty else {
+            return String(localized: "Select one track or a continuous group.")
+        }
+        guard hasContiguousSelection else {
+            return String(localized: "Selected tracks must be next to each other in the playlist.")
+        }
+        return selection.count == 1
+            ? String(localized: "1 track selected.")
+            : String(localized: "\(selection.count.formatted()) tracks selected.")
+    }
+
+    private var removeButtonTitle: String {
+        selection.count == 1
+            ? String(localized: "Remove track")
+            : String(localized: "Remove \(selection.count.formatted()) tracks")
+    }
+
+    private var confirmationTitle: String {
+        if let onlyTrack = selectedTracks.first, selectedTracks.count == 1 {
+            return String(localized: "Remove “\(onlyTrack.recording.title)”?")
+        }
+        return String(localized: "Remove \(selectedTracks.count.formatted()) tracks?")
+    }
+
+    private var confirmationMessage: String {
+        selectedTracks.count == 1
+            ? String(localized: "This removes one track from “\(detail.title)” for everyone who uses it.")
+            : String(localized: "This removes \(selectedTracks.count.formatted()) tracks from “\(detail.title)” for everyone who uses it.")
+    }
+
+    var body: some View {
+        NavigationStack {
+            List(selection: $selection) {
+                Section {
+                    ForEach(entries) { entry in
+                        PlaylistTrackRow(
+                            track: entry.track,
+                            showsDisclosure: false,
+                            interactionHint: "Selects or deselects this track for removal"
+                        )
+                            .tag(entry.id)
+                    }
+                } footer: {
+                    Text(selectionHelp)
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("Remove")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .disabled(isSubmitting)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        if selection.count == entries.count {
+                            selection.removeAll()
+                        } else {
+                            selection = Set(entries.map(\.id))
+                        }
+                    } label: {
+                        Text(
+                            selection.count == entries.count
+                                ? String(localized: "Deselect all")
+                                : String(localized: "Select all")
+                        )
+                    }
+                    .disabled(isSubmitting || entries.isEmpty)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 0) {
+                    Divider()
+                    Button(role: .destructive) {
+                        showsConfirmation = true
+                    } label: {
+                        if isSubmitting {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text("Removing tracks…")
+                            }
+                            .frame(maxWidth: .infinity)
+                        } else {
+                            Text(removeButtonTitle)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
+                    .disabled(!hasContiguousSelection || isSubmitting)
+                    .padding()
+                }
+                .background(.bar)
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+            }
+            .interactiveDismissDisabled(isSubmitting)
+            .confirmationDialog(
+                confirmationTitle,
+                isPresented: $showsConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button(removeButtonTitle, role: .destructive) {
+                    let tracks = selectedTracks
+                    isSubmitting = true
+                    Task {
+                        await remove(tracks)
+                        isSubmitting = false
+                        dismiss()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(confirmationMessage)
+            }
+        }
     }
 }
 
@@ -1141,6 +1347,20 @@ struct PlaylistRemovalVisualQAScreen: View {
     )
 }
 
+struct PlaylistRangeRemovalVisualQAScreen: View {
+    private static let playlistMBID = UUID(uuidString: "33333333-3333-4333-8333-333333333333")!
+
+    var body: some View {
+        PlaylistTrackRemovalSheet(
+            detail: VisualQAPlaylistRemovalDetailProvider.detail(mbid: Self.playlistMBID),
+            initialSelection: [1, 2],
+            initiallyShowsConfirmation: ProcessInfo.processInfo.arguments.contains(
+                "-brainz-playlist-range-remove-confirm-demo"
+            )
+        ) { _ in }
+    }
+}
+
 struct PlaylistDeletionVisualQAScreen: View {
     enum Mode: Equatable { case confirmation, confirmed, needsReview }
     let mode: Mode
@@ -1211,6 +1431,10 @@ private struct VisualQACopyPlaylistDetailProvider: PlaylistDetailProviding {
 
 private struct VisualQAPlaylistRemovalDetailProvider: PlaylistDetailProviding {
     func playlist(mbid: UUID) async throws -> PlaylistDetail {
+        Self.detail(mbid: mbid)
+    }
+
+    static func detail(mbid: UUID) -> PlaylistDetail {
         PlaylistDetail(
             mbid: mbid,
             title: "Soft Focus — late-night favorites",
@@ -1223,15 +1447,15 @@ private struct VisualQAPlaylistRemovalDetailProvider: PlaylistDetailProviding {
             collaborators: ["cassetteclub", "softstatic"],
             copiedFrom: nil,
             tracks: [
-                track(1, "Myth", "Beach House", "Bloom", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
-                track(2, "Cherry-coloured Funk", "Cocteau Twins", "Heaven or Las Vegas", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
-                track(3, "An Ending (Ascent)", "Brian Eno", "Apollo", "cccccccc-cccc-4ccc-8ccc-cccccccccccc"),
-                track(4, "Myth", "Beach House", "Bloom", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+                Self.track(1, "Myth", "Beach House", "Bloom", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+                Self.track(2, "Cherry-coloured Funk", "Cocteau Twins", "Heaven or Las Vegas", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
+                Self.track(3, "An Ending (Ascent)", "Brian Eno", "Apollo", "cccccccc-cccc-4ccc-8ccc-cccccccccccc"),
+                Self.track(4, "Myth", "Beach House", "Bloom", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
             ]
         )
     }
 
-    private func track(
+    private static func track(
         _ position: Int,
         _ title: String,
         _ artist: String,
@@ -1259,7 +1483,7 @@ private struct VisualQAPlaylistRemovalDetailProvider: PlaylistDetailProviding {
 }
 
 private struct VisualQAPlaylistRemovalProvider: PlaylistItemRemovalProviding {
-    func removeItem(at index: Int, from playlistMBID: UUID) async throws {}
+    func removeItems(at index: Int, count: Int, from playlistMBID: UUID) async throws {}
 }
 
 struct PlaylistReorderVisualQAScreen: View {

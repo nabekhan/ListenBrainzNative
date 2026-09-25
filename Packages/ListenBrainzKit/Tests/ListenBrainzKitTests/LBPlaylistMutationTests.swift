@@ -186,6 +186,14 @@ import Testing
         await #expect(throws: LBError.invalidResponse) {
             try await LBCoreClient(unexpected).removePlaylistItems(mbid: playlistMBID, index: 0)
         }
+
+        let range = MockAPIClient(result: .success(PlaylistMutationResponse(status: "ok")))
+        try await LBCoreClient(range).removePlaylistItems(mbid: playlistMBID, index: 4, count: 3)
+        let rangeRequest = try #require(range.request as? RemovePlaylistItemsRequest)
+        let rangeBody = try #require(rangeRequest.data.body)
+        let rangeData = try JSONEncoder.ListenBrainz.encode(rangeBody)
+        let rangeJSON = try #require(try JSONSerialization.jsonObject(with: rangeData) as? [String: Int])
+        #expect(rangeJSON == ["index": 4, "count": 3])
     }
 
     @Test("Playlist move uses its exact positional endpoint")

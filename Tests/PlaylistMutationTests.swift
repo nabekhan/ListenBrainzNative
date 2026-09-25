@@ -688,7 +688,7 @@ final class PlaylistMutationTests: XCTestCase {
         let firstViewerValue = await details.value(for: firstViewerKey)
         let secondViewerValue = await details.value(for: secondViewerKey)
         let profileValue = await pages.value(for: profileKey)
-        XCTAssertEqual(calls, [.init(index: 0, playlistMBID: mbid)])
+        XCTAssertEqual(calls, [.init(index: 0, count: 1, playlistMBID: mbid)])
         XCTAssertNil(publicValue)
         XCTAssertNil(firstViewerValue)
         XCTAssertNil(secondViewerValue)
@@ -715,6 +715,44 @@ final class PlaylistMutationTests: XCTestCase {
 
         let calls = await transport.calls()
         XCTAssertEqual(calls.count, 1)
+    }
+
+    func testRemovalProviderDispatchesOneExactContiguousRange() async throws {
+        let playlistMBID = UUID()
+        let transport = PlaylistRemovalTransportSpy()
+        let provider = ListenBrainzPlaylistItemRemovalProvider(
+            transport: transport,
+            gate: RequestGate(minimumInterval: .zero),
+            detailCache: EntityDetailCache(),
+            profilePageCache: EntityDetailCache()
+        )
+
+        try await provider.removeItems(at: 4, count: 3, from: playlistMBID)
+
+        let calls = await transport.calls()
+        XCTAssertEqual(calls, [.init(index: 4, count: 3, playlistMBID: playlistMBID)])
+    }
+
+    func testRemovalProviderRejectsEmptyRangeBeforeTransport() async {
+        let transport = PlaylistRemovalTransportSpy()
+        let provider = ListenBrainzPlaylistItemRemovalProvider(
+            transport: transport,
+            gate: RequestGate(minimumInterval: .zero),
+            detailCache: EntityDetailCache(),
+            profilePageCache: EntityDetailCache()
+        )
+
+        do {
+            try await provider.removeItems(at: 0, count: 0, from: UUID())
+            XCTFail("Expected an empty range rejection")
+        } catch let error as PlaylistMutationProviderError {
+            XCTAssertEqual(error.localizedDescription, PlaylistMutationProviderError.removalRejected.localizedDescription)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        let calls = await transport.calls()
+        XCTAssertTrue(calls.isEmpty)
     }
 
     func testRemovalCancellationAfterTransportStartsIsIndeterminateAndClearsCaches() async {
@@ -1053,12 +1091,16 @@ private actor CancellationAppendTransport: PlaylistAppendTransport {
 }
 
 private actor PlaylistRemovalTransportSpy: PlaylistItemRemovalTransport {
-    struct Call: Equatable, Sendable { let index: Int; let playlistMBID: UUID }
+    struct Call: Equatable, Sendable {
+        let index: Int
+        let count: Int
+        let playlistMBID: UUID
+    }
     private let error: (any Error & Sendable)?
     private var values: [Call] = []
     init(error: (any Error & Sendable)? = nil) { self.error = error }
-    func removeItem(at index: Int, from playlistMBID: UUID) async throws {
-        values.append(.init(index: index, playlistMBID: playlistMBID))
+    func removeItems(at index: Int, count: Int, from playlistMBID: UUID) async throws {
+        values.append(.init(index: index, count: count, playlistMBID: playlistMBID))
         if let error { throw error }
     }
     func calls() -> [Call] { values }
@@ -1066,7 +1108,7 @@ private actor PlaylistRemovalTransportSpy: PlaylistItemRemovalTransport {
 
 private actor CancellationRemovalTransport: PlaylistItemRemovalTransport {
     private(set) var hasStarted = false
-    func removeItem(at index: Int, from playlistMBID: UUID) async throws {
+    func removeItems(at index: Int, count: Int, from playlistMBID: UUID) async throws {
         hasStarted = true
         try await Task.sleep(for: .seconds(60))
     }

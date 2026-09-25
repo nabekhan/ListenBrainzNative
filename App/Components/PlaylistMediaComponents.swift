@@ -55,10 +55,26 @@ struct PlaylistArtworkMosaic: View {
 }
 
 struct PlaylistTrackRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let track: PlaylistTrack
     var showsDisclosure = true
+    var interactionHint: LocalizedStringResource? = nil
 
     var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                accessibilityLayout
+            } else {
+                regularLayout
+            }
+        }
+        .padding(.vertical, 10)
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(accessibilityHint)
+    }
+
+    private var regularLayout: some View {
         HStack(spacing: 12) {
             Text(track.position.formatted())
                 .font(.caption.monospacedDigit())
@@ -99,13 +115,50 @@ struct PlaylistTrackRow: View {
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(.vertical, 10)
-        .contentShape(.rect)
-        .accessibilityElement(children: .combine)
-        .accessibilityHint(accessibilityHint)
+    }
+
+    private var accessibilityLayout: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                ArtworkView(
+                    url: track.recording.artworkURL,
+                    title: track.recording.title,
+                    cornerRadius: 8
+                )
+                .frame(width: 48, height: 48)
+
+                Text(String(localized: "Track \(track.position.formatted())"))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+
+                Spacer(minLength: 6)
+                if showsDisclosure, track.recording.identity.mbid != nil {
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            Text(track.recording.title)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+            Text(track.recording.artistName)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            if track.recording.releaseTitle != nil || durationDescription != nil {
+                VStack(alignment: .leading, spacing: 2) {
+                    secondaryMetadata(showsSeparator: false, allowsWrapping: true)
+                }
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            }
+        }
     }
 
     private var accessibilityHint: String {
+        if let interactionHint {
+            return String(localized: interactionHint)
+        }
         if !showsDisclosure {
             return String(localized: "Use the Move up or Move down action to change its position")
         }
@@ -123,9 +176,9 @@ struct PlaylistTrackRow: View {
     }
 
     @ViewBuilder
-    private func secondaryMetadata(showsSeparator: Bool) -> some View {
+    private func secondaryMetadata(showsSeparator: Bool, allowsWrapping: Bool = false) -> some View {
         if let release = track.recording.releaseTitle {
-            Text(release).lineLimit(1)
+            Text(release).lineLimit(allowsWrapping ? nil : 1)
         }
         if showsSeparator,
            track.recording.releaseTitle != nil,

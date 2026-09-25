@@ -26,11 +26,11 @@ Both modes first reject additional `.xcstrings`, `.strings`, or `.stringsdict` r
 
 ## Current checkpoint
 
-- The single catalog contains 1,554 exact Release-extracted production keys, no empty key, no stale entry, and an editable English value for every key.
+- The single catalog contains 1,573 exact Release-extracted production keys, no empty key, no stale entry, and an editable English value for every key.
 - The audited production UI, including computed/model notices and accessibility descriptions, uses compiler-extracted literals, `LocalizedStringResource`, or `String(localized:)` as appropriate.
 - Usernames, server responses, artist/release/recording names, playlist text, identifiers, URLs, and fixture data remain explicit verbatim values.
 - Calendar years use a non-grouping localized number style, avoiding output such as `2,021` while preserving locale digits.
 - Normal and accented-pseudolocalized small-device checks confirm app-owned copy transforms and wraps while fixture usernames and music metadata remain unchanged.
-- `scripts/localizations.sh check` matches all 1,554 keys, and the latest complete app checkpoint passes 587/587 with no failure, skip, or runtime warning. Independent source re-review found no concrete production-copy bypass; the Release extraction and byte comparison guard compiler-recognized UI APIs, while the source-boundary scan catches common ordinary-`String` escapes.
+- `scripts/localizations.sh check` matches all 1,573 keys, and the latest complete app checkpoint passes 596/596 with no failure, skip, or runtime warning. Independent source re-review found no concrete production-copy bypass; the Release extraction and byte comparison guard compiler-recognized UI APIs, while the source-boundary scan catches common ordinary-`String` escapes.
 
 Before shipping a non-English locale, consolidate count strings into catalog plural variants and review dates, durations, possessives, capitalization, right-to-left behavior, screenshots, and translations with native-language QA.

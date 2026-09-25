@@ -178,6 +178,8 @@ final class SessionModel {
                 || arguments.contains("-brainz-playlist-delete-review-demo")
                 || arguments.contains("-brainz-playlist-remove-demo")
                 || arguments.contains("-brainz-playlist-remove-review-demo")
+                || arguments.contains("-brainz-playlist-range-remove-demo")
+                || arguments.contains("-brainz-playlist-range-remove-confirm-demo")
                 || arguments.contains("-brainz-playlist-reorder-demo")
                 || arguments.contains("-brainz-playlist-reorder-review-demo")
                 || arguments.contains("-brainz-playlist-collaborator-picker-demo")
