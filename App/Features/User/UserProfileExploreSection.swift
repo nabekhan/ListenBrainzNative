@@ -110,7 +110,7 @@ struct UserProfileExploreSection: View {
 
             Spacer(minLength: 0)
 
-            Image(systemName: "arrow.right")
+            Image(systemName: "arrow.forward")
                 .font(.caption.bold())
                 .foregroundStyle(.tertiary)
                 .frame(maxWidth: .infinity, alignment: .trailing)

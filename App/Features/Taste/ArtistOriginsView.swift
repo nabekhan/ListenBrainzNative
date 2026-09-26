@@ -341,7 +341,7 @@ struct ArtistOriginsView: View {
                             countryIdentity(row, rank: rank)
                             Spacer(minLength: 8)
                             selectedMetric(value: selectedValue)
-                            Image(systemName: "chevron.right")
+                            Image(systemName: "chevron.forward")
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(.tertiary)
                         }

@@ -626,7 +626,7 @@ actor RequestGate {
         }
     }
 
-    enum ReadFeature: String, Sendable {
+    enum ReadFeature: String, Hashable, Sendable {
         case coreTokenValidation
         case historyRecent
         case historyPlayingNow
@@ -818,6 +818,28 @@ actor RequestGate {
         case cancelled
     }
 
+    struct RequestAuditSnapshot: Sendable, Equatable {
+        struct LifecycleCounts: Sendable, Equatable {
+            var started = 0
+            var coalesced = 0
+            var finished = 0
+            var failed = 0
+            var cancelled = 0
+        }
+
+        struct ReadEntry: Sendable, Equatable {
+            let feature: ReadFeature
+            let counts: LifecycleCounts
+        }
+
+        let reads: [ReadEntry]
+        let mutations: LifecycleCounts
+        let activeReadTransports: Int
+        let maximumActiveReadTransports: Int
+        let activeMutationTransports: Int
+        let maximumActiveMutationTransports: Int
+    }
+
     #if DEBUG
     struct ReadTelemetry: Sendable, Equatable {
         /// A telemetry-safe feature label supplied by the caller. Read-key
@@ -872,6 +894,12 @@ actor RequestGate {
     private var preCancelledReadWaiters: Set<ReadWaiterIdentity> = []
     private var drainingWaiters: [UUID: [UUID: CheckedContinuation<Void, any Swift.Error>]] = [:]
     private var preCancelledDrainingWaiters: Set<DrainingWaiterIdentity> = []
+    private var readAuditCounts: [ReadFeature: RequestAuditSnapshot.LifecycleCounts] = [:]
+    private var mutationAuditCounts = RequestAuditSnapshot.LifecycleCounts()
+    private var activeReadTransportCount = 0
+    private var maximumActiveReadTransportCount = 0
+    private var activeMutationTransportCount = 0
+    private var maximumActiveMutationTransportCount = 0
 
     #if DEBUG
     private var readTelemetry: [ReadTelemetry] = []
@@ -898,13 +926,21 @@ actor RequestGate {
         do {
             try await waitUntilAllowed()
             try Task.checkCancellation()
+            assertFixtureTransportIsAllowed()
             operationStarted = true
+            recordMutationAudit(lifecycle: .started)
             let result = try await operation()
+            recordMutationAudit(lifecycle: .finished)
             finishRequest(operationStarted: operationStarted)
             return result
         } catch {
             if let delay = deferralForError(error) {
                 applyDeferral(for: delay)
+            }
+            if operationStarted {
+                recordMutationAudit(
+                    lifecycle: error is CancellationError ? .cancelled : .failed
+                )
             }
             finishRequest(operationStarted: operationStarted)
             throw error
@@ -943,6 +979,7 @@ actor RequestGate {
                 lifecycle: .coalesced,
                 coalescedWaiterCount: existing.waiters.count
             )
+            recordReadAudit(feature: existing.feature, lifecycle: .coalesced)
             flight = existing
         } else {
             let flightID = UUID()
@@ -1000,6 +1037,19 @@ actor RequestGate {
         return drainingWaiters[flightID]?.count ?? 0
     }
     #endif
+
+    func requestAuditSnapshot() -> RequestAuditSnapshot {
+        .init(
+            reads: readAuditCounts
+                .map { .init(feature: $0.key, counts: $0.value) }
+                .sorted { $0.feature.rawValue < $1.feature.rawValue },
+            mutations: mutationAuditCounts,
+            activeReadTransports: activeReadTransportCount,
+            maximumActiveReadTransports: maximumActiveReadTransportCount,
+            activeMutationTransports: activeMutationTransportCount,
+            maximumActiveMutationTransports: maximumActiveMutationTransportCount
+        )
+    }
 
     private func acquire() async throws {
         try Task.checkCancellation()
@@ -1085,13 +1135,23 @@ actor RequestGate {
         operation: @escaping @Sendable () async throws -> Result,
         deferralForError: @escaping @Sendable (any Swift.Error) -> Duration?
     ) async {
+        var operationStarted = false
         do {
             guard try await acquireReadSlot(for: flightID) else { throw CancellationError() }
             try await waitUntilReadAllowed()
             try Task.checkCancellation()
+            assertFixtureTransportIsAllowed()
+            operationStarted = true
+            recordReadAudit(feature: key.feature, lifecycle: .started)
             recordReadTelemetry(feature: key.feature, lifecycle: .started)
             let result = try await operation()
-            completeRead(for: key, flightID: flightID, result: .success(result), lifecycle: .finished)
+            completeRead(
+                for: key,
+                flightID: flightID,
+                result: .success(result),
+                lifecycle: .finished,
+                operationStarted: operationStarted
+            )
         } catch {
             if let delay = deferralForError(error) {
                 applyDeferral(for: delay)
@@ -1100,7 +1160,8 @@ actor RequestGate {
                 for: key,
                 flightID: flightID,
                 result: .failure(error),
-                lifecycle: error is CancellationError ? .cancelled : .failed
+                lifecycle: error is CancellationError ? .cancelled : .failed,
+                operationStarted: operationStarted
             )
         }
     }
@@ -1122,12 +1183,25 @@ actor RequestGate {
         return admitted
     }
 
+    private func assertFixtureTransportIsAllowed() {
+        #if DEBUG
+            precondition(
+                !ProcessInfo.processInfo.arguments.contains("-brainz-deny-request-gate-transport"),
+                "A network-free visual fixture attempted to start a request-gated transport."
+            )
+        #endif
+    }
+
     private func completeRead(
         for key: ReadKey,
         flightID: UUID,
         result: Result<any Sendable, any Swift.Error>,
-        lifecycle: ReadLifecycle
+        lifecycle: ReadLifecycle,
+        operationStarted: Bool
     ) {
+        if operationStarted {
+            recordReadAudit(feature: key.feature, lifecycle: lifecycle)
+        }
         guard let flight = readFlights[key], flight.id == flightID else {
             releaseReadSlot(for: flightID)
             return
@@ -1256,5 +1330,53 @@ actor RequestGate {
             readTelemetry.removeFirst(readTelemetry.count - maximumTelemetryEventCount)
         }
         #endif
+    }
+
+    private func recordReadAudit(feature: ReadFeature, lifecycle: ReadLifecycle) {
+        var counts = readAuditCounts[feature, default: .init()]
+        switch lifecycle {
+        case .started:
+            counts.started += 1
+            activeReadTransportCount += 1
+            maximumActiveReadTransportCount = max(
+                maximumActiveReadTransportCount,
+                activeReadTransportCount
+            )
+        case .coalesced:
+            counts.coalesced += 1
+        case .finished:
+            counts.finished += 1
+            activeReadTransportCount = max(0, activeReadTransportCount - 1)
+        case .failed:
+            counts.failed += 1
+            activeReadTransportCount = max(0, activeReadTransportCount - 1)
+        case .cancelled:
+            counts.cancelled += 1
+            activeReadTransportCount = max(0, activeReadTransportCount - 1)
+        }
+        readAuditCounts[feature] = counts
+    }
+
+    private func recordMutationAudit(lifecycle: ReadLifecycle) {
+        switch lifecycle {
+        case .started:
+            mutationAuditCounts.started += 1
+            activeMutationTransportCount += 1
+            maximumActiveMutationTransportCount = max(
+                maximumActiveMutationTransportCount,
+                activeMutationTransportCount
+            )
+        case .finished:
+            mutationAuditCounts.finished += 1
+            activeMutationTransportCount = max(0, activeMutationTransportCount - 1)
+        case .failed:
+            mutationAuditCounts.failed += 1
+            activeMutationTransportCount = max(0, activeMutationTransportCount - 1)
+        case .cancelled:
+            mutationAuditCounts.cancelled += 1
+            activeMutationTransportCount = max(0, activeMutationTransportCount - 1)
+        case .coalesced:
+            break
+        }
     }
 }

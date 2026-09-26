@@ -297,7 +297,7 @@ struct HistoryView: View {
     private var selectedDayNavigation: some View {
         Section {
             HStack {
-                Button { shiftSelectedDay(by: -1) } label: { Label("Previous day", systemImage: "chevron.left").labelStyle(.iconOnly) }
+                Button { shiftSelectedDay(by: -1) } label: { Label("Previous day", systemImage: "chevron.backward").labelStyle(.iconOnly) }
                     .buttonStyle(.borderless)
                     .accessibilityLabel("Previous day")
                 Spacer()
@@ -312,7 +312,7 @@ struct HistoryView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Showing \(loadedListenCountTitle) from \(selectedDayTitle)")
                 Spacer()
-                Button { shiftSelectedDay(by: 1) } label: { Label("Next day", systemImage: "chevron.right").labelStyle(.iconOnly) }
+                Button { shiftSelectedDay(by: 1) } label: { Label("Next day", systemImage: "chevron.forward").labelStyle(.iconOnly) }
                     .buttonStyle(.borderless)
                     .disabled(isSelectedDayTodayOrLater)
                     .accessibilityLabel("Next day")

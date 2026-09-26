@@ -404,7 +404,7 @@ struct ArtistDetailView: View {
                             .frame(width: 76, height: 76)
                         Spacer(minLength: 8)
                         if showsDisclosure {
-                            Image(systemName: "chevron.right")
+                            Image(systemName: "chevron.forward")
                                 .font(.body.bold())
                                 .foregroundStyle(.tertiary)
                                 .accessibilityHidden(true)
@@ -428,7 +428,7 @@ struct ArtistDetailView: View {
                     }
                     Spacer()
                     if showsDisclosure {
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.forward")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                             .accessibilityHidden(true)

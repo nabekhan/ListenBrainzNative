@@ -278,7 +278,7 @@ struct TasteView: View {
                     }
 
                     Spacer(minLength: 8)
-                    Image(systemName: "chevron.right")
+                    Image(systemName: "chevron.forward")
                         .font(.caption.bold())
                         .foregroundStyle(.tertiary)
                         .accessibilityHidden(true)
@@ -727,7 +727,7 @@ struct TasteView: View {
                     }
 
                     Spacer(minLength: 4)
-                    Image(systemName: "chevron.right")
+                    Image(systemName: "chevron.forward")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.tertiary)
                 }
@@ -767,7 +767,7 @@ struct TasteView: View {
                     }
 
                     Spacer(minLength: 4)
-                    Image(systemName: "chevron.right")
+                    Image(systemName: "chevron.forward")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.tertiary)
                 }
@@ -807,7 +807,7 @@ struct TasteView: View {
                     }
 
                     Spacer(minLength: 4)
-                    Image(systemName: "chevron.right")
+                    Image(systemName: "chevron.forward")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.tertiary)
                 }
@@ -827,7 +827,7 @@ struct TasteView: View {
                 HStack(spacing: 16) {
                     Image(systemName: "rectangle.3.group.fill").font(.title2.weight(.semibold)).foregroundStyle(AppTheme.accent).frame(width: 52, height: 52).background(AppTheme.accent.opacity(0.13), in: .circle)
                     VStack(alignment: .leading, spacing: 4) { Text("Open artist activity").font(.headline); Text("See which albums shaped \(activityPeriod.title.lowercased()).").font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
-                    Spacer(minLength: 4); Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).foregroundStyle(.tertiary)
+                    Spacer(minLength: 4); Image(systemName: "chevron.forward").font(.subheadline.weight(.semibold)).foregroundStyle(.tertiary)
                 }.padding(16).background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous)).contentShape(.rect)
             }.buttonStyle(.plain).accessibilityHint("Opens artist activity for the selected period")
         }
@@ -939,7 +939,7 @@ struct TasteView: View {
             Button {
                 withAnimation(.snappy) { selectedEraDecade = nil }
             } label: {
-                Label("All decades", systemImage: "arrow.up.left")
+                Label("All decades", systemImage: "arrow.up.backward")
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -1452,7 +1452,7 @@ struct TasteView: View {
             }
             Spacer()
             if showsDisclosure {
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .accessibilityHidden(true)
@@ -1484,7 +1484,7 @@ struct TasteView: View {
                         releaseGroupArtwork(group, size: 76, cornerRadius: 12)
                         Spacer(minLength: 12)
                         if showsDisclosure {
-                            Image(systemName: "chevron.right")
+                            Image(systemName: "chevron.forward")
                                 .font(.body.bold())
                                 .foregroundStyle(.tertiary)
                                 .accessibilityHidden(true)
@@ -1517,7 +1517,7 @@ struct TasteView: View {
                     }
                     Spacer(minLength: 8)
                     if showsDisclosure {
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.forward")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                             .accessibilityHidden(true)
@@ -1561,7 +1561,7 @@ struct TasteView: View {
                         recordingArtwork(recording, size: 76, cornerRadius: 12)
                         Spacer(minLength: 8)
                         if showsDisclosure {
-                            Image(systemName: "chevron.right")
+                            Image(systemName: "chevron.forward")
                                 .font(.body.bold())
                                 .foregroundStyle(.tertiary)
                                 .accessibilityHidden(true)
@@ -1587,7 +1587,7 @@ struct TasteView: View {
                     }
                     Spacer()
                     if showsDisclosure {
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.forward")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                             .accessibilityHidden(true)

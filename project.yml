@@ -63,12 +63,27 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Brainz.app/Brainz"
         BUNDLE_LOADER: "$(TEST_HOST)"
 
+  ListenBrainzNativeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: ListenBrainzNative
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.nabekhan.listenbrainznative.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: ListenBrainzNative
+
 schemes:
   ListenBrainzNative:
     build:
       targets:
         ListenBrainzNative: all
         ListenBrainzNativeTests: [test]
+        ListenBrainzNativeUITests: [test]
     test:
       targets:
         - ListenBrainzNativeTests
+        - ListenBrainzNativeUITests

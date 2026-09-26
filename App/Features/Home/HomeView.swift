@@ -336,7 +336,7 @@ struct HomeTopRecordingsSection: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             if recording.detailDestination != nil {
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.body.bold())
                     .foregroundStyle(.tertiary)
                     .accessibilityHidden(true)

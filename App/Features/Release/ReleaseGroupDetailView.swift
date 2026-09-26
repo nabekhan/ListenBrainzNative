@@ -148,7 +148,7 @@ struct ReleaseGroupDetailView: View {
                                     .font(.body.weight(.semibold))
                                     .foregroundStyle(.primary)
                                 Spacer(minLength: 8)
-                                Image(systemName: "chevron.right")
+                                Image(systemName: "chevron.forward")
                                     .font(.caption.bold())
                                     .foregroundStyle(.tertiary)
                             }

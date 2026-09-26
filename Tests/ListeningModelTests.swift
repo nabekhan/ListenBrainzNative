@@ -2273,6 +2273,81 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(successorValue, 3)
     }
 
+    nonisolated func testRequestAuditCountsMutationTransportsAndSkipsPreStartCancellation() async throws {
+        let gate = RequestGate(minimumInterval: .zero)
+        let probe = ReadGateProbe()
+
+        let active = Task {
+            try await gate.perform {
+                await probe.startAndWait()
+                return 1
+            }
+        }
+        try await waitForCondition { await probe.startedCount() == 1 }
+
+        let cancelledBeforeStart = Task {
+            try await gate.perform { 2 }
+        }
+        try await waitForCondition { await gate.queuedRequestCountForTesting() == 1 }
+        cancelledBeforeStart.cancel()
+        do {
+            _ = try await cancelledBeforeStart.value
+            XCTFail("A cancelled queued mutation must not start its transport")
+        } catch is CancellationError {}
+
+        var snapshot = await gate.requestAuditSnapshot()
+        XCTAssertEqual(snapshot.mutations.started, 1)
+        XCTAssertEqual(snapshot.mutations.cancelled, 0)
+        XCTAssertEqual(snapshot.activeMutationTransports, 1)
+        XCTAssertEqual(snapshot.maximumActiveMutationTransports, 1)
+
+        await probe.releaseAll()
+        let activeValue = try await active.value
+        XCTAssertEqual(activeValue, 1)
+
+        do {
+            let _: Void = try await gate.perform {
+                throw GateTestError.rateLimited
+            }
+            XCTFail("A failed transport should surface its error")
+        } catch GateTestError.rateLimited {}
+
+        snapshot = await gate.requestAuditSnapshot()
+        XCTAssertEqual(snapshot.mutations.started, 2)
+        XCTAssertEqual(snapshot.mutations.finished, 1)
+        XCTAssertEqual(snapshot.mutations.failed, 1)
+        XCTAssertEqual(snapshot.mutations.cancelled, 0)
+        XCTAssertEqual(snapshot.activeMutationTransports, 0)
+        XCTAssertEqual(snapshot.maximumActiveMutationTransports, 1)
+    }
+
+    nonisolated func testRequestAuditCountsInFlightMutationCancellation() async throws {
+        let gate = RequestGate(minimumInterval: .zero)
+        let probe = GateProbe()
+        let task = Task {
+            try await gate.perform {
+                await probe.markStarted()
+                try await ContinuousClock().sleep(for: .seconds(1))
+                return 1
+            }
+        }
+        try await waitForCondition { await probe.hasStarted() }
+
+        task.cancel()
+        do {
+            _ = try await task.value
+            XCTFail("A cancelled in-flight mutation should surface cancellation")
+        } catch is CancellationError {}
+
+        let snapshot = await gate.requestAuditSnapshot()
+        XCTAssertEqual(snapshot.mutations.started, 1)
+        XCTAssertEqual(snapshot.mutations.finished, 0)
+        XCTAssertEqual(snapshot.mutations.failed, 0)
+        XCTAssertEqual(snapshot.mutations.cancelled, 1)
+        XCTAssertEqual(snapshot.activeMutationTransports, 0)
+        XCTAssertEqual(snapshot.maximumActiveMutationTransports, 1)
+    }
+
     nonisolated func testRequestGateRunsTwoIndependentReadsAndQueuesTheThird() async throws {
         let gate = RequestGate(minimumInterval: .zero, maximumConcurrentReads: 2)
         let probe = ReadGateProbe()
@@ -2302,6 +2377,13 @@ final class ListeningModelTests: XCTestCase {
         let queuedReads = await gate.queuedReadCountForTesting()
         XCTAssertEqual(activeReads, 2)
         XCTAssertEqual(queuedReads, 1)
+        var audit = await gate.requestAuditSnapshot()
+        var counts = try XCTUnwrap(
+            audit.reads.first { $0.feature == .historyRecent }?.counts
+        )
+        XCTAssertEqual(counts.started, 2)
+        XCTAssertEqual(audit.activeReadTransports, 2)
+        XCTAssertEqual(audit.maximumActiveReadTransports, 2)
 
         await probe.releaseOne()
         try await waitForCondition { await probe.startedCount() >= 3 }
@@ -2312,6 +2394,14 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(firstValue, 1)
         XCTAssertEqual(secondValue, 2)
         XCTAssertEqual(thirdValue, 3)
+        audit = await gate.requestAuditSnapshot()
+        counts = try XCTUnwrap(
+            audit.reads.first { $0.feature == .historyRecent }?.counts
+        )
+        XCTAssertEqual(counts.started, 3)
+        XCTAssertEqual(counts.finished, 3)
+        XCTAssertEqual(audit.activeReadTransports, 0)
+        XCTAssertEqual(audit.maximumActiveReadTransports, 2)
     }
 
     nonisolated func testRequestGateCancelsQueuedReadWithoutStartingItsTransport() async throws {
@@ -2346,10 +2436,52 @@ final class ListeningModelTests: XCTestCase {
         try await waitForCondition { await gate.queuedReadCountForTesting() == 0 }
         let startsBeforeRelease = await probe.startedCount()
         XCTAssertEqual(startsBeforeRelease, 1)
+        var audit = await gate.requestAuditSnapshot()
+        var counts = try XCTUnwrap(
+            audit.reads.first { $0.feature == .historyRecent }?.counts
+        )
+        XCTAssertEqual(counts.started, 1)
+        XCTAssertEqual(counts.cancelled, 0)
+        XCTAssertEqual(audit.activeReadTransports, 1)
 
         await probe.releaseAll()
         let activeValue = try await active.value
         XCTAssertEqual(activeValue, 1)
+        audit = await gate.requestAuditSnapshot()
+        counts = try XCTUnwrap(
+            audit.reads.first { $0.feature == .historyRecent }?.counts
+        )
+        XCTAssertEqual(counts.finished, 1)
+        XCTAssertEqual(counts.cancelled, 0)
+        XCTAssertEqual(audit.activeReadTransports, 0)
+    }
+
+    nonisolated func testRequestAuditCountsReadFailure() async throws {
+        let gate = RequestGate(minimumInterval: .zero)
+        let key = RequestGate.ReadKey(
+            scope: .anonymous,
+            feature: .discoveryFreshReleases,
+            identityComponents: ["private query"]
+        )
+
+        do {
+            let _: Int = try await gate.read(for: key) {
+                throw GateTestError.rateLimited
+            }
+            XCTFail("A failed read transport should surface its error")
+        } catch GateTestError.rateLimited {}
+
+        let audit = await gate.requestAuditSnapshot()
+        let counts = try XCTUnwrap(
+            audit.reads.first { $0.feature == .discoveryFreshReleases }?.counts
+        )
+        XCTAssertEqual(counts.started, 1)
+        XCTAssertEqual(counts.finished, 0)
+        XCTAssertEqual(counts.failed, 1)
+        XCTAssertEqual(counts.cancelled, 0)
+        XCTAssertEqual(audit.activeReadTransports, 0)
+        XCTAssertEqual(audit.maximumActiveReadTransports, 1)
+        XCTAssertFalse(String(describing: audit).contains("private query"))
     }
 
     nonisolated func testRequestGateCoalescesIdenticalReadsIntoOneTransport() async throws {
@@ -2372,12 +2504,28 @@ final class ListeningModelTests: XCTestCase {
         let telemetry = await gate.readTelemetryForTesting()
         XCTAssertTrue(telemetry.contains { $0.feature == .profileSummary && $0.lifecycle == "coalesced" })
         XCTAssertFalse(telemetry.description.contains("private identity"))
+        var audit = await gate.requestAuditSnapshot()
+        var counts = try XCTUnwrap(
+            audit.reads.first { $0.feature == .profileSummary }?.counts
+        )
+        XCTAssertEqual(counts.started, 1)
+        XCTAssertEqual(counts.coalesced, 1)
+        XCTAssertEqual(counts.finished, 0)
+        XCTAssertEqual(audit.activeReadTransports, 1)
+        XCTAssertEqual(audit.maximumActiveReadTransports, 1)
+        XCTAssertFalse(String(describing: audit).contains("private identity"))
 
         await probe.releaseAll()
         let firstValue = try await first.value
         let secondValue = try await second.value
         XCTAssertEqual(firstValue, "loaded")
         XCTAssertEqual(secondValue, "loaded")
+        audit = await gate.requestAuditSnapshot()
+        counts = try XCTUnwrap(
+            audit.reads.first { $0.feature == .profileSummary }?.counts
+        )
+        XCTAssertEqual(counts.finished, 1)
+        XCTAssertEqual(audit.activeReadTransports, 0)
     }
 
     nonisolated func testRequestGateCancelsOnlyOneCoalescedReadWaiter() async throws {
@@ -2437,6 +2585,13 @@ final class ListeningModelTests: XCTestCase {
         try await waitForCondition { await gate.activeReadCountForTesting() == 0 }
         let activeReads = await gate.activeReadCountForTesting()
         XCTAssertEqual(activeReads, 0)
+        let audit = await gate.requestAuditSnapshot()
+        let counts = try XCTUnwrap(
+            audit.reads.first { $0.feature == .searchResults }?.counts
+        )
+        XCTAssertEqual(counts.started, 1)
+        XCTAssertEqual(counts.cancelled, 1)
+        XCTAssertEqual(audit.activeReadTransports, 0)
     }
 
     nonisolated func testRequestGateDoesNotOverlapReplacementWhileCancelledReadDrains() async throws {

@@ -146,7 +146,7 @@ struct UserDetailView: View {
                         .multilineTextAlignment(.leading)
                 }
                 Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.caption.bold())
                     .foregroundStyle(.tertiary)
             }
@@ -354,7 +354,7 @@ private struct UserProfileTopReleasesList: View {
                         .frame(width: 76, height: 76)
                         Spacer(minLength: 12)
                         if showsDisclosure {
-                            Image(systemName: "chevron.right")
+                            Image(systemName: "chevron.forward")
                                 .font(.body.bold())
                                 .foregroundStyle(.tertiary)
                                 .accessibilityHidden(true)
@@ -394,7 +394,7 @@ private struct UserProfileTopReleasesList: View {
                     }
                     Spacer(minLength: 8)
                     if showsDisclosure {
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.forward")
                             .font(.caption.bold())
                             .foregroundStyle(.tertiary)
                             .accessibilityHidden(true)
@@ -459,7 +459,7 @@ struct UserProfileTopRecordingsList: View {
                         .frame(width: 76, height: 76)
                         Spacer(minLength: 12)
                         if showsDisclosure {
-                            Image(systemName: "chevron.right")
+                            Image(systemName: "chevron.forward")
                                 .font(.body.bold())
                                 .foregroundStyle(.tertiary)
                                 .accessibilityHidden(true)
@@ -486,7 +486,7 @@ struct UserProfileTopRecordingsList: View {
                     }
                     Spacer(minLength: 8)
                     if showsDisclosure {
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.forward")
                             .font(.caption.bold())
                             .foregroundStyle(.tertiary)
                             .accessibilityHidden(true)
@@ -591,7 +591,7 @@ private struct DefiningArtistsCarousel: View {
                         .frame(width: 76, height: 76)
                     Spacer(minLength: 8)
                     if showsDisclosure {
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.forward")
                             .font(.caption.bold())
                             .foregroundStyle(.tertiary)
                             .padding(.top, 4)

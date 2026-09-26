@@ -336,7 +336,7 @@ private struct RecommendationRow: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
-            Image(systemName: "chevron.right")
+            Image(systemName: "chevron.forward")
                 .font(.caption.bold())
                 .foregroundStyle(.tertiary)
         }
@@ -487,7 +487,7 @@ private struct RecommendationPlaylistCard: View {
                     .foregroundStyle(AppTheme.accent)
             }
             Spacer(minLength: 8)
-            Image(systemName: "chevron.right")
+            Image(systemName: "chevron.forward")
                 .font(.caption.bold())
                 .foregroundStyle(.tertiary)
         }

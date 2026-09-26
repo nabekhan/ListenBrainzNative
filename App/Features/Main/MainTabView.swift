@@ -46,6 +46,7 @@ struct MainTabView: View {
             if ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-visitor-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-feed-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-edit-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-add-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo")
@@ -726,7 +727,11 @@ struct MainTabView: View {
                 HistoryView(model: model)
             }
             Tab("Discover", systemImage: "sparkles", value: .discover) {
-                DiscoverView(account: account, listeningModel: model)
+                DiscoverView(
+                    account: account,
+                    listeningModel: model,
+                    freshReleasesProvider: discoverFreshReleasesProvider
+                )
             }
             Tab("Taste", systemImage: "chart.bar.xaxis", value: .taste) {
                 TasteView(model: model)
@@ -744,6 +749,17 @@ struct MainTabView: View {
             }
         #endif
         return $selectedTab
+    }
+
+    private var discoverFreshReleasesProvider: (any ListeningProvider)? {
+        #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-brainz-feed-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-deny-request-gate-transport")
+            {
+                return VisualQATasteProvider()
+            }
+        #endif
+        return nil
     }
 
     #if DEBUG

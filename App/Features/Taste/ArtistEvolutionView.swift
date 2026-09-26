@@ -551,7 +551,7 @@ struct ArtistEvolutionArtistLegend: View {
     @ViewBuilder
     private func disclosure(_ visible: Bool) -> some View {
         if visible {
-            Image(systemName: "chevron.right")
+            Image(systemName: "chevron.forward")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.tertiary)
                 .accessibilityHidden(true)

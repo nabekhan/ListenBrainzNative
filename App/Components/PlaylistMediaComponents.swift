@@ -110,7 +110,7 @@ struct PlaylistTrackRow: View {
             }
             Spacer(minLength: 6)
             if showsDisclosure, track.recording.identity.mbid != nil {
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.caption2.bold())
                     .foregroundStyle(.tertiary)
             }
@@ -133,7 +133,7 @@ struct PlaylistTrackRow: View {
 
                 Spacer(minLength: 6)
                 if showsDisclosure, track.recording.identity.mbid != nil {
-                    Image(systemName: "chevron.right")
+                    Image(systemName: "chevron.forward")
                         .font(.caption2.bold())
                         .foregroundStyle(.tertiary)
                 }

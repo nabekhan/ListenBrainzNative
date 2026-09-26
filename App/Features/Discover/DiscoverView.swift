@@ -170,7 +170,7 @@ struct DiscoverView: View {
                     Text("Tracks pinned by people you follow").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading).lineLimit(3)
                 }
                 Spacer(minLength: 8)
-                Image(systemName: "chevron.right").font(.caption.bold()).foregroundStyle(.tertiary)
+                Image(systemName: "chevron.forward").font(.caption.bold()).foregroundStyle(.tertiary)
             }
             .padding(14).background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous)).contentShape(.rect)
         }
@@ -205,7 +205,7 @@ struct DiscoverView: View {
                         .lineLimit(3)
                 }
                 Spacer(minLength: 8)
-                Image(systemName: account.isAuthenticated ? "chevron.right" : "lock.fill")
+                Image(systemName: account.isAuthenticated ? "chevron.forward" : "lock.fill")
                     .font(.caption.bold())
                     .foregroundStyle(.tertiary)
             }
@@ -244,7 +244,7 @@ struct DiscoverView: View {
                         .lineLimit(3)
                 }
                 Spacer(minLength: 8)
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.caption.bold())
                     .foregroundStyle(.tertiary)
             }
@@ -283,7 +283,7 @@ struct DiscoverView: View {
                         .lineLimit(3)
                 }
                 Spacer(minLength: 8)
-                Image(systemName: account.isAuthenticated ? "chevron.right" : "lock.fill")
+                Image(systemName: account.isAuthenticated ? "chevron.forward" : "lock.fill")
                     .font(.caption.bold())
                     .foregroundStyle(.tertiary)
             }

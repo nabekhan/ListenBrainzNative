@@ -529,7 +529,7 @@ struct YearInMusicTeaserCard: View {
                 }
             }
             Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
+            Image(systemName: "chevron.forward")
                 .font((dynamicTypeSize.isAccessibilitySize ? Font.title : .headline).weight(.semibold))
                 .foregroundStyle(.white.opacity(0.85))
                 .padding(.bottom, 3)
@@ -1452,7 +1452,7 @@ private struct YearInMusicTracksSection: View {
                         rankCircle(rank)
                         trackIdentity(item)
                         if showsDisclosure {
-                            Image(systemName: "chevron.right")
+                            Image(systemName: "chevron.forward")
                                 .font(.body.bold())
                                 .foregroundStyle(.tertiary)
                                 .accessibilityHidden(true)
@@ -1473,7 +1473,7 @@ private struct YearInMusicTracksSection: View {
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(.secondary)
                     if showsDisclosure {
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.forward")
                             .font(.caption.bold())
                             .foregroundStyle(.tertiary)
                             .accessibilityHidden(true)
@@ -1620,7 +1620,7 @@ private struct YearInMusicPlaylistsSection: View {
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 8)
                 if allowsNavigation {
-                    Image(systemName: "chevron.right")
+                    Image(systemName: "chevron.forward")
                         .font(.caption.bold())
                         .foregroundStyle(.tertiary)
                         .accessibilityHidden(true)

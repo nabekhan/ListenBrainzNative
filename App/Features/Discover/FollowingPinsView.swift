@@ -174,7 +174,7 @@ private struct FollowingPinCard: View {
                             artwork(size: 74)
                             recordingDetails
                             Spacer(minLength: 0)
-                            Image(systemName: "chevron.right")
+                            Image(systemName: "chevron.forward")
                                 .font(.caption.bold())
                                 .foregroundStyle(.tertiary)
                                 .accessibilityHidden(true)

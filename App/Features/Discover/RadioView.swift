@@ -601,7 +601,7 @@ struct RadioView: View {
             }
             Spacer(minLength: 4)
             if playlist.playlistMBID != nil {
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.tertiary)
                     .accessibilityHidden(true)

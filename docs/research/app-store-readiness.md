@@ -10,6 +10,8 @@ Checked against current Apple and MetaBrainz documentation on 2026-09-25.
 | Device archive | An unsigned generic-iOS Release archive succeeds for arm64. Its app bundle contains `Assets.car`, opaque 120×120 and 152×152 icon files, and `CFBundleIconName = AppIcon`. |
 | Privacy manifest | `PrivacyInfo.xcprivacy` is copied byte-for-byte to the app-bundle root. It declares no tracking, the app-local UserDefaults reason `CA92.1`, and conservative core-functionality data categories. |
 | iPad resizing | iPad declares portrait, upside-down portrait, and both landscape orientations. The earlier archive warning is gone; `UIRequiresFullScreen` is not used. |
+| Simulator layout regression | Six XCUITests exercise iPad portrait, device rotation/landscape survival, RTL History controls, RTL Feed, RTL Profile playlists, and expanded pseudo-localization. Screenshots were inspected at 820×1180, and directional navigation uses semantic SF Symbols. |
+| Request diagnostics | The process-wide ListenBrainz gate exposes a Release-enabled in-memory snapshot containing only fixed feature categories, lifecycle counters, and current/maximum transport counts. Guarded visual fixtures fail before any request-gated transport can start. |
 | Launch screen | Xcode's generated launch-screen dictionary is present in the archived `Info.plist`. |
 | Public policy | Root `PRIVACY.md` explains local storage, direct service traffic, tracking, MetaBrainz logging, and user controls in plain language. |
 | In-app user controls | Profile opens a request-free native Settings surface with the same privacy policy, canonical ListenBrainz data controls, local appearance, and a confirmed disconnect action that removes the saved credential and listening snapshot without overstating residual safety-record cleanup. |
@@ -48,7 +50,7 @@ The single source deliberately omits hand-authored dark and tinted variants. App
 - enter App Store name, subtitle, description, category, age rating, support URL, privacy-policy URL, screenshots, and review notes;
 - confirm the App Store privacy questionnaire against the shipped binary and service behavior;
 - run physical-device and authenticated disposable-account QA without real user data or replaying mutations;
-- validate iPad rotation and resizable windows interactively, plus non-English and right-to-left localization; and
-- complete final accessibility, performance, crash, network-request, and regression passes on the release candidate.
+- repeat rotation, Stage Manager/resizable-window, and RTL checks on physical iPad hardware, and test actual translations once they exist; and
+- complete final accessibility, performance, crash, direct-network-bypass, and regression passes on the signed release candidate.
 
-This checkpoint removes two source-level upload blockers; it does not claim App Store or TestFlight readiness.
+The source-level release foundation and first guarded iPad/RTL pass are complete; this does not claim App Store or TestFlight readiness.

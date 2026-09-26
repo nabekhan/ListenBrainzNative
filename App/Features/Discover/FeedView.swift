@@ -49,6 +49,7 @@ struct FeedView: View {
             .padding(.horizontal, 18)
             .padding(.bottom, 44)
         }
+        .accessibilityIdentifier("feed-screen")
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Listening Network")
         .navigationBarTitleDisplayMode(dynamicTypeSize.isAccessibilitySize ? .inline : .large)
@@ -76,7 +77,8 @@ struct FeedView: View {
             Circle()
                 .fill(.white.opacity(0.10))
                 .frame(width: 170, height: 170)
-                .offset(x: 235, y: -55)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .offset(y: -55)
 
             VStack(alignment: .leading, spacing: 8) {
                 Label("Your ListenBrainz circle", systemImage: "person.2.wave.2.fill")
@@ -516,7 +518,7 @@ private struct FeedEventCard: View {
                                 .frame(width: 72, height: 72)
                             recordingText(recording)
                             Spacer(minLength: 8)
-                            Image(systemName: "chevron.right")
+                            Image(systemName: "chevron.forward")
                                 .font(.caption.bold())
                                 .foregroundStyle(.tertiary)
                         }
@@ -584,7 +586,7 @@ private struct FeedEventCard: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 8)
-                    Image(systemName: "chevron.right")
+                    Image(systemName: "chevron.forward")
                         .font(.caption.bold())
                         .foregroundStyle(.tertiary)
                 }
@@ -984,6 +986,7 @@ private struct FeedPreviewProvider: FeedProviding {
 private struct FeedAvatar: View {
     let username: String
     let symbol: String
+    @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -1002,7 +1005,7 @@ private struct FeedAvatar: View {
                 .frame(width: 18, height: 18)
                 .background(AppTheme.accent, in: .circle)
                 .overlay { Circle().stroke(.background, lineWidth: 2) }
-                .offset(x: 2, y: 2)
+                .offset(x: layoutDirection == .rightToLeft ? -2 : 2, y: 2)
         }
         .accessibilityHidden(true)
     }

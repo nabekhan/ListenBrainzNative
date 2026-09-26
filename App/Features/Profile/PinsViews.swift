@@ -177,7 +177,7 @@ private struct PinCard: View {
                     .frame(width: 74, height: 74)
                 pinDetails
                 Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.tertiary)
             }
