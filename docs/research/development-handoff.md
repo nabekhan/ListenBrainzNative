@@ -5,7 +5,7 @@ Snapshot: 2026-09-26.
 ## Portable checkpoint
 
 - Branch: `main`
-- Last validated product commit: `b0d1a62841b0d83faa134d55eeaca3e37e4c6f49`
+- Last validated product commit: `5aad2130ddef0e2f6a3df490c422fefa2fde4746`
 - Remote: `https://github.com/nabekhan/ListenBrainzNative.git`
 - Remote `main` is verified after this handoff note is pushed.
 - No change in this checkpoint is partially applied. The playlist-export, release-layout, request-audit, and simulator accessibility slices are complete for the audited source.
