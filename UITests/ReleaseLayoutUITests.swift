@@ -17,7 +17,15 @@ final class ReleaseLayoutUITests: XCTestCase {
         XCTAssertTrue(continueButton.waitForExistence(timeout: 10))
         continueButton.tap()
 
-        let officialHost = app.staticTexts["official-sign-in-host"]
+        let officialHost = app.staticTexts
+            .matching(identifier: "official-sign-in-host")
+            .matching(
+                NSPredicate(
+                    format: "label == %@",
+                    "Official site: metabrainz.org"
+                )
+            )
+            .firstMatch
         XCTAssertTrue(
             officialHost.waitForExistence(timeout: 30),
             "The guarded sign-in flow did not reach the exact official MetaBrainz host."

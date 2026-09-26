@@ -124,6 +124,38 @@ enum SVGArtworkRenderingPolicy {
         return collector.urls.allSatisfy(permitsExternalResource)
     }
 
+    static func prepareDocument(
+        svg: String,
+        accessibilityLabel: String
+    ) -> String? {
+        guard permitsExternalResources(in: svg),
+              let data = svg.data(using: .utf8)
+        else {
+            return nil
+        }
+
+        let encodedSVG = data.base64EncodedString()
+        let escapedLabel = accessibilityLabel.htmlEscaped
+        return """
+        <!doctype html>
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+            <meta name="referrer" content="no-referrer">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; object-src data:; img-src data: https://archive.org https://*.ca.archive.org https://listenbrainz.org; font-src data: https://fonts.gstatic.com; style-src 'unsafe-inline' https://fonts.googleapis.com; form-action 'none'; base-uri 'none'; connect-src 'none'; script-src 'none'">
+            <style>
+              html, body, object { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
+              body { background: transparent; }
+              object { display: block; border: 0; }
+            </style>
+          </head>
+          <body>
+            <object type="image/svg+xml" data="data:image/svg+xml;base64,\(encodedSVG)" aria-label="\(escapedLabel)"></object>
+          </body>
+        </html>
+        """
+    }
+
     private static func permitsArchivePath(
         _ path: String,
         leadingComponents: [String]
@@ -266,6 +298,32 @@ enum SVGArtworkSnapshotPhase {
     case failed(String)
 }
 
+struct SVGArtworkNavigationRegistry {
+    private var generations: [ObjectIdentifier: Int] = [:]
+
+    mutating func register(_ navigation: AnyObject, generation: Int) {
+        generations[ObjectIdentifier(navigation)] = generation
+    }
+
+    mutating func consume(
+        _ navigation: AnyObject,
+        currentGeneration: Int
+    ) -> Int? {
+        guard let navigationGeneration = generations.removeValue(
+            forKey: ObjectIdentifier(navigation)
+        ),
+        navigationGeneration == currentGeneration
+        else {
+            return nil
+        }
+        return navigationGeneration
+    }
+
+    mutating func removeAll() {
+        generations.removeAll(keepingCapacity: true)
+    }
+}
+
 struct SVGArtworkPreview: UIViewRepresentable {
     let svg: String
     let reloadID: Int
@@ -304,41 +362,11 @@ struct SVGArtworkPreview: UIViewRepresentable {
             return
         }
 
-        let generation = context.coordinator.prepareToLoad(
+        context.coordinator.prepareAndLoad(
             svg,
-            reloadID: reloadID
-        )
-        guard SVGArtworkRenderingPolicy.permitsExternalResources(in: svg),
-              let data = svg.data(using: .utf8)
-        else {
-            onSnapshot(.failed(String(localized: "This artwork includes a resource Brainz can’t load safely.")))
-            return
-        }
-
-        let encodedSVG = data.base64EncodedString()
-        let escapedLabel = accessibilityLabel.htmlEscaped
-        let document = """
-        <!doctype html>
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-            <meta name="referrer" content="no-referrer">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; object-src data:; img-src data: https://archive.org https://*.ca.archive.org https://listenbrainz.org; font-src data: https://fonts.gstatic.com; style-src 'unsafe-inline' https://fonts.googleapis.com; form-action 'none'; base-uri 'none'; connect-src 'none'; script-src 'none'">
-            <style>
-              html, body, object { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
-              body { background: transparent; }
-              object { display: block; border: 0; }
-            </style>
-          </head>
-          <body>
-            <object type="image/svg+xml" data="data:image/svg+xml;base64,\(encodedSVG)" aria-label="\(escapedLabel)"></object>
-          </body>
-        </html>
-        """
-        context.coordinator.load(
-            document: document,
+            accessibilityLabel: accessibilityLabel,
+            reloadID: reloadID,
             in: webView,
-            generation: generation
         )
     }
 
@@ -361,6 +389,10 @@ struct SVGArtworkPreview: UIViewRepresentable {
         private(set) var loadedReloadID: Int?
         private var generation = 0
         private var snapshotGeneration: Int?
+        private var preparationTask: Task<Void, Never>?
+        private var ruleLoadTask: Task<Void, Never>?
+        private var snapshotTask: Task<Void, Never>?
+        private var navigationRegistry = SVGArtworkNavigationRegistry()
 
         init(
             onSnapshot: @escaping @MainActor (SVGArtworkSnapshotPhase) -> Void
@@ -368,13 +400,55 @@ struct SVGArtworkPreview: UIViewRepresentable {
             self.onSnapshot = onSnapshot
         }
 
-        func prepareToLoad(_ svg: String, reloadID: Int) -> Int {
+        func prepareAndLoad(
+            _ svg: String,
+            accessibilityLabel: String,
+            reloadID: Int,
+            in webView: WKWebView
+        ) {
+            cancelOutstandingWork()
+            navigationRegistry.removeAll()
+            webView.stopLoading()
             loadedSVG = svg
             loadedReloadID = reloadID
             generation += 1
             snapshotGeneration = nil
             onSnapshot(.preparing)
-            return generation
+
+            let requestedGeneration = generation
+            let worker = Task.detached(priority: .userInitiated) {
+                guard !Task.isCancelled else { return nil as String? }
+                let document = SVGArtworkRenderingPolicy.prepareDocument(
+                    svg: svg,
+                    accessibilityLabel: accessibilityLabel
+                )
+                return Task.isCancelled ? nil : document
+            }
+            preparationTask = Task { @MainActor [weak self, weak webView] in
+                let document = await withTaskCancellationHandler {
+                    await worker.value
+                } onCancel: {
+                    worker.cancel()
+                }
+                guard !Task.isCancelled,
+                      let self,
+                      let webView,
+                      generation == requestedGeneration
+                else {
+                    return
+                }
+
+                preparationTask = nil
+                guard let document else {
+                    onSnapshot(.failed(String(localized: "This artwork includes a resource Brainz can’t load safely.")))
+                    return
+                }
+                load(
+                    document: document,
+                    in: webView,
+                    generation: requestedGeneration
+                )
+            }
         }
 
         func load(
@@ -382,20 +456,34 @@ struct SVGArtworkPreview: UIViewRepresentable {
             in webView: WKWebView,
             generation requestedGeneration: Int
         ) {
-            Task { @MainActor [weak self, weak webView] in
+            ruleLoadTask?.cancel()
+            ruleLoadTask = Task { @MainActor [weak self, weak webView] in
                 guard let self, let webView else { return }
                 do {
                     let rules = try await Self.compileContentRules()
+                    try Task.checkCancellation()
                     guard generation == requestedGeneration else { return }
                     webView.configuration.userContentController
                         .removeAllContentRuleLists()
                     webView.configuration.userContentController.add(rules)
-                    webView.loadHTMLString(
+                    guard let navigation = webView.loadHTMLString(
                         document,
                         baseURL: URL(string: "https://api.listenbrainz.org/")
+                    ) else {
+                        ruleLoadTask = nil
+                        onSnapshot(.failed(String(localized: "Brainz couldn’t prepare the secure artwork preview.")))
+                        return
+                    }
+                    navigationRegistry.register(
+                        navigation,
+                        generation: requestedGeneration
                     )
+                    ruleLoadTask = nil
+                } catch is CancellationError {
+                    return
                 } catch {
                     guard generation == requestedGeneration else { return }
+                    ruleLoadTask = nil
                     Self.logger.error(
                         "Artwork resource policy failed: \(error.localizedDescription, privacy: .public)"
                     )
@@ -405,8 +493,19 @@ struct SVGArtworkPreview: UIViewRepresentable {
         }
 
         func invalidate() {
+            cancelOutstandingWork()
+            navigationRegistry.removeAll()
             generation += 1
             snapshotGeneration = nil
+        }
+
+        private func cancelOutstandingWork() {
+            preparationTask?.cancel()
+            ruleLoadTask?.cancel()
+            snapshotTask?.cancel()
+            preparationTask = nil
+            ruleLoadTask = nil
+            snapshotTask = nil
         }
 
         private static func compileContentRules() async throws -> WKContentRuleList {
@@ -439,7 +538,15 @@ struct SVGArtworkPreview: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            captureWhenReady(webView, generation: generation)
+            guard let navigation,
+                  let navigationGeneration = navigationRegistry.consume(
+                      navigation,
+                      currentGeneration: generation
+                  )
+            else {
+                return
+            }
+            captureWhenReady(webView, generation: navigationGeneration)
         }
 
         func webView(
@@ -447,7 +554,7 @@ struct SVGArtworkPreview: UIViewRepresentable {
             didFail navigation: WKNavigation!,
             withError error: any Error
         ) {
-            reportNavigationFailure(error)
+            reportNavigationFailure(error, navigation: navigation)
         }
 
         func webView(
@@ -455,10 +562,21 @@ struct SVGArtworkPreview: UIViewRepresentable {
             didFailProvisionalNavigation navigation: WKNavigation!,
             withError error: any Error
         ) {
-            reportNavigationFailure(error)
+            reportNavigationFailure(error, navigation: navigation)
         }
 
-        private func reportNavigationFailure(_ error: any Error) {
+        private func reportNavigationFailure(
+            _ error: any Error,
+            navigation: WKNavigation?
+        ) {
+            guard let navigation,
+                  navigationRegistry.consume(
+                      navigation,
+                      currentGeneration: generation
+                  ) != nil
+            else {
+                return
+            }
             Self.logger.error(
                 "Artwork navigation failed: \(error.localizedDescription, privacy: .public)"
             )
@@ -469,40 +587,70 @@ struct SVGArtworkPreview: UIViewRepresentable {
             generation requestedGeneration: Int
         ) {
             guard snapshotGeneration != requestedGeneration else { return }
+            snapshotTask?.cancel()
             snapshotGeneration = requestedGeneration
 
-            Task { @MainActor [weak self, weak webView] in
-                try? await Task.sleep(for: .milliseconds(750))
+            snapshotTask = Task { @MainActor [weak self, weak webView] in
+                do {
+                    try await Task.sleep(for: .milliseconds(750))
+                } catch {
+                    return
+                }
                 guard let self,
                       let webView,
+                      !Task.isCancelled,
                       generation == requestedGeneration
                 else {
                     return
                 }
 
                 for _ in 0 ..< 30 where webView.isLoading {
-                    try? await Task.sleep(for: .milliseconds(100))
-                    guard generation == requestedGeneration else { return }
+                    do {
+                        try await Task.sleep(for: .milliseconds(100))
+                    } catch {
+                        return
+                    }
+                    guard !Task.isCancelled,
+                          generation == requestedGeneration
+                    else {
+                        return
+                    }
                 }
-                try? await Task.sleep(for: .milliseconds(350))
-                guard generation == requestedGeneration else { return }
+                do {
+                    try await Task.sleep(for: .milliseconds(350))
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled,
+                      generation == requestedGeneration
+                else {
+                    return
+                }
 
                 let configuration = WKSnapshotConfiguration()
                 configuration.snapshotWidth = 924
-                webView.takeSnapshot(with: configuration) { [weak self] image, error in
-                    guard let self, generation == requestedGeneration else {
+                do {
+                    let image = try await webView.takeSnapshot(
+                        configuration: configuration
+                    )
+                    guard !Task.isCancelled,
+                          generation == requestedGeneration
+                    else {
                         return
                     }
-                    if let image {
-                        onSnapshot(.ready(image))
-                    } else {
-                        if let error {
-                            Self.logger.error(
-                                "Artwork snapshot failed: \(error.localizedDescription, privacy: .public)"
-                            )
-                        }
-                        onSnapshot(.failed(String(localized: "Brainz couldn’t prepare a high-resolution copy.")))
+                    snapshotTask = nil
+                    onSnapshot(.ready(image))
+                } catch is CancellationError {
+                    return
+                } catch {
+                    guard generation == requestedGeneration else {
+                        return
                     }
+                    snapshotTask = nil
+                    Self.logger.error(
+                        "Artwork snapshot failed: \(error.localizedDescription, privacy: .public)"
+                    )
+                    onSnapshot(.failed(String(localized: "Brainz couldn’t prepare a high-resolution copy.")))
                 }
             }
         }

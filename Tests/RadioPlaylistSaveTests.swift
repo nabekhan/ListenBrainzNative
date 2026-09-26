@@ -228,7 +228,7 @@ final class RadioPlaylistSaveTests: XCTestCase {
 
     func testOwnedPlaylistReviewThenExplicitResetAllowsAnotherSave() async {
         let journal = RadioPlaylistSaveJournal()
-        journal.begin(username: account.username, at: .now)
+        _ = journal.begin(username: account.username, at: .now)
         let profile = ProfilePlaylistsProviderSpy()
         let model = RadioPlaylistSaveModel(
             account: account,

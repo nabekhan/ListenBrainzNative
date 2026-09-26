@@ -114,6 +114,100 @@ final class YearInMusicArtworkRenderingPolicyTests: XCTestCase {
         }
     }
 
+    func testPreparedDocumentEmbedsSVGAndEscapesTheAccessibilityLabel() throws {
+        let svg = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <rect width="12" height="12" fill="#ff0000"/>
+        </svg>
+        """
+
+        let document = try XCTUnwrap(
+            SVGArtworkRenderingPolicy.prepareDocument(
+                svg: svg,
+                accessibilityLabel: "Taylor & \"Friends\" <2026>"
+            )
+        )
+
+        XCTAssertTrue(document.contains("data:image/svg+xml;base64,\(Data(svg.utf8).base64EncodedString())"))
+        XCTAssertTrue(document.contains(#"aria-label="Taylor &amp; &quot;Friends&quot; &lt;2026&gt;""#))
+    }
+
+    func testPreparedDocumentRejectsUnsafeArtwork() {
+        let svg = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <image href="https://example.com/tracker.png"/>
+        </svg>
+        """
+
+        XCTAssertNil(
+            SVGArtworkRenderingPolicy.prepareDocument(
+                svg: svg,
+                accessibilityLabel: "Unsafe artwork"
+            )
+        )
+    }
+
+    func testPreparedDocumentHandlesALargeBoundedArtworkPayload() throws {
+        let svg = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <metadata>\(String(repeating: "a", count: 4 * 1_024 * 1_024 - 128))</metadata>
+          <rect width="12" height="12"/>
+        </svg>
+        """
+
+        let document = try XCTUnwrap(
+            SVGArtworkRenderingPolicy.prepareDocument(
+                svg: svg,
+                accessibilityLabel: "Large artwork"
+            )
+        )
+
+        XCTAssertGreaterThan(document.utf8.count, svg.utf8.count)
+    }
+
+    func testNavigationRegistryRejectsAStaleGenerationAndConsumesTheCurrentOneOnce() {
+        let staleNavigation = NSObject()
+        let currentNavigation = NSObject()
+        var registry = SVGArtworkNavigationRegistry()
+        registry.register(staleNavigation, generation: 1)
+        registry.register(currentNavigation, generation: 2)
+
+        XCTAssertNil(
+            registry.consume(
+                staleNavigation,
+                currentGeneration: 2
+            )
+        )
+        XCTAssertEqual(
+            registry.consume(
+                currentNavigation,
+                currentGeneration: 2
+            ),
+            2
+        )
+        XCTAssertNil(
+            registry.consume(
+                currentNavigation,
+                currentGeneration: 2
+            )
+        )
+    }
+
+    func testNavigationRegistryInvalidationRejectsEveryOutstandingNavigation() {
+        let navigation = NSObject()
+        var registry = SVGArtworkNavigationRegistry()
+        registry.register(navigation, generation: 1)
+
+        registry.removeAll()
+
+        XCTAssertNil(
+            registry.consume(
+                navigation,
+                currentGeneration: 1
+            )
+        )
+    }
+
     func testContentRulesBlockFirstNameEveryAllowedHostAndCompile() async throws {
         let rules = SVGArtworkRenderingPolicy.contentRuleList
         XCTAssertTrue(rules.contains(#""type": "block""#))
