@@ -7,7 +7,7 @@ Brainz is an independent, open-source iOS client for ListenBrainz. It is not ope
 ## What Brainz stores on your device
 
 - If you sign in, Brainz stores your ListenBrainz user token and canonical username in the iOS Keychain. The item is available only while the device is unlocked and cannot migrate to another device.
-- Brainz stores preferences, recently loaded listening data, and small recovery records needed to avoid repeating uncertain changes.
+- Brainz stores preferences, recently loaded listening data, and small recovery records needed to avoid repeating uncertain changes. Recently viewed public ListenBrainz profiles are usable from the app cache for seven days so they can open while a refresh is underway. Expired files are removed the next time Brainz reads or maintains this cache, and iOS may remove them sooner. This cache does not contain tokens, private playlists, or account-only data.
 - When you export a playlist, Brainz creates a protected temporary JSON file containing its details, tracks, and contributor names. Brainz removes export folders after 24 hours; iOS may remove temporary files sooner.
 - Choosing **Disconnect account** removes the saved credential and the account's saved listening snapshot. Small mutation-safety records may remain until an uncertain action is resolved or the app's local data is removed. To remove the Keychain credential and other local app data, disconnect first and then delete the app.
 

@@ -264,6 +264,7 @@ final class SessionModel {
                 || arguments.contains("-brainz-user-defining-artists-demo")
                 || arguments.contains("-brainz-user-profile-albums-demo")
                 || arguments.contains("-brainz-user-profile-tracks-demo")
+                || arguments.contains("-brainz-saved-profile-demo")
                 || arguments.contains("-brainz-home-tracks-demo")
                 || arguments.contains("-brainz-fresh-releases-demo")
                 || arguments.contains("-brainz-fresh-releases-filters-demo")

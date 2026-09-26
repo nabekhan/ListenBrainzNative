@@ -91,6 +91,7 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-user-defining-artists-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-user-profile-albums-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-user-profile-tracks-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-saved-profile-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-home-tracks-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-fresh-releases-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-fresh-releases-filters-demo")
@@ -381,6 +382,8 @@ struct MainTabView: View {
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-user-profile-tracks-demo") {
                 UserProfileTracksVisualQAScreen(model: model)
                     .environment(pins)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-saved-profile-demo") {
+                SavedProfileNoticeVisualQAScreen()
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-home-tracks-demo") {
                 HomeTopRecordingsVisualQAScreen(model: model)
                     .environment(pins)

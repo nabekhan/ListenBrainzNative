@@ -3339,6 +3339,16 @@
         }
       }
     },
+    "Couldn’t refresh this profile. %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t refresh this profile. %@"
+          }
+        }
+      }
+    },
     "Couldn’t refresh your connected services. Showing the last saved list.": {
       "localizations": {
         "en": {
@@ -12491,6 +12501,16 @@
         }
       }
     },
+    "Showing saved profile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showing saved profile"
+          }
+        }
+      }
+    },
     "Showing saved rankings. %@": {
       "localizations": {
         "en": {
@@ -15027,6 +15047,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Updating from ListenBrainz…"
+          }
+        }
+      }
+    },
+    "Updating with the latest public listens.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updating with the latest public listens."
           }
         }
       }

@@ -669,7 +669,7 @@ struct ListeningSnapshot: Codable, Sendable {
     )
 }
 
-struct UserProfileSnapshot: Sendable {
+struct UserProfileSnapshot: Codable, Sendable {
     var recentListens: [Listen]
     var playingNow: Listen?
     var listenCount: Int?

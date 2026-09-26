@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 struct UserDetailView: View {
@@ -9,7 +10,7 @@ struct UserDetailView: View {
 
     init(user: SearchUser, viewer: Account) {
         self.viewer = viewer
-        _model = State(initialValue: UserDetailModel(user: user, token: viewer.token))
+        _model = State(initialValue: UserDetailModel(user: user))
         _pins = State(initialValue: PinsModel(account: Account(username: user.username, token: "")))
         _viewerListeningModel = State(initialValue: ListeningModel(account: viewer))
     }
@@ -104,6 +105,12 @@ struct UserDetailView: View {
 
     @ViewBuilder
     private var profileContent: some View {
+        if model.isShowingSavedProfile {
+            SavedProfileNotice(errorMessage: model.profileRefreshErrorMessage) {
+                Task { await model.refresh() }
+            }
+        }
+
         if let listen = model.featuredListen {
             FeaturedListenCard(
                 listen: listen,
@@ -126,6 +133,34 @@ struct UserDetailView: View {
         topArtists
         topReleases
         topRecordings
+    }
+
+    fileprivate struct SavedProfileNotice: View {
+        let errorMessage: String?
+        let retry: () -> Void
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Showing saved profile", systemImage: "clock.arrow.circlepath")
+                    .font(.subheadline.weight(.semibold))
+                if let message = errorMessage {
+                    Text("Couldn’t refresh this profile. \(message)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Try Again", action: retry)
+                        .buttonStyle(.bordered)
+                } else {
+                    Text("Updating with the latest public listens.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(.thinMaterial, in: .rect(cornerRadius: 14, style: .continuous))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("saved-profile-notice")
+        }
     }
 
     private var socialLink: some View {
@@ -759,6 +794,73 @@ struct UserProfileTracksVisualQAScreen: View {
             .navigationTitle("music-friend")
             .navigationBarTitleDisplayMode(.inline)
             .mediaDestinations(model: model)
+        }
+    }
+}
+
+struct SavedProfileNoticeVisualQAScreen: View {
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 28) {
+                    VStack(spacing: 15) {
+                        ZStack {
+                            Circle().fill(AppTheme.heroGradient)
+                            Text("M")
+                                .font(.system(size: 50, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 116, height: 116)
+                        .shadow(color: AppTheme.accent.opacity(0.22), radius: 20, y: 9)
+
+                        Text("music-friend")
+                            .font(.largeTitle.bold())
+                        Text("ListenBrainz listener")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 12)
+
+                    UserDetailView.SavedProfileNotice(
+                        errorMessage: String(localized: "Check your connection, then try again."),
+                        retry: {}
+                    )
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        SectionHeader(
+                            title: "Recently played",
+                            subtitle: "Saved public listening history"
+                        )
+                        HStack(spacing: 12) {
+                            Image(systemName: "music.note")
+                                .font(.title2)
+                                .foregroundStyle(.white)
+                                .frame(width: 52, height: 52)
+                                .background(AppTheme.heroGradient, in: .rect(cornerRadius: 10))
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Belinda Says")
+                                    .font(.headline)
+                                Text("Alvvays · Blue Rev")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 40)
+            }
+            .accessibilityIdentifier("saved-profile-visual-qa-screen")
+            .background {
+                AppTheme.artworkGradient(seed: "music-friend")
+                    .opacity(0.14)
+                    .ignoresSafeArea()
+                    .mask(LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .center))
+            }
+            .navigationTitle("music-friend")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

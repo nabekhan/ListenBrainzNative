@@ -29,6 +29,8 @@ final class UserDetailModel {
     private(set) var topReleasesPhase: SectionPhase = .idle
     private(set) var topRecordingsPhase: SectionPhase = .idle
     private(set) var topRecordingsErrorMessage: String?
+    private(set) var isShowingSavedProfile = false
+    private(set) var profileRefreshErrorMessage: String?
     private var didLoadOverview = false
     private var didLoadTopArtists = false
     private var topArtistsNeedRefresh = false
@@ -43,18 +45,26 @@ final class UserDetailModel {
     private var topArtistsRequestID = UUID()
     private var topReleasesRequestID = UUID()
     private var topRecordingsRequestID = UUID()
-    private let cacheScope: RequestGate.ReadScope
-
     init(
         user: SearchUser,
-        token: String,
         provider: (any ListeningProvider)? = nil,
         cache: UserProfileCache = .shared
     ) {
         self.user = user
-        self.provider = provider ?? ListenBrainzProvider(token: token)
+        self.provider = provider ?? ListenBrainzProvider(token: "")
         self.cache = cache
-        self.cacheScope = .authenticated(token: token)
+    }
+
+    /// The public profile endpoints do not need a viewer credential. Keep this
+    /// initializer for injected-provider tests and older call sites, but never
+    /// pass the token to the production provider or cache.
+    convenience init(
+        user: SearchUser,
+        token _: String,
+        provider: (any ListeningProvider)? = nil,
+        cache: UserProfileCache = .shared
+    ) {
+        self.init(user: user, provider: provider, cache: cache)
     }
 
     var featuredListen: Listen? { snapshot.playingNow ?? snapshot.recentListens.first }
@@ -63,7 +73,7 @@ final class UserDetailModel {
         guard !didLoadOverview else { return }
         didLoadOverview = true
 
-        if let cached = await cache.value(for: user.username, scope: cacheScope) {
+        if let cached = await cache.value(for: user.username) {
             snapshot = cached.snapshot
             if snapshot.hasLoadedTopArtists {
                 didLoadTopArtists = cached.isTopArtistsFresh
@@ -84,6 +94,7 @@ final class UserDetailModel {
                 phase = .ready
                 return
             }
+            isShowingSavedProfile = true
             phase = .refreshing
         } else {
             phase = .loading
@@ -152,7 +163,7 @@ final class UserDetailModel {
             snapshot.savedAt = .now
             topArtistsNeedRefresh = false
             topArtistsPhase = .ready
-            await cache.saveTopArtists(snapshot, for: user.username, scope: cacheScope)
+            await cache.saveTopArtists(snapshot, for: user.username)
         } catch is CancellationError {
             guard topArtistsRequestID == requestID else { return }
             didLoadTopArtists = false
@@ -193,7 +204,7 @@ final class UserDetailModel {
             snapshot.savedAt = .now
             topReleasesNeedRefresh = false
             topReleasesPhase = .ready
-            await cache.saveTopReleases(snapshot, for: user.username, scope: cacheScope)
+            await cache.saveTopReleases(snapshot, for: user.username)
         } catch is CancellationError {
             guard topReleasesRequestID == requestID else { return }
             didLoadTopReleases = false
@@ -235,7 +246,7 @@ final class UserDetailModel {
             topRecordingsNeedRefresh = false
             topRecordingsErrorMessage = nil
             topRecordingsPhase = .ready
-            await cache.saveTopRecordings(snapshot, for: user.username, scope: cacheScope)
+            await cache.saveTopRecordings(snapshot, for: user.username)
         } catch is CancellationError {
             guard topRecordingsRequestID == requestID else { return }
             didLoadTopRecordings = false
@@ -256,6 +267,10 @@ final class UserDetailModel {
         let requestID = UUID()
         overviewRequestID = requestID
         snapshot.hasLoadedOverview = false
+        // Playing Now is live state. Clear any earlier value before the first
+        // suspension point so even an immediate history failure cannot leave
+        // the previous live state looking current.
+        snapshot.playingNow = nil
 
         do {
             let listens = try await provider.recentListens(
@@ -267,8 +282,10 @@ final class UserDetailModel {
             guard overviewRequestID == requestID else { return }
             snapshot.recentListens = listens
             snapshot.savedAt = .now
+            isShowingSavedProfile = false
+            profileRefreshErrorMessage = nil
             phase = .ready
-            await cache.saveOverview(snapshot, for: user.username, scope: cacheScope)
+            await cache.saveOverview(snapshot, for: user.username)
 
             do {
                 let playingNow = try await provider.playingNow(username: user.username)
@@ -296,16 +313,20 @@ final class UserDetailModel {
             snapshot.hasLoadedOverview = true
             snapshot.savedAt = .now
             phase = .ready
-            await cache.saveOverview(snapshot, for: user.username, scope: cacheScope)
+            await cache.saveOverview(snapshot, for: user.username)
         } catch is CancellationError {
             guard overviewRequestID == requestID else { return }
             didLoadOverview = false
             phase = snapshot.recentListens.isEmpty ? .idle : .ready
         } catch {
             guard overviewRequestID == requestID else { return }
-            phase = snapshot.recentListens.isEmpty
-                ? .failed(error.localizedDescription)
-                : .ready
+            if snapshot.recentListens.isEmpty {
+                phase = .failed(error.localizedDescription)
+            } else {
+                isShowingSavedProfile = true
+                profileRefreshErrorMessage = error.localizedDescription
+                phase = .ready
+            }
         }
     }
 }

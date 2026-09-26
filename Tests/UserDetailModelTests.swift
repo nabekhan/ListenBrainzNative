@@ -10,7 +10,7 @@ final class UserDetailModelTests: XCTestCase {
             user: SearchUser(username: "target-user"),
             token: "",
             provider: provider,
-            cache: UserProfileCache()
+            cache: makeIsolatedCache()
         )
 
         await model.load()
@@ -55,7 +55,7 @@ final class UserDetailModelTests: XCTestCase {
             user: SearchUser(username: "target-user"),
             token: "",
             provider: provider,
-            cache: UserProfileCache()
+            cache: makeIsolatedCache()
         )
 
         await model.loadTopArtists()
@@ -82,7 +82,7 @@ final class UserDetailModelTests: XCTestCase {
             user: SearchUser(username: "target-user"),
             token: "",
             provider: provider,
-            cache: UserProfileCache()
+            cache: makeIsolatedCache()
         )
 
         await model.loadTopReleases()
@@ -101,7 +101,7 @@ final class UserDetailModelTests: XCTestCase {
             user: SearchUser(username: "target-user"),
             token: "",
             provider: provider,
-            cache: UserProfileCache()
+            cache: makeIsolatedCache()
         )
 
         await model.loadTopRecordings()
@@ -116,7 +116,7 @@ final class UserDetailModelTests: XCTestCase {
     }
 
     func testFreshCacheUsesNormalizedUsernameWithoutNetworkCalls() async {
-        let cache = UserProfileCache()
+        let cache = makeIsolatedCache()
         var cached = UserProfileSnapshot.empty
         cached.recentListens = [UserDetailFixtureProvider.listen(title: "Cached track")]
         cached.listenCount = 99
@@ -144,7 +144,7 @@ final class UserDetailModelTests: XCTestCase {
     }
 
     func testFreshCachedTopReleasesDoNotMakeANetworkCall() async {
-        let cache = UserProfileCache()
+        let cache = makeIsolatedCache()
         var cached = UserProfileSnapshot.empty
         cached.recentListens = [UserDetailFixtureProvider.listen(title: "Cached track")]
         cached.topReleases = [UserDetailFixtureProvider.release(name: "Cached album")]
@@ -173,7 +173,7 @@ final class UserDetailModelTests: XCTestCase {
     }
 
     func testFreshCachedTopRecordingsDoNotMakeANetworkCall() async {
-        let cache = UserProfileCache()
+        let cache = makeIsolatedCache()
         var cached = UserProfileSnapshot.empty
         cached.recentListens = [UserDetailFixtureProvider.listen(title: "Cached track")]
         cached.topRecordings = [UserDetailFixtureProvider.recording(title: "Cached ranked track")]
@@ -207,7 +207,7 @@ final class UserDetailModelTests: XCTestCase {
             user: SearchUser(username: "target-user"),
             token: "",
             provider: provider,
-            cache: UserProfileCache()
+            cache: makeIsolatedCache()
         )
 
         await model.load()
@@ -219,13 +219,48 @@ final class UserDetailModelTests: XCTestCase {
         XCTAssertTrue(model.snapshot.hasLoadedOverview)
     }
 
+    func testFailedPlayingNowRefreshDoesNotKeepEarlierLiveState() async {
+        let provider = UserDetailFixtureProvider()
+        let model = UserDetailModel(
+            user: SearchUser(username: "target-user"),
+            provider: provider,
+            cache: makeIsolatedCache()
+        )
+        await model.load()
+        XCTAssertNotNil(model.snapshot.playingNow)
+
+        await provider.setPlayingNowFailure(true)
+        await model.refresh()
+
+        XCTAssertNil(model.snapshot.playingNow)
+        XCTAssertEqual(model.snapshot.recentListens.first?.recording.title, "Recent track")
+    }
+
+    func testFailedHistoryRefreshDoesNotKeepEarlierLiveState() async {
+        let provider = UserDetailFixtureProvider()
+        let model = UserDetailModel(
+            user: SearchUser(username: "target-user"),
+            provider: provider,
+            cache: makeIsolatedCache()
+        )
+        await model.load()
+        XCTAssertNotNil(model.snapshot.playingNow)
+
+        await provider.failNextRecentRequest()
+        await model.refresh()
+
+        XCTAssertNil(model.snapshot.playingNow)
+        XCTAssertTrue(model.isShowingSavedProfile)
+        XCTAssertEqual(model.snapshot.recentListens.first?.recording.title, "Recent track")
+    }
+
     func testRepeatedAppearancesDoNotDuplicateRequests() async {
         let provider = UserDetailFixtureProvider()
         let model = UserDetailModel(
             user: SearchUser(username: "target-user"),
             token: "",
             provider: provider,
-            cache: UserProfileCache()
+            cache: makeIsolatedCache()
         )
 
         await model.load()
@@ -244,7 +279,7 @@ final class UserDetailModelTests: XCTestCase {
     }
 
     func testCacheFreshnessExpiresWithoutLosingStaleValue() async {
-        let cache = UserProfileCache(timeToLive: 300)
+        let cache = makeIsolatedCache(timeToLive: 300)
         var snapshot = UserProfileSnapshot.empty
         snapshot.hasLoadedOverview = true
         let savedAt = Date(timeIntervalSince1970: 1_000)
@@ -259,7 +294,7 @@ final class UserDetailModelTests: XCTestCase {
     }
 
     func testStaleTopArtistsRefreshWithoutReloadingFreshOverview() async {
-        let cache = UserProfileCache(timeToLive: 300)
+        let cache = makeIsolatedCache(timeToLive: 300)
         var cached = UserProfileSnapshot.empty
         cached.recentListens = [UserDetailFixtureProvider.listen(title: "Cached track")]
         cached.listenCount = 99
@@ -302,7 +337,7 @@ final class UserDetailModelTests: XCTestCase {
             user: SearchUser(username: "target-user"),
             token: "",
             provider: provider,
-            cache: UserProfileCache()
+            cache: makeIsolatedCache()
         )
 
         await model.load()
@@ -315,7 +350,7 @@ final class UserDetailModelTests: XCTestCase {
     }
 
     func testStaleTopReleasesRefreshWithoutReloadingFreshOverview() async {
-        let cache = UserProfileCache(timeToLive: 300)
+        let cache = makeIsolatedCache(timeToLive: 300)
         var cached = UserProfileSnapshot.empty
         cached.recentListens = [UserDetailFixtureProvider.listen(title: "Cached track")]
         cached.listenCount = 99
@@ -354,7 +389,7 @@ final class UserDetailModelTests: XCTestCase {
     }
 
     func testStaleTopRecordingsRefreshWithoutReloadingFreshOverview() async {
-        let cache = UserProfileCache(timeToLive: 300)
+        let cache = makeIsolatedCache(timeToLive: 300)
         var cached = UserProfileSnapshot.empty
         cached.recentListens = [UserDetailFixtureProvider.listen(title: "Cached track")]
         cached.listenCount = 99
@@ -393,7 +428,7 @@ final class UserDetailModelTests: XCTestCase {
     }
 
     func testFailedStaleTrackRefreshKeepsRowsAndAllowsExplicitRetry() async {
-        let cache = UserProfileCache(timeToLive: 300)
+        let cache = makeIsolatedCache(timeToLive: 300)
         var cached = UserProfileSnapshot.empty
         cached.recentListens = [UserDetailFixtureProvider.listen(title: "Cached track")]
         cached.topRecordings = [UserDetailFixtureProvider.recording(title: "Saved track")]
@@ -447,7 +482,7 @@ final class UserDetailModelTests: XCTestCase {
             user: SearchUser(username: "target-user"),
             token: "",
             provider: provider,
-            cache: UserProfileCache()
+            cache: makeIsolatedCache()
         )
 
         await model.load()
@@ -467,7 +502,7 @@ final class UserDetailModelTests: XCTestCase {
             user: SearchUser(username: "target-user"),
             token: "",
             provider: provider,
-            cache: UserProfileCache()
+            cache: makeIsolatedCache()
         )
 
         await model.load()
@@ -488,7 +523,7 @@ final class UserDetailModelTests: XCTestCase {
             user: SearchUser(username: "target-user"),
             token: "",
             provider: provider,
-            cache: UserProfileCache()
+            cache: makeIsolatedCache()
         )
         await model.load()
 
@@ -510,7 +545,7 @@ final class UserDetailModelTests: XCTestCase {
             user: SearchUser(username: "target-user"),
             token: "",
             provider: provider,
-            cache: UserProfileCache()
+            cache: makeIsolatedCache()
         )
         await model.load()
 
@@ -526,7 +561,7 @@ final class UserDetailModelTests: XCTestCase {
     }
 
     func testAlbumCacheSurvivesOverviewAndArtistSaves() async {
-        let cache = UserProfileCache()
+        let cache = makeIsolatedCache()
         var albumSnapshot = UserProfileSnapshot.empty
         albumSnapshot.topReleases = [UserDetailFixtureProvider.release(name: "Preserved album")]
         albumSnapshot.hasLoadedTopReleases = true
@@ -566,7 +601,7 @@ final class UserDetailModelTests: XCTestCase {
     }
 
     func testTrackCacheSurvivesOverviewArtistAndAlbumSaves() async {
-        let cache = UserProfileCache()
+        let cache = makeIsolatedCache()
         var trackSnapshot = UserProfileSnapshot.empty
         trackSnapshot.topRecordings = [UserDetailFixtureProvider.recording(title: "Preserved track")]
         trackSnapshot.hasLoadedTopRecordings = true
@@ -616,7 +651,7 @@ final class UserDetailModelTests: XCTestCase {
     }
 
     func testCacheEvictsLeastRecentlyUsedEntryAtCapacity() async {
-        let cache = UserProfileCache(maximumEntryCount: 2)
+        let cache = makeIsolatedCache(maximumEntryCount: 2)
         let start = Date(timeIntervalSince1970: 1_000)
         await cache.save(.empty, for: "first", scope: .authenticated(token: ""), now: start)
         await cache.save(.empty, for: "second", scope: .authenticated(token: ""), now: start.addingTimeInterval(1))
@@ -631,8 +666,10 @@ final class UserDetailModelTests: XCTestCase {
         XCTAssertNotNil(third)
     }
 
-    func testSameUserDifferentCredentialsDoNotReuseCachedProfile() async {
-        let cache = UserProfileCache()
+    func testPublicProfileCacheIsSharedAcrossAnonymousAndAuthenticatedCallers() async {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = UserProfileCache(rootDirectory: root)
         var cached = UserProfileSnapshot.empty
         cached.recentListens = [UserDetailFixtureProvider.listen(title: "First credential")]
         cached.topRecordings = [UserDetailFixtureProvider.recording(title: "First credential track")]
@@ -644,52 +681,303 @@ final class UserDetailModelTests: XCTestCase {
             scope: .authenticated(token: "first-token")
         )
 
-        let provider = UserDetailFixtureProvider()
-        let model = UserDetailModel(
-            user: SearchUser(username: "LISTENER"),
-            token: "second-token",
-            provider: provider,
-            cache: cache
-        )
-        await model.load()
-        await model.loadTopRecordings()
+        let cachedValue = await cache.value(for: "  LISTENER  ", scope: .authenticated(token: "second-token"))
 
+        XCTAssertEqual(cachedValue?.snapshot.recentListens.first?.recording.title, "First credential")
+        XCTAssertEqual(cachedValue?.snapshot.topRecordings.first?.title, "First credential track")
+    }
+
+    func testPublicProfileCacheRestoresStaleSectionsAfterRelaunch() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let savedAt = Date(timeIntervalSince1970: 10_000)
+        let now = savedAt.addingTimeInterval(301)
+        var snapshot = UserProfileSnapshot.empty
+        snapshot.recentListens = [UserDetailFixtureProvider.listen(title: "Saved history")]
+        snapshot.topArtists = [RankedArtist(mbid: nil, name: "Saved artist", listenCount: 3)]
+        snapshot.hasLoadedOverview = true
+        snapshot.hasLoadedTopArtists = true
+        snapshot.savedAt = savedAt
+
+        let initialCache = UserProfileCache(timeToLive: 300, rootDirectory: root)
+        await initialCache.save(snapshot, for: "  PUBLIC-LISTENER ", now: savedAt)
+        await initialCache.saveOverview(snapshot, for: "public-listener", now: now)
+
+        let relaunchedCache = UserProfileCache(timeToLive: 300, rootDirectory: root)
+        let restored = await relaunchedCache.value(for: "Public-Listener", now: now)
+        XCTAssertEqual(restored?.snapshot.recentListens.first?.recording.title, "Saved history")
+        XCTAssertEqual(restored?.snapshot.topArtists.first?.name, "Saved artist")
+        XCTAssertTrue(restored?.isOverviewFresh == true)
+        XCTAssertTrue(restored?.isTopArtistsFresh == false)
+    }
+
+    func testPublicProfileCacheNeverPersistsPlayingNow() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var snapshot = UserProfileSnapshot.empty
+        snapshot.recentListens = [UserDetailFixtureProvider.listen(title: "Saved history")]
+        let liveListen = UserDetailFixtureProvider.listen(title: "Live-only title")
+        snapshot.playingNow = Listen(
+            recording: liveListen.recording,
+            listenedAt: .now,
+            insertedAt: nil,
+            isPlayingNow: true
+        )
+        snapshot.hasLoadedOverview = true
+        let initialCache = UserProfileCache(rootDirectory: root)
+        await initialCache.save(snapshot, for: "listener")
+
+        let inMemory = await initialCache.value(for: "listener")
+        XCTAssertNil(inMemory?.snapshot.playingNow)
+        let cacheFileValue = await initialCache.fileURL(for: "listener")
+        let cacheFile = try XCTUnwrap(cacheFileValue)
+        XCTAssertFalse(String(decoding: try Data(contentsOf: cacheFile), as: UTF8.self).contains("Live-only title"))
+
+        let relaunchedCache = UserProfileCache(rootDirectory: root)
+        let restored = await relaunchedCache.value(for: "listener")
+        XCTAssertNil(restored?.snapshot.playingNow)
+        XCTAssertEqual(restored?.snapshot.recentListens.first?.recording.title, "Saved history")
+    }
+
+    func testPublicProfileCacheUsesCanonicalFixedSafeFilename() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = UserProfileCache(rootDirectory: root)
+        let firstURL = await cache.fileURL(for: "  MixedCase.Listener  ")
+        let secondURL = await cache.fileURL(for: "mixedcase.listener")
+        let first = try XCTUnwrap(firstURL)
+        let second = try XCTUnwrap(secondURL)
+
+        XCTAssertEqual(first, second)
+        XCTAssertEqual(first.pathExtension, "json")
+        XCTAssertFalse(first.lastPathComponent.localizedCaseInsensitiveContains("mixedcase"))
+        XCTAssertTrue(first.lastPathComponent.range(of: "^v1-[a-f0-9]{64}\\.json$", options: .regularExpression) != nil)
+    }
+
+    func testPublicProfileCacheNormalizesEquivalentUnicodeUsernames() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = UserProfileCache(rootDirectory: root)
+        let composedURL = await cache.fileURL(for: "Caf\u{00E9}")
+        let decomposedURL = await cache.fileURL(for: "Cafe\u{0301}")
+
+        XCTAssertEqual(try XCTUnwrap(composedURL), try XCTUnwrap(decomposedURL))
+    }
+
+    func testCorruptPublicProfileCacheIsDiscarded() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let initialCache = UserProfileCache(rootDirectory: root)
+        var snapshot = UserProfileSnapshot.empty
+        snapshot.hasLoadedOverview = true
+        await initialCache.save(snapshot, for: "listener")
+        let cachedURL = await initialCache.fileURL(for: "listener")
+        let url = try XCTUnwrap(cachedURL)
+        try Data("not a profile cache".utf8).write(to: url, options: .atomic)
+
+        let relaunchedCache = UserProfileCache(rootDirectory: root)
+        let restored = await relaunchedCache.value(for: "listener")
+        XCTAssertNil(restored)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path()))
+    }
+
+    func testOversizedPublicProfileCacheIsDiscarded() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = UserProfileCache(rootDirectory: root)
+        let cachedURL = await cache.fileURL(for: "listener")
+        let url = try XCTUnwrap(cachedURL)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(repeating: 0, count: 4 * 1_024 * 1_024 + 1).write(to: url, options: .atomic)
+
+        let relaunchedCache = UserProfileCache(rootDirectory: root)
+        let restored = await relaunchedCache.value(for: "listener")
+        XCTAssertNil(restored)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path()))
+    }
+
+    func testPublicProfileCacheEvictsDiskEntriesAtConfiguredBounds() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = UserProfileCache(maximumEntryCount: 2, rootDirectory: root)
+        for username in ["one", "two", "three"] {
+            var snapshot = UserProfileSnapshot.empty
+            snapshot.hasLoadedOverview = true
+            await cache.save(snapshot, for: username)
+        }
+        let firstURL = await cache.fileURL(for: "one")
+        let directory = try XCTUnwrap(firstURL?.deletingLastPathComponent())
+        let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.fileSizeKey])
+        let totalBytes = try files.reduce(0) { result, url in
+            result + (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
+        }
+        XCTAssertLessThanOrEqual(files.count, 2)
+        XCTAssertLessThanOrEqual(totalBytes, 16 * 1_024 * 1_024)
+    }
+
+    func testPublicProfileCacheAccessDoesNotExtendHardRetention() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let savedAt = Date(timeIntervalSince1970: 20_000)
+        var snapshot = UserProfileSnapshot.empty
+        snapshot.recentListens = [UserDetailFixtureProvider.listen(title: "Saved history")]
+        snapshot.hasLoadedOverview = true
+        snapshot.savedAt = savedAt
+        let cache = UserProfileCache(rootDirectory: root, hardRetention: 10)
+        await cache.save(snapshot, for: "listener", now: savedAt)
+
+        let recentlyAccessed = await cache.value(for: "listener", now: savedAt.addingTimeInterval(9))
+        XCTAssertNotNil(recentlyAccessed)
+
+        let relaunchedCache = UserProfileCache(rootDirectory: root, hardRetention: 10)
+        let expired = await relaunchedCache.value(for: "listener", now: savedAt.addingTimeInterval(10))
+        XCTAssertNil(expired)
+    }
+
+    func testRefreshingOverviewDoesNotExtendExpiredRankings() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let savedAt = Date(timeIntervalSince1970: 30_000)
+        var snapshot = UserProfileSnapshot.empty
+        snapshot.recentListens = [UserDetailFixtureProvider.listen(title: "Initial history")]
+        snapshot.topArtists = [RankedArtist(mbid: nil, name: "Expired artist", listenCount: 3)]
+        snapshot.hasLoadedOverview = true
+        snapshot.hasLoadedTopArtists = true
+        snapshot.savedAt = savedAt
+        let cache = UserProfileCache(rootDirectory: root, hardRetention: 10)
+        await cache.save(snapshot, for: "listener", now: savedAt)
+        await cache.saveOverview(snapshot, for: "listener", now: savedAt.addingTimeInterval(5))
+
+        var refreshedOverview = snapshot
+        refreshedOverview.recentListens = [UserDetailFixtureProvider.listen(title: "Fresh history")]
+        await cache.saveOverview(refreshedOverview, for: "listener", now: savedAt.addingTimeInterval(11))
+
+        let relaunchedCache = UserProfileCache(rootDirectory: root, hardRetention: 10)
+        let restored = await relaunchedCache.value(for: "listener", now: savedAt.addingTimeInterval(11))
+        XCTAssertEqual(restored?.snapshot.recentListens.first?.recording.title, "Fresh history")
+        XCTAssertTrue(restored?.snapshot.topArtists.isEmpty == true)
+        XCTAssertFalse(restored?.snapshot.hasLoadedTopArtists == true)
+        XCTAssertFalse(restored?.isTopArtistsFresh == true)
+        let cacheFileValue = await relaunchedCache.fileURL(for: "listener")
+        let cacheFile = try XCTUnwrap(cacheFileValue)
+        XCTAssertFalse(String(decoding: try Data(contentsOf: cacheFile), as: UTF8.self).contains("Expired artist"))
+    }
+
+    func testOversizedSavePreservesPreviousValidDiskSnapshot() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = UserProfileCache(rootDirectory: root, maximumEntryBytes: 4_096)
+        var previous = UserProfileSnapshot.empty
+        previous.recentListens = [UserDetailFixtureProvider.listen(title: "Previous history")]
+        previous.hasLoadedOverview = true
+        await cache.save(previous, for: "listener")
+
+        var oversized = previous
+        oversized.recentListens = [
+            UserDetailFixtureProvider.listen(title: String(repeating: "x", count: 8_192)),
+        ]
+        await cache.save(oversized, for: "listener")
+
+        let relaunchedCache = UserProfileCache(rootDirectory: root, maximumEntryBytes: 4_096)
+        let restored = await relaunchedCache.value(for: "listener")
+        XCTAssertEqual(restored?.snapshot.recentListens.first?.recording.title, "Previous history")
+    }
+
+    func testRemoveAllRecreatesUsableExcludedCacheDirectory() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = UserProfileCache(rootDirectory: root)
+        await cache.save(.empty, for: "before")
+
+        await cache.removeAll()
+        await cache.save(.empty, for: "after")
+
+        let savedFileURL = await cache.fileURL(for: "after")
+        let fileURL = try XCTUnwrap(savedFileURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path()))
+        let directoryValues = try fileURL.deletingLastPathComponent().resourceValues(forKeys: [.isExcludedFromBackupKey])
+        XCTAssertEqual(directoryValues.isExcludedFromBackup, true)
+    }
+
+    func testStalePublicProfileSurvivesRefreshFailureAndRetries() async {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = UserProfileCache(timeToLive: 0, rootDirectory: root)
+        var cached = UserProfileSnapshot.empty
+        cached.recentListens = [UserDetailFixtureProvider.listen(title: "Saved track")]
+        cached.hasLoadedOverview = true
+        await cache.save(cached, for: "target-user")
+        let provider = UserDetailFixtureProvider(recentFailures: 1)
+        let model = UserDetailModel(user: SearchUser(username: "target-user"), provider: provider, cache: cache)
+
+        await model.load()
+
+        XCTAssertEqual(model.snapshot.recentListens.first?.recording.title, "Saved track")
+        XCTAssertTrue(model.isShowingSavedProfile)
+        XCTAssertNotNil(model.profileRefreshErrorMessage)
+
+        await model.refresh()
         XCTAssertEqual(model.snapshot.recentListens.first?.recording.title, "Recent track")
-        XCTAssertEqual(model.snapshot.topRecordings.first?.title, "Fixture track")
-        let calls = await provider.callNames
-        XCTAssertEqual(calls, [
-            "recent:LISTENER", "playing:LISTENER", "count:LISTENER", "recordings:LISTENER",
-        ])
+        XCTAssertFalse(model.isShowingSavedProfile)
+        XCTAssertNil(model.profileRefreshErrorMessage)
+    }
+
+    private func makeIsolatedCache(
+        timeToLive: TimeInterval = 5 * 60,
+        maximumEntryCount: Int = 100
+    ) -> UserProfileCache {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        addTeardownBlock { try? FileManager.default.removeItem(at: root) }
+        return UserProfileCache(
+            timeToLive: timeToLive,
+            maximumEntryCount: maximumEntryCount,
+            rootDirectory: root
+        )
     }
 }
 
 private actor UserDetailFixtureProvider: ListeningProvider {
     private(set) var callNames: [String] = []
     private(set) var topRecordingCounts: [Int] = []
-    private let failPlayingNow: Bool
+    private var failPlayingNow: Bool
     private let failListenCount: Bool
     private let albumGate: UserDetailAlbumGate?
     private let recordingGate: UserDetailAlbumGate?
     private var recordingFailuresRemaining: Int
+    private var recentFailuresRemaining: Int
 
     init(
         failPlayingNow: Bool = false,
         failListenCount: Bool = false,
         albumGate: UserDetailAlbumGate? = nil,
         recordingGate: UserDetailAlbumGate? = nil,
-        recordingFailures: Int = 0
+        recordingFailures: Int = 0,
+        recentFailures: Int = 0
     ) {
         self.failPlayingNow = failPlayingNow
         self.failListenCount = failListenCount
         self.albumGate = albumGate
         self.recordingGate = recordingGate
         self.recordingFailuresRemaining = recordingFailures
+        self.recentFailuresRemaining = recentFailures
     }
 
     func validateToken() async throws -> String { "fixture" }
 
+    func setPlayingNowFailure(_ shouldFail: Bool) {
+        failPlayingNow = shouldFail
+    }
+
+    func failNextRecentRequest() {
+        recentFailuresRemaining = 1
+    }
+
     func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] {
         callNames.append("recent:\(username)")
+        if recentFailuresRemaining > 0 {
+            recentFailuresRemaining -= 1
+            throw UserDetailFixtureError.failed
+        }
         return [Self.listen(title: "Recent track")]
     }
 

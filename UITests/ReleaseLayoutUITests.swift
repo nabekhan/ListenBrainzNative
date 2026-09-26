@@ -125,6 +125,28 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "Profile-playlists-iPad-RTL")
     }
 
+    func testSavedPublicProfileNoticeExplainsOfflineFallback() throws {
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        defer { device.orientation = .portrait }
+
+        let app = launchFixture("-brainz-saved-profile-demo")
+        let window = app.windows.firstMatch
+        let screen = app.scrollViews["saved-profile-visual-qa-screen"]
+        let notice = app.descendants(matching: .any)["saved-profile-notice"]
+
+        XCTAssertTrue(screen.waitForExistence(timeout: 10))
+        XCTAssertTrue(notice.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Showing saved profile"].exists)
+        XCTAssertTrue(app.buttons["Try Again"].isHittable)
+        assertVisibleFrame(notice, in: window)
+        try assertNoAccessibilityIssues(
+            in: app,
+            auditTypes: semanticAuditTypes.union(.elementDetection)
+        )
+        keepScreenshot(named: "Saved-public-profile-offline")
+    }
+
     func testHomeMetricsFollowArabicRightToLeftLayout() throws {
         let device = XCUIDevice.shared
         device.orientation = .portrait
