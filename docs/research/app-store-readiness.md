@@ -12,6 +12,7 @@ Checked against current Apple and MetaBrainz documentation on 2026-09-25.
 | iPad resizing | iPad declares portrait, upside-down portrait, and both landscape orientations. The earlier archive warning is gone; `UIRequiresFullScreen` is not used. |
 | Launch screen | Xcode's generated launch-screen dictionary is present in the archived `Info.plist`. |
 | Public policy | Root `PRIVACY.md` explains local storage, direct service traffic, tracking, MetaBrainz logging, and user controls in plain language. |
+| In-app user controls | Profile opens a request-free native Settings surface with the same privacy policy, canonical ListenBrainz data controls, local appearance, and a confirmed disconnect action that removes the saved credential and listening snapshot without overstating residual safety-record cleanup. |
 | Confidential reports | GitHub private vulnerability reporting is enabled for the public repository, and the policy links directly to a new private advisory. |
 
 Apple permits iOS and iPadOS to generate icon variants from one 1024×1024 image and requires the App Store image in the 1024-point slot. Apple also requires every used Required Reason API category to be present in a bundled privacy manifest; `CA92.1` is the accepted reason for app-only UserDefaults. Current iPad guidance favors all orientations and resizable layouts rather than the deprecated `UIRequiresFullScreen` compatibility mode.

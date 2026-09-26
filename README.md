@@ -29,6 +29,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Recording feedback for authenticated users
 - Public and multi-recipient personal recording recommendations, with follower-only selection and optional 280-character notes
 - Cached snapshots for useful cold starts and degraded-network behavior
+- Native Profile-launched Settings with local System/Light/Dark appearance, lazy Connected Services, secure ListenBrainz account and privacy handoffs, project information, and transparent disconnect controls
 - Native iPhone/iPad navigation, Dynamic Type, dark mode, VoiceOver labels, and an iOS 26 bottom accessory with an iOS 18 fallback
 
 ## Requirements

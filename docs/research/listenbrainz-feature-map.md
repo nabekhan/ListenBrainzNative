@@ -61,8 +61,8 @@ Snapshot: 2026-09-25. `Y` means source/API evidence exists; `P` means partial or
 | Music Neighborhood/similar artists | Y | Y | P | — | — | P | P2 | Native canonical-artist shelf landed via the guarded public artist-page contract; the experimental Labs graph remains staged |
 | AI Brainz | Y | Y | — | — | — | — | P3 | Experimental; not first-release critical |
 | Offline listen linking/unmapped-data tools | Y | Y | P | ? | — | P | P3 | Advanced metadata maintenance |
-| Timezone, recommendation, player preferences | Y | Y | Y | P | — | P | P2 | Settings after core account experience |
-| Account data import/export/delete | Y | Y | P | P | — | P | P3 | Prefer secure web handoff where sensible |
+| Timezone, recommendation, player preferences | Y | Y | Y | P | — | P | P2 | Native request-free Settings owns local appearance; server-side preferences remain a secure authenticated web handoff rather than speculative client toggles or eager reads |
+| Account data import/export/delete | Y | Y | P | P | — | P | P3 | Native privacy and account destinations use the canonical secure web controls; disconnect removes the credential and saved listening snapshot while accurately disclosing retained mutation-safety records |
 | Flairs/donor identity | Y | Y | — | — | — | — | P3 | Preserve when showing user identity |
 
 ## Current product findings

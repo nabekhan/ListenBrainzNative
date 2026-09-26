@@ -1381,6 +1381,16 @@
         }
       }
     },
+    "About Brainz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About Brainz"
+          }
+        }
+      }
+    },
     "Account": {
       "localizations": {
         "en": {
@@ -1777,6 +1787,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Anyone can find and open this playlist."
+          }
+        }
+      }
+    },
+    "Appearance": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appearance"
           }
         }
       }
@@ -2271,6 +2291,16 @@
         }
       }
     },
+    "Brainz connects directly to ListenBrainz and related metadata services. It has no ads or tracking software.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brainz connects directly to ListenBrainz and related metadata services. It has no ads or tracking software."
+          }
+        }
+      }
+    },
     "Brainz couldn’t check this playlist. Check again before deleting it.": {
       "localizations": {
         "en": {
@@ -2397,6 +2427,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Brainz refreshed a different playlist. Try again before changing tracks."
+          }
+        }
+      }
+    },
+    "Brainz will remove the saved token and listening snapshot from this device. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data won’t be deleted.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brainz will remove the saved token and listening snapshot from this device. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data won’t be deleted."
           }
         }
       }
@@ -3011,6 +3051,16 @@
         }
       }
     },
+    "Connected": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected"
+          }
+        }
+      }
+    },
     "Connected services": {
       "localizations": {
         "en": {
@@ -3157,6 +3207,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn’t delete playlist"
+          }
+        }
+      }
+    },
+    "Couldn’t disconnect account": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t disconnect account"
+          }
+        }
+      }
+    },
+    "Couldn’t leave public profile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t leave public profile"
           }
         }
       }
@@ -3927,6 +3997,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Disconnect account"
+          }
+        }
+      }
+    },
+    "Disconnect from ListenBrainz?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnect from ListenBrainz?"
+          }
+        }
+      }
+    },
+    "Disconnecting removes the saved token and listening snapshot. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data stay unchanged.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnecting removes the saved token and listening snapshot. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data stay unchanged."
+          }
+        }
+      }
+    },
+    "Disconnecting…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnecting…"
           }
         }
       }
@@ -5101,6 +5201,16 @@
         }
       }
     },
+    "Keep connected": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep connected"
+          }
+        }
+      }
+    },
     "Keep this mix": {
       "localizations": {
         "en": {
@@ -5327,6 +5437,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Leave public profile"
+          }
+        }
+      }
+    },
+    "Leaving profile…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leaving profile…"
+          }
+        }
+      }
+    },
+    "Leaving returns to sign-in. You can browse this public profile again at any time.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leaving returns to sign-in. You can browse this public profile again at any time."
           }
         }
       }
@@ -7181,12 +7311,42 @@
         }
       }
     },
+    "Manage Brainz and ListenBrainz settings": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage Brainz and ListenBrainz settings"
+          }
+        }
+      }
+    },
     "Manage services on ListenBrainz": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Manage services on ListenBrainz"
+          }
+        }
+      }
+    },
+    "Manage settings on ListenBrainz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage settings on ListenBrainz"
+          }
+        }
+      }
+    },
+    "Manage your timezone, player, token, data export, and account deletion on ListenBrainz.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage your timezone, player, token, data export, and account deletion on ListenBrainz."
           }
         }
       }
@@ -8487,6 +8647,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Not following anyone yet"
+          }
+        }
+      }
+    },
+    "Not now": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not now"
           }
         }
       }
@@ -9841,6 +10011,16 @@
         }
       }
     },
+    "Privacy & data": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy & data"
+          }
+        }
+      }
+    },
     "Private": {
       "localizations": {
         "en": {
@@ -10057,6 +10237,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Read %@’s review on CritiqueBrainz"
+          }
+        }
+      }
+    },
+    "Read Brainz privacy policy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read Brainz privacy policy"
+          }
+        }
+      }
+    },
+    "Read open-source notices": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read open-source notices"
           }
         }
       }
@@ -10871,6 +11071,26 @@
         }
       }
     },
+    "Report a problem": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report a problem"
+          }
+        }
+      }
+    },
+    "Report a security issue privately": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report a security issue privately"
+          }
+        }
+      }
+    },
     "Report unavailable": {
       "localizations": {
         "en": {
@@ -11017,6 +11237,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Return to your most recent listening history"
+          }
+        }
+      }
+    },
+    "Review MetaBrainz privacy choices": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review MetaBrainz privacy choices"
           }
         }
       }
@@ -11807,6 +12037,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Services linked to this ListenBrainz account"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
           }
         }
       }
@@ -12687,6 +12927,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sunday"
+          }
+        }
+      }
+    },
+    "System": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
           }
         }
       }
@@ -14621,6 +14871,16 @@
         }
       }
     },
+    "Use your device appearance or choose a theme for Brainz.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use your device appearance or choose a theme for Brainz."
+          }
+        }
+      }
+    },
     "Use your personal token for private actions such as feedback and deleting listens.": {
       "localizations": {
         "en": {
@@ -14637,6 +14897,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "User token"
+          }
+        }
+      }
+    },
+    "Username": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Username"
           }
         }
       }
@@ -14667,6 +14937,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uses one album cover"
+          }
+        }
+      }
+    },
+    "Version": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
           }
         }
       }
@@ -14711,12 +14991,12 @@
         }
       }
     },
-    "View services linked to this account": {
+    "View source code": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "View services linked to this account"
+            "value": "View source code"
           }
         }
       }

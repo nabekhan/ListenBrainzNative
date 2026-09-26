@@ -44,7 +44,6 @@ struct ProfileView: View {
                         selection: $selectedPlaylistCategory,
                         viewer: model.account
                     )
-                    accountSection
                 }
                 .padding(.horizontal, 18)
                 .padding(.bottom, 40)
@@ -59,18 +58,23 @@ struct ProfileView: View {
             .task { await pins.load() }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
-            .mediaDestinations(model: model)
-            .alert(
-                "Account",
-                isPresented: Binding(
-                    get: { session.errorMessage != nil },
-                    set: { if !$0 { session.errorMessage = nil } }
-                )
-            ) {
-                Button("OK", role: .cancel) { session.errorMessage = nil }
-            } message: {
-                Text(session.errorMessage ?? "")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        SettingsView(
+                            account: model.account,
+                            session: session,
+                            connectedServicesProvider: connectedServicesProvider,
+                            connectedServicesCache: connectedServicesCache
+                        )
+                    } label: {
+                        Label("Settings", systemImage: "gearshape")
+                            .labelStyle(.iconOnly)
+                    }
+                    .accessibilityHint("Manage Brainz and ListenBrainz settings")
+                }
             }
+            .mediaDestinations(model: model)
         }
     }
 
@@ -194,44 +198,4 @@ struct ProfileView: View {
         }
     }
 
-    private var accountSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "Account")
-            if model.account.isAuthenticated {
-                NavigationLink {
-                    ConnectedServicesView(
-                        account: model.account,
-                        provider: connectedServicesProvider,
-                        cache: connectedServicesCache
-                    )
-                } label: {
-                    Label("Connected services", systemImage: "link")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(14)
-                        .background(.thinMaterial, in: .rect(cornerRadius: 14, style: .continuous))
-                }
-                .accessibilityHint("View services linked to this account")
-            }
-            Link(destination: Self.listenBrainzProfileURL(for: model.account.username)) {
-                Label("Open profile on ListenBrainz", systemImage: "arrow.up.right.square")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(.thinMaterial, in: .rect(cornerRadius: 14, style: .continuous))
-            }
-            Button(role: .destructive) {
-                Task { await session.signOut() }
-            } label: {
-                Label(model.account.isAuthenticated ? "Disconnect account" : "Leave public profile", systemImage: "rectangle.portrait.and.arrow.right")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(.thinMaterial, in: .rect(cornerRadius: 14, style: .continuous))
-            }
-        }
-    }
-
-    private static func listenBrainzProfileURL(for username: String) -> URL {
-        let allowed = CharacterSet.urlPathAllowed.subtracting(CharacterSet(charactersIn: "/?#%"))
-        let encodedUsername = username.addingPercentEncoding(withAllowedCharacters: allowed) ?? username
-        return URL(string: "https://listenbrainz.org/user/\(encodedUsername)/")!
-    }
 }

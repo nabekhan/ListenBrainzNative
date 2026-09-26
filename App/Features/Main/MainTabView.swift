@@ -592,6 +592,16 @@ struct MainTabView: View {
                     )
                 }
                 .environment(pins)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-settings-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-settings-public-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-settings-disconnect-demo")
+            {
+                SettingsVisualQAScreen(
+                    isPublic: ProcessInfo.processInfo.arguments.contains("-brainz-settings-public-demo"),
+                    showsDisconnectConfirmation: ProcessInfo.processInfo.arguments.contains(
+                        "-brainz-settings-disconnect-demo"
+                    )
+                )
             } else {
                 mainContent
             }

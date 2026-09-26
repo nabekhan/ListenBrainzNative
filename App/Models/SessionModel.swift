@@ -167,6 +167,10 @@ final class SessionModel {
                 state = .active(Account(username: "visual-home", token: ""))
                 return true
             }
+            if arguments.contains("-brainz-settings-public-demo") {
+                state = .active(Account(username: "public-music-explorer", token: ""))
+                return true
+            }
             if arguments.contains("-brainz-profile-playlists-demo")
                 || arguments.contains("-brainz-profile-playlists-collab-demo")
                 || arguments.contains("-brainz-profile-playlists-visitor-demo")
@@ -194,6 +198,8 @@ final class SessionModel {
                 || arguments.contains("-brainz-connected-services-demo")
                 || arguments.contains("-brainz-connected-services-empty-demo")
                 || arguments.contains("-brainz-connected-services-failure-demo")
+                || arguments.contains("-brainz-settings-demo")
+                || arguments.contains("-brainz-settings-disconnect-demo")
                 || arguments.contains("-brainz-log-listen-demo")
                 || arguments.contains("-brainz-log-listen-playing-now-demo")
                 || arguments.contains("-brainz-log-listen-success-demo")
