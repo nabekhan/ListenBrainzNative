@@ -5,10 +5,10 @@ Snapshot: 2026-09-25.
 ## Portable checkpoint
 
 - Branch: `main`
-- Last validated product commit: `46a0fc3cbda4235243fe1830511ee7091b9736cd`
+- Last validated product commit: `b0d1a62841b0d83faa134d55eeaca3e37e4c6f49`
 - Remote: `https://github.com/nabekhan/ListenBrainzNative.git`
 - Remote `main` is verified after this handoff note is pushed.
-- No change in this checkpoint is partially applied. The release-layout and request-audit slice is complete for the audited source.
+- No change in this checkpoint is partially applied. The playlist-export, release-layout, and request-audit slices are complete for the audited source.
 
 Directional navigation now uses semantic forward/backward SF Symbols, including correctly mirrored History controls and disclosures. The Feed hero ornament and avatar badge use semantic RTL placement rather than physical offsets. A generated UI-test bundle covers iPad portrait, device rotation/landscape survival, RTL History, RTL Feed, RTL Profile playlists, and expanded pseudo-localization with captured screenshots.
 
@@ -18,19 +18,24 @@ Profile now opens a native Settings destination rather than retaining account co
 
 Brainz now has an original opaque 1024×1024 production icon in a native asset catalog. `project.yml` owns the `AppIcon` setting and all four iPad orientations, and the generated Xcode project includes both the catalog and `PrivacyInfo.xcprivacy` as app resources. The root privacy policy explains device storage, signed-in service traffic, residual mutation-safety records, feature-specific content visibility, MetaBrainz logging, and user controls. GitHub private vulnerability reporting is enabled and the policy links directly to it.
 
+Loaded playlists can now be exported as normalized `.jspf.json` files without a provider call, token access, refresh, or other network request. Export preserves the loaded track order and duplicates, includes canonical ListenBrainz and MusicBrainz identifiers only when valid, and warns before sharing a private playlist. Bounded preflight rejects oversized data before document encoding, filenames are path-safe and byte-bounded, protected UUID-scoped staging writes atomically, and completed staging directories are pruned after 24 hours. The format is an interoperable snapshot rather than a raw server-response archive.
+
+`project.yml` now declares the app target's `productName: Brainz`, keeping regenerated product and scheme references aligned with the shipping name. Two consecutive XcodeGen generations produced the same project-and-scheme hash.
+
 The bundled manifest declares no tracking; the app-local `UserDefaults` reason `CA92.1`; linked User ID, Product Interaction, Other User Content, and Search History; and conservatively linked Other Diagnostic Data for MetaBrainz's retained access logs. User ID and Product Interaction include Product Personalization, while Other Diagnostic Data includes Analytics. Signed-in ListenBrainz searches are treated as linked because the client sends the token; MusicBrainz music searches remain token-free.
 
 Final evidence:
 
-- The complete app suite passes 616/616 with no failure, skip, or expected failure. The final guarded UI suite passes 6/6; its log contains no ListenBrainz, MusicBrainz, or Cover Art Archive hostname and no request-guard violation.
+- The complete app suite passes 628/628 with no failure, skip, or expected failure. The final guarded UI suite passes 7/7; its log contains no ListenBrainz, MusicBrainz, or Cover Art Archive hostname and no request-guard violation.
+- The focused playlist-export suite passes 12/12, covering deterministic encoding, order and duplicates, canonical metadata, empty playlists, provenance rejection, byte-bounded Unicode filenames, adversarial scalar counts, track and artist-cardinality limits, control-heavy text, protected staging, and stale cleanup.
 - Deterministic request-audit coverage includes read/mutation success, failure, pre-start and in-flight cancellation, exact coalescing, queued cancellation, mutation serialization, and the maximum of two independent read transports.
-- `scripts/localizations.sh check` compiler-verifies all 1,607 production keys in the sole string catalog. This slice introduced no user-facing copy.
-- A generic Release simulator build succeeds and its executable contains both `x86_64` and `arm64`. Its sole warning is the expected AppIntents metadata skip because the app has no AppIntents dependency. XcodeGen regeneration is byte-stable.
-- Independent request-safety and final-diff reviews report READY. The final review confirms that the guard closes Feed and persisted-tab hidden-read paths without changing Release behavior, while preserving the explicit limitation around future gate-bypassing code.
+- `scripts/localizations.sh check` compiler-verifies all 1,616 production keys in the sole string catalog, including every new export-sheet string.
+- A clean generic Release simulator build succeeds and its executable contains both `x86_64` and `arm64`. Its sole packaging warning is the expected AppIntents metadata skip because the app has no AppIntents dependency. XcodeGen regeneration is byte-stable.
+- Independent correctness, security, request-safety, and final-diff reviews report READY. The export review confirms local-only behavior, bounded encoding and staging, canonical identifiers, duplicate preservation, centralized localization, and truthful privacy documentation.
 - The earlier final unsigned generic-device Release archive remains valid for the unchanged packaging surface. Its bundle contains the 1024-point AppIcon renditions, opaque 120×120 phone and 152×152 iPad icons, the generated launch-screen dictionary, and no orientation-validation warning.
 - The archived privacy manifest is byte-identical to source (`bd70e057eabd5df561467219da1f29a96230ddaa858965aa0db44e79a1c89428`) and parses with the reviewed categories, purposes, and required-reason declaration.
 - The installed icon was visually accepted on an iPhone 17 Pro simulator in light and dark Home Screen appearances with the system-applied mask.
-- The prior release-foundation checkpoint passed the unchanged vendored ListenBrainzKit baseline at 146/146 across 20 suites. No live credential, production request, or mutation was used for either that checkpoint or this Settings slice.
+- The prior release-foundation checkpoint passed the unchanged vendored ListenBrainzKit baseline at 146/146 across 20 suites. No live credential, production request, or mutation was used for this export checkpoint.
 - Independent packaging and security reviews report READY after correcting authenticated Search History linkage, personalization purposes, retained-log disclosure, disconnect-retention wording, and the confidential-reporting route.
 
 ## Resume on another Mac
@@ -48,7 +53,9 @@ Install Xcode and a compatible iOS simulator runtime before building. Reinstall 
 
 ## Next product work
 
-The next bounded work should close the remaining release-candidate evidence without inventing new server traffic: physical-iPad and Stage Manager/resizable-window checks, actual translated locales once translations exist, VoiceOver/performance/crash profiling, and authenticated disposable-account testing. After those foundations, evaluate current public MusicKit playback and content-resolution APIs as a separate researched slice; keep automatic capture, background submission, and offline retry distinct from the read-first product. Do not begin the proposed libspot/librespot experiment until the core client is complete, and then only on its own branch after licensing, Spotify policy, authentication, maintenance, and App Store review.
+The next bounded work should close the remaining release-candidate evidence without inventing new server traffic: configure an Apple Developer account/team and Apple Development identity, then perform isolated physical-device, authenticated disposable-account, physical-iPad, Stage Manager/resizable-window, translated-locale, VoiceOver, performance, and crash checks. A paired iPhone with Developer Mode was available at this checkpoint, but Xcode had no developer account, team, or Apple Development identity, so no physical build or install was attempted.
+
+After those foundations, evaluate current public MusicKit playback and content-resolution APIs as a separate researched slice; keep service playlist import/export, automatic capture, background submission, and offline retry distinct from the read-first product. Do not begin the proposed libspot/librespot experiment until the core client is complete, and then only on its own branch after licensing, Spotify policy, authentication, maintenance, and App Store review.
 
 Before release, choose the final bundle identifier, signing team, version/build values, and distribution identity; make a signed archive; reconcile App Store Connect privacy answers with the shipped report; complete TestFlight processing; and perform physical-device, authenticated disposable-account, Stage Manager/resizing, direct-network-bypass, performance, accessibility, and translated-locale QA. The current checkpoint proves the source-controlled release foundation and guarded simulator layout pass, not App Store readiness.
 
@@ -62,6 +69,6 @@ Playback/content resolution, MusicKit capture, and Spotify-linked playback remai
 
 ## Local cleanup
 
-This checkpoint installed no package, browser, runtime, host application, or additional skill. It reused Xcode 27, the iOS 27 runtime, ephemeral Nix XcodeGen, `jq`, and Apple command-line tools. Six named Derived Data directories plus the scoped result bundles, logs, and screenshots were moved through the dedicated `Brainz-Release-Hardening-20260925-Codex` Trash bucket; that bucket alone was permanently deleted, reclaiming 3.1 GB without inspecting or changing unrelated Trash. `Brainz Release iPad QA` (`A158E3AE-84B5-4F6D-9AC5-49070852AFF9`) was terminated, shut down, and deleted. An exact audit found no matching artifact, cleanup bucket, or simulator afterward.
+This checkpoint installed no package, browser, runtime, host application, or additional skill. It reused Xcode 27, the iOS 27 runtime, ephemeral Nix XcodeGen, `jq`, the existing UX-writing skill, and Apple command-line tools. Exact playlist-export Derived Data, result bundles, logs, screenshots, and temporary export directories were moved through dedicated Trash buckets and those buckets alone were permanently deleted, reclaiming 3,559,916 KiB without inspecting or changing unrelated Trash. The disposable `Brainz Playlist Export QA` simulator was terminated, shut down, and deleted. An exact post-cleanup audit found no matching artifact, temporary export directory, localization working directory, or simulator.
 
 The source checkout, Git history, tracked Xcode project, `project.yml`, Apple Command Line Tools, shared Nix store, pre-existing developer data, user settings, credentials, personal files, and unrelated Trash contents remain preserved. Exact artifact paths and cleanup commands are recorded in `environment-changes.md`.
