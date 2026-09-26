@@ -469,11 +469,13 @@ struct MainTabView: View {
                 .environment(pins)
                 .environment(\.similarArtistsProvider, VisualQASimilarArtistsProvider())
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reader-demo") {
+                let provider = VisualQACritiqueBrainzReviewsProvider(result: .populated)
                 NavigationStack {
                     CritiqueBrainzReviewReaderView(
                         summary: VisualQACritiqueBrainzReviewsProvider.readerDemo(
                             entity: .init(kind: .artist, mbid: Self.popularityPreviewArtist.mbid!)
-                        )
+                        ),
+                        provider: provider
                     )
                 }
                 .environment(pins)
@@ -1345,7 +1347,8 @@ struct MainTabView: View {
                     )
                 ],
                 averageRating: 3.8,
-                ratingCount: 19
+                ratingCount: 19,
+                pagination: .init(totalCount: 7, offset: 0, limit: 5, rawRowCount: 5)
             )
         }
 
@@ -1381,6 +1384,45 @@ struct MainTabView: View {
                     ratingCount: 12
                 )
             }
+        }
+
+        func reviewPage(for entity: CritiqueBrainzEntity, offset: Int, limit: Int) async throws -> CritiqueBrainzReviewPage? {
+            await Task.yield()
+            guard case .populated = result, offset == 5, limit == 20 else {
+                if case .failure = result { throw VisualQACritiqueBrainzError.unavailable }
+                return nil
+            }
+            let reviews = [
+                CritiqueBrainzReview(
+                    id: UUID(uuidString: "6f929dc2-4557-440c-9252-989e88a9fb1c")!,
+                    author: "Jo",
+                    licenseID: "CC BY 4.0",
+                    licenseURL: URL(string: "https://creativecommons.org/licenses/by/4.0/"),
+                    rating: 3,
+                    text: "A beautiful first half, though the final stretch feels less certain.",
+                    publishedAt: .now.addingTimeInterval(-181 * 86_400)
+                ),
+                CritiqueBrainzReview(
+                    id: UUID(uuidString: "74812d29-ec5b-4f5d-a2bb-55967d61ec34")!,
+                    author: "Priya",
+                    licenseID: nil,
+                    licenseURL: nil,
+                    rating: 2,
+                    text: "The production is polished, but the songs never quite settle into a shape of their own.",
+                    publishedAt: .now.addingTimeInterval(-260 * 86_400)
+                ),
+            ]
+            let pagination = CritiqueBrainzReviewPagination(totalCount: 7, offset: offset, limit: limit, rawRowCount: reviews.count)
+            return CritiqueBrainzReviewPage(
+                summary: CritiqueBrainzReviewSummary(
+                    entity: entity,
+                    reviews: reviews,
+                    averageRating: 4.6,
+                    ratingCount: 12,
+                    pagination: pagination
+                ),
+                pagination: pagination
+            )
         }
     }
 

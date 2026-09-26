@@ -357,6 +357,19 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "Recording-feedback-iPad-accessibility-audit")
     }
 
+    func testCritiqueBrainzReaderLoadsOnlyAfterExplicitTap() throws {
+        let app = launchFixture("-brainz-critiquebrainz-reader-demo")
+        let loadMore = app.buttons["Load more reviews"]
+
+        XCTAssertTrue(loadMore.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["Priya"].exists)
+        loadMore.tap()
+
+        XCTAssertTrue(app.staticTexts["Priya"].waitForExistence(timeout: 10))
+        XCTAssertFalse(loadMore.exists)
+        keepScreenshot(named: "CritiqueBrainz-reader-local-append")
+    }
+
     private var semanticAuditTypes: XCUIAccessibilityAuditType {
         [
             .hitRegion,

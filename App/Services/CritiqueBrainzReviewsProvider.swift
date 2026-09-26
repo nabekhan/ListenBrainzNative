@@ -2,6 +2,13 @@ import Foundation
 
 protocol CritiqueBrainzReviewsProviding: Sendable {
     func reviews(for entity: CritiqueBrainzEntity) async throws -> CritiqueBrainzReviewSummary?
+    func reviewPage(for entity: CritiqueBrainzEntity, offset: Int, limit: Int) async throws -> CritiqueBrainzReviewPage?
+}
+
+extension CritiqueBrainzReviewsProviding {
+    func reviewPage(for entity: CritiqueBrainzEntity, offset: Int, limit: Int) async throws -> CritiqueBrainzReviewPage? {
+        throw CritiqueBrainzProviderError.invalidResponse
+    }
 }
 
 enum CritiqueBrainzRequestGate {
@@ -44,10 +51,13 @@ enum CritiqueBrainzTransport {
         return URLSession(configuration: configuration, delegate: redirectDelegate, delegateQueue: nil)
     }()
 
-    static func reviews(for entity: CritiqueBrainzEntity) async throws -> Data {
+    static func reviews(for entity: CritiqueBrainzEntity, offset: Int, limit: Int) async throws -> Data {
         var components = URLComponents(string: "https://critiquebrainz.org/ws/1/review/")!
         components.queryItems = [
-            URLQueryItem(name: "limit", value: "5"),
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "offset", value: String(offset)),
+            URLQueryItem(name: "sort", value: "published_on"),
+            URLQueryItem(name: "sort_order", value: "desc"),
             URLQueryItem(name: "entity_id", value: entity.mbid.uuidString.lowercased()),
             URLQueryItem(name: "entity_type", value: entity.kind.rawValue),
         ]
@@ -118,22 +128,51 @@ enum CritiqueBrainzTransport {
 }
 
 struct CritiqueBrainzReviewsProvider: CritiqueBrainzReviewsProviding {
-    private let gate: RequestGate
-    private let transport: @Sendable (CritiqueBrainzEntity) async throws -> Data
+    private static let reviewSort = "published_on"
+    private static let reviewSortOrder = "desc"
 
-    init(gate: RequestGate = CritiqueBrainzRequestGate.shared) {
+    private let gate: RequestGate
+    private let pageCache: EntityDetailCache<CritiqueBrainzReviewPageCacheKey, CritiqueBrainzReviewPage>
+    private let transport: @Sendable (CritiqueBrainzEntity, Int, Int) async throws -> Data
+
+    init(
+        gate: RequestGate = CritiqueBrainzRequestGate.shared,
+        pageCache: EntityDetailCache<CritiqueBrainzReviewPageCacheKey, CritiqueBrainzReviewPage> = CritiqueBrainzReviewCaches.pages
+    ) {
         self.gate = gate
+        self.pageCache = pageCache
         transport = CritiqueBrainzTransport.reviews
     }
 
-    init(gate: RequestGate, transport: @escaping @Sendable (CritiqueBrainzEntity) async throws -> Data) {
+    init(
+        gate: RequestGate,
+        pageCache: EntityDetailCache<CritiqueBrainzReviewPageCacheKey, CritiqueBrainzReviewPage> = CritiqueBrainzReviewCaches.pages,
+        transport: @escaping @Sendable (CritiqueBrainzEntity, Int, Int) async throws -> Data
+    ) {
         self.gate = gate
+        self.pageCache = pageCache
         self.transport = transport
     }
 
     func reviews(for entity: CritiqueBrainzEntity) async throws -> CritiqueBrainzReviewSummary? {
-        let data: Data = try await gate.read(for: .critiqueBrainzReviews(.anonymous, entity: entity)) {
-            try await transport(entity)
+        try await reviewPage(for: entity, offset: 0, limit: 5)?.summary
+    }
+
+    func reviewPage(for entity: CritiqueBrainzEntity, offset: Int, limit: Int) async throws -> CritiqueBrainzReviewPage? {
+        guard offset >= 0, (1...50).contains(limit) else { throw CritiqueBrainzProviderError.invalidResponse }
+        let cacheKey = CritiqueBrainzReviewPageCacheKey(
+            entity: entity,
+            offset: offset,
+            limit: limit,
+            sort: Self.reviewSort,
+            sortOrder: Self.reviewSortOrder
+        )
+        if let cached = await pageCache.value(for: cacheKey), cached.isFresh {
+            return cached.value
+        }
+
+        let data: Data = try await gate.read(for: .critiqueBrainzReviews(.anonymous, entity: entity, offset: offset, limit: limit, sort: Self.reviewSort, sortOrder: Self.reviewSortOrder)) {
+            try await transport(entity, offset, limit)
         } deferralForError: { error in
             switch error {
             case let CritiqueBrainzProviderError.rateLimited(seconds): .seconds(max(seconds, 1))
@@ -141,7 +180,16 @@ struct CritiqueBrainzReviewsProvider: CritiqueBrainzReviewsProviding {
             default: nil
             }
         }
-        return try CritiqueBrainzReviewDecoder.decode(data, for: entity)
+        let page = try CritiqueBrainzReviewDecoder.decodePage(
+            data,
+            for: entity,
+            expectedOffset: offset,
+            expectedLimit: limit
+        )
+        if let page {
+            await pageCache.save(page, for: cacheKey)
+        }
+        return page
     }
 }
 
@@ -168,6 +216,48 @@ enum CritiqueBrainzReviewDecoder {
             averageRating: validAverage,
             ratingCount: averageCount
         )
+    }
+
+    static func decodePage(
+        _ data: Data,
+        for entity: CritiqueBrainzEntity,
+        expectedOffset: Int,
+        expectedLimit: Int
+    ) throws -> CritiqueBrainzReviewPage? {
+        guard expectedOffset >= 0, (1...50).contains(expectedLimit),
+              let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let rawRows = root["reviews"] as? [Any],
+              let count = integer(root["count"]), count >= 0,
+              let offset = integer(root["offset"]), offset == expectedOffset,
+              let limit = integer(root["limit"]), limit == expectedLimit,
+              rawRows.count <= limit
+        else { throw CritiqueBrainzProviderError.invalidResponse }
+        guard count >= offset,
+              rawRows.isEmpty || count >= offset + rawRows.count
+        else {
+            throw CritiqueBrainzProviderError.invalidResponse
+        }
+
+        let rows = rawRows.compactMap { $0 as? [String: Any] }
+        let reviews = rows.compactMap { review(from: $0, expected: entity) }
+        let averageObject = root["average_rating"] as? [String: Any]
+        let average = number(root["average_rating"]) ?? number(averageObject?["rating"])
+        let averageCount = integer(averageObject?["count"]) ?? 0
+        let validAverage = average.flatMap { $0.isFinite && (1...5).contains($0) ? $0 : nil }
+        let pagination = CritiqueBrainzReviewPagination(
+            totalCount: count,
+            offset: offset,
+            limit: limit,
+            rawRowCount: rawRows.count
+        )
+        let summary = CritiqueBrainzReviewSummary(
+            entity: entity,
+            reviews: reviews,
+            averageRating: validAverage,
+            ratingCount: averageCount,
+            pagination: pagination
+        )
+        return CritiqueBrainzReviewPage(summary: summary, pagination: pagination)
     }
 
     private static func review(from row: [String: Any], expected: CritiqueBrainzEntity) -> CritiqueBrainzReview? {
@@ -214,8 +304,10 @@ enum CritiqueBrainzReviewDecoder {
     private static func uuid(_ value: Any?) -> UUID? { string(value).flatMap(UUID.init(uuidString:)) }
     private static func string(_ value: Any?) -> String? { value as? String }
     private static func number(_ value: Any?) -> Double? {
-        if value is Bool { return nil }
-        if let value = value as? NSNumber { return value.doubleValue }
+        if let value = value as? NSNumber {
+            guard CFGetTypeID(value) != CFBooleanGetTypeID() else { return nil }
+            return value.doubleValue
+        }
         if let value = value as? String { return Double(value) }
         return nil
     }
@@ -253,6 +345,10 @@ enum CritiqueBrainzReviewDecoder {
 
 enum CritiqueBrainzReviewCaches {
     static let values = EntityDetailCache<CritiqueBrainzReviewCacheKey, CritiqueBrainzReviewSummary>(
+        timeToLive: 5 * 60,
+        maximumEntryCount: 100
+    )
+    static let pages = EntityDetailCache<CritiqueBrainzReviewPageCacheKey, CritiqueBrainzReviewPage>(
         timeToLive: 5 * 60,
         maximumEntryCount: 100
     )

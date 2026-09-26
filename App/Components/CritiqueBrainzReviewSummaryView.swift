@@ -80,7 +80,7 @@ struct CritiqueBrainzReviewSummaryView: View {
 
                 if !summary.reviews.isEmpty {
                     NavigationLink {
-                        CritiqueBrainzReviewReaderView(summary: summary)
+                        CritiqueBrainzReviewReaderView(summary: summary, provider: provider)
                     } label: {
                         Label(
                             String(localized: "Read \(summary.reviews.count) reviews"),
@@ -136,23 +136,36 @@ struct CritiqueBrainzReviewSummaryView: View {
     }
 }
 
-/// A local, value-only reader for the short review page already loaded by the
-/// summary card. It intentionally has no provider or task of its own.
+/// A local reader for the summary page. It makes no request when opened; a
+/// deliberately tapped control can append one bounded server page at a time.
 struct CritiqueBrainzReviewReaderView: View {
+    @Environment(\.critiqueBrainzReviewsProvider) private var environmentProvider
+    @State private var model: CritiqueBrainzReviewReaderModel?
+    @State private var loadMoreTask: Task<Void, Never>?
+
     let summary: CritiqueBrainzReviewSummary
+    private let providedProvider: (any CritiqueBrainzReviewsProviding)?
+
+    init(summary: CritiqueBrainzReviewSummary, provider: (any CritiqueBrainzReviewsProviding)? = nil) {
+        self.summary = summary
+        providedProvider = provider
+    }
 
     var body: some View {
+        let displayedSummary = model?.summary ?? summary
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
                 Text("Published reviews from CritiqueBrainz")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                ForEach(summary.reviews) { review in
+                ForEach(displayedSummary.reviews) { review in
                     CritiqueBrainzReviewCard(review: review, truncatesText: false)
                 }
 
-                Link(destination: summary.entity.browseURL) {
+                paginationControl
+
+                Link(destination: displayedSummary.entity.browseURL) {
                     Label("View on CritiqueBrainz", systemImage: "arrow.up.right.square")
                 }
                 .buttonStyle(.bordered)
@@ -163,8 +176,49 @@ struct CritiqueBrainzReviewReaderView: View {
         }
         .navigationTitle("CritiqueBrainz reviews")
         .navigationBarTitleDisplayMode(.inline)
+        .task(id: summary) {
+            model = CritiqueBrainzReviewReaderModel(
+                summary: summary,
+                provider: providedProvider ?? environmentProvider
+            )
+        }
+        .onDisappear {
+            loadMoreTask?.cancel()
+            loadMoreTask = nil
+            model?.cancel()
+        }
     }
 
+    @ViewBuilder
+    private var paginationControl: some View {
+        if let model {
+            if model.isLoadingMore {
+                Label("Loading more reviews…", systemImage: "arrow.down.circle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .accessibilityElement(children: .combine)
+            } else if let message = model.loadMoreMessage {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("More reviews couldn’t load.")
+                        .font(.subheadline.weight(.semibold))
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Try again") { startLoadingMore() }
+                        .buttonStyle(.bordered)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else if model.canLoadMore {
+                Button("Load more reviews") { startLoadingMore() }
+                    .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private func startLoadingMore() {
+        loadMoreTask?.cancel()
+        loadMoreTask = Task { await model?.loadMore() }
+    }
 }
 
 private struct CritiqueBrainzReviewCard: View {

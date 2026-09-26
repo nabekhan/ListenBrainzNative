@@ -6931,6 +6931,16 @@
         }
       }
     },
+    "Load more reviews": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load more reviews"
+          }
+        }
+      }
+    },
     "Load newest playlists": {
       "localizations": {
         "en": {
@@ -7097,6 +7107,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loading more recommendations…"
+          }
+        }
+      }
+    },
+    "Loading more reviews…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading more reviews…"
           }
         }
       }
@@ -7657,6 +7677,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "More playlists are available"
+          }
+        }
+      }
+    },
+    "More reviews couldn’t load.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More reviews couldn’t load."
           }
         }
       }

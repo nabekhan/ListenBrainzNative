@@ -124,6 +124,81 @@ final class CritiqueBrainzReviewModelTests: XCTestCase {
         let callCount = await provider.callCount()
         XCTAssertEqual(callCount, 1)
     }
+
+    func testReaderDoesNotFetchUntilLoadMoreAndAppendsByRawOffset() async {
+        let entity = CritiqueBrainzEntity(kind: .artist, mbid: UUID())
+        let existing = CritiqueBrainzReview(id: UUID(), author: "Existing", licenseID: nil, licenseURL: nil, rating: 5, text: "First", publishedAt: nil)
+        let duplicate = CritiqueBrainzReview(id: existing.id, author: "Duplicate", licenseID: nil, licenseURL: nil, rating: 4, text: "Duplicate", publishedAt: nil)
+        let appended = CritiqueBrainzReview(id: UUID(), author: "New", licenseID: nil, licenseURL: nil, rating: 4, text: "Second", publishedAt: nil)
+        let initialPagination = CritiqueBrainzReviewPagination(totalCount: 100, offset: 0, limit: 5, rawRowCount: 5)
+        let initial = CritiqueBrainzReviewSummary(entity: entity, reviews: [existing], averageRating: nil, pagination: initialPagination)
+        let pagePagination = CritiqueBrainzReviewPagination(totalCount: 100, offset: 5, limit: 20, rawRowCount: 2)
+        let page = CritiqueBrainzReviewPage(
+            summary: .init(entity: entity, reviews: [duplicate, appended, appended], averageRating: nil, pagination: pagePagination),
+            pagination: pagePagination
+        )
+        let provider = CritiqueBrainzPagingFixtureProvider(results: [.success(page)])
+        let reader = CritiqueBrainzReviewReaderModel(summary: initial, provider: provider)
+
+        let initialPageCalls = await provider.pageCallCount()
+        XCTAssertEqual(initialPageCalls, 0)
+        XCTAssertTrue(reader.canLoadMore)
+        await reader.loadMore()
+
+        let requestedOffsets = await provider.requestedOffsets()
+        XCTAssertEqual(requestedOffsets, [5])
+        XCTAssertEqual(reader.summary.reviews.map(\.id), [existing.id, appended.id])
+        XCTAssertTrue(reader.hasReachedEnd, "A short raw server page ends pagination even when valid reviews were appended.")
+    }
+
+    func testReaderFailurePreservesRowsAndExplicitRetryRecovers() async {
+        let entity = CritiqueBrainzEntity(kind: .artist, mbid: UUID())
+        let existing = CritiqueBrainzReview(id: UUID(), author: "Existing", licenseID: nil, licenseURL: nil, rating: 5, text: "First", publishedAt: nil)
+        let initialPagination = CritiqueBrainzReviewPagination(totalCount: 25, offset: 0, limit: 5, rawRowCount: 5)
+        let initial = CritiqueBrainzReviewSummary(entity: entity, reviews: [existing], averageRating: nil, pagination: initialPagination)
+        let next = CritiqueBrainzReview(id: UUID(), author: "Next", licenseID: nil, licenseURL: nil, rating: 4, text: "Second", publishedAt: nil)
+        let pagination = CritiqueBrainzReviewPagination(totalCount: 25, offset: 5, limit: 20, rawRowCount: 20)
+        let provider = CritiqueBrainzPagingFixtureProvider(results: [
+            .failure,
+            .success(.init(summary: .init(entity: entity, reviews: [next], averageRating: nil, pagination: pagination), pagination: pagination)),
+        ])
+        let reader = CritiqueBrainzReviewReaderModel(summary: initial, provider: provider)
+
+        await reader.loadMore()
+        XCTAssertEqual(reader.summary.reviews, [existing])
+        XCTAssertEqual(reader.loadMoreMessage, "Fixture request failed.")
+        XCTAssertTrue(reader.canRetryLoadMore)
+
+        await reader.loadMore()
+        XCTAssertEqual(reader.summary.reviews.map(\.id), [existing.id, next.id])
+        XCTAssertNil(reader.loadMoreMessage)
+        let requestedOffsets = await provider.requestedOffsets()
+        XCTAssertEqual(requestedOffsets, [5, 5])
+    }
+
+    func testReaderStopsWhenAValidServerPageAddsNoNewReviews() async {
+        let entity = CritiqueBrainzEntity(kind: .artist, mbid: UUID())
+        let existing = CritiqueBrainzReview(id: UUID(), author: "Existing", licenseID: nil, licenseURL: nil, rating: 5, text: "First", publishedAt: nil)
+        let initial = CritiqueBrainzReviewSummary(
+            entity: entity,
+            reviews: [existing],
+            averageRating: nil,
+            pagination: .init(totalCount: 50, offset: 0, limit: 5, rawRowCount: 5)
+        )
+        let pagePagination = CritiqueBrainzReviewPagination(totalCount: 50, offset: 5, limit: 20, rawRowCount: 20)
+        let duplicatePage = CritiqueBrainzReviewPage(
+            summary: .init(entity: entity, reviews: [existing], averageRating: nil, pagination: pagePagination),
+            pagination: pagePagination
+        )
+        let provider = CritiqueBrainzPagingFixtureProvider(results: [.success(duplicatePage)])
+        let reader = CritiqueBrainzReviewReaderModel(summary: initial, provider: provider)
+
+        await reader.loadMore()
+
+        XCTAssertEqual(reader.summary.reviews, [existing])
+        XCTAssertTrue(reader.hasReachedEnd)
+        XCTAssertFalse(reader.canLoadMore)
+    }
 }
 
 @MainActor
@@ -132,7 +207,7 @@ final class CritiqueBrainzReviewProviderTests: XCTestCase {
         let firstEntity = CritiqueBrainzEntity(kind: .artist, mbid: UUID())
         let secondEntity = CritiqueBrainzEntity(kind: .recording, mbid: firstEntity.mbid)
         let transport = CritiqueBrainzTransportFixture(data: validJSON(entity: firstEntity))
-        let provider = CritiqueBrainzReviewsProvider(gate: RequestGate(minimumInterval: .zero), transport: { _ in try await transport.value() })
+        let provider = CritiqueBrainzReviewsProvider(gate: RequestGate(minimumInterval: .zero), transport: { _, _, _ in try await transport.value() })
         async let one = provider.reviews(for: firstEntity)
         async let two = provider.reviews(for: firstEntity)
         _ = try await [one, two]
@@ -154,7 +229,7 @@ final class CritiqueBrainzReviewProviderTests: XCTestCase {
                 maximumConcurrentReads: 1,
                 pacesReadStarts: true
             ),
-            transport: { entity in
+            transport: { entity, _, _ in
                 await starts.record()
                 return validJSON(entity: entity)
             }
@@ -190,6 +265,81 @@ final class CritiqueBrainzReviewProviderTests: XCTestCase {
             CritiqueBrainzTransport.maximumRetryAfterSeconds
         )
     }
+
+    func testPageDecoderRequiresMatchingMetadataAndPreservesContinuation() throws {
+        let entity = CritiqueBrainzEntity(kind: .artist, mbid: UUID())
+        let page = try XCTUnwrap(
+            CritiqueBrainzReviewDecoder.decodePage(
+                pagedJSON(entity: entity, count: 40, offset: 5, limit: 20, rowIDs: (0 ..< 20).map { _ in UUID() }),
+                for: entity,
+                expectedOffset: 5,
+                expectedLimit: 20
+            )
+        )
+        XCTAssertEqual(page.pagination.totalCount, 40)
+        XCTAssertEqual(page.pagination.nextOffset, 25)
+        XCTAssertEqual(page.summary.pagination, page.pagination)
+
+        XCTAssertThrowsError(
+            try CritiqueBrainzReviewDecoder.decodePage(
+                pagedJSON(entity: entity, count: 40, offset: 6, limit: 20, rowIDs: [UUID()]),
+                for: entity,
+                expectedOffset: 5,
+                expectedLimit: 20
+            )
+        )
+        XCTAssertThrowsError(
+            try CritiqueBrainzReviewDecoder.decodePage(
+                pagedJSON(entity: entity, count: 4, offset: 5, limit: 20, rowIDs: []),
+                for: entity,
+                expectedOffset: 5,
+                expectedLimit: 20
+            )
+        )
+    }
+
+    func testPageIdentityIncludesOffsetLimitAndStableSort() async throws {
+        let entity = CritiqueBrainzEntity(kind: .artist, mbid: UUID())
+        let transport = CritiqueBrainzPagedTransportFixture()
+        let provider = CritiqueBrainzReviewsProvider(
+            gate: RequestGate(minimumInterval: .zero),
+            transport: { entity, offset, limit in
+                await transport.record(offset: offset, limit: limit)
+                return pagedJSON(entity: entity, count: 100, offset: offset, limit: limit, rowIDs: [UUID()])
+            }
+        )
+
+        async let first = provider.reviewPage(for: entity, offset: 0, limit: 5)
+        async let repeated = provider.reviewPage(for: entity, offset: 0, limit: 5)
+        _ = try await (first, repeated)
+        _ = try await provider.reviewPage(for: entity, offset: 5, limit: 20)
+
+        let calls = await transport.calls()
+        XCTAssertEqual(calls, ["0:5", "5:20"])
+    }
+
+    func testCompletedPageIsReusedFromTheBoundedFreshCache() async throws {
+        let entity = CritiqueBrainzEntity(kind: .artist, mbid: UUID())
+        let transport = CritiqueBrainzPagedTransportFixture()
+        let cache = EntityDetailCache<CritiqueBrainzReviewPageCacheKey, CritiqueBrainzReviewPage>(
+            timeToLive: 5 * 60,
+            maximumEntryCount: 2
+        )
+        let provider = CritiqueBrainzReviewsProvider(
+            gate: RequestGate(minimumInterval: .zero),
+            pageCache: cache,
+            transport: { entity, offset, limit in
+                await transport.record(offset: offset, limit: limit)
+                return pagedJSON(entity: entity, count: 25, offset: offset, limit: limit, rowIDs: [UUID()])
+            }
+        )
+
+        _ = try await provider.reviewPage(for: entity, offset: 5, limit: 20)
+        _ = try await provider.reviewPage(for: entity, offset: 5, limit: 20)
+
+        let calls = await transport.calls()
+        XCTAssertEqual(calls, ["5:20"])
+    }
 }
 
 private actor CritiqueBrainzFixtureProvider: CritiqueBrainzReviewsProviding {
@@ -211,6 +361,12 @@ private actor CritiqueBrainzTransportFixture {
     init(data: Data) { self.data = data }
     func value() async throws -> Data { calls += 1; try await ContinuousClock().sleep(for: .milliseconds(25)); return data }
     func callCount() -> Int { calls }
+}
+
+private actor CritiqueBrainzPagedTransportFixture {
+    private var values: [String] = []
+    func record(offset: Int, limit: Int) { values.append("\(offset):\(limit)") }
+    func calls() -> [String] { values }
 }
 
 private actor CritiqueBrainzStartRecorder {
@@ -237,10 +393,47 @@ private actor CritiqueBrainzSlowFixtureProvider: CritiqueBrainzReviewsProviding 
     }
 }
 
+private actor CritiqueBrainzPagingFixtureProvider: CritiqueBrainzReviewsProviding {
+    enum Result: Sendable { case success(CritiqueBrainzReviewPage?), failure }
+    private let results: [Result]
+    private var pageCalls = 0
+    private var offsets: [Int] = []
+
+    init(results: [Result]) { self.results = results }
+
+    func reviews(for entity: CritiqueBrainzEntity) async throws -> CritiqueBrainzReviewSummary? { nil }
+
+    func reviewPage(for entity: CritiqueBrainzEntity, offset: Int, limit: Int) async throws -> CritiqueBrainzReviewPage? {
+        offsets.append(offset)
+        let index = pageCalls
+        pageCalls += 1
+        switch results.indices.contains(index) ? results[index] : results.last! {
+        case let .success(page): return page
+        case .failure: throw CritiqueBrainzFixtureError.failed
+        }
+    }
+
+    func pageCallCount() -> Int { pageCalls }
+    func requestedOffsets() -> [Int] { offsets }
+}
+
 private enum CritiqueBrainzFixtureError: LocalizedError { case failed; var errorDescription: String? { "Fixture request failed." } }
 
 private func validJSON(entity: CritiqueBrainzEntity) -> Data {
     Data("""
-    {"reviews":[{"id":"a4c81c31-0e10-4ee0-bd37-842c5dcdf7ad","entity_id":"\(entity.mbid.uuidString)","entity_type":"\(entity.kind.rawValue)","rating":4}]}
+    {"count":1,"offset":0,"limit":5,"reviews":[{"id":"a4c81c31-0e10-4ee0-bd37-842c5dcdf7ad","entity_id":"\(entity.mbid.uuidString)","entity_type":"\(entity.kind.rawValue)","rating":4}]}
     """.utf8)
+}
+
+private func pagedJSON(
+    entity: CritiqueBrainzEntity,
+    count: Int,
+    offset: Int,
+    limit: Int,
+    rowIDs: [UUID]
+) -> Data {
+    let rows = rowIDs.map {
+        "{\"id\":\"\($0.uuidString)\",\"entity_id\":\"\(entity.mbid.uuidString)\",\"entity_type\":\"\(entity.kind.rawValue)\",\"rating\":4}"
+    }.joined(separator: ",")
+    return Data("{\"count\":\(count),\"offset\":\(offset),\"limit\":\(limit),\"reviews\":[\(rows)]}".utf8)
 }

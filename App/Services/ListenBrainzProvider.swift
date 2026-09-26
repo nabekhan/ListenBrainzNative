@@ -779,8 +779,19 @@ actor RequestGate {
                 )
             }
         }
-        static func critiqueBrainzReviews(_ scope: ReadScope, entity: CritiqueBrainzEntity) -> Self {
-            endpoint(scope, .critiqueBrainzReviews, [entity.kind.rawValue, uuid(entity.mbid), "5"])
+        static func critiqueBrainzReviews(
+            _ scope: ReadScope,
+            entity: CritiqueBrainzEntity,
+            offset: Int,
+            limit: Int,
+            sort: String,
+            sortOrder: String
+        ) -> Self {
+            endpoint(
+                scope,
+                .critiqueBrainzReviews,
+                [entity.kind.rawValue, uuid(entity.mbid), String(offset), String(limit), sort, sortOrder]
+            )
         }
         static func connectedServices(_ scope: ReadScope, user: String) -> Self {
             endpoint(scope, .connectedServices, [userID(user)])
