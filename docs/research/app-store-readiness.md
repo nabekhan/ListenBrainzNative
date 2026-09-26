@@ -2,6 +2,12 @@
 
 Checked against current Apple and MetaBrainz documentation on 2026-09-25.
 
+## Immediate distribution target
+
+The first release target is a **re-signable sideload IPA**, not TestFlight. The repository will produce and inspect an unsigned IPA payload that a compatible signing workflow can re-sign with the user's own provisioning identity. The unsigned artifact is not directly installable and must never be described as a finished signed release.
+
+This changes release sequencing, not product quality: the first signed sideload build still needs physical-device, authenticated disposable-account, accessibility, performance, crash, privacy, and request-safety checks. TestFlight and App Store Connect remain a later distribution path and should stay compatible where that does not complicate the sideload workflow.
+
 ## Completed release foundation
 
 | Requirement | Current evidence |
@@ -10,7 +16,7 @@ Checked against current Apple and MetaBrainz documentation on 2026-09-25.
 | Device archive | An unsigned generic-iOS Release archive succeeds for arm64. Its app bundle contains `Assets.car`, opaque 120×120 and 152×152 icon files, and `CFBundleIconName = AppIcon`. |
 | Privacy manifest | `PrivacyInfo.xcprivacy` is copied byte-for-byte to the app-bundle root. It declares no tracking, the app-local UserDefaults reason `CA92.1`, and conservative core-functionality data categories. |
 | iPad resizing | iPad declares portrait, upside-down portrait, and both landscape orientations. The earlier archive warning is gone; `UIRequiresFullScreen` is not used. |
-| Simulator layout regression | Seven guarded XCUITests exercise iPad portrait, device rotation/landscape survival, RTL History controls, RTL Feed, RTL Profile playlists, expanded pseudo-localization, and the private-playlist export disclosure/share affordance. Screenshots were inspected at 820×1180, and directional navigation uses semantic SF Symbols. |
+| Simulator layout and accessibility regression | Nine guarded XCUITests exercise iPad portrait, device rotation/landscape survival, RTL History controls, RTL Feed, RTL Profile playlists, expanded pseudo-localization, private-playlist export, Home metric semantics, and Recording feedback state. The two semantic fixtures run native hit-region, description, trait, and element-detection audits, and directional navigation uses semantic SF Symbols. |
 | Request diagnostics | The process-wide ListenBrainz gate exposes a Release-enabled in-memory snapshot containing only fixed feature categories, lifecycle counters, and current/maximum transport counts. Guarded visual fixtures fail before any request-gated transport can start. |
 | Physical-device preflight | A paired current iPhone is reachable and has Developer Mode enabled. The Mac has no configured Xcode developer account, development team, or Apple Development signing identity, so no app was built for or installed on the phone. The intended first device run uses the isolated QA bundle, local fixtures, and fail-fast request guard. |
 | Launch screen | Xcode's generated launch-screen dictionary is present in the archived `Info.plist`. |
@@ -44,14 +50,19 @@ The icon is original project artwork generated with OpenAI's built-in image-gene
 
 The single source deliberately omits hand-authored dark and tinted variants. Apple documents that the system can generate those treatments; the installed icon was visually accepted in both light and dark Home Screen appearances.
 
-## Still required before release
+## Still required before the sideload release
 
-- configure an Apple Developer account and Apple Development identity for the isolated physical-device QA build, then choose the final bundle identifier, signing team, version/build number, and distribution certificate;
-- make a signed archive, export or upload it, inspect Apple's generated privacy report, and complete TestFlight processing;
-- enter App Store name, subtitle, description, category, age rating, support URL, privacy-policy URL, screenshots, and review notes;
-- confirm the App Store privacy questionnaire against the shipped binary and service behavior;
-- run physical-device and authenticated disposable-account QA without real user data or replaying mutations;
-- repeat rotation, Stage Manager/resizable-window, and RTL checks on physical iPad hardware, and test actual translations once they exist; and
-- complete final accessibility, performance, crash, direct-network-bypass, and regression passes on the signed release candidate.
+- create a deterministic unsigned IPA containing only `Payload/Brainz.app`, validate its bundle metadata, arm64 executable, resources, privacy manifest, and unsigned state, then verify that the same archive packages identically;
+- re-sign that payload with an appropriate provisioning identity and keep certificates, profiles, and signing logs out of source control;
+- install the signed IPA on a physical iPhone and run authenticated disposable-account QA without real user data or replaying mutations;
+- repeat rotation, Stage Manager/resizable-window, RTL, and VoiceOver checks on physical iPad hardware where available, and test actual translations once they exist; and
+- complete final accessibility, performance, crash, direct-network-bypass, request-volume, and regression passes on the signed candidate.
 
-The source-level release foundation and first guarded iPad/RTL pass are complete; this does not claim App Store or TestFlight readiness.
+## Later App Store distribution work
+
+- configure the final Apple Developer team, bundle identifier, version/build sequence, and distribution identity;
+- make a signed archive, inspect Apple's generated privacy report, and complete TestFlight processing;
+- enter App Store metadata, screenshots, review notes, support and privacy URLs, age rating, and category; and
+- reconcile the App Store privacy questionnaire with the shipped binary and observed service behavior.
+
+The source-level release foundation and guarded simulator pass are complete; this does not yet claim an installable sideload IPA, TestFlight readiness, or App Store readiness.

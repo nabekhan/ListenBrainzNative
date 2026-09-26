@@ -87,6 +87,7 @@ struct PlaylistTrackRow: View {
                 cornerRadius: 8
             )
             .frame(width: 48, height: 48)
+            .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(track.recording.title)
@@ -113,6 +114,7 @@ struct PlaylistTrackRow: View {
                 Image(systemName: "chevron.forward")
                     .font(.caption2.bold())
                     .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
         }
     }
@@ -126,6 +128,7 @@ struct PlaylistTrackRow: View {
                     cornerRadius: 8
                 )
                 .frame(width: 48, height: 48)
+                .accessibilityHidden(true)
 
                 Text(String(localized: "Track \(track.position.formatted())"))
                     .font(.caption.monospacedDigit())
@@ -136,6 +139,7 @@ struct PlaylistTrackRow: View {
                     Image(systemName: "chevron.forward")
                         .font(.caption2.bold())
                         .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
                 }
             }
 

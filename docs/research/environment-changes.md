@@ -1,8 +1,16 @@
 # Environment and cleanup log
 
-Updated: 2026-09-25
+Updated: 2026-09-26
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
+
+## Accessibility and sideload release alignment — 2026-09-26
+
+- `.derived-data/accessibility-compile`, `.derived-data/accessibility-ui`, `.derived-data/accessibility-ui-full`, `.derived-data/accessibility-ui-full-acceptance`, `.derived-data/accessibility-ui-full-final`, `.derived-data/accessibility-ui-full-final2`, and `.derived-data/accessibility-unit-final` held iterative compiler checks, the final 9/9 guarded UI result, and the final 628/628 app-test result.
+- `Brainz Accessibility QA` (`F16335B6-4E0D-4EA2-A8D2-2FDBD7D85A19`) was the disposable iOS 27 simulator used for deterministic semantic and accessibility auditing. `~/Library/Logs/DiagnosticReports/Brainz-2026-09-25-232202.ips` was the fixture crash report that identified an unintended default popularity read before the fixture received a local provider.
+- `scripts/localizations.sh sync` and `check` each used a unique `brainz-localizations.*` temporary root and removed it automatically. The final compiler-backed Release check matches all 1,618 production keys.
+- No package, browser, runtime, host application, credential, or additional skill was installed. Existing Xcode 27, the iOS 27 runtime, `jq`, Apple command-line tools, and the existing UX Writing skill were reused.
+- Cleanup completed after acceptance: the seven exact Derived Data directories and one exact crash report were moved through a dedicated `Brainz-Accessibility-20260925.*` Trash bucket; that bucket verified eight top-level entries and was then deleted in the same bounded shell, reclaiming 2,947,928 KiB. The simulator was shut down and deleted. A post-cleanup audit found no matching repository artifact, temporary localization root, crash report, or simulator. macOS denied a later broad enumeration of unrelated Trash, which was neither required nor modified.
 
 ## Release layout and request hardening — 2026-09-25
 

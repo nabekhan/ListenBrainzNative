@@ -294,6 +294,7 @@ final class SessionModel {
                 return true
             }
             if arguments.contains("-brainz-recording-share-demo")
+                || arguments.contains("-brainz-recording-feedback-demo")
                 || arguments.contains("-brainz-external-source-demo")
             {
                 state = .active(Account(username: "visual-qa", token: "visual-qa"))

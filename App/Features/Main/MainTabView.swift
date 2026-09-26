@@ -237,9 +237,18 @@ struct MainTabView: View {
                     ))
                 return
             }
-            if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo") {
+            if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo")
+            {
                 let visualAccount = Account(username: "visual-qa", token: "visual-qa")
-                _model = State(initialValue: ListeningModel(account: visualAccount))
+                let visualModel = ListeningModel(
+                    account: visualAccount,
+                    provider: VisualQAPopularityListeningProvider()
+                )
+                if ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo") {
+                    visualModel.feedback[Self.recommendationPreviewListen.recording.id] = .love
+                }
+                _model = State(initialValue: visualModel)
                 _pins = State(
                     initialValue: PinsModel(
                         account: visualAccount,
@@ -254,7 +263,20 @@ struct MainTabView: View {
 
     var body: some View {
         #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("-brainz-log-listen-demo")
+            if ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo") {
+                NavigationStack {
+                    RecordingDetailView(
+                        recording: Self.recommendationPreviewListen.recording,
+                        model: model
+                    )
+                }
+                .environment(pins)
+                .environment(\.popularityProvider, VisualQAPopularityProvider())
+                .environment(
+                    \.critiqueBrainzReviewsProvider,
+                    VisualQACritiqueBrainzReviewsProvider(result: .populated)
+                )
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-log-listen-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-log-listen-success-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-log-listen-indeterminate-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-log-listen-error-demo")
@@ -620,6 +642,7 @@ struct MainTabView: View {
                 #if DEBUG
                     let arguments = ProcessInfo.processInfo.arguments
                     guard !arguments.contains("-brainz-recording-share-demo"),
+                        !arguments.contains("-brainz-recording-feedback-demo"),
                         !arguments.contains("-brainz-external-source-demo"),
                         !arguments.contains("-brainz-feed-demo"),
                         !arguments.contains("-brainz-recommendations-demo")
@@ -655,7 +678,8 @@ struct MainTabView: View {
                     {
                         selectedTab = .history
                     }
-                    if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo"),
+                    if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo")
+                        || ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo"),
                         presentedListen == nil
                     {
                         presentedListen = Self.recommendationPreviewListen
@@ -673,10 +697,7 @@ struct MainTabView: View {
             }
             .environment(pins)
             .sheet(item: $presentedListen) { listen in
-                NavigationStack {
-                    RecordingDetailView(recording: listen.recording, model: model)
-                }
-                .environment(pins)
+                recordingDetail(for: listen)
             }
             .alert(
                 "ListenBrainz",
@@ -697,6 +718,34 @@ struct MainTabView: View {
             } message: {
                 Text(pins.actionError ?? model.actionError ?? "")
             }
+    }
+
+    @ViewBuilder
+    private func recordingDetail(for listen: Listen) -> some View {
+        #if DEBUG
+            if isRecordingDetailFixture {
+                NavigationStack {
+                    RecordingDetailView(recording: listen.recording, model: model)
+                }
+                .environment(pins)
+                .environment(\.popularityProvider, VisualQAPopularityProvider())
+                .environment(
+                    \.critiqueBrainzReviewsProvider,
+                    VisualQACritiqueBrainzReviewsProvider(result: .populated)
+                )
+            } else {
+                recordingDetailContent(for: listen)
+            }
+        #else
+            recordingDetailContent(for: listen)
+        #endif
+    }
+
+    private func recordingDetailContent(for listen: Listen) -> some View {
+        NavigationStack {
+            RecordingDetailView(recording: listen.recording, model: model)
+        }
+        .environment(pins)
     }
 
     @ViewBuilder
@@ -770,6 +819,11 @@ struct MainTabView: View {
             ProcessInfo.processInfo.arguments.contains("-brainz-home-pin-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-home-pin-empty-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-home-pin-failure-demo")
+        }
+
+        private var isRecordingDetailFixture: Bool {
+            ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo")
         }
 
         private static func visualRadioSaveJournal() -> RadioPlaylistSaveJournal {

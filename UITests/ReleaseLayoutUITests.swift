@@ -131,6 +131,91 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "Playlist-export-iPad-private")
     }
 
+    func testHomeFixtureExposesMetricSemantics() throws {
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        defer { device.orientation = .portrait }
+
+        let app = launchFixture("-brainz-home-pin-demo")
+        let totalListens = app.descendants(matching: .any)["home-total-listens-metric"]
+        let topArtist = app.descendants(matching: .any)["home-top-artist-metric"]
+
+        XCTAssertTrue(totalListens.waitForExistence(timeout: 10))
+        XCTAssertEqual(totalListens.label, "Total listens")
+        XCTAssertFalse(accessibilityValue(of: totalListens).isEmpty)
+        XCTAssertTrue(topArtist.waitForExistence(timeout: 10))
+        XCTAssertEqual(topArtist.label, "Top artist")
+        XCTAssertEqual(accessibilityValue(of: topArtist), "Harbor Lights")
+
+        try assertNoAccessibilityIssues(
+            in: app,
+            auditTypes: semanticAuditTypes.union(.elementDetection)
+        )
+        keepScreenshot(named: "Home-iPad-accessibility-audit")
+    }
+
+    func testRecordingFeedbackExposesSelectionState() throws {
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        defer { device.orientation = .portrait }
+
+        let app = launchFixture("-brainz-recording-feedback-demo")
+        let love = app.buttons["recording-feedback-love"]
+        let hate = app.buttons["recording-feedback-hate"]
+
+        XCTAssertTrue(love.waitForExistence(timeout: 10))
+        XCTAssertEqual(love.label, "Love")
+        XCTAssertEqual(accessibilityValue(of: love), "Selected")
+        XCTAssertTrue(love.isSelected)
+        XCTAssertTrue(hate.exists)
+        XCTAssertEqual(hate.label, "Hate")
+        XCTAssertEqual(accessibilityValue(of: hate), "Not selected")
+        XCTAssertFalse(hate.isSelected)
+
+        let scrollView = app.scrollViews.firstMatch
+        for _ in 0 ..< 3 where !love.isHittable {
+            scrollView.swipeUp()
+        }
+        XCTAssertTrue(love.isHittable)
+        try assertNoAccessibilityIssues(
+            in: app,
+            auditTypes: semanticAuditTypes.union(.elementDetection)
+        )
+        keepScreenshot(named: "Recording-feedback-iPad-accessibility-audit")
+    }
+
+    private var semanticAuditTypes: XCUIAccessibilityAuditType {
+        [
+            .hitRegion,
+            .sufficientElementDescription,
+            .trait,
+        ]
+    }
+
+    private func accessibilityValue(of element: XCUIElement) -> String {
+        (element.value as? String) ?? ""
+    }
+
+    private func assertNoAccessibilityIssues(
+        in app: XCUIApplication,
+        auditTypes: XCUIAccessibilityAuditType
+    ) throws {
+        var descriptions: [String] = []
+        try app.performAccessibilityAudit(for: auditTypes) { issue in
+            let element = issue.element
+            descriptions.append(
+                """
+                \(issue.compactDescription): \(issue.detailedDescription)
+                elementType=\(element.map { String(describing: $0.elementType) } ?? "none") \
+                identifier=\(element?.identifier ?? "") label=\(element?.label ?? "") \
+                value=\(element.map(self.accessibilityValue) ?? "") frame=\(element.map { String(describing: $0.frame) } ?? "none")
+                """
+            )
+            return true
+        }
+        XCTAssertTrue(descriptions.isEmpty, descriptions.joined(separator: "\n\n"))
+    }
+
     private func launchFixture(
         _ fixture: String,
         additionalArguments: [String] = []

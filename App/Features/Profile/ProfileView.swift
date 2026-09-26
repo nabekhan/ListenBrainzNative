@@ -79,7 +79,8 @@ struct ProfileView: View {
     }
 
     private var profileHeader: some View {
-        VStack(spacing: 16) {
+        let listenCount = model.snapshot.listenCount?.formatted()
+        return VStack(spacing: 16) {
             ZStack {
                 Circle().fill(AppTheme.heroGradient)
                 Text(model.account.username.prefix(1).uppercased())
@@ -101,7 +102,11 @@ struct ProfileView: View {
             }
 
             HStack(spacing: 0) {
-                profileMetric(model.snapshot.listenCount?.formatted() ?? "—", label: "Listens")
+                profileMetric(
+                    listenCount ?? "—",
+                    label: "Listens",
+                    accessibilityValue: listenCount ?? String(localized: "Not available")
+                )
                 Divider().frame(height: 36)
                 profileMetric(model.snapshot.topArtists.count.formatted(), label: "Top artists loaded")
                 Divider().frame(height: 36)
@@ -114,12 +119,19 @@ struct ProfileView: View {
         .padding(.top, 12)
     }
 
-    private func profileMetric(_ value: String, label: LocalizedStringResource) -> some View {
+    private func profileMetric(
+        _ value: String,
+        label: LocalizedStringResource,
+        accessibilityValue: String? = nil
+    ) -> some View {
         VStack(spacing: 3) {
             Text(value).font(.headline.monospacedDigit()).lineLimit(1).minimumScaleFactor(0.7)
             Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(label))
+        .accessibilityValue(Text(verbatim: accessibilityValue ?? value))
     }
 
     private var favoriteArtists: some View {
@@ -166,6 +178,7 @@ struct ProfileView: View {
                         releaseRow(release)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityHint("Opens album details")
                 } else {
                     releaseRow(release)
                 }
@@ -187,6 +200,7 @@ struct ProfileView: View {
         HStack(spacing: 13) {
             ArtworkView(url: release.artworkURL, title: release.name, cornerRadius: 9)
                 .frame(width: 60, height: 60)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(release.name).font(.body.weight(.semibold)).lineLimit(1)
                 Text(release.artistName).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
@@ -196,6 +210,13 @@ struct ProfileView: View {
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "\(release.name) by \(release.artistName)"))
+        .accessibilityValue(
+            release.listenCount == 1
+                ? String(localized: "1 listen")
+                : String(localized: "\(release.listenCount) listens")
+        )
     }
 
 }

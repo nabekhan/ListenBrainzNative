@@ -113,24 +113,37 @@ struct HomeView: View {
     }
 
     private var snapshotStrip: some View {
-        HStack(spacing: 12) {
+        let totalListenCount = model.snapshot.listenCount?.formatted(.number.notation(.compactName))
+        let topArtist = model.snapshot.topArtists.first?.name
+        return HStack(spacing: 12) {
             metric(
-                model.snapshot.listenCount?.formatted(.number.notation(.compactName)) ?? "—",
+                totalListenCount ?? "—",
                 label: "Total listens",
-                icon: "waveform"
+                icon: "waveform",
+                accessibilityIdentifier: "home-total-listens-metric",
+                accessibilityValue: totalListenCount ?? String(localized: "Not available")
             )
             metric(
-                model.snapshot.topArtists.first?.name ?? "—",
+                topArtist ?? "—",
                 label: "Top artist",
-                icon: "person.wave.2"
+                icon: "person.wave.2",
+                accessibilityIdentifier: "home-top-artist-metric",
+                accessibilityValue: topArtist ?? String(localized: "Not available")
             )
         }
     }
 
-    private func metric(_ value: String, label: LocalizedStringResource, icon: String) -> some View {
+    private func metric(
+        _ value: String,
+        label: LocalizedStringResource,
+        icon: String,
+        accessibilityIdentifier: String,
+        accessibilityValue: String
+    ) -> some View {
         VStack(alignment: .leading, spacing: 9) {
             Image(systemName: icon)
                 .foregroundStyle(AppTheme.accent)
+                .accessibilityHidden(true)
             Text(value)
                 .font(.headline)
                 .lineLimit(1)
@@ -142,6 +155,10 @@ struct HomeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(.thinMaterial, in: .rect(cornerRadius: 18, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(label))
+        .accessibilityValue(Text(verbatim: accessibilityValue))
+        .accessibilityIdentifier(accessibilityIdentifier)
     }
 
     private var recentSection: some View {

@@ -1,6 +1,6 @@
 # Development handoff
 
-Snapshot: 2026-09-25.
+Snapshot: 2026-09-26.
 
 ## Portable checkpoint
 
@@ -8,9 +8,11 @@ Snapshot: 2026-09-25.
 - Last validated product commit: `b0d1a62841b0d83faa134d55eeaca3e37e4c6f49`
 - Remote: `https://github.com/nabekhan/ListenBrainzNative.git`
 - Remote `main` is verified after this handoff note is pushed.
-- No change in this checkpoint is partially applied. The playlist-export, release-layout, and request-audit slices are complete for the audited source.
+- No change in this checkpoint is partially applied. The playlist-export, release-layout, request-audit, and simulator accessibility slices are complete for the audited source.
 
-Directional navigation now uses semantic forward/backward SF Symbols, including correctly mirrored History controls and disclosures. The Feed hero ornament and avatar badge use semantic RTL placement rather than physical offsets. A generated UI-test bundle covers iPad portrait, device rotation/landscape survival, RTL History, RTL Feed, RTL Profile playlists, and expanded pseudo-localization with captured screenshots.
+Directional navigation now uses semantic forward/backward SF Symbols, including correctly mirrored History controls and disclosures. The Feed hero ornament and avatar badge use semantic RTL placement rather than physical offsets. A generated UI-test bundle covers iPad portrait, device rotation/landscape survival, RTL History, RTL Feed, RTL Profile playlists, expanded pseudo-localization, private-playlist export, Home metric semantics, and Recording feedback state.
+
+The Home and Profile metrics now expose intentional VoiceOver label/value pairs instead of a visual em dash, combined media rows suppress duplicate artwork and chevron announcements, Profile album rows announce artist and localized listen count, and the pinned-history action meets the 44-point target. Recording feedback exposes selected/not-selected values plus the selected trait. The two new deterministic fixtures run native hit-region, sufficient-description, trait, and element-detection audits with request-gated transport denied; a local popularity provider removed an unintended fixture-only read discovered by that guard.
 
 The process-wide ListenBrainz gate now provides a Release-enabled, in-memory audit snapshot containing only closed feature categories, lifecycle totals, and current/maximum read and mutation transport counts. It never stores identity, username, token, URL, parameters, bodies, errors, or responses and starts no request. Every visual regression launch enables a DEBUG-only fail-fast guard immediately before shared-gate transport. That guard exposed and removed a live Fresh Releases provider behind Feed plus a persisted-Discover-tab preload before History; the final suite passes under the guard. It covers shared-gate transports, not hypothetical future networking that bypasses the required gate.
 
@@ -26,10 +28,10 @@ The bundled manifest declares no tracking; the app-local `UserDefaults` reason `
 
 Final evidence:
 
-- The complete app suite passes 628/628 with no failure, skip, or expected failure. The final guarded UI suite passes 7/7; its log contains no ListenBrainz, MusicBrainz, or Cover Art Archive hostname and no request-guard violation.
+- The complete app suite passes 628/628 with no failure, skip, or expected failure. The final guarded UI suite passes 9/9, including direct VoiceOver label/value/selected-state assertions and native accessibility audits; all launches deny request-gated transport and no guard violation occurs.
 - The focused playlist-export suite passes 12/12, covering deterministic encoding, order and duplicates, canonical metadata, empty playlists, provenance rejection, byte-bounded Unicode filenames, adversarial scalar counts, track and artist-cardinality limits, control-heavy text, protected staging, and stale cleanup.
 - Deterministic request-audit coverage includes read/mutation success, failure, pre-start and in-flight cancellation, exact coalescing, queued cancellation, mutation serialization, and the maximum of two independent read transports.
-- `scripts/localizations.sh check` compiler-verifies all 1,616 production keys in the sole string catalog, including every new export-sheet string.
+- `scripts/localizations.sh check` compiler-verifies all 1,618 production keys in the sole string catalog, including the new accessibility values.
 - A clean generic Release simulator build succeeds and its executable contains both `x86_64` and `arm64`. Its sole packaging warning is the expected AppIntents metadata skip because the app has no AppIntents dependency. XcodeGen regeneration is byte-stable.
 - Independent correctness, security, request-safety, and final-diff reviews report READY. The export review confirms local-only behavior, bounded encoding and staging, canonical identifiers, duplicate preservation, centralized localization, and truthful privacy documentation.
 - The earlier final unsigned generic-device Release archive remains valid for the unchanged packaging surface. Its bundle contains the 1024-point AppIcon renditions, opaque 120×120 phone and 152×152 iPad icons, the generated launch-screen dictionary, and no orientation-validation warning.
@@ -53,11 +55,11 @@ Install Xcode and a compatible iOS simulator runtime before building. Reinstall 
 
 ## Next product work
 
-The next bounded work should close the remaining release-candidate evidence without inventing new server traffic: configure an Apple Developer account/team and Apple Development identity, then perform isolated physical-device, authenticated disposable-account, physical-iPad, Stage Manager/resizable-window, translated-locale, VoiceOver, performance, and crash checks. A paired iPhone with Developer Mode was available at this checkpoint, but Xcode had no developer account, team, or Apple Development identity, so no physical build or install was attempted.
+The immediate distribution target is sideloading, not TestFlight. The next bounded work is a deterministic repository script that produces and validates an unsigned, re-signable IPA containing only `Payload/Brainz.app`; the unsigned artifact is not directly installable. After an external signing workflow supplies a compatible provisioning identity, perform isolated physical-device, authenticated disposable-account, physical-iPad, Stage Manager/resizable-window, translated-locale, VoiceOver, performance, and crash checks. A paired iPhone with Developer Mode was available at this checkpoint, but Xcode had no configured developer account, team, or Apple Development identity, so no physical build or install was attempted.
 
 After those foundations, evaluate current public MusicKit playback and content-resolution APIs as a separate researched slice; keep service playlist import/export, automatic capture, background submission, and offline retry distinct from the read-first product. Do not begin the proposed libspot/librespot experiment until the core client is complete, and then only on its own branch after licensing, Spotify policy, authentication, maintenance, and App Store review.
 
-Before release, choose the final bundle identifier, signing team, version/build values, and distribution identity; make a signed archive; reconcile App Store Connect privacy answers with the shipped report; complete TestFlight processing; and perform physical-device, authenticated disposable-account, Stage Manager/resizing, direct-network-bypass, performance, accessibility, and translated-locale QA. The current checkpoint proves the source-controlled release foundation and guarded simulator layout pass, not App Store readiness.
+Before the sideload release, re-sign the validated IPA, install it on physical hardware, and perform physical-device, authenticated disposable-account, Stage Manager/resizing, direct-network-bypass, request-volume, performance, accessibility, and translated-locale QA. The current checkpoint proves the source-controlled release foundation and guarded simulator pass, not an installable IPA. Final App Store identity, signed archive export, App Store Connect privacy reconciliation, metadata, and TestFlight processing remain later distribution work.
 
 Keep noncontiguous multi-track deletion and multi-track moves withheld unless the server gains an atomic operation that avoids replaying several positional mutations against a changing playlist.
 
@@ -69,6 +71,6 @@ Playback/content resolution, MusicKit capture, and Spotify-linked playback remai
 
 ## Local cleanup
 
-This checkpoint installed no package, browser, runtime, host application, or additional skill. It reused Xcode 27, the iOS 27 runtime, ephemeral Nix XcodeGen, `jq`, the existing UX-writing skill, and Apple command-line tools. Exact playlist-export Derived Data, result bundles, logs, screenshots, and temporary export directories were moved through dedicated Trash buckets and those buckets alone were permanently deleted, reclaiming 3,559,916 KiB without inspecting or changing unrelated Trash. The disposable `Brainz Playlist Export QA` simulator was terminated, shut down, and deleted. An exact post-cleanup audit found no matching artifact, temporary export directory, localization working directory, or simulator.
+This checkpoint installed no package, browser, runtime, host application, or additional skill. It reused Xcode 27, the iOS 27 runtime, ephemeral Nix XcodeGen, `jq`, the existing UX-writing skill, and Apple command-line tools. The accepted accessibility slice's seven exact Derived Data directories and one crash report were moved through a dedicated Trash bucket and that bucket alone was deleted, reclaiming 2,947,928 KiB. The disposable `Brainz Accessibility QA` simulator was shut down and deleted, and no matching artifact, localization working directory, crash report, or simulator remains. Earlier playlist-export cleanup reclaimed 3,559,916 KiB and removed its own exact simulator and artifacts.
 
 The source checkout, Git history, tracked Xcode project, `project.yml`, Apple Command Line Tools, shared Nix store, pre-existing developer data, user settings, credentials, personal files, and unrelated Trash contents remain preserved. Exact artifact paths and cleanup commands are recorded in `environment-changes.md`.

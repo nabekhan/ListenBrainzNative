@@ -10,6 +10,7 @@ struct ListenRow: View {
         HStack(alignment: dynamicTypeSize.isAccessibilitySize ? .top : .center, spacing: 12) {
             ArtworkView(url: listen.recording.artworkURL, title: listen.recording.title, cornerRadius: 8)
                 .frame(width: 54, height: 54)
+                .accessibilityHidden(true)
 
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 6) {

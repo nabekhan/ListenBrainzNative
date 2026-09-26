@@ -58,6 +58,8 @@ struct CurrentPinSection: View {
     private var historyLink: some View {
         NavigationLink("History") { PinsHistoryView() }
             .font(.subheadline.weight(.semibold))
+            .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
+            .contentShape(.rect)
             .accessibilityLabel("View pinned track history")
     }
 }

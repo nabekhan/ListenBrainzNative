@@ -16,7 +16,9 @@ struct RecordingDetailView: View {
         self.recording = recording
         _model = Bindable(wrappedValue: model)
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo") {
+        if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo")
+        {
             _shareModel = State(initialValue: RecordingShareModel(
                 account: Account(username: "visual-qa", token: "visual-qa"),
                 recording: recording,
@@ -294,6 +296,13 @@ struct RecordingDetailView: View {
         }
         .buttonBorderShape(.roundedRectangle(radius: 13))
         .tint(value == .hate ? .secondary : AppTheme.accent)
+        .accessibilityIdentifier(
+            value == .love ? "recording-feedback-love" : "recording-feedback-hate"
+        )
+        .accessibilityValue(
+            selected ? String(localized: "Selected") : String(localized: "Not selected")
+        )
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var metadata: some View {
