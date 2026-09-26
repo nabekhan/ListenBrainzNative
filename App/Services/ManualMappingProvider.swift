@@ -9,6 +9,19 @@ protocol ManualMappingTransport: Sendable {
     func submitManualMapping(msid: UUID, mbid: UUID) async throws
 }
 
+struct ManualMappingIdentity: Sendable, Equatable {
+    let msid: UUID
+    let mbid: UUID
+}
+
+protocol ManualMappingStatusProviding: Sendable {
+    func savedMapping(msid: UUID) async throws -> ManualMappingIdentity?
+}
+
+protocol ManualMappingStatusTransport: Sendable {
+    func getManualMapping(msid: UUID) async throws -> ManualMappingIdentity
+}
+
 struct ListenBrainzManualMappingTransport: ManualMappingTransport {
     private let client: LBClient
 
@@ -18,6 +31,72 @@ struct ListenBrainzManualMappingTransport: ManualMappingTransport {
 
     func submitManualMapping(msid: UUID, mbid: UUID) async throws {
         try await client.metadata.submitManualMapping(msid: msid, mbid: mbid)
+    }
+}
+
+struct ListenBrainzManualMappingStatusTransport: ManualMappingStatusTransport {
+    private let client: LBClient
+
+    init(token: String) {
+        client = LBClient(token: token, userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)")
+    }
+
+    func getManualMapping(msid: UUID) async throws -> ManualMappingIdentity {
+        let mapping = try await client.metadata.getManualMapping(msid: msid)
+        return ManualMappingIdentity(msid: mapping.msid, mbid: mapping.mbid)
+    }
+}
+
+/// An explicit, coalesced status read. A missing server mapping is a valid
+/// result, while every other failure remains visible and is never retried.
+struct ManualMappingStatusProvider: ManualMappingStatusProviding {
+    private let transport: any ManualMappingStatusTransport
+    private let gate: RequestGate
+    private let readScope: RequestGate.ReadScope
+
+    init(token: String, gate: RequestGate = .shared) {
+        transport = ListenBrainzManualMappingStatusTransport(token: token)
+        self.gate = gate
+        readScope = .authenticated(token: token)
+    }
+
+    init(
+        gate: RequestGate,
+        readScope: RequestGate.ReadScope = .isolated(),
+        transport: some ManualMappingStatusTransport
+    ) {
+        self.transport = transport
+        self.gate = gate
+        self.readScope = readScope
+    }
+
+    func savedMapping(msid: UUID) async throws -> ManualMappingIdentity? {
+        do {
+            let mapping: ManualMappingIdentity = try await gate.read(
+                for: .manualMapping(readScope, msid: msid)
+            ) {
+                try await transport.getManualMapping(msid: msid)
+            } deferralForError: { error in
+                guard case let LBError.rateLimited(resetIn) = error else { return nil }
+                return .seconds(max(resetIn, 1))
+            }
+            guard mapping.msid == msid else {
+                throw ProviderError.manualMappingCheckUnavailable
+            }
+            return mapping
+        } catch LBError.notFound {
+            return nil
+        } catch let LBError.rateLimited(resetIn) {
+            throw ProviderError.rateLimited(retryAfterSeconds: max(resetIn, 1))
+        } catch LBError.invalidAuth, LBError.noToken {
+            throw ProviderError.invalidToken
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as ProviderError {
+            throw error
+        } catch {
+            throw ProviderError.manualMappingCheckUnavailable
+        }
     }
 }
 

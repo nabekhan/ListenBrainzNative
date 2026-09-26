@@ -178,9 +178,11 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-recovery-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-unmapped-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-saved-match-demo")
             {
                 let isInspectionDemo = ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-demo")
                     || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-unmapped-demo")
+                    || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-saved-match-demo")
                 let visualAccount = isInspectionDemo
                     ? Account(username: "visual-inspection", token: "visual-inspection")
                     : Account(username: "visual-history", token: "visual-history")
@@ -261,6 +263,7 @@ struct MainTabView: View {
                 LogListenVisualQAScreen(mode: .playingNow)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-unmapped-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-saved-match-demo")
             {
                 ListenInspectionVisualQAScreen(listen: VisualQAHistoryProvider.inspectionPreview())
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-manual-mapping-demo")
@@ -634,6 +637,7 @@ struct MainTabView: View {
                         || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-recovery-demo")
                         || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-demo")
                         || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-unmapped-demo")
+                        || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-saved-match-demo")
                     {
                         selectedTab = .history
                     }
@@ -1440,7 +1444,7 @@ struct MainTabView: View {
         func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
 
         static func inspectionPreview() -> Listen {
-            makeListen(index: 0, listenedAt: .now.addingTimeInterval(-2_400))
+            makeListen(index: 0, listenedAt: .now.addingTimeInterval(-2_400), includesArtwork: false)
         }
 
         private static func makeListens(around newest: Date, count: Int) -> [Listen] {
@@ -1457,7 +1461,12 @@ struct MainTabView: View {
             .sorted { $0.listenedAt > $1.listenedAt }
         }
 
-        private static func makeListen(index: Int, listenedAt: Date, isPlayingNow: Bool = false) -> Listen {
+        private static func makeListen(
+            index: Int,
+            listenedAt: Date,
+            isPlayingNow: Bool = false,
+            includesArtwork: Bool = true
+        ) -> Listen {
             let msid = UUID(uuidString: String(format: "70000000-0000-0000-0000-%012x", index + 1))
             let artist = artists[index % artists.count]
             return Listen(
@@ -1467,9 +1476,9 @@ struct MainTabView: View {
                     artistName: artist,
                     artistMBIDs: [],
                     releaseTitle: index.isMultiple(of: 3) ? "Listening Room" : "Midnight Editions",
-                    releaseMBID: artworkReleaseMBID,
+                    releaseMBID: includesArtwork ? artworkReleaseMBID : nil,
                     releaseGroupMBID: nil,
-                    artworkReleaseMBID: artworkReleaseMBID,
+                    artworkReleaseMBID: includesArtwork ? artworkReleaseMBID : nil,
                     durationMilliseconds: 180_000 + index * 1_700,
                     source: index.isMultiple(of: 2) ? "Apple Music" : "Spotify"
                 ),

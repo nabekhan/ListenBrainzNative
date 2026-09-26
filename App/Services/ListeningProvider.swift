@@ -75,6 +75,7 @@ enum ProviderError: LocalizedError {
     case deleteListenOutcomeUnknown
     case manualMappingRejected
     case manualMappingOutcomeUnknown
+    case manualMappingCheckUnavailable
     case missingUsername
     case rateLimited(retryAfterSeconds: Int)
 
@@ -90,6 +91,8 @@ enum ProviderError: LocalizedError {
             String(localized: "ListenBrainz didn’t accept this MusicBrainz match. Check the recording and try again.")
         case .manualMappingOutcomeUnknown:
             String(localized: "We couldn’t confirm whether the match was saved. Refresh later before sending it again.")
+        case .manualMappingCheckUnavailable:
+            String(localized: "Couldn’t check your saved MusicBrainz match. Try again.")
         case .missingUsername: String(localized: "Enter a ListenBrainz username.")
         case let .rateLimited(seconds): String(localized: "ListenBrainz is busy. Try again in about \(seconds) seconds.")
         }

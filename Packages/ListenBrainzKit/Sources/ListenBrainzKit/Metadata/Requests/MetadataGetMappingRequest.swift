@@ -12,6 +12,9 @@ struct MetadataGetMappingRequest: APIRequest {
         self.data = .init(path: "/1/metadata/get_manual_mapping/",
                           method: .get,
                           queryItems: ["recording_msid": [msid.uuidString]],
-                          statusErrors: [404: .notFound])
+                          statusErrors: [401: .invalidAuth,
+                                         404: .notFound],
+                          preservesTrailingSlash: true,
+                          maximumResponseBytes: 64 * 1_024)
     }
 }

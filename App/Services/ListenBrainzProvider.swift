@@ -652,6 +652,7 @@ actor RequestGate {
         case metadataArtist
         case metadataRelease
         case metadataRecording
+        case metadataManualMapping
         case recommendationsMetadata
         case artworkYearInMusic
         case artworkGenerated
@@ -747,6 +748,7 @@ actor RequestGate {
         static func followingPins(_ scope: ReadScope, user: String, count: Int, offset: Int) -> Self { endpoint(scope, .pinsFollowing, [userID(user), String(count), String(offset)]) }
         static func profilePlaylists(_ scope: ReadScope, user: String, category: String, offset: Int, count: Int) -> Self { endpoint(scope, .profilePlaylists, [userID(user), category, String(offset), String(count)]) }
         static func releaseGroup(_ scope: ReadScope, mbid: UUID) -> Self { endpoint(scope, .metadataRelease, [uuid(mbid), "artist", "tag"]) }
+        static func manualMapping(_ scope: ReadScope, msid: UUID) -> Self { endpoint(scope, .metadataManualMapping, [uuid(msid)]) }
         static func playlistDetail(_ scope: ReadScope, mbid: UUID) -> Self { endpoint(scope, .playlistDetail, [uuid(mbid)]) }
         static func popularity(_ scope: ReadScope, kind: String, mbid: UUID) -> Self { endpoint(scope, .popularitySummary, [kind, uuid(mbid)]) }
         static func radioMetadata(_ scope: ReadScope, mbids: [UUID]) -> Self { endpoint(scope, .radioMetadata, mbids.map(uuid)) }

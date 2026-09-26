@@ -91,7 +91,7 @@ validate_source_boundaries() {
         fi
     }
 
-    local -a ui_sources=(App/Features App/Components App/Models App/Services)
+    local -a ui_sources=(App)
 
     # Xcode extracts direct SwiftUI literals. These checks cover high-confidence
     # patterns where a literal becomes an ordinary String before presentation.
@@ -126,7 +126,15 @@ validate_source_boundaries() {
     scan_boundary \
         "Localize the literal branch before mixing it with dynamic SwiftUI text." \
         '\b(?:Text|Label|navigationTitle|accessibilityLabel|accessibilityHint|ProgressView)\s*\([^?\n]*\?\s*[A-Za-z_][A-Za-z0-9_.]*(?:\([^)]*\))?\s*:\s*"[^"]+"' \
-        App/Features App/Components
+        App
+    scan_boundary \
+        "App-authored Text(verbatim:) literals bypass the catalog." \
+        '\bText\s*\(\s*verbatim:\s*"' \
+        App
+    scan_boundary \
+        "Use LocalizedStringResource instead of constructing LocalizedStringKey directly." \
+        '\bLocalizedStringKey\s*\(' \
+        App
 
     if (( failed != 0 )); then
         print -u2 "Use LocalizedStringResource for UI-copy parameters or String(localized:) when a rendered String is required."

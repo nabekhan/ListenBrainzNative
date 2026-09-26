@@ -274,6 +274,286 @@ final class ManualMappingTests: XCTestCase {
         XCTAssertEqual(calls, 1)
     }
 
+    func testStatusEligibilityRequiresAnAuthenticatedPermanentListenWithAnMSID() {
+        let eligible = makeListen()
+        guard case let .available(msid) = ManualMappingStatusModel.availability(
+            account: account,
+            listen: eligible
+        ) else {
+            return XCTFail("Expected status lookup to be available")
+        }
+        XCTAssertEqual(msid, eligible.inspection?.recordingMSID)
+
+        XCTAssertStatusUnavailable(account: nil, listen: eligible)
+        XCTAssertStatusUnavailable(account: Account(username: "listener", token: ""), listen: eligible)
+        XCTAssertStatusUnavailable(
+            account: account,
+            listen: Listen(
+                recording: eligible.recording,
+                listenedAt: .now,
+                insertedAt: nil,
+                isPlayingNow: true,
+                inspection: eligible.inspection
+            )
+        )
+        XCTAssertStatusUnavailable(account: account, listen: makeListen(includesInspection: false))
+        XCTAssertStatusUnavailable(account: account, listen: makeListen(recordingMSID: nil))
+        guard case .available = ManualMappingStatusModel.availability(
+            account: account,
+            listen: makeListen(submittedMBID: UUID())
+        ) else {
+            return XCTFail("Submitted metadata should not hide an existing saved manual match")
+        }
+    }
+
+    func testStatusRefreshGuidanceHonorsSubmittedRecordingMBIDPrecedence() {
+        let savedMBID = UUID()
+
+        let unmapped = makeListen()
+        let submitted = makeListen(submittedMBID: UUID())
+        let alreadyResolved = makeListen(resolvedMBID: savedMBID)
+        guard let unmappedDetails = unmapped.inspection,
+              let submittedDetails = submitted.inspection,
+              let resolvedDetails = alreadyResolved.inspection
+        else {
+            return XCTFail("Expected inspection fixtures")
+        }
+
+        XCTAssertTrue(ManualMappingStatusModel.shouldSuggestHistoryRefresh(
+            details: unmappedDetails,
+            savedMBID: savedMBID
+        ))
+        XCTAssertFalse(ManualMappingStatusModel.shouldSuggestHistoryRefresh(
+            details: submittedDetails,
+            savedMBID: savedMBID
+        ))
+        XCTAssertFalse(ManualMappingStatusModel.shouldSuggestHistoryRefresh(
+            details: resolvedDetails,
+            savedMBID: savedMBID
+        ))
+    }
+
+    func testStatusModelMakesNoRequestUntilExplicitCheckAndKeepsTerminalResult() async {
+        let mbid = UUID()
+        let spy = MappingStatusProviderSpy(outcomes: [.found(mbid)])
+        let listen = makeListen()
+        let model = ManualMappingStatusModel(account: account, listen: listen, provider: spy)
+
+        let callsBeforeCheck = await spy.callCount()
+        XCTAssertEqual(callsBeforeCheck, 0)
+        XCTAssertEqual(model.state, .idle)
+
+        await model.check()
+
+        let callsAfterCheck = await spy.callCount()
+        let checkedMSID = await spy.lastMSID()
+        XCTAssertEqual(callsAfterCheck, 1)
+        XCTAssertEqual(checkedMSID, listen.inspection?.recordingMSID)
+        XCTAssertEqual(model.state, .found(mbid))
+
+        await model.check()
+        let callsAfterTerminalCheck = await spy.callCount()
+        XCTAssertEqual(callsAfterTerminalCheck, 1)
+    }
+
+    func testStatusModelDistinguishesNoSavedMatchFromFailureAndAllowsExplicitRetry() async {
+        let missing = MappingStatusProviderSpy(outcomes: [.missing])
+        let missingModel = ManualMappingStatusModel(account: account, listen: makeListen(), provider: missing)
+
+        await missingModel.check()
+
+        XCTAssertEqual(missingModel.state, .notFound)
+        await missingModel.check()
+        let missingCalls = await missing.callCount()
+        XCTAssertEqual(missingCalls, 1)
+
+        let mbid = UUID()
+        let retry = MappingStatusProviderSpy(outcomes: [.failure, .found(mbid)])
+        let retryModel = ManualMappingStatusModel(account: account, listen: makeListen(), provider: retry)
+
+        await retryModel.check()
+        guard case .failed = retryModel.state else { return XCTFail("Expected a visible lookup failure") }
+        await retryModel.check()
+
+        let retryCalls = await retry.callCount()
+        XCTAssertEqual(retryCalls, 2)
+        XCTAssertEqual(retryModel.state, .found(mbid))
+    }
+
+    func testStatusModelCoalescesRapidExplicitChecksLocally() async {
+        let mbid = UUID()
+        let spy = MappingStatusProviderSpy(outcomes: [.waitForResume(mbid)])
+        let model = ManualMappingStatusModel(account: account, listen: makeListen(), provider: spy)
+
+        let first = Task { await model.check() }
+        while await spy.callCount() == 0 { await Task.yield() }
+        let second = Task { await model.check() }
+        await second.value
+
+        let callsWhileWaiting = await spy.callCount()
+        XCTAssertEqual(callsWhileWaiting, 1)
+        await spy.resumeWaitingLookup()
+        await first.value
+        XCTAssertEqual(model.state, .found(mbid))
+    }
+
+    func testStatusModelReturnsToIdleWhenItsStructuredReadIsCancelled() async {
+        let spy = MappingStatusProviderSpy(outcomes: [.waitForCancellation])
+        let model = ManualMappingStatusModel(account: account, listen: makeListen(), provider: spy)
+        let task = Task { await model.check() }
+        while await spy.callCount() == 0 { await Task.yield() }
+
+        task.cancel()
+        await task.value
+
+        XCTAssertEqual(model.state, .idle)
+        let cancellationCalls = await spy.callCount()
+        XCTAssertEqual(cancellationCalls, 1)
+    }
+
+    func testConfirmedSaveUpdatesStatusWithoutARead() async {
+        let spy = MappingStatusProviderSpy(outcomes: [.failure])
+        let model = ManualMappingStatusModel(account: account, listen: makeListen(), provider: spy)
+        let mbid = UUID()
+
+        model.confirmSaved(mbid: mbid)
+        await model.check()
+
+        XCTAssertEqual(model.state, .found(mbid))
+        let confirmedCalls = await spy.callCount()
+        XCTAssertEqual(confirmedCalls, 0)
+    }
+
+    func testConfirmedSaveCannotBeOverwrittenByAnOlderLookup() async {
+        let oldMBID = UUID()
+        let savedMBID = UUID()
+        let spy = MappingStatusProviderSpy(outcomes: [.waitForResume(oldMBID)])
+        let model = ManualMappingStatusModel(account: account, listen: makeListen(), provider: spy)
+        let lookup = Task { await model.check() }
+        while await spy.callCount() == 0 { await Task.yield() }
+
+        model.confirmSaved(mbid: savedMBID)
+        await spy.resumeWaitingLookup()
+        await lookup.value
+
+        XCTAssertEqual(model.state, .found(savedMBID))
+        let calls = await spy.callCount()
+        XCTAssertEqual(calls, 1)
+    }
+
+    nonisolated func testStatusProviderReturnsExactMappingAndCoalescesConcurrentReads() async throws {
+        let msid = UUID()
+        let mbid = UUID()
+        let transport = ManualMappingStatusTransportSpy(
+            returnedMBID: mbid,
+            waitsForResume: true
+        )
+        let provider = ManualMappingStatusProvider(
+            gate: RequestGate(minimumInterval: .zero),
+            transport: transport
+        )
+
+        let first = Task { try await provider.savedMapping(msid: msid) }
+        while await transport.callCount == 0 { await Task.yield() }
+        let second = Task { try await provider.savedMapping(msid: msid) }
+        for _ in 0 ..< 20 { await Task.yield() }
+
+        let callsBeforeResume = await transport.callCount
+        XCTAssertEqual(callsBeforeResume, 1)
+        await transport.resume()
+        let firstResult = try await first.value
+        let secondResult = try await second.value
+
+        XCTAssertEqual(firstResult, ManualMappingIdentity(msid: msid, mbid: mbid))
+        XCTAssertEqual(secondResult, firstResult)
+        let callsAfterCoalescing = await transport.callCount
+        XCTAssertEqual(callsAfterCoalescing, 1)
+    }
+
+    nonisolated func testStatusProviderTreatsNotFoundAsAValidEmptyResultWithoutRetry() async throws {
+        let transport = ManualMappingStatusTransportSpy(error: LBError.notFound)
+        let provider = ManualMappingStatusProvider(
+            gate: RequestGate(minimumInterval: .zero),
+            transport: transport
+        )
+
+        let result = try await provider.savedMapping(msid: UUID())
+
+        XCTAssertNil(result)
+        let notFoundCalls = await transport.callCount
+        XCTAssertEqual(notFoundCalls, 1)
+    }
+
+    nonisolated func testStatusProviderFailsClosedForMismatchedIdentityAndTransportFailures() async {
+        let requestedMSID = UUID()
+        let mismatchTransport = ManualMappingStatusTransportSpy(returnedMSID: UUID())
+        let mismatch = ManualMappingStatusProvider(
+            gate: RequestGate(minimumInterval: .zero),
+            transport: mismatchTransport
+        )
+        do {
+            _ = try await mismatch.savedMapping(msid: requestedMSID)
+            XCTFail("Expected a mismatched response to fail closed")
+        } catch ProviderError.manualMappingCheckUnavailable {
+            // A response for another MSID must never be shown as this listen's mapping.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        let mismatchCalls = await mismatchTransport.callCount
+        XCTAssertEqual(mismatchCalls, 1)
+
+        let authTransport = ManualMappingStatusTransportSpy(error: LBError.invalidAuth)
+        let auth = ManualMappingStatusProvider(
+            gate: RequestGate(minimumInterval: .zero),
+            transport: authTransport
+        )
+        do {
+            _ = try await auth.savedMapping(msid: requestedMSID)
+            XCTFail("Expected invalid authentication")
+        } catch ProviderError.invalidToken {
+            // The account boundary is preserved.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        let authCalls = await authTransport.callCount
+        XCTAssertEqual(authCalls, 1)
+
+        let unavailableTransport = ManualMappingStatusTransportSpy(error: URLError(.networkConnectionLost))
+        let unavailable = ManualMappingStatusProvider(
+            gate: RequestGate(minimumInterval: .zero),
+            transport: unavailableTransport
+        )
+        do {
+            _ = try await unavailable.savedMapping(msid: requestedMSID)
+            XCTFail("Expected an unavailable lookup")
+        } catch ProviderError.manualMappingCheckUnavailable {
+            // Reads are never retried automatically.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        let unavailableCalls = await unavailableTransport.callCount
+        XCTAssertEqual(unavailableCalls, 1)
+    }
+
+    nonisolated func testStatusProviderMapsRateLimitWithoutRetry() async {
+        let transport = ManualMappingStatusTransportSpy(error: LBError.rateLimited(resetIn: 9))
+        let provider = ManualMappingStatusProvider(
+            gate: RequestGate(minimumInterval: .zero),
+            transport: transport
+        )
+
+        do {
+            _ = try await provider.savedMapping(msid: UUID())
+            XCTFail("Expected rate limiting")
+        } catch let ProviderError.rateLimited(seconds) {
+            XCTAssertEqual(seconds, 9)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        let rateLimitedCalls = await transport.callCount
+        XCTAssertEqual(rateLimitedCalls, 1)
+    }
+
     private let account = Account(username: "listener", token: "token")
 
     private func XCTAssertUnavailable(
@@ -284,6 +564,17 @@ final class ManualMappingTests: XCTestCase {
     ) {
         guard case .unavailable = ManualMappingModel.availability(account: account, listen: listen) else {
             return XCTFail("Expected mapping to be unavailable", file: file, line: line)
+        }
+    }
+
+    private func XCTAssertStatusUnavailable(
+        account: Account?,
+        listen: Listen,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        guard case .unavailable = ManualMappingStatusModel.availability(account: account, listen: listen) else {
+            return XCTFail("Expected status lookup to be unavailable", file: file, line: line)
         }
     }
 
@@ -404,5 +695,89 @@ private actor ManualMappingTransportSpy: ManualMappingTransport {
             try await ContinuousClock().sleep(for: .seconds(30))
         }
         if let error { throw error }
+    }
+}
+
+private actor MappingStatusProviderSpy: ManualMappingStatusProviding {
+    enum Outcome: Sendable {
+        case found(UUID)
+        case missing
+        case failure
+        case waitForResume(UUID)
+        case waitForCancellation
+    }
+
+    private var outcomes: [Outcome]
+    private var requestedMSIDs: [UUID] = []
+    private var waitingContinuation: CheckedContinuation<Void, Never>?
+
+    init(outcomes: [Outcome]) {
+        self.outcomes = outcomes
+    }
+
+    func savedMapping(msid: UUID) async throws -> ManualMappingIdentity? {
+        requestedMSIDs.append(msid)
+        let outcome = outcomes.isEmpty ? .missing : outcomes.removeFirst()
+        switch outcome {
+        case let .found(mbid):
+            return ManualMappingIdentity(msid: msid, mbid: mbid)
+        case .missing:
+            return nil
+        case .failure:
+            throw ProviderError.manualMappingCheckUnavailable
+        case let .waitForResume(mbid):
+            await withCheckedContinuation { continuation in
+                waitingContinuation = continuation
+            }
+            return ManualMappingIdentity(msid: msid, mbid: mbid)
+        case .waitForCancellation:
+            try await ContinuousClock().sleep(for: .seconds(30))
+            return nil
+        }
+    }
+
+    func callCount() -> Int { requestedMSIDs.count }
+    func lastMSID() -> UUID? { requestedMSIDs.last }
+
+    func resumeWaitingLookup() {
+        waitingContinuation?.resume()
+        waitingContinuation = nil
+    }
+}
+
+private actor ManualMappingStatusTransportSpy: ManualMappingStatusTransport {
+    private let returnedMSID: UUID?
+    private let returnedMBID: UUID
+    private let error: (any Error & Sendable)?
+    private let waitsForResume: Bool
+    private var continuation: CheckedContinuation<Void, Never>?
+    private(set) var callCount = 0
+
+    init(
+        returnedMSID: UUID? = nil,
+        returnedMBID: UUID = UUID(),
+        error: (any Error & Sendable)? = nil,
+        waitsForResume: Bool = false
+    ) {
+        self.returnedMSID = returnedMSID
+        self.returnedMBID = returnedMBID
+        self.error = error
+        self.waitsForResume = waitsForResume
+    }
+
+    func getManualMapping(msid: UUID) async throws -> ManualMappingIdentity {
+        callCount += 1
+        if waitsForResume {
+            await withCheckedContinuation { continuation in
+                self.continuation = continuation
+            }
+        }
+        if let error { throw error }
+        return ManualMappingIdentity(msid: returnedMSID ?? msid, mbid: returnedMBID)
+    }
+
+    func resume() {
+        continuation?.resume()
+        continuation = nil
     }
 }

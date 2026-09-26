@@ -7,14 +7,25 @@ struct ListenInspectionSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var isMappingPresented = false
-    @State private var savedManualMappingMBID: UUID?
+    @State private var mappingStatus: ManualMappingStatusModel
+    @State private var mappingStatusCheckRequestID: UUID?
 
     private var details: ListenInspection? { listen.inspection }
 
-    init(listen: Listen, account: Account? = nil, startsAtMapping: Bool = false) {
+    init(
+        listen: Listen,
+        account: Account? = nil,
+        startsAtMapping: Bool = false,
+        mappingStatusProvider: (any ManualMappingStatusProviding)? = nil
+    ) {
         self.listen = listen
         self.account = account
         self.startsAtMapping = startsAtMapping
+        _mappingStatus = State(initialValue: ManualMappingStatusModel(
+            account: account,
+            listen: listen,
+            provider: mappingStatusProvider
+        ))
     }
 
     var body: some View {
@@ -46,19 +57,37 @@ struct ListenInspectionSheet: View {
                 .task {
                     #if DEBUG
                     guard startsAtMapping else { return }
-                    try? await Task.sleep(for: .milliseconds(150))
-                    proxy.scrollTo("listen-mapping", anchor: .top)
+                    let showsSavedMatch = ProcessInfo.processInfo.arguments.contains(
+                        "-brainz-inspect-listen-saved-match-demo"
+                    )
+                    try? await Task.sleep(for: showsSavedMatch ? .milliseconds(600) : .milliseconds(150))
+                    proxy.scrollTo(showsSavedMatch ? "saved-mapping-status" : "listen-mapping", anchor: .top)
                     #endif
                 }
             }
         }
         .presentationDetents(
-            dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large]
+            startsAtMapping || dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large]
         )
+        .task(id: mappingStatusCheckRequestID) {
+            guard mappingStatusCheckRequestID != nil else { return }
+            await mappingStatus.check()
+        }
+        #if DEBUG
+        .task {
+            guard ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-saved-match-demo") else {
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            mappingStatusCheckRequestID = UUID()
+        }
+        #endif
         .sheet(isPresented: $isMappingPresented) {
             if let account {
                 ManualMappingSheet(listen: listen, account: account) { mbid in
-                    savedManualMappingMBID = mbid
+                    mappingStatusCheckRequestID = nil
+                    mappingStatus.confirmSaved(mbid: mbid)
                 }
                 .presentationDetents([.large])
             }
@@ -131,14 +160,7 @@ struct ListenInspectionSheet: View {
             musicBrainzIdentifier("Release MBID", id: details.resolvedReleaseMBID, path: "release")
             musicBrainzIdentifier("Release group MBID", id: details.resolvedReleaseGroupMBID, path: "release-group")
             musicBrainzIdentifiers("Artist MBID", ids: details.resolvedArtistMBIDs, path: "artist")
-            if let savedManualMappingMBID {
-                Label("Match saved", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                musicBrainzIdentifier("Saved recording MBID", id: savedManualMappingMBID, path: "recording")
-                Text("Refresh History to load the updated metadata.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+            savedMappingStatus(details).id("saved-mapping-status")
             if let account {
                 let availability = ManualMappingModel.availability(account: account, listen: listen)
                 switch availability {
@@ -146,12 +168,13 @@ struct ListenInspectionSheet: View {
                     Button {
                         isMappingPresented = true
                     } label: {
-                        if (savedManualMappingMBID ?? currentMBID) == nil {
+                        if (savedMappingMBID ?? currentMBID) == nil {
                             Label("Find MusicBrainz match", systemImage: "link.badge.plus")
                         } else {
                             Label("Change MusicBrainz match", systemImage: "arrow.triangle.2.circlepath")
                         }
                     }
+                    .disabled(mappingStatus.isChecking)
                 case let .unavailable(reason) where details.submittedRecordingMBID != nil:
                     Label {
                         Text(reason)
@@ -164,6 +187,60 @@ struct ListenInspectionSheet: View {
                     EmptyView()
                 }
             }
+        }
+    }
+
+    private var savedMappingMBID: UUID? {
+        guard case let .found(mbid) = mappingStatus.state else { return nil }
+        return mbid
+    }
+
+    @ViewBuilder
+    private func savedMappingStatus(_ details: ListenInspection) -> some View {
+        switch mappingStatus.state {
+        case .idle where mappingStatus.isEligible:
+            Button {
+                mappingStatusCheckRequestID = UUID()
+            } label: {
+                Label("Check saved match", systemImage: "magnifyingglass")
+            }
+        case .checking:
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Checking saved match…")
+            }
+            .foregroundStyle(.secondary)
+        case let .found(mbid):
+            Label("Saved MusicBrainz match", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+            musicBrainzIdentifier("Saved recording MBID", id: mbid, path: "recording")
+            if ManualMappingStatusModel.shouldSuggestHistoryRefresh(
+                details: details,
+                savedMBID: mbid
+            ) {
+                Text("Refresh History to load this match into the listen metadata.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        case .notFound:
+            Label("No saved MusicBrainz match", systemImage: "link.badge.plus")
+                .foregroundStyle(.secondary)
+            Text("ListenBrainz has no saved match for this recording ID.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        case let .failed(message):
+            Label {
+                Text(message)
+            } icon: {
+                Image(systemName: "exclamationmark.triangle")
+            }
+            .font(.footnote)
+            .foregroundStyle(.red)
+            Button("Try Again") {
+                mappingStatusCheckRequestID = UUID()
+            }
+        case .idle:
+            EmptyView()
         }
     }
 
@@ -248,6 +325,7 @@ struct ListenInspectionSheet: View {
     private func identifierText(_ value: String) -> some View {
         Text(value)
             .font(.caption.monospaced())
+            .dynamicTypeSize(...DynamicTypeSize.accessibility2)
             .textSelection(.enabled)
     }
 
@@ -287,6 +365,7 @@ struct ListenInspectionVisualQAScreen: View {
     @State private var isPresentingDetails = true
 
     var body: some View {
+        let arguments = ProcessInfo.processInfo.arguments
         NavigationStack {
             List {
                 Section("Today") {
@@ -299,7 +378,9 @@ struct ListenInspectionVisualQAScreen: View {
             ListenInspectionSheet(
                 listen: listen,
                 account: Account(username: "visual-listener", token: "visual-token"),
-                startsAtMapping: ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-scroll")
+                startsAtMapping: arguments.contains("-brainz-inspect-listen-scroll")
+                    || arguments.contains("-brainz-inspect-listen-saved-match-demo"),
+                mappingStatusProvider: ListenInspectionVisualMappingStatusProvider()
             )
         }
     }
@@ -321,6 +402,15 @@ struct ListenInspectionVisualQAScreen: View {
             submissionClientVersion: nil, musicService: nil, musicServiceName: nil, originURL: nil, durationMilliseconds: nil
         )
         return Listen(recording: recording, listenedAt: .now, insertedAt: nil, isPlayingNow: false, inspection: inspection)
+    }
+}
+
+private struct ListenInspectionVisualMappingStatusProvider: ManualMappingStatusProviding {
+    func savedMapping(msid: UUID) async throws -> ManualMappingIdentity? {
+        ManualMappingIdentity(
+            msid: msid,
+            mbid: UUID(uuidString: "11111111-2222-3333-4444-555555555555")!
+        )
     }
 }
 #endif

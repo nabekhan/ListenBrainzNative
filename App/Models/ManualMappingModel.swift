@@ -78,3 +78,106 @@ final class ManualMappingModel {
         }
     }
 }
+
+@MainActor
+@Observable
+final class ManualMappingStatusModel {
+    enum Availability: Equatable {
+        case available(msid: UUID)
+        case unavailable
+    }
+
+    enum State: Equatable {
+        case idle
+        case checking
+        case found(UUID)
+        case notFound
+        case failed(String)
+    }
+
+    private let availability: Availability
+    private let provider: (any ManualMappingStatusProviding)?
+    private var checkRevision = 0
+    private(set) var state: State = .idle
+
+    init(
+        account: Account?,
+        listen: Listen,
+        provider: (any ManualMappingStatusProviding)? = nil
+    ) {
+        availability = Self.availability(account: account, listen: listen)
+        if let provider {
+            self.provider = provider
+        } else if let account, account.isAuthenticated {
+            self.provider = ManualMappingStatusProvider(token: account.token)
+        } else {
+            self.provider = nil
+        }
+    }
+
+    static func availability(account: Account?, listen: Listen) -> Availability {
+        guard let account, account.isAuthenticated else { return .unavailable }
+        guard !listen.isPlayingNow else { return .unavailable }
+        guard let details = listen.inspection,
+              let msid = details.recordingMSID
+        else { return .unavailable }
+        return .available(msid: msid)
+    }
+
+    var isEligible: Bool {
+        if case .available = availability { true } else { false }
+    }
+
+    var isChecking: Bool { state == .checking }
+
+    static func shouldSuggestHistoryRefresh(
+        details: ListenInspection,
+        savedMBID: UUID
+    ) -> Bool {
+        details.submittedRecordingMBID == nil
+            && details.resolvedRecordingMBID != savedMBID
+    }
+
+    func check() async {
+        guard case let .available(msid) = availability,
+              let provider,
+              canStartCheck
+        else { return }
+
+        checkRevision &+= 1
+        let revision = checkRevision
+        state = .checking
+        do {
+            if let mapping = try await provider.savedMapping(msid: msid) {
+                guard revision == checkRevision else { return }
+                guard mapping.msid == msid else {
+                    state = .failed(ProviderError.manualMappingCheckUnavailable.localizedDescription)
+                    return
+                }
+                state = .found(mapping.mbid)
+            } else {
+                guard revision == checkRevision else { return }
+                state = .notFound
+            }
+        } catch is CancellationError {
+            guard revision == checkRevision else { return }
+            state = .idle
+        } catch {
+            guard revision == checkRevision else { return }
+            state = .failed(error.localizedDescription)
+        }
+    }
+
+    func confirmSaved(mbid: UUID) {
+        guard isEligible else { return }
+        checkRevision &+= 1
+        state = .found(mbid)
+    }
+
+    private var canStartCheck: Bool {
+        switch state {
+        case .idle, .failed: true
+        case .checking, .found, .notFound: false
+        }
+    }
+}

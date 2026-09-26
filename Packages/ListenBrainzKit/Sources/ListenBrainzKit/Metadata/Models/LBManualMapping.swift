@@ -5,11 +5,11 @@
 import Foundation
 
 /// Represents a mapping from a recording's MessyBrainz ID to a MusicBrainz ID
-public struct LBManualMapping: Decodable {
+public struct LBManualMapping: Decodable, Equatable, Sendable {
     /// MessyBrainz ID
-    let msid: UUID
+    public let msid: UUID
     /// MusicBrainz ID
-    let mbid: UUID
+    public let mbid: UUID
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: MappingKey.self)

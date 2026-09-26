@@ -2591,6 +2591,16 @@
         }
       }
     },
+    "Check saved match": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check saved match"
+          }
+        }
+      }
+    },
     "Check your connection and try again.": {
       "localizations": {
         "en": {
@@ -2627,6 +2637,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Checking ListenBrainz…"
+          }
+        }
+      }
+    },
+    "Checking saved match…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking saved match…"
           }
         }
       }
@@ -3107,6 +3127,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn’t Share Recommendation"
+          }
+        }
+      }
+    },
+    "Couldn’t check your saved MusicBrainz match. Try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t check your saved MusicBrainz match. Try again."
           }
         }
       }
@@ -5861,6 +5891,16 @@
         }
       }
     },
+    "ListenBrainz has no saved match for this recording ID.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz has no saved match for this recording ID."
+          }
+        }
+      }
+    },
     "ListenBrainz has not calculated a listening-hours report for %@ yet.": {
       "localizations": {
         "en": {
@@ -8371,6 +8411,16 @@
         }
       }
     },
+    "No saved MusicBrainz match": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No saved MusicBrainz match"
+          }
+        }
+      }
+    },
     "No similar listeners yet": {
       "localizations": {
         "en": {
@@ -10331,22 +10381,22 @@
         }
       }
     },
-    "Refresh History to load the updated metadata.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Refresh History to load the updated metadata."
-          }
-        }
-      }
-    },
     "Refresh History to load the updated metadata. Listening statistics can take longer.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Refresh History to load the updated metadata. Listening statistics can take longer."
+          }
+        }
+      }
+    },
+    "Refresh History to load this match into the listen metadata.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh History to load this match into the listen metadata."
           }
         }
       }
@@ -11107,6 +11157,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Save this order or reset it before making another move."
+          }
+        }
+      }
+    },
+    "Saved MusicBrainz match": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved MusicBrainz match"
           }
         }
       }

@@ -16,7 +16,7 @@ Snapshot: 2026-09-25. `Y` means source/API evidence exists; `P` means partial or
 | Recording/release-group/artist metadata | Y | Y | Y | P | Y | Y | P0 | MBIDs are canonical identities |
 | Release/release-group detail and track listing | Y/P | Y | Y | P | P | Y | P0 | Native group pages plus one-request MusicBrainz edition pages with ordered media/tracks; identities stay distinct |
 | Inspect raw listen/mapping state | Y | Y | P | ? | P | P | P2 | Native read-only Listen details sheet preserves returned submitted metadata, MSID, mapping and source fields without a follow-up request |
-| Manual metadata mapping | Y | Y | ? | ? | Y | — | P3 | Native advanced flow uses explicit debounced MusicBrainz recording search, preserves submitted-recording-ID precedence, and sends one serialized no-retry save; it performs no mapping-status read, poll, or automatic refresh |
+| Manual metadata mapping | Y | Y | ? | ? | Y | — | P3 | Native advanced flow preserves submitted-recording-ID precedence and sends one serialized no-retry save; an explicit **Check saved match** tap performs one credential-scoped, coalesced, 64 KiB-bounded GET with honest 404/401 handling and no polling, automatic retry, or refresh |
 | Recording love/hate/clear feedback | Y | Y | P | P | Y | P | P1 | Optimistic action with rollback |
 | Pins/current pin/pin history/blurb | Y | Y | Y | Y | Y | Y | P1 | Home and Profile share one guarded current-pin read; history stays lazy, owner mutations are native, and Following Pins stays aggregate and non-hydrating |
 | Top artists | Y | Y | Y | Y | Y | Y | P0 | Vertical slice |

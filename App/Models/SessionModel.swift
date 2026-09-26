@@ -278,6 +278,7 @@ final class SessionModel {
             }
             if arguments.contains("-brainz-inspect-listen-demo")
                 || arguments.contains("-brainz-inspect-listen-unmapped-demo")
+                || arguments.contains("-brainz-inspect-listen-saved-match-demo")
                 || arguments.contains("-brainz-manual-mapping-demo")
                 || arguments.contains("-brainz-manual-mapping-review-demo")
             {

@@ -81,4 +81,32 @@ import Testing
         #expect(mapping.msid.uuidString == "12121212-1212-1212-1212-121212121212")
         #expect(mapping.mbid.uuidString == "ABABABAB-ABAB-ABAB-ABAB-ABABABABABAB")
     }
+
+    @Test("Manual mapping lookup uses the canonical authenticated endpoint")
+    func getManualMap() async throws {
+        let messyId = UUID(uuidString: "12121212-1212-1212-1212-121212121212")!
+        let raw = """
+        {"mapping": {"recording_msid": "12121212-1212-1212-1212-121212121212",
+        "recording_mbid": "abababab-abab-abab-abab-abababababab"}, "status": "ok"}
+        """
+        let expected = try JSONDecoder.ListenBrainz.decode(
+            LBManualMapping.self,
+            from: #require(raw.data(using: .utf8))
+        )
+        let client = LBMetadataClient(MockAPIClient(result: .success(expected)))
+
+        let mapping = try await client.getManualMapping(msid: messyId)
+        let request = try #require(
+            ((client.apiClient as? MockAPIClient)?.request as? MetadataGetMappingRequest)?.data
+        )
+
+        #expect(mapping == expected)
+        #expect(mapping.msid == messyId)
+        #expect(request.path == "/1/metadata/get_manual_mapping/")
+        #expect(request.method == .get)
+        #expect(request.queryItems == ["recording_msid": [messyId.uuidString]])
+        #expect(request.statusErrors == [401: .invalidAuth, 404: .notFound])
+        #expect(request.preservesTrailingSlash)
+        #expect(request.maximumResponseBytes == 64 * 1_024)
+    }
 }
