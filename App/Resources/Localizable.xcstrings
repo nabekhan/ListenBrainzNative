@@ -499,6 +499,28 @@
         }
       }
     },
+    "%lld characters": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld character"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld characters"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld collaborative playlists": {
       "localizations": {
         "en": {
@@ -725,6 +747,28 @@
         }
       }
     },
+    "%lld more characters needed": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld more character needed"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld more characters needed"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld new artists discovered": {
       "localizations": {
         "en": {
@@ -848,6 +892,28 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%(count)lld selected"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld stars": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld star"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld stars"
                 }
               }
             }
@@ -1041,6 +1107,16 @@
           "stringUnit": {
             "state": "translated",
             "value": ", "
+          }
+        }
+      }
+    },
+    "100,000 characters maximum": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "100,000 characters maximum"
           }
         }
       }
@@ -1291,6 +1367,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "A previous deletion still needs review. Check whether this playlist exists before deleting it again."
+          }
+        }
+      }
+    },
+    "A previous publishing attempt for this item wasn’t confirmed. Check CritiqueBrainz before starting again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A previous publishing attempt for this item wasn’t confirmed. Check CritiqueBrainz before starting again."
           }
         }
       }
@@ -2447,6 +2533,16 @@
         }
       }
     },
+    "Brainz couldn’t safely read its review publishing records. Publishing is paused for every item to prevent duplicates.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brainz couldn’t safely read its review publishing records. Publishing is paused for every item to prevent duplicates."
+          }
+        }
+      }
+    },
     "Brainz couldn’t verify whether an earlier listen was sent. Reset only after checking History.": {
       "localizations": {
         "en": {
@@ -2533,6 +2629,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "By %@"
+          }
+        }
+      }
+    },
+    "By publishing, you confirm that you own or control the necessary rights, the review does not infringe anyone else’s rights, and you have permission to share and license it. You license the review under CC BY-SA 3.0 and also permit the MetaBrainz Foundation to license it for commercial use outside Creative Commons to help fund its operations.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "By publishing, you confirm that you own or control the necessary rights, the review does not infringe anyone else’s rights, and you have permission to share and license it. You license the review under CC BY-SA 3.0 and also permit the MetaBrainz Foundation to license it for commercial use outside Creative Commons to help fund its operations."
           }
         }
       }
@@ -2673,6 +2779,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Check saved match"
+          }
+        }
+      }
+    },
+    "Check this item on CritiqueBrainz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check this item on CritiqueBrainz"
           }
         }
       }
@@ -2929,6 +3045,16 @@
         }
       }
     },
+    "Clear after checking": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear after checking"
+          }
+        }
+      }
+    },
     "Clear search": {
       "localizations": {
         "en": {
@@ -2939,12 +3065,32 @@
         }
       }
     },
+    "Clear this review’s safety record?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear this review’s safety record?"
+          }
+        }
+      }
+    },
     "Clear type and tag filters": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Clear type and tag filters"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
           }
         }
       }
@@ -3319,6 +3465,16 @@
         }
       }
     },
+    "Couldn’t publish review": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t publish review"
+          }
+        }
+      }
+    },
     "Couldn’t refresh CritiqueBrainz reviews. Showing saved reviews.": {
       "localizations": {
         "en": {
@@ -3675,6 +3831,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "CritiqueBrainz couldn’t load reviews. Try again in a moment."
+          }
+        }
+      }
+    },
+    "CritiqueBrainz couldn’t publish this review. You may already have a review for this item.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CritiqueBrainz couldn’t publish this review. You may already have a review for this item."
           }
         }
       }
@@ -4619,6 +4785,26 @@
         }
       }
     },
+    "First check your recent CritiqueBrainz activity. This clears every pending safety record and could allow duplicate reviews on other items.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First check your recent CritiqueBrainz activity. This clears every pending safety record and could allow duplicate reviews on other items."
+          }
+        }
+      }
+    },
+    "First confirm that this item has no review from you. Clearing the record lets you start again and could create a duplicate if the earlier request worked.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First confirm that this item has no review from you. Clearing the record lets you start again and could create a duplicate if the earlier request worked."
+          }
+        }
+      }
+    },
     "Follow": {
       "localizations": {
         "en": {
@@ -5195,6 +5381,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "How your leading artists move through time"
+          }
+        }
+      }
+    },
+    "I agree to these publishing terms.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I agree to these publishing terms."
           }
         }
       }
@@ -7451,6 +7647,16 @@
         }
       }
     },
+    "Manage CritiqueBrainz connection": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage CritiqueBrainz connection"
+          }
+        }
+      }
+    },
     "Manage services on ListenBrainz": {
       "localizations": {
         "en": {
@@ -8611,6 +8817,26 @@
         }
       }
     },
+    "No published reviews yet": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No published reviews yet"
+          }
+        }
+      }
+    },
+    "No rating": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No rating"
+          }
+        }
+      }
+    },
     "No recent listens from people you follow": {
       "localizations": {
         "en": {
@@ -9071,12 +9297,32 @@
         }
       }
     },
+    "Open CritiqueBrainz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open CritiqueBrainz"
+          }
+        }
+      }
+    },
     "Open ListenBrainz recommendations": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Open ListenBrainz recommendations"
+          }
+        }
+      }
+    },
+    "Open ListenBrainz settings": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open ListenBrainz settings"
           }
         }
       }
@@ -10261,6 +10507,36 @@
         }
       }
     },
+    "Publish": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publish"
+          }
+        }
+      }
+    },
+    "Publish review": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publish review"
+          }
+        }
+      }
+    },
+    "Publish this review?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publish this review?"
+          }
+        }
+      }
+    },
     "Published community reviews": {
       "localizations": {
         "en": {
@@ -10277,6 +10553,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Published reviews from CritiqueBrainz"
+          }
+        }
+      }
+    },
+    "Publishing paused": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publishing paused"
+          }
+        }
+      }
+    },
+    "Publishing terms": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publishing terms"
           }
         }
       }
@@ -10371,6 +10667,16 @@
         }
       }
     },
+    "Rating": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rating"
+          }
+        }
+      }
+    },
     "Rating %lld out of 5": {
       "localizations": {
         "en": {
@@ -10439,6 +10745,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Read review"
+          }
+        }
+      }
+    },
+    "Read the CC BY-SA 3.0 license": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read the CC BY-SA 3.0 license"
           }
         }
       }
@@ -11307,6 +11623,36 @@
         }
       }
     },
+    "Reset all after checking": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset all after checking"
+          }
+        }
+      }
+    },
+    "Reset all records": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset all records"
+          }
+        }
+      }
+    },
+    "Reset all review safety records?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset all review safety records?"
+          }
+        }
+      }
+    },
     "Reset filters": {
       "localizations": {
         "en": {
@@ -11437,12 +11783,62 @@
         }
       }
     },
+    "Review language": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review language"
+          }
+        }
+      }
+    },
     "Review match": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Review match"
+          }
+        }
+      }
+    },
+    "Review needs checking": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review needs checking"
+          }
+        }
+      }
+    },
+    "Review published": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review published"
+          }
+        }
+      }
+    },
+    "Review status": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review status"
+          }
+        }
+      }
+    },
+    "Review text": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review text"
           }
         }
       }
@@ -11755,6 +12151,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Search for a ListenBrainz user."
+          }
+        }
+      }
+    },
+    "Search languages": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search languages"
           }
         }
       }
@@ -12119,12 +12525,32 @@
         }
       }
     },
+    "Send the same review again": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send the same review again"
+          }
+        }
+      }
+    },
     "Send this listen again": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Send this listen again"
+          }
+        }
+      }
+    },
+    "Send this review again?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send this review again?"
           }
         }
       }
@@ -12275,6 +12701,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Share report link"
+          }
+        }
+      }
+    },
+    "Share what stood out…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share what stood out…"
           }
         }
       }
@@ -12677,6 +13113,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sign in"
+          }
+        }
+      }
+    },
+    "Sign in again or connect CritiqueBrainz in ListenBrainz settings before publishing a review.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in again or connect CritiqueBrainz in ListenBrainz settings before publishing a review."
           }
         }
       }
@@ -15233,6 +15679,16 @@
         }
       }
     },
+    "View published review": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View published review"
+          }
+        }
+      }
+    },
     "View release group": {
       "localizations": {
         "en": {
@@ -15313,6 +15769,16 @@
         }
       }
     },
+    "We can’t tell whether the earlier request worked. Sending it again may create a duplicate review.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We can’t tell whether the earlier request worked. Sending it again may create a duplicate review."
+          }
+        }
+      }
+    },
     "We couldn’t confirm the deletion. Wait until shortly after the next hour, then refresh before trying again.": {
       "localizations": {
         "en": {
@@ -15339,6 +15805,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "We couldn’t confirm whether the match was saved. Refresh later before sending it again."
+          }
+        }
+      }
+    },
+    "We couldn’t confirm whether your review was published. Check CritiqueBrainz before sending the same review again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We couldn’t confirm whether your review was published. Check CritiqueBrainz before sending the same review again."
+          }
+        }
+      }
+    },
+    "We couldn’t confirm whether your review was published. Check CritiqueBrainz before sending this same review again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We couldn’t confirm whether your review was published. Check CritiqueBrainz before sending this same review again."
           }
         }
       }
@@ -15549,6 +16035,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Work MBID"
+          }
+        }
+      }
+    },
+    "Write a review": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write a review"
           }
         }
       }
@@ -15899,6 +16395,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Your private playlist is ready."
+          }
+        }
+      }
+    },
+    "Your review": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your review"
+          }
+        }
+      }
+    },
+    "Your review will be public under CC BY-SA 3.0. MetaBrainz may also license it commercially outside Creative Commons to support its work.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your review will be public under CC BY-SA 3.0. MetaBrainz may also license it commercially outside Creative Commons to support its work."
           }
         }
       }

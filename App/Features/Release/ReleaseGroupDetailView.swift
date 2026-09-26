@@ -193,7 +193,7 @@ struct ReleaseGroupDetailView: View {
     }
 
     private var reviews: some View {
-        CritiqueBrainzReviewSummaryView(entity: .init(kind: .releaseGroup, mbid: group.mbid))
+        CritiqueBrainzReviewSummaryView(entity: .init(kind: .releaseGroup, mbid: group.mbid), account: viewer, entityName: group.title)
     }
 
     private var facts: some View {

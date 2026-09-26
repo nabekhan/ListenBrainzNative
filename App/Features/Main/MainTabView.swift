@@ -120,6 +120,7 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-top-listeners-expanded-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reader-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-composer-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-unavailable-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reviews-failure-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-similar-artists-demo")
@@ -468,6 +469,19 @@ struct MainTabView: View {
                 }
                 .environment(pins)
                 .environment(\.similarArtistsProvider, VisualQASimilarArtistsProvider())
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-composer-demo") {
+                CritiqueBrainzReviewComposerSheet(
+                    model: CritiqueBrainzReviewComposerModel(
+                        account: model.account,
+                        entity: .init(
+                            kind: .artist,
+                            mbid: Self.popularityPreviewArtist.mbid!
+                        ),
+                        entityName: "Alvvays",
+                        provider: VisualQACritiqueBrainzReviewSubmitter(),
+                        journal: .init()
+                    )
+                )
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-critiquebrainz-reader-demo") {
                 let provider = VisualQACritiqueBrainzReviewsProvider(result: .populated)
                 NavigationStack {
@@ -486,7 +500,9 @@ struct MainTabView: View {
                 NavigationStack {
                     ScrollView {
                         CritiqueBrainzReviewSummaryView(
-                            entity: .init(kind: .artist, mbid: Self.popularityPreviewArtist.mbid!)
+                            entity: .init(kind: .artist, mbid: Self.popularityPreviewArtist.mbid!),
+                            account: model.account,
+                            entityName: "Alvvays"
                         )
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
@@ -1423,6 +1439,13 @@ struct MainTabView: View {
                 ),
                 pagination: pagination
             )
+        }
+    }
+
+    private struct VisualQACritiqueBrainzReviewSubmitter: CritiqueBrainzReviewSubmitting {
+        func submit(_ payload: CritiqueBrainzReviewDraft) async throws -> UUID {
+            _ = payload
+            return UUID(uuidString: "24b73f31-2730-4e8c-a145-c127eb637595")!
         }
     }
 

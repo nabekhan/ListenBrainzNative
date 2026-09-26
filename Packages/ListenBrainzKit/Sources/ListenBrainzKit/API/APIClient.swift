@@ -123,6 +123,10 @@ struct ListenBrainzAPIClient: APIClient {
                 req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             }
             let bodyData = try JSONEncoder.ListenBrainz.encode(body)
+            if let maximumRequestBodyBytes = request.data.maximumRequestBodyBytes,
+               bodyData.count > maximumRequestBodyBytes {
+                throw LBError.invalidParam
+            }
             req.httpBody = bodyData
         }
         return req
@@ -156,8 +160,13 @@ final class AuthenticatedRedirectDelegate: NSObject, URLSessionTaskDelegate, @un
             && effectivePort(source) == effectivePort(destination)
     }
 
-    func allowsAuthenticatedRedirect(from source: URL, to destination: URL) -> Bool {
-        Self.sameOrigin(source, destination)
+    func allowsAuthenticatedRedirect(
+        from source: URL,
+        to destination: URL,
+        method: String? = "GET"
+    ) -> Bool {
+        guard method == "GET" || method == "HEAD" else { return false }
+        return Self.sameOrigin(source, destination)
     }
 
     func urlSession(
@@ -176,7 +185,11 @@ final class AuthenticatedRedirectDelegate: NSObject, URLSessionTaskDelegate, @un
             return
         }
 
-        guard allowsAuthenticatedRedirect(from: source, to: destination) else {
+        guard allowsAuthenticatedRedirect(
+            from: source,
+            to: destination,
+            method: originalRequest.httpMethod
+        ) else {
             completionHandler(nil)
             return
         }

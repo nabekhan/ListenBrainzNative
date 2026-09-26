@@ -17,15 +17,22 @@ struct CritiqueBrainzReviewSummaryView: View {
     @Environment(\.critiqueBrainzReviewsProvider) private var provider
     @State private var model: CritiqueBrainzReviewModel?
     @State private var retryTask: Task<Void, Never>?
+    @State private var isComposerPresented = false
 
     let entity: CritiqueBrainzEntity
+    let account: Account?
+    let entityName: String
+
+    init(entity: CritiqueBrainzEntity, account: Account? = nil, entityName: String = "") {
+        self.entity = entity; self.account = account; self.entityName = entityName
+    }
 
     var body: some View {
         Group {
             switch model?.phase ?? .idle {
             case .idle, .loading: loadingCard
             case let .loaded(summary): loadedCard(summary)
-            case .unavailable: EmptyView()
+            case .unavailable: writeOnlyCard
             case .failed: failureCard
             }
         }
@@ -37,6 +44,18 @@ struct CritiqueBrainzReviewSummaryView: View {
         .onDisappear {
             retryTask?.cancel()
             retryTask = nil
+        }
+        .sheet(isPresented: $isComposerPresented) {
+            if let account {
+                CritiqueBrainzReviewComposerSheet(
+                    account: account,
+                    entity: entity,
+                    entityName: entityName
+                ) {
+                    retryTask?.cancel()
+                    retryTask = Task { await model?.retry() }
+                }
+            }
         }
     }
 
@@ -90,6 +109,11 @@ struct CritiqueBrainzReviewSummaryView: View {
                     .buttonStyle(.borderedProminent)
                 }
 
+                if let account, account.isAuthenticated, !entityName.isEmpty {
+                    Button { isComposerPresented = true } label: { Label("Write a review", systemImage: "square.and.pencil") }
+                        .buttonStyle(.bordered)
+                }
+
                 Link(destination: summary.entity.browseURL) {
                     Label("View on CritiqueBrainz", systemImage: "arrow.up.right.square")
                 }
@@ -101,20 +125,49 @@ struct CritiqueBrainzReviewSummaryView: View {
 
     private var failureCard: some View {
         card {
-            HStack(alignment: .center, spacing: 12) {
-                Image(systemName: "text.badge.xmark").foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Reviews couldn’t load").font(.subheadline.weight(.semibold))
-                    Text("CritiqueBrainz couldn’t load reviews. Try again in a moment.")
-                        .font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center, spacing: 12) {
+                    Image(systemName: "text.badge.xmark").foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Reviews couldn’t load").font(.subheadline.weight(.semibold))
+                        Text("CritiqueBrainz couldn’t load reviews. Try again in a moment.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
-                Spacer(minLength: 8)
-                Button("Try again") {
-                    retryTask?.cancel()
-                    retryTask = Task { await model?.retry() }
+
+                HStack(spacing: 10) {
+                    Button("Try again") {
+                        retryTask?.cancel()
+                        retryTask = Task { await model?.retry() }
+                    }
+                    .buttonStyle(.bordered)
+                    writeButton
                 }
-                .buttonStyle(.bordered)
             }
+        }
+    }
+
+    @ViewBuilder private var writeOnlyCard: some View {
+        if account?.isAuthenticated == true, !entityName.isEmpty {
+            card {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("CRITIQUEBRAINZ REVIEWS")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                        Text("No published reviews yet")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    writeButton
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var writeButton: some View {
+        if let account, account.isAuthenticated, !entityName.isEmpty {
+            Button { isComposerPresented = true } label: { Label("Write a review", systemImage: "square.and.pencil") }
+                .buttonStyle(.bordered)
         }
     }
 

@@ -337,7 +337,7 @@ struct RecordingDetailView: View {
     @ViewBuilder
     private var reviews: some View {
         if let mbid = recording.identity.mbid {
-            CritiqueBrainzReviewSummaryView(entity: .init(kind: .recording, mbid: mbid))
+            CritiqueBrainzReviewSummaryView(entity: .init(kind: .recording, mbid: mbid), account: model.account, entityName: recording.title)
         }
     }
 

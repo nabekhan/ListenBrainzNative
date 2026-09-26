@@ -370,6 +370,29 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "CritiqueBrainz-reader-local-append")
     }
 
+    func testCritiqueBrainzReviewComposerIsLocalAccessibleAndRequiresConsent() throws {
+        let app = launchFixture("-brainz-critiquebrainz-composer-demo")
+        let editor = app.textViews["Review text"]
+        let publish = app.buttons["Publish"]
+
+        XCTAssertTrue(editor.waitForExistence(timeout: 10))
+        XCTAssertTrue(publish.exists)
+        XCTAssertFalse(publish.isEnabled)
+        XCTAssertTrue(app.staticTexts["25 more characters needed"].exists)
+
+        let form = app.collectionViews.firstMatch
+        let terms = app.switches["I agree to these publishing terms."]
+        reveal(terms, in: form)
+        XCTAssertTrue(terms.exists)
+        XCTAssertTrue(terms.isHittable)
+
+        try assertNoAccessibilityIssues(
+            in: app,
+            auditTypes: semanticAuditTypes.union(.elementDetection)
+        )
+        keepScreenshot(named: "CritiqueBrainz-review-composer")
+    }
+
     private var semanticAuditTypes: XCUIAccessibilityAuditType {
         [
             .hitRegion,

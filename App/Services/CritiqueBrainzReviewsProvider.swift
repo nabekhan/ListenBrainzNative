@@ -352,4 +352,11 @@ enum CritiqueBrainzReviewCaches {
         timeToLive: 5 * 60,
         maximumEntryCount: 100
     )
+
+    static func invalidate(afterPublishing entity: CritiqueBrainzEntity) async {
+        await values.removeValue(for: .init(entity: entity))
+        // Page keys include range and sort parameters. Clear this small,
+        // bounded cache so no reader can reintroduce a stale first page.
+        await pages.removeAll()
+    }
 }

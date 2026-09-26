@@ -4,7 +4,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 
 ## Current vertical slice
 
-- Token authentication with Keychain storage, or read-only public-profile browsing
+- Guided web-assisted ListenBrainz sign-in with device-only Keychain storage, a manual-token fallback, or read-only public-profile browsing
 - Playing Now and recent-listening home screen
 - Paginated, date-grouped history with exact local-day navigation and adjacent-day browsing
 - Safe authenticated listen deletion with explicit confirmation, asynchronous-status copy, and a durable no-replay barrier for uncertain outcomes
@@ -28,6 +28,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Authenticated duplication of any visible playlist, with a fresh source preflight, canonical returned-copy navigation, and a durable no-replay barrier for ambiguous responses
 - Canonical MusicBrainz edition pages with release-group links and ordered, multi-disc track lists
 - Recording feedback for authenticated users
+- Native public CritiqueBrainz review publishing from Artist, Recording, and Release Group pages, with optional rating, language selection, explicit licensing consent, and durable duplicate-safe recovery
 - Public and multi-recipient personal recording recommendations, with follower-only selection and optional 280-character notes
 - Cached snapshots for useful cold starts and degraded-network behavior
 - Native Profile-launched Settings with local System/Light/Dark appearance, lazy Connected Services, secure ListenBrainz account and privacy handoffs, project information, and transparent disconnect controls
@@ -48,7 +49,7 @@ nix shell nixpkgs#xcodegen -c xcodegen generate
 open ListenBrainzNative.xcodeproj
 ```
 
-No token or secret belongs in source control. For authenticated use, copy the user token from ListenBrainz settings into the app; it is stored in the system Keychain.
+No token or secret belongs in source control. For authenticated use, follow the in-app official web sign-in flow or use the manual-token fallback; the resulting token is stored in the system Keychain.
 
 ## Project structure
 

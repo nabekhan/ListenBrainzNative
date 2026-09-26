@@ -4,6 +4,43 @@
 
 import Foundation
 
+private let critiqueBrainzLanguageCodes: Set<String> = Set(
+    Locale.LanguageCode.isoLanguageCodes
+        .map { $0.identifier.lowercased() }
+        .filter {
+            $0.utf8.count == 2 && $0.utf8.allSatisfy { (97 ... 122).contains($0) }
+        }
+)
+
+/// Server-aligned bounds for reviews published through ListenBrainz's
+/// CritiqueBrainz broker. Scalar counts mirror Python's Unicode code-point
+/// length while UTF-8 ceilings prevent disproportionate local allocation.
+public enum LBCritiqueBrainzReviewLimits {
+    public static let minimumTextScalars = 25
+    public static let maximumTextScalars = 100_000
+    public static let maximumTextUTF8Bytes = 400_000
+    public static let maximumEntityNameScalars = 255
+    public static let maximumEntityNameUTF8Bytes = 1_020
+    public static let maximumUsernameScalars = 255
+    public static let maximumUsernameUTF8Bytes = 1_020
+    public static let maximumEncodedRequestBytes = 640 * 1_024
+
+    public static func acceptsText(_ value: String) -> Bool {
+        (minimumTextScalars ... maximumTextScalars).contains(value.unicodeScalars.count)
+            && value.utf8.count <= maximumTextUTF8Bytes
+    }
+
+    public static func acceptsEntityName(_ value: String) -> Bool {
+        (1 ... maximumEntityNameScalars).contains(value.unicodeScalars.count)
+            && value.utf8.count <= maximumEntityNameUTF8Bytes
+    }
+
+    public static func acceptsUsername(_ value: String) -> Bool {
+        (1 ... maximumUsernameScalars).contains(value.unicodeScalars.count)
+            && value.utf8.count <= maximumUsernameUTF8Bytes
+    }
+}
+
 /// Access to an authenticated user's ListenBrainz social feed and its supported actions.
 public struct LBFeedClient: Sendable {
     let apiClient: any APIClient
@@ -91,6 +128,34 @@ public struct LBFeedClient: Sendable {
             recordingMSID: recordingMSID,
             users: users,
             blurbContent: blurbContent
+        ))
+    }
+
+    /// Publishes a CritiqueBrainz review for a canonical recording, artist, or
+    /// release group using the authenticated ListenBrainz account connection.
+    public func createCritiqueBrainzReview(
+        username: String,
+        entityName: String,
+        entityID: UUID,
+        entityType: String,
+        text: String,
+        language: String,
+        rating: Int? = nil
+    ) async throws -> LBFeedCreatedEvent {
+        let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedName = entityName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedLanguage = language.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard LBCritiqueBrainzReviewLimits.acceptsUsername(trimmedUsername),
+              LBCritiqueBrainzReviewLimits.acceptsEntityName(trimmedName),
+              ["recording", "artist", "release_group"].contains(entityType),
+              LBCritiqueBrainzReviewLimits.acceptsText(trimmedText),
+              critiqueBrainzLanguageCodes.contains(trimmedLanguage),
+              rating == nil || (1...5).contains(rating!)
+        else { throw LBError.invalidParam }
+        return try await apiClient.execute(CreateCritiqueBrainzReviewRequest(
+            username: trimmedUsername, entityName: trimmedName, entityID: entityID,
+            entityType: entityType, text: trimmedText, language: trimmedLanguage, rating: rating
         ))
     }
 

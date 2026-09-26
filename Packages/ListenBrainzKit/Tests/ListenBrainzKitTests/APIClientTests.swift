@@ -75,6 +75,19 @@ import Testing
         #expect(request.httpBody?.isEmpty == false)
     }
 
+    @Test("Encoded request bodies respect an explicit byte ceiling")
+    func requestBodyCeiling() throws {
+        let client = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "TestClient/1.0 (+https://example.com)"
+        )
+
+        #expect(throws: LBError.invalidParam) {
+            try client.makeURLRequest(BoundedBodyRequest(payload: String(repeating: "x", count: 64)))
+        }
+    }
+
     @Test("Authenticated requests use ListenBrainz token authentication")
     func tokenHeader() throws {
         let client = ListenBrainzAPIClient(
@@ -177,11 +190,30 @@ import Testing
         ))
         #expect(!policy.allowsAuthenticatedRedirect(
             from: source,
+            to: URL(string: "https://api.listenbrainz.org:443/1/validate-token/")!,
+            method: "POST"
+        ))
+        #expect(!policy.allowsAuthenticatedRedirect(
+            from: source,
             to: URL(string: "https://example.com/collect")!
         ))
         #expect(!policy.allowsAuthenticatedRedirect(
             from: source,
             to: URL(string: "http://api.listenbrainz.org/1/validate-token")!
         ))
+    }
+}
+
+private struct BoundedBodyRequest: APIRequest {
+    typealias Result = NoResult
+    let data: APIRequestData<[String: String]>
+
+    init(payload: String) {
+        data = .init(
+            path: "/1/test",
+            method: .post,
+            body: ["payload": payload],
+            maximumRequestBodyBytes: 32
+        )
     }
 }

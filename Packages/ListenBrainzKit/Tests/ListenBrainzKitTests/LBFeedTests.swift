@@ -209,6 +209,72 @@ import Testing
         #expect(invalidEventMock.request == nil)
     }
 
+    @Test("CritiqueBrainz review mutation uses the canonical proxy body and validates bounds")
+    func critiqueBrainzReviewMutation() async throws {
+        let entity = UUID(uuidString: "526bd613-fddd-4bd6-9137-ab709ac74cab")!
+        let review = UUID(uuidString: "a6081bc1-2a76-4984-b21f-38bc3dcca3a5")!
+        let response = try JSONDecoder.ListenBrainz.decode(LBFeedCreatedEvent.self, from: Data("{\"id\":42,\"user_id\":7,\"event_type\":\"critiquebrainz_review\",\"metadata\":{\"review_id\":\"\(review.uuidString)\"}}".utf8))
+        #expect(response.metadata.reviewID == review.uuidString)
+        let mock = MockAPIClient(result: .success(response))
+        _ = try await LBFeedClient(mock).createCritiqueBrainzReview(username: "listener", entityName: "Example", entityID: entity, entityType: "artist", text: String(repeating: "x", count: 25), language: "en", rating: 5)
+        let request = try #require(mock.request as? CreateCritiqueBrainzReviewRequest)
+        #expect(request.data.path == "/1/user/listener/timeline-event/create/review")
+        #expect(request.data.method == .post)
+        #expect(request.data.statusErrors == mutationStatusErrors)
+        #expect(request.data.maximumResponseBytes == 64 * 1_024)
+        #expect(
+            request.data.maximumRequestBodyBytes
+                == LBCritiqueBrainzReviewLimits.maximumEncodedRequestBytes
+        )
+        #expect(request.data.pathIsPercentEncoded)
+        let metadata = try #require((try jsonDictionary(request.data.body))["metadata"] as? [String: Any])
+        #expect(metadata["entity_id"] as? String == entity.uuidString)
+        #expect(metadata["entity_type"] as? String == "artist")
+        #expect(metadata["rating"] as? Int == 5)
+        let hostile = CreateCritiqueBrainzReviewRequest(username: "a /?#% b", entityName: "Example", entityID: entity, entityType: "artist", text: String(repeating: "x", count: 25), language: "en", rating: nil)
+        let client = ListenBrainzAPIClient(token: "", root: URL(string: "https://api.listenbrainz.org")!, userAgent: "Test/1")
+        let url = try #require(try client.makeURLRequest(hostile).url)
+        #expect(URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedPath == "/1/user/a%20%2F%3F%23%25%20b/timeline-event/create/review")
+        let dotSegment = CreateCritiqueBrainzReviewRequest(username: "..", entityName: "Example", entityID: entity, entityType: "artist", text: String(repeating: "x", count: 25), language: "en", rating: nil)
+        let dotURL = try #require(try client.makeURLRequest(dotSegment).url)
+        #expect(URLComponents(url: dotURL, resolvingAgainstBaseURL: false)?.percentEncodedPath == "/1/user/%2E%2E/timeline-event/create/review")
+        let invalid = MockAPIClient(result: .success(response))
+        await #expect(throws: LBError.invalidParam) {
+            _ = try await LBFeedClient(invalid).createCritiqueBrainzReview(username: "listener", entityName: "Example", entityID: entity, entityType: "artist", text: "too short", language: "en")
+        }
+        #expect(invalid.request == nil)
+
+        for language in ["EN", "eng", "zz", "en-CA"] {
+            let invalidLanguage = MockAPIClient(result: .success(response))
+            await #expect(throws: LBError.invalidParam) {
+                _ = try await LBFeedClient(invalidLanguage).createCritiqueBrainzReview(
+                    username: "listener",
+                    entityName: "Example",
+                    entityID: entity,
+                    entityType: "artist",
+                    text: String(repeating: "x", count: 25),
+                    language: language
+                )
+            }
+            #expect(invalidLanguage.request == nil)
+        }
+
+        let combiningMarks = "a" + String(repeating: "\u{0301}", count: 100_000)
+        #expect(combiningMarks.count < combiningMarks.unicodeScalars.count)
+        let oversizedUnicode = MockAPIClient(result: .success(response))
+        await #expect(throws: LBError.invalidParam) {
+            _ = try await LBFeedClient(oversizedUnicode).createCritiqueBrainzReview(
+                username: "listener",
+                entityName: "Example",
+                entityID: entity,
+                entityType: "artist",
+                text: combiningMarks,
+                language: "en"
+            )
+        }
+        #expect(oversizedUnicode.request == nil)
+    }
+
     private func pageResponse() throws -> LBFeedPageResponse {
         try JSONDecoder.ListenBrainz.decode(LBFeedPageResponse.self, from: Data(#"""
         {"payload":{"count":5,"user_id":"listener","events":[

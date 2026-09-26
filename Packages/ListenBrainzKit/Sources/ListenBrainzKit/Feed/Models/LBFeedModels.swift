@@ -112,6 +112,7 @@ public struct LBFeedEventMetadata: Decodable, Equatable, Sendable {
     public let entityType: String?
     public let rating: Int?
     public let text: String?
+    public let reviewID: String?
     public let reviewMBID: String?
     public let originalEventID: Int?
     public let originalEventType: String?
@@ -139,6 +140,7 @@ public struct LBFeedEventMetadata: Decodable, Equatable, Sendable {
         case entityType
         case rating
         case text
+        case reviewID = "reviewId"
         case reviewMBID = "reviewMbid"
         case originalEventID = "originalEventId"
         case originalEventType
@@ -172,6 +174,7 @@ public struct LBFeedEventMetadata: Decodable, Equatable, Sendable {
         entityType = try? container.decode(String.self, forKey: .entityType)
         rating = try? container.decode(Int.self, forKey: .rating)
         text = try? container.decode(String.self, forKey: .text)
+        reviewID = try? container.decode(String.self, forKey: .reviewID)
         reviewMBID = try? container.decode(String.self, forKey: .reviewMBID)
         originalEventID = try? container.decode(Int.self, forKey: .originalEventID)
         originalEventType = try? container.decode(String.self, forKey: .originalEventType)
@@ -200,6 +203,7 @@ public struct LBFeedEventMetadata: Decodable, Equatable, Sendable {
         entityType: String? = nil,
         rating: Int? = nil,
         text: String? = nil,
+        reviewID: String? = nil,
         reviewMBID: String? = nil,
         originalEventID: Int? = nil,
         originalEventType: String? = nil,
@@ -226,6 +230,7 @@ public struct LBFeedEventMetadata: Decodable, Equatable, Sendable {
         self.entityType = entityType
         self.rating = rating
         self.text = text
+        self.reviewID = reviewID
         self.reviewMBID = reviewMBID
         self.originalEventID = originalEventID
         self.originalEventType = originalEventType

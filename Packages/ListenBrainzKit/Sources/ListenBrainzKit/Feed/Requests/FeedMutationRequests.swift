@@ -94,6 +94,43 @@ struct CreateThanksRequest: APIRequest {
     }
 }
 
+/// Creates a CritiqueBrainz review through ListenBrainz's authenticated proxy.
+/// The server owns the CritiqueBrainz OAuth exchange and fixes the public
+/// CC BY-SA 3.0 license; clients must never handle a CritiqueBrainz token.
+struct CreateCritiqueBrainzReviewRequest: APIRequest {
+    typealias Result = LBFeedCreatedEvent
+    let data: APIRequestData<Body>
+
+    init(username: String, entityName: String, entityID: UUID, entityType: String, text: String, language: String, rating: Int?) {
+        // A username is one opaque path segment. Escape dot as well as
+        // delimiters so values such as `..` can never become path traversal.
+        let allowed = CharacterSet.urlPathAllowed.subtracting(
+            CharacterSet(charactersIn: "/?#%.")
+        )
+        let encodedUsername = username.addingPercentEncoding(withAllowedCharacters: allowed) ?? username
+        data = .init(
+            path: "/1/user/\(encodedUsername)/timeline-event/create/review",
+            method: .post,
+            headers: ["Content-Type": "application/json"],
+            body: .init(metadata: .init(entityName: entityName, entityID: entityID, entityType: entityType, text: text, language: language, rating: rating)),
+            statusErrors: FeedMutationStatusErrors.all,
+            maximumResponseBytes: 64 * 1_024,
+            maximumRequestBodyBytes: LBCritiqueBrainzReviewLimits.maximumEncodedRequestBytes,
+            pathIsPercentEncoded: true
+        )
+    }
+
+    struct Body: Encodable { let metadata: Metadata }
+    struct Metadata: Encodable {
+        let entityName: String
+        let entityID: UUID
+        let entityType: String
+        let text: String
+        let language: String
+        let rating: Int?
+    }
+}
+
 struct FeedEventStatusMutationRequest: APIRequest {
     enum Operation: String {
         case hide
