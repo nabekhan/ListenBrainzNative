@@ -4,6 +4,13 @@ Updated: 2026-09-26
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
 
+## Current-source unsigned IPA closure — 2026-09-26
+
+- `scripts/package-ipa.sh` built an isolated unsigned device archive from clean checkpoint `97b970a` containing product commit `6e77b3f`. The first run correctly refused to replace the older ignored `dist/Brainz-0.1.0-1-unsigned.ipa` and removed its temporary archive. The accepted rerun published uniquely to `/private/tmp/Brainz-0.1.0-1-97b970a-unsigned.ipa`.
+- The accepted artifact was 7,084,837 bytes with SHA-256 `639867b9e1212370d86df4030247933c536c52346442a83c85c7e83d9a9f0521`. Independent extraction verified 12 unique safe entries under `Payload/Brainz.app`, one thin unsigned arm64 iOS executable, exact bundle/version/build/minimum-OS identity, only Apple system dependencies, and source-identical privacy data. It found no traversal, duplicate path, symlink, profile, code signature, nested code, unexpected executable, or unsafe ZIP metadata. New cache symbols and saved-profile copy are present and absent from the older artifact. Independent security review reports SHIP for the unsigned/re-signable boundary.
+- No signer, provisioning profile, certificate, credential, device, network request, package, browser, runtime, host application, or additional skill was used or installed. External signing and physical-device verification remain required.
+- After evidence was recorded, the new and superseded IPAs were moved through `/Users/nabeel/.Trash/Brainz-Current-IPA-20260926.9PiUWJ`; that dedicated two-file bucket alone was deleted, reclaiming 13,764 KiB. The empty ignored `dist` directory was removed, both package-script temporary roots had already self-cleaned, and an exact audit found no matching IPA, `brainz-ipa.*` root, inspection root, or cleanup bucket.
+
 ## Durable public visited-profile cache — 2026-09-26
 
 - `/private/tmp/brainz-public-profile-cache-*` held isolated Derived Data, iterative and accepted result bundles, one compiler log, and light/dark/maximum-accessibility visual captures. Five abandoned `brainz-localizations.*` extraction roots and one tiny result bundle from an initial command that named the wrong project were also identified as Brainz-only temporary artifacts.
