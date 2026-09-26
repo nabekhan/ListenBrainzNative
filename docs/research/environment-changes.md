@@ -15,6 +15,7 @@ This file tracks non-source artifacts created for reconnaissance, builds, and vi
 - `.derived-data/release-identity/Brainz-final.xcarchive` and `/tmp/brainz-release-foundation-final-archive.log` are the final unsigned device archive and build log after the reviewed privacy corrections. They are contained by the existing release-identity cleanup scope except for the named log.
 - `Brainz Release Identity QA` (`4AC26932-A0F4-4E69-BA39-D4E13BD7D16C`) is a disposable iOS 27 simulator. Cleanup: shut down and delete only this UUID after icon QA and tests finish.
 - No package, browser, runtime, host application, or additional skill was installed. The existing UX Writing and image-generation skills were used; the existing Xcode 27/iOS 27 runtime, ephemeral Nix XcodeGen environment, `ffmpeg`, `jq`, and Apple command-line tools were reused.
+- Cleanup completed after the validated product commit: all paths above were moved into the dedicated `Brainz-Release-20260925-bjK3FY` Trash bucket and that bucket alone was deleted file-by-file, reclaiming 1.7 GB without inspecting or changing unrelated Trash. The simulator was shut down and deleted. An exact audit found no recorded artifact, cleanup bucket, or simulator afterward.
 
 ## Rebuild after portable cleanup — 2026-09-24
 
