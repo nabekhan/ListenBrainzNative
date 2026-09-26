@@ -68,6 +68,75 @@ final class PopularitySummaryModelTests: XCTestCase {
             "Across ListenBrainz, 2,418,731 listens from 148,206 listeners. Global totals, refreshed daily."
         )
     }
+
+    func testAccessibilitySelectsEnglishPluralVariantsForZeroOneAndMany() {
+        let locale = Locale(identifier: "en_US")
+        let entity = PopularityEntity(kind: .recording, mbid: UUID())
+
+        let zero = PopularitySummaryPresentation(GlobalPopularity(
+            entity: entity,
+            totalListenCount: 0,
+            totalUserCount: 0
+        ))
+        let singular = PopularitySummaryPresentation(GlobalPopularity(
+            entity: entity,
+            totalListenCount: 1,
+            totalUserCount: 1
+        ))
+        let plural = PopularitySummaryPresentation(GlobalPopularity(
+            entity: entity,
+            totalListenCount: 2,
+            totalUserCount: 2
+        ))
+
+        XCTAssertEqual(
+            zero.accessibilityLabel(locale: locale),
+            "Across ListenBrainz, 0 listens from 0 listeners. Global totals, refreshed daily."
+        )
+        XCTAssertEqual(
+            singular.accessibilityLabel(locale: locale),
+            "Across ListenBrainz, 1 listen from 1 listener. Global totals, refreshed daily."
+        )
+        XCTAssertEqual(
+            plural.accessibilityLabel(locale: locale),
+            "Across ListenBrainz, 2 listens from 2 listeners. Global totals, refreshed daily."
+        )
+    }
+
+    func testCatalogSelectsEnglishPluralVariantsAcrossCountPhrases() {
+        let locale = Locale(identifier: "en_US")
+
+        XCTAssertEqual(String(localized: "\(0) listens", locale: locale), "0 listens")
+        XCTAssertEqual(String(localized: "\(1) listens", locale: locale), "1 listen")
+        XCTAssertEqual(String(localized: "\(2) listens", locale: locale), "2 listens")
+        XCTAssertEqual(String(localized: "\(0) artists", locale: locale), "0 artists")
+        XCTAssertEqual(String(localized: "\(1) artists", locale: locale), "1 artist")
+        XCTAssertEqual(String(localized: "\(2) artists", locale: locale), "2 artists")
+        XCTAssertEqual(String(localized: "\(1) active days", locale: locale), "1 active day")
+        XCTAssertEqual(String(localized: "\(2) active days", locale: locale), "2 active days")
+        XCTAssertEqual(String(localized: "\(1) ratings", locale: locale), "1 rating")
+        XCTAssertEqual(String(localized: "\(2) ratings", locale: locale), "2 ratings")
+        XCTAssertEqual(String(localized: "\(1) releases", locale: locale), "1 release")
+        XCTAssertEqual(String(localized: "\(2) releases", locale: locale), "2 releases")
+        XCTAssertEqual(String(localized: "Read \(1) reviews", locale: locale), "Read 1 review")
+        XCTAssertEqual(String(localized: "Read \(2) reviews", locale: locale), "Read 2 reviews")
+        XCTAssertEqual(
+            String(localized: "\(1) matched albums are ready", locale: locale),
+            "1 matched album is ready"
+        )
+        XCTAssertEqual(
+            String(localized: "\(2) matched albums are ready", locale: locale),
+            "2 matched albums are ready"
+        )
+        XCTAssertEqual(
+            String(localized: "\(1) unmapped tracks are left out.", locale: locale),
+            "1 unmapped track is left out."
+        )
+        XCTAssertEqual(
+            String(localized: "\(2) unmapped tracks are left out.", locale: locale),
+            "2 unmapped tracks are left out."
+        )
+    }
 }
 
 private actor PopularitySummaryFixtureProvider: PopularityProviding {

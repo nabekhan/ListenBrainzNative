@@ -49,6 +49,7 @@ struct ArtistArtworkView: View {
     let artist: RankedArtist
 
     var body: some View {
+        let listens = String(localized: "\(artist.listenCount) listens")
         Circle()
             .fill(AppTheme.artworkGradient(seed: artist.name))
             .overlay {
@@ -58,7 +59,7 @@ struct ArtistArtworkView: View {
             }
             .accessibilityLabel(
                 artist.listenCount > 0
-                    ? String(localized: "\(artist.name), \(artist.listenCount.formatted()) listens")
+                    ? String(localized: "\(artist.name), \(listens)")
                     : String(localized: "\(artist.name), MusicBrainz artist")
             )
     }

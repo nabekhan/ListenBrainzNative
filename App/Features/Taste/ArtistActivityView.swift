@@ -273,9 +273,10 @@ struct ArtistActivityView: View {
 
     @ViewBuilder
     private func artistHeader(_ artist: ArtistActivity.Artist, rank: Int) -> some View {
+        let listens = String(localized: "\(artist.listenCount) listens")
         let content = artistHeaderContent(artist, rank: rank)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(String(localized: "\(rank). \(artist.name), \(artist.listenCount) listens"))
+            .accessibilityLabel(String(localized: "\(rank). \(artist.name), \(listens)"))
 
         if artist.mbid != nil {
             NavigationLink(value: artist.rankedArtist) { content }
@@ -361,9 +362,10 @@ struct ArtistActivityView: View {
 
     @ViewBuilder
     private func albumRow(_ album: ArtistActivity.Album, artist: ArtistActivity.Artist) -> some View {
+        let listens = String(localized: "\(album.listenCount) listens")
         let content = albumRowContent(album)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(String(localized: "\(album.name), \(album.listenCount) listens"))
+            .accessibilityLabel(String(localized: "\(album.name), \(listens)"))
 
         if let group = album.releaseGroup(artistName: artist.name) {
             NavigationLink(value: group) { content }
@@ -400,9 +402,7 @@ struct ArtistActivityView: View {
 
     private func albumDisclosureTitle(albumCount: Int, isExpanded: Bool) -> String {
         if isExpanded { return String(localized: "Hide albums") }
-        return albumCount == 1
-            ? String(localized: "Show \(albumCount) album")
-            : String(localized: "Show \(albumCount) albums")
+        return String(localized: "Show \(albumCount) albums")
     }
 
     private func dateRange(_ activity: ArtistActivity) -> String {
@@ -413,15 +413,11 @@ struct ArtistActivityView: View {
     }
 
     private func listenCountLabel(_ count: Int) -> String {
-        count == 1
-            ? String(localized: "\(count) listen")
-            : String(localized: "\(count) listens")
+        String(localized: "\(count) listens")
     }
 
     private func albumMixAccessibilityLabel(_ count: Int) -> String {
-        count == 1
-            ? String(localized: "Album mix across \(count) album")
-            : String(localized: "Album mix across \(count) albums")
+        String(localized: "Album mix across \(count) albums")
     }
 
     private func showExpandedFixtureIfRequested() {

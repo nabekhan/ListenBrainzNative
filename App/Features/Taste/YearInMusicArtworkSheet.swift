@@ -262,15 +262,11 @@ struct YearInMusicArtworkSheet: View {
     }
 
     private func listenCountLabel(_ count: Int) -> String {
-        count == 1
-            ? String(localized: "\(count.formatted()) listen")
-            : String(localized: "\(count.formatted()) listens")
+        String(localized: "\(count) listens")
     }
 
     private func artistCountLabel(_ count: Int) -> String {
-        count == 1
-            ? String(localized: "\(count.formatted()) artist")
-            : String(localized: "\(count.formatted()) artists")
+        String(localized: "\(count) artists")
     }
 
     private func beginRetry() {

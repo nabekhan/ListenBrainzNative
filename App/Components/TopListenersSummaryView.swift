@@ -206,10 +206,7 @@ struct TopListenersSummaryView: View {
     }
 
     private func listenCountLabel(_ listener: TopListener) -> String {
-        let count = listener.listenCount.formatted()
-        return listener.listenCount == 1
-            ? String(localized: "\(count) listen")
-            : String(localized: "\(count) listens")
+        String(localized: "\(listener.listenCount) listens")
     }
 
     private var failureCard: some View {

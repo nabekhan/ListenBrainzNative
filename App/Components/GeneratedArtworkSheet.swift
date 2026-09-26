@@ -59,12 +59,8 @@ struct GeneratedArtworkPresentation: Equatable, Sendable {
         albumCount: Int
     ) -> Self {
         let sourceURL = listenBrainzURL(path: "/user/\(username)/stats/")
-        let detail = albumCount == 1
-            ? String(localized: "One album you chose from your listening history.")
-            : String(localized: "\(albumCount.formatted()) albums you chose from your listening history.")
-        let accessibilityLabel = albumCount == 1
-            ? String(localized: "ListenBrainz album collage with one cover")
-            : String(localized: "ListenBrainz album collage with \(albumCount.formatted()) covers")
+        let detail = String(localized: "\(albumCount) albums you chose from your listening history.")
+        let accessibilityLabel = String(localized: "ListenBrainz album collage with \(albumCount) covers")
         return Self(
             title: String(localized: "Album collage"),
             detail: detail,

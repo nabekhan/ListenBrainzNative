@@ -413,23 +413,24 @@ struct PlaylistDetailView: View {
         .alert(item: removalNoticeBinding) { notice in
             switch notice {
             case .stale:
-                Alert(title: Text("Playlist changed"), message: Text("The track order changed before anything was removed. Review the refreshed playlist and try again."), dismissButton: .default(Text("OK")))
+                return Alert(title: Text("Playlist changed"), message: Text("The track order changed before anything was removed. Review the refreshed playlist and try again."), dismissButton: .default(Text("OK")))
             case let .confirmed(track, playlist):
-                Alert(title: Text("Track removed"), message: Text("“\(track)” was removed from “\(playlist)”."), dismissButton: .default(Text("OK")))
+                return Alert(title: Text("Track removed"), message: Text("“\(track)” was removed from “\(playlist)”."), dismissButton: .default(Text("OK")))
             case let .confirmedRange(count, playlist):
-                Alert(
+                let trackCount = String(localized: "\(count) tracks")
+                return Alert(
                     title: Text("Tracks removed"),
-                    message: Text("\(count.formatted()) tracks were removed from “\(playlist)”."),
+                    message: Text(String(localized: "Removed \(trackCount) from “\(playlist)”.")),
                     dismissButton: .default(Text("OK"))
                 )
             case let .needsReview(message):
-                Alert(title: Text("Track changes need review"), message: Text(message), dismissButton: .default(Text("OK")))
+                return Alert(title: Text("Track changes need review"), message: Text(message), dismissButton: .default(Text("OK")))
             case .refreshed:
-                Alert(title: Text("Playlist refreshed"), message: Text("Review the current track order before changing tracks again."), dismissButton: .default(Text("OK")))
+                return Alert(title: Text("Playlist refreshed"), message: Text("Review the current track order before changing tracks again."), dismissButton: .default(Text("OK")))
             case let .accessLost(message):
-                Alert(title: Text("Playlist unavailable"), message: Text(message), dismissButton: .default(Text("OK")))
+                return Alert(title: Text("Playlist unavailable"), message: Text(message), dismissButton: .default(Text("OK")))
             case let .failed(message):
-                Alert(title: Text("Removal failed"), message: Text(message), dismissButton: .default(Text("OK")))
+                return Alert(title: Text("Removal failed"), message: Text(message), dismissButton: .default(Text("OK")))
             }
         }
         .confirmationDialog("Reset safety record?", isPresented: $showsSafetyResetConfirmation, titleVisibility: .visible) {
@@ -567,9 +568,7 @@ struct PlaylistDetailView: View {
     @ViewBuilder
     private func metrics(_ detail: PlaylistDetail) -> some View {
         let trackCount = detail.tracks.count
-        let trackCountLabel = trackCount == 1
-            ? String(localized: "1 track")
-            : String(localized: "\(trackCount) tracks")
+        let trackCountLabel = String(localized: "\(trackCount) tracks")
         Label(
             trackCountLabel,
             systemImage: "music.note.list"
@@ -1033,28 +1032,23 @@ private struct PlaylistTrackRemovalSheet: View {
         guard hasContiguousSelection else {
             return String(localized: "Selected tracks must be next to each other in the playlist.")
         }
-        return selection.count == 1
-            ? String(localized: "1 track selected.")
-            : String(localized: "\(selection.count.formatted()) tracks selected.")
+        return String(localized: "\(selection.count) tracks selected.")
     }
 
     private var removeButtonTitle: String {
-        selection.count == 1
-            ? String(localized: "Remove track")
-            : String(localized: "Remove \(selection.count.formatted()) tracks")
+        String(localized: "Remove \(selection.count) tracks")
     }
 
     private var confirmationTitle: String {
         if let onlyTrack = selectedTracks.first, selectedTracks.count == 1 {
             return String(localized: "Remove “\(onlyTrack.recording.title)”?")
         }
-        return String(localized: "Remove \(selectedTracks.count.formatted()) tracks?")
+        return String(localized: "Remove \(selectedTracks.count) tracks?")
     }
 
     private var confirmationMessage: String {
-        selectedTracks.count == 1
-            ? String(localized: "This removes one track from “\(detail.title)” for everyone who uses it.")
-            : String(localized: "This removes \(selectedTracks.count.formatted()) tracks from “\(detail.title)” for everyone who uses it.")
+        let trackCount = String(localized: "\(selectedTracks.count) tracks")
+        return String(localized: "This removes \(trackCount) from “\(detail.title)” for everyone who uses it.")
     }
 
     var body: some View {

@@ -91,6 +91,7 @@ struct HomeView: View {
             .padding(.horizontal, 18)
             .padding(.bottom, 36)
         }
+        .accessibilityIdentifier("home-screen")
         .refreshable { await refreshHome() }
     }
 
@@ -255,7 +256,7 @@ struct HomeView: View {
     }
 
     private func listenCountLabel(_ count: Int) -> LocalizedStringResource {
-        count == 1 ? "\(count) listen" : "\(count) listens"
+        "\(count) listens"
     }
 }
 
@@ -380,7 +381,7 @@ struct HomeTopRecordingsSection: View {
     }
 
     private func listenCountLabel(_ count: Int) -> LocalizedStringResource {
-        count == 1 ? "\(count) listen" : "\(count) listens"
+        "\(count) listens"
     }
 }
 

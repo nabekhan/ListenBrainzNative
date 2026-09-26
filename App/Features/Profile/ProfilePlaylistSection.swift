@@ -441,13 +441,9 @@ private extension ProfilePlaylistCategory {
     func countLabel(for count: Int) -> LocalizedStringResource {
         switch self {
         case .owned:
-            return count == 1
-                ? "1 owned playlist"
-                : "\(count) owned playlists"
+            return "\(count) owned playlists"
         case .collaborating:
-            return count == 1
-                ? "1 collaborative playlist"
-                : "\(count) collaborative playlists"
+            return "\(count) collaborative playlists"
         }
     }
 }

@@ -31,56 +31,6 @@
         }
       }
     },
-    "%@ %@ with music": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ %2$@ with music"
-          }
-        }
-      }
-    },
-    "%@ ListenBrainz listen": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ ListenBrainz listen"
-          }
-        }
-      }
-    },
-    "%@ ListenBrainz listens": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ ListenBrainz listens"
-          }
-        }
-      }
-    },
-    "%@ albums you chose from your listening history.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ albums you chose from your listening history."
-          }
-        }
-      }
-    },
-    "%@ artist": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ artist"
-          }
-        }
-      }
-    },
     "%@ artist evolution": {
       "localizations": {
         "en": {
@@ -91,22 +41,22 @@
         }
       }
     },
-    "%@ artists": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ artists"
-          }
-        }
-      }
-    },
     "%@ by %@": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "new",
             "value": "%1$@ by %2$@"
+          }
+        }
+      }
+    },
+    "%@ calculated by ListenBrainz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ calculated by ListenBrainz"
           }
         }
       }
@@ -131,36 +81,6 @@
         }
       }
     },
-    "%@ listen": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ listen"
-          }
-        }
-      }
-    },
-    "%@ listener": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ listener"
-          }
-        }
-      }
-    },
-    "%@ listeners": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ listeners"
-          }
-        }
-      }
-    },
     "%@ listening activity": {
       "localizations": {
         "en": {
@@ -177,56 +97,6 @@
           "stringUnit": {
             "state": "new",
             "value": "%1$@ listening hours in UTC. %2$@. Peak: %3$@ at %4$@, %5$@."
-          }
-        }
-      }
-    },
-    "%@ listens": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ listens"
-          }
-        }
-      }
-    },
-    "%@ listens across individual years": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ listens across individual years"
-          }
-        }
-      }
-    },
-    "%@ matched albums are ready": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ matched albums are ready"
-          }
-        }
-      }
-    },
-    "%@ new artist discovered": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ new artist discovered"
-          }
-        }
-      }
-    },
-    "%@ new artists discovered": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ new artists discovered"
           }
         }
       }
@@ -261,22 +131,12 @@
         }
       }
     },
-    "%@ out of 5 · %@ rating": {
+    "%@ out of 5 · %@": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "new",
-            "value": "%1$@ out of 5 · %2$@ rating"
-          }
-        }
-      }
-    },
-    "%@ out of 5 · %@ ratings": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ out of 5 · %2$@ ratings"
+            "value": "%1$@ out of 5 · %2$@"
           }
         }
       }
@@ -317,66 +177,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ this recommendation"
-          }
-        }
-      }
-    },
-    "%@ track": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ track"
-          }
-        }
-      }
-    },
-    "%@ tracks": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ tracks"
-          }
-        }
-      }
-    },
-    "%@ tracks included in order.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ tracks included in order."
-          }
-        }
-      }
-    },
-    "%@ tracks selected.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ tracks selected."
-          }
-        }
-      }
-    },
-    "%@ tracks were removed from “%@”.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ tracks were removed from “%2$@”."
-          }
-        }
-      }
-    },
-    "%@ unmapped tracks left out.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ unmapped tracks left out."
           }
         }
       }
@@ -461,16 +261,6 @@
         }
       }
     },
-    "%@, %@ listens": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@, %2$@ listens"
-          }
-        }
-      }
-    },
     "%@, %@, %@": {
       "localizations": {
         "en": {
@@ -497,26 +287,6 @@
           "stringUnit": {
             "state": "new",
             "value": "%1$@, %2$@. Leading genre %3$@, %4$lld genre matches. %5$lld genres represented."
-          }
-        }
-      }
-    },
-    "%@, %lld listens": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@, %2$lld listens"
-          }
-        }
-      }
-    },
-    "%@, 1 listen": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@, 1 listen"
           }
         }
       }
@@ -621,12 +391,68 @@
         }
       }
     },
-    "%lld artist": {
+    "%lld ListenBrainz listens": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld artist"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld ListenBrainz listen"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld ListenBrainz listens"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld active days": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld active day"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld active days"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld albums you chose from your listening history.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld album you chose from your listening history."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld albums you chose from your listening history."
+                }
+              }
+            }
           }
         }
       }
@@ -634,9 +460,21 @@
     "%lld artists": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld artists"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld artist"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld artists"
+                }
+              }
+            }
           }
         }
       }
@@ -664,9 +502,21 @@
     "%lld collaborative playlists": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld collaborative playlists"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld collaborative playlist"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld collaborative playlists"
+                }
+              }
+            }
           }
         }
       }
@@ -691,6 +541,28 @@
         }
       }
     },
+    "%lld hours": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld hour"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld hours"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld hr %lld min": {
       "localizations": {
         "en": {
@@ -711,12 +583,24 @@
         }
       }
     },
-    "%lld listen": {
+    "%lld listeners": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld listen"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld listener"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld listeners"
+                }
+              }
+            }
           }
         }
       }
@@ -724,19 +608,43 @@
     "%lld listens": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld listens"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld listen"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld listens"
+                }
+              }
+            }
           }
         }
       }
     },
-    "%lld listens calculated by ListenBrainz": {
+    "%lld listens across individual years": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld listens calculated by ListenBrainz"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld listen across individual years"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld listens across individual years"
+                }
+              }
+            }
           }
         }
       }
@@ -744,9 +652,43 @@
     "%lld listens loaded": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld listens loaded"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld listen loaded"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld listens loaded"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld matched albums are ready": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld matched album is ready"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld matched albums are ready"
+                }
+              }
+            }
           }
         }
       }
@@ -757,6 +699,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld min"
+          }
+        }
+      }
+    },
+    "%lld minutes": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld minute"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld minutes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld new artists discovered": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld new artist discovered"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld new artists discovered"
+                }
+              }
+            }
           }
         }
       }
@@ -784,9 +770,65 @@
     "%lld owned playlists": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld owned playlists"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld owned playlist"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld owned playlists"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld ratings": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld rating"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld ratings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld releases": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld release"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld releases"
+                }
+              }
+            }
           }
         }
       }
@@ -794,9 +836,21 @@
     "%lld selected": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld selected"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld selected"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld selected"
+                }
+              }
+            }
           }
         }
       }
@@ -804,9 +858,109 @@
     "%lld tracks": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld tracks"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld track"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld tracks"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld tracks included in order.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld track included in order."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld tracks included in order."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld tracks selected.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld track selected."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld tracks selected."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld unmapped tracks are left out.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld unmapped track is left out."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld unmapped tracks are left out."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld unmapped tracks left out.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld unmapped track left out."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%(count)lld unmapped tracks left out."
+                }
+              }
+            }
           }
         }
       }
@@ -827,16 +981,6 @@
           "stringUnit": {
             "state": "new",
             "value": "%1$lld. %2$@, %3$@, %4$@ across ListenBrainz"
-          }
-        }
-      }
-    },
-    "%lld. %@, %lld listens": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$lld. %2$@, %3$lld listens"
           }
         }
       }
@@ -897,126 +1041,6 @@
           "stringUnit": {
             "state": "translated",
             "value": ", "
-          }
-        }
-      }
-    },
-    ", %@ artists": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": ", %@ artists"
-          }
-        }
-      }
-    },
-    ", %@ releases": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": ", %@ releases"
-          }
-        }
-      }
-    },
-    ", and %@ tracks": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": ", and %@ tracks"
-          }
-        }
-      }
-    },
-    "1 collaborative playlist": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 collaborative playlist"
-          }
-        }
-      }
-    },
-    "1 listen": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 listen"
-          }
-        }
-      }
-    },
-    "1 listen loaded": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 listen loaded"
-          }
-        }
-      }
-    },
-    "1 owned playlist": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 owned playlist"
-          }
-        }
-      }
-    },
-    "1 selected": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 selected"
-          }
-        }
-      }
-    },
-    "1 track": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 track"
-          }
-        }
-      }
-    },
-    "1 track included in order.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 track included in order."
-          }
-        }
-      }
-    },
-    "1 track selected.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 track selected."
-          }
-        }
-      }
-    },
-    "1 unmapped track left out.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 unmapped track left out."
           }
         }
       }
@@ -1601,22 +1625,24 @@
         }
       }
     },
-    "Album mix across %lld album": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Album mix across %lld album"
-          }
-        }
-      }
-    },
     "Album mix across %lld albums": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Album mix across %lld albums"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Album mix across %(count)lld album"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Album mix across %(count)lld albums"
+                }
+              }
+            }
           }
         }
       }
@@ -2151,22 +2177,12 @@
         }
       }
     },
-    "Average CritiqueBrainz rating: %@ out of 5, from %lld rating": {
+    "Average CritiqueBrainz rating: %@ out of 5, from %@": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "new",
-            "value": "Average CritiqueBrainz rating: %1$@ out of 5, from %2$lld rating"
-          }
-        }
-      }
-    },
-    "Average CritiqueBrainz rating: %@ out of 5, from %lld ratings": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Average CritiqueBrainz rating: %1$@ out of 5, from %2$lld ratings"
+            "value": "Average CritiqueBrainz rating: %1$@ out of 5, from %2$@"
           }
         }
       }
@@ -2731,12 +2747,24 @@
         }
       }
     },
-    "Choose %@ more albums.": {
+    "Choose %lld more albums.": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose %@ more albums."
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Choose %(count)lld more album."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Choose %(count)lld more albums."
+                }
+              }
+            }
           }
         }
       }
@@ -2857,16 +2885,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Choose layout"
-          }
-        }
-      }
-    },
-    "Choose one more album.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose one more album."
           }
         }
       }
@@ -5691,22 +5709,24 @@
         }
       }
     },
-    "ListenBrainz album collage with %@ covers": {
+    "ListenBrainz album collage with %lld covers": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ListenBrainz album collage with %@ covers"
-          }
-        }
-      }
-    },
-    "ListenBrainz album collage with one cover": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ListenBrainz album collage with one cover"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "ListenBrainz album collage with %(count)lld cover"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "ListenBrainz album collage with %(count)lld covers"
+                }
+              }
+            }
           }
         }
       }
@@ -6721,22 +6741,22 @@
         }
       }
     },
-    "Listening calendar for %@, %@ active days. Busiest day was %@ with %@ listens.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Listening calendar for %1$@, %2$@ active days. Busiest day was %3$@ with %4$@ listens."
-          }
-        }
-      }
-    },
     "Listening calendar for %@, with no active days in the report.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Listening calendar for %@, with no active days in the report."
+          }
+        }
+      }
+    },
+    "Listening calendar for %@. %@. Busiest day was %@ with %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Listening calendar for %1$@. %2$@. Busiest day was %3$@ with %4$@."
           }
         }
       }
@@ -8801,16 +8821,6 @@
         }
       }
     },
-    "Number %lld, %@ by %@, %@ listens": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Number %1$lld, %2$@ by %3$@, %4$@ listens"
-          }
-        }
-      }
-    },
     "Number %lld, %@, %@": {
       "localizations": {
         "en": {
@@ -8887,26 +8897,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "One ListenBrainz report powers the whole retrospective."
-          }
-        }
-      }
-    },
-    "One album you chose from your listening history.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "One album you chose from your listening history."
-          }
-        }
-      }
-    },
-    "One matched album is ready": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "One matched album is ready"
           }
         }
       }
@@ -10361,6 +10351,28 @@
         }
       }
     },
+    "Read %lld reviews": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Read %(count)lld review"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Read %(count)lld reviews"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Read Brainz privacy policy": {
       "localizations": {
         "en": {
@@ -10387,26 +10399,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Read review"
-          }
-        }
-      }
-    },
-    "Read these reviews": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Read these reviews"
-          }
-        }
-      }
-    },
-    "Read this review": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Read this review"
           }
         }
       }
@@ -10447,6 +10439,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Recent network window complete"
+          }
+        }
+      }
+    },
+    "Recent playlists are listed newest first. Open a likely match to inspect it, and reset only if the previous mix is not here.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent playlists are listed newest first. Open a likely match to inspect it, and reset only if the previous mix is not here."
           }
         }
       }
@@ -11071,22 +11073,46 @@
         }
       }
     },
-    "Remove %@ tracks": {
+    "Remove %lld tracks": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Remove %@ tracks"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Remove %(count)lld track"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Remove %(count)lld tracks"
+                }
+              }
+            }
           }
         }
       }
     },
-    "Remove %@ tracks?": {
+    "Remove %lld tracks?": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Remove %@ tracks?"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Remove %(count)lld track?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Remove %(count)lld tracks?"
+                }
+              }
+            }
           }
         }
       }
@@ -11111,22 +11137,22 @@
         }
       }
     },
-    "Remove track": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Remove track"
-          }
-        }
-      }
-    },
     "Remove “%@”?": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Remove “%@”?"
+          }
+        }
+      }
+    },
+    "Removed %@ from “%@”.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removed %1$@ from “%2$@”."
           }
         }
       }
@@ -11541,62 +11567,24 @@
         }
       }
     },
-    "Saves %@ tracks in this order.": {
+    "Saves %lld tracks in this order.": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Saves %@ tracks in this order."
-          }
-        }
-      }
-    },
-    "Saves %@ tracks in this order. %@ unmapped tracks are left out.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Saves %1$@ tracks in this order. %2$@ unmapped tracks are left out."
-          }
-        }
-      }
-    },
-    "Saves %@ tracks in this order. 1 unmapped track is left out.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Saves %@ tracks in this order. 1 unmapped track is left out."
-          }
-        }
-      }
-    },
-    "Saves 1 track in this order.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Saves 1 track in this order."
-          }
-        }
-      }
-    },
-    "Saves 1 track in this order. %@ unmapped tracks are left out.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Saves 1 track in this order. %@ unmapped tracks are left out."
-          }
-        }
-      }
-    },
-    "Saves 1 track in this order. 1 unmapped track is left out.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Saves 1 track in this order. 1 unmapped track is left out."
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Saves %(count)lld track in this order."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Saves %(count)lld tracks in this order."
+                }
+              }
+            }
           }
         }
       }
@@ -12281,22 +12269,24 @@
         }
       }
     },
-    "Show %lld album": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Show %lld album"
-          }
-        }
-      }
-    },
     "Show %lld albums": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Show %lld albums"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Show %(count)lld album"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Show %(count)lld albums"
+                }
+              }
+            }
           }
         }
       }
@@ -13661,16 +13651,6 @@
         }
       }
     },
-    "These %@ playlists are newest first. Open a likely match to inspect it, and reset only if the previous mix is not here.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "These %@ playlists are newest first. Open a likely match to inspect it, and reset only if the previous mix is not here."
-          }
-        }
-      }
-    },
     "This Month": {
       "localizations": {
         "en": {
@@ -14061,12 +14041,12 @@
         }
       }
     },
-    "This removes %@ tracks from “%@” for everyone who uses it.": {
+    "This removes %@ from “%@” for everyone who uses it.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "new",
-            "value": "This removes %1$@ tracks from “%2$@” for everyone who uses it."
+            "value": "This removes %1$@ from “%2$@” for everyone who uses it."
           }
         }
       }
@@ -15131,22 +15111,24 @@
         }
       }
     },
-    "Uses %@ album covers": {
+    "Uses %lld album covers": {
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Uses %@ album covers"
-          }
-        }
-      }
-    },
-    "Uses one album cover": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Uses one album cover"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Uses %(count)lld album cover"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Uses %(count)lld album covers"
+                }
+              }
+            }
           }
         }
       }
@@ -15581,12 +15563,12 @@
         }
       }
     },
-    "Year in Music %@. %@. %@ listens": {
+    "Year in Music %@. %@. %@.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "new",
-            "value": "Year in Music %1$@. %2$@. %3$@ listens"
+            "value": "Year in Music %1$@. %2$@. %3$@."
           }
         }
       }
@@ -15951,16 +15933,6 @@
         }
       }
     },
-    "artist": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "artist"
-          }
-        }
-      }
-    },
     "artists": {
       "localizations": {
         "en": {
@@ -16001,36 +15973,6 @@
         }
       }
     },
-    "hour": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "hour"
-          }
-        }
-      }
-    },
-    "hours": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "hours"
-          }
-        }
-      }
-    },
-    "listen": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "listen"
-          }
-        }
-      }
-    },
     "listened to": {
       "localizations": {
         "en": {
@@ -16057,26 +15999,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "listens in the year"
-          }
-        }
-      }
-    },
-    "minute": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "minute"
-          }
-        }
-      }
-    },
-    "minutes": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "minutes"
           }
         }
       }
@@ -16247,6 +16169,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "tracks"
+          }
+        }
+      }
+    },
+    "with music": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "with music"
           }
         }
       }

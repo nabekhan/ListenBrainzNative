@@ -506,6 +506,7 @@ struct MainTabView: View {
                             .padding(.horizontal, 20)
                             .padding(.top, 20)
                     }
+                    .accessibilityIdentifier("artist-highlights-screen")
                     .navigationTitle("Alvvays")
                     .navigationBarTitleDisplayMode(.inline)
                     .mediaDestinations(model: model)

@@ -417,9 +417,7 @@ struct HistoryView: View {
 
     private var loadedListenCountTitle: String {
         let count = model.selectedDayListens.count
-        return count == 1
-            ? String(localized: "1 listen loaded")
-            : String(localized: "\(count) listens loaded")
+        return String(localized: "\(count) listens loaded")
     }
 
     private var historyAlertBinding: Binding<HistoryAlert?> {

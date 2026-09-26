@@ -376,7 +376,7 @@ struct RadioView: View {
                     HStack {
                         Text("Up next").font(.title3.bold())
                         Spacer()
-                        Text("\(mix.tracks.count.formatted()) tracks")
+                        Text("\(mix.tracks.count) tracks")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -575,7 +575,7 @@ struct RadioView: View {
                 }
             }
             Text(
-                "These \(playlistSaveModel.reviewedPlaylists.count.formatted()) playlists are newest first. Open a likely match to inspect it, and reset only if the previous mix is not here."
+                "Recent playlists are listed newest first. Open a likely match to inspect it, and reset only if the previous mix is not here."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -614,21 +614,10 @@ struct RadioView: View {
     }
 
     private func saveSummary(included: Int, excluded: Int) -> String {
-        if excluded == 0 {
-            return included == 1
-                ? String(localized: "Saves 1 track in this order.")
-                : String(localized: "Saves \(included.formatted()) tracks in this order.")
-        }
-        switch (included == 1, excluded == 1) {
-        case (true, true):
-            return String(localized: "Saves 1 track in this order. 1 unmapped track is left out.")
-        case (true, false):
-            return String(localized: "Saves 1 track in this order. \(excluded.formatted()) unmapped tracks are left out.")
-        case (false, true):
-            return String(localized: "Saves \(included.formatted()) tracks in this order. 1 unmapped track is left out.")
-        case (false, false):
-            return String(localized: "Saves \(included.formatted()) tracks in this order. \(excluded.formatted()) unmapped tracks are left out.")
-        }
+        let includedSummary = String(localized: "Saves \(included) tracks in this order.")
+        guard excluded > 0 else { return includedSummary }
+        let excludedSummary = String(localized: "\(excluded) unmapped tracks are left out.")
+        return "\(includedSummary) \(excludedSummary)"
     }
 
     private func saveConfirmationMessage(for mix: RadioMix) -> String {
@@ -636,15 +625,11 @@ struct RadioView: View {
         let excluded = RadioPlaylistSaveModel.excludedTrackCount(in: mix)
         var lines = [
             String(localized: "“\(mix.title)”"),
-            included == 1
-                ? String(localized: "1 track included in order.")
-                : String(localized: "\(included.formatted()) tracks included in order."),
+            String(localized: "\(included) tracks included in order."),
         ]
         if excluded > 0 {
             lines.append(
-                excluded == 1
-                    ? String(localized: "1 unmapped track left out.")
-                    : String(localized: "\(excluded.formatted()) unmapped tracks left out.")
+                String(localized: "\(excluded) unmapped tracks left out.")
             )
         }
         lines.append(String(localized: "One request to ListenBrainz."))

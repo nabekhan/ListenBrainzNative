@@ -243,10 +243,8 @@ struct CustomArtworkComposerSheet: View {
         switch draft.remainingCoverCount {
         case 0:
             String(localized: "All covers selected. Arrange them before creating your artwork.")
-        case 1:
-            String(localized: "Choose one more album.")
         default:
-            String(localized: "Choose \(draft.remainingCoverCount.formatted()) more albums.")
+            String(localized: "Choose \(draft.remainingCoverCount) more albums.")
         }
     }
 
@@ -375,9 +373,7 @@ private extension CustomArtworkLayoutPreset {
     }
 
     var coverCountLabel: String {
-        requiredCoverCount == 1
-            ? String(localized: "Uses one album cover")
-            : String(localized: "Uses \(requiredCoverCount.formatted()) album covers")
+        String(localized: "Uses \(requiredCoverCount) album covers")
     }
 
 }

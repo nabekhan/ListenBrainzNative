@@ -412,9 +412,7 @@ private struct UserProfileTopReleasesList: View {
     }
 
     private func listenCountLabel(_ count: Int) -> String {
-        count == 1
-            ? String(localized: "\(count.formatted()) listen")
-            : String(localized: "\(count.formatted()) listens")
+        String(localized: "\(count) listens")
     }
 }
 
@@ -534,9 +532,7 @@ struct UserProfileTopRecordingsList: View {
     }
 
     private func listenCountLabel(_ count: Int) -> String {
-        count == 1
-            ? String(localized: "\(count.formatted()) listen")
-            : String(localized: "\(count.formatted()) listens")
+        String(localized: "\(count) listens")
     }
 }
 
@@ -633,9 +629,7 @@ private struct DefiningArtistsCarousel: View {
     }
 
     private func listenCountLabel(_ count: Int) -> String {
-        count == 1
-            ? String(localized: "\(count.formatted()) listen")
-            : String(localized: "\(count.formatted()) listens")
+        String(localized: "\(count) listens")
     }
 }
 

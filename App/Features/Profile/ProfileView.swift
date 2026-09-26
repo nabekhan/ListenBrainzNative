@@ -154,9 +154,8 @@ struct ProfileView: View {
     }
 
     private func favoriteArtistCard(_ artist: RankedArtist) -> some View {
-        let accessibilityLabel = artist.listenCount == 1
-            ? String(localized: "\(artist.name), 1 listen")
-            : String(localized: "\(artist.name), \(artist.listenCount) listens")
+        let listens = String(localized: "\(artist.listenCount) listens")
+        let accessibilityLabel = String(localized: "\(artist.name), \(listens)")
         return VStack(spacing: 8) {
             ArtistArtworkView(artist: artist)
                 .aspectRatio(1, contentMode: .fit)
@@ -213,9 +212,7 @@ struct ProfileView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(String(localized: "\(release.name) by \(release.artistName)"))
         .accessibilityValue(
-            release.listenCount == 1
-                ? String(localized: "1 listen")
-                : String(localized: "\(release.listenCount) listens")
+            String(localized: "\(release.listenCount) listens")
         )
     }
 

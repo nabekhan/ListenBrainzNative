@@ -369,9 +369,7 @@ struct ReleaseDiscoveryContextContent: View {
         VStack(alignment: .leading, spacing: 10) {
             if let count = context.listenCount {
                 Label(
-                    count == 1
-                        ? String(localized: "\(count.formatted()) ListenBrainz listen")
-                        : String(localized: "\(count.formatted()) ListenBrainz listens"),
+                    String(localized: "\(count) ListenBrainz listens"),
                     systemImage: "waveform"
                 )
                 .font(.subheadline.weight(.semibold))

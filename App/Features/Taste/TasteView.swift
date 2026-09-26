@@ -300,10 +300,8 @@ struct TasteView: View {
         switch customArtworkAlbums.count {
         case 0:
             String(localized: "Waiting for matched top albums")
-        case 1:
-            String(localized: "One matched album is ready")
         default:
-            String(localized: "\(customArtworkAlbums.count.formatted()) matched albums are ready")
+            String(localized: "\(customArtworkAlbums.count) matched albums are ready")
         }
     }
 
@@ -919,7 +917,7 @@ struct TasteView: View {
             if let selectedEraDecade {
                 Text(String(localized: "\(selectedEraDecade.calendarYearText)s"))
                     .font(.headline)
-                Text(String(localized: "\(activity.listenCount(in: selectedEraDecade).formatted()) listens across individual years"))
+                Text(String(localized: "\(activity.listenCount(in: selectedEraDecade)) listens across individual years"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -1543,9 +1541,7 @@ struct TasteView: View {
     }
 
     private func listenCountLabel(_ count: Int) -> String {
-        count == 1
-            ? String(localized: "\(count.formatted()) listen")
-            : String(localized: "\(count.formatted()) listens")
+        String(localized: "\(count) listens")
     }
 
     private func rankedRecordingRow(
@@ -1629,6 +1625,7 @@ private struct ListeningActivityDescriptor: AXChartDescriptorRepresentable {
     let activity: ListeningActivity
 
     func makeChartDescriptor() -> AXChartDescriptor {
+        let listens = String(localized: "\(activity.totalListens) listens")
         let xAxis = AXCategoricalDataAxisDescriptor(
             title: String(localized: "Time"),
             categoryOrder: activity.buckets.map(\.label)
@@ -1647,7 +1644,7 @@ private struct ListeningActivityDescriptor: AXChartDescriptorRepresentable {
         }
         return AXChartDescriptor(
             title: String(localized: "\(activity.period.title) listening activity"),
-            summary: String(localized: "\(activity.totalListens) listens calculated by ListenBrainz"),
+            summary: String(localized: "\(listens) calculated by ListenBrainz"),
             xAxis: xAxis,
             yAxis: yAxis,
             additionalAxes: [],

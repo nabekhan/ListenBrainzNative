@@ -13,6 +13,15 @@ enum ArtistOriginsMetric: String, CaseIterable, Identifiable {
         }
     }
 
+    func unitTitle(for count: Int) -> LocalizedStringResource {
+        switch self {
+        case .artists:
+            count == 1 ? "Artist" : "Artists"
+        case .listens:
+            count == 1 ? "Listen" : "Listens"
+        }
+    }
+
     func value(for country: ArtistOrigins.Country) -> Int {
         switch self {
         case .artists: country.artistCount
@@ -20,14 +29,6 @@ enum ArtistOriginsMetric: String, CaseIterable, Identifiable {
         }
     }
 
-    func unit(for count: Int) -> String {
-        switch self {
-        case .artists:
-            return count == 1 ? String(localized: "artist") : String(localized: "artists")
-        case .listens:
-            return count == 1 ? String(localized: "listen") : String(localized: "listens")
-        }
-    }
 }
 
 struct ArtistOriginsPresentation {
@@ -88,6 +89,7 @@ struct ArtistOriginsView: View {
             .padding(.horizontal, 18)
             .padding(.bottom, 40)
         }
+        .accessibilityIdentifier("artist-origins-screen")
         .background {
             LinearGradient(
                 colors: [AppTheme.secondary.opacity(0.16), .clear],
@@ -396,7 +398,7 @@ struct ArtistOriginsView: View {
         VStack(alignment: dynamicTypeSize.isAccessibilitySize ? .leading : .trailing, spacing: 1) {
             Text(value.formatted())
                 .font(.subheadline.monospacedDigit().weight(.semibold))
-            Text(metric.unit(for: value))
+            Text(metric.unitTitle(for: value))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -410,22 +412,14 @@ struct ArtistOriginsView: View {
     }
 
     private func countryCountsLabel(_ country: ArtistOrigins.Country) -> String {
-        let artists = country.artistCount == 1
-            ? String(localized: "\(country.artistCount) artist")
-            : String(localized: "\(country.artistCount) artists")
-        let listens = country.listenCount == 1
-            ? String(localized: "\(country.listenCount) listen")
-            : String(localized: "\(country.listenCount) listens")
+        let artists = String(localized: "\(country.artistCount) artists")
+        let listens = String(localized: "\(country.listenCount) listens")
         return String(localized: "\(artists) · \(listens)")
     }
 
     private func countryAccessibilityLabel(_ row: ArtistOriginsPresentation.Row, rank: Int) -> String {
-        let artists = row.country.artistCount == 1
-            ? String(localized: "\(row.country.artistCount) artist")
-            : String(localized: "\(row.country.artistCount) artists")
-        let listens = row.country.listenCount == 1
-            ? String(localized: "\(row.country.listenCount) listen")
-            : String(localized: "\(row.country.listenCount) listens")
+        let artists = String(localized: "\(row.country.artistCount) artists")
+        let listens = String(localized: "\(row.country.listenCount) listens")
         return String(localized: "\(rank). \(row.name). \(artists), \(listens)")
     }
 
@@ -460,6 +454,7 @@ private struct ArtistOriginsCountryView: View {
                         HStack(spacing: 12) { summaries }
                     }
                 }
+                .accessibilityIdentifier("artist-origins-country-summary")
 
                 Section("Leading artists") {
                     if country.artists.isEmpty {
@@ -481,6 +476,7 @@ private struct ArtistOriginsCountryView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .accessibilityIdentifier("artist-origins-country-sheet")
             .navigationTitle(name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -518,6 +514,7 @@ private struct ArtistOriginsCountryView: View {
 
     @ViewBuilder
     private func artistRow(_ artist: ArtistOrigins.Artist) -> some View {
+        let listens = String(localized: "\(artist.listenCount) listens")
         let content = HStack(spacing: 12) {
             Image(systemName: "music.mic")
                 .foregroundStyle(AppTheme.secondary)
@@ -533,7 +530,7 @@ private struct ArtistOriginsCountryView: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "\(artist.name), \(artist.listenCount) listens"))
+        .accessibilityLabel(String(localized: "\(artist.name), \(listens)"))
 
         if let mbid = artist.mbid {
             NavigationLink(value: RankedArtist(mbid: mbid, name: artist.name, listenCount: artist.listenCount)) {

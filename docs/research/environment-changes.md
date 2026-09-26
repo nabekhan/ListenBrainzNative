@@ -4,6 +4,16 @@ Updated: 2026-09-26
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
 
+## Native plurals and right-to-left layout — 2026-09-26
+
+- `.derived-data/localization-focused`, `.derived-data/localization-full-unit`, `.derived-data/localization-full-ui`, and `.derived-data/localization-release` held focused plural tests, the complete unit suite, guarded UI tests, and the universal Release simulator build.
+- `/private/tmp/brainz-localization-focused-20260926.xcresult`, `/private/tmp/brainz-localization-ui-focused-20260926.xcresult`, `/private/tmp/brainz-localization-ui-rerun-20260926.xcresult`, `/private/tmp/brainz-localization-full-unit-20260926.xcresult`, `/private/tmp/brainz-localization-full-ui-20260926.xcresult`, `/private/tmp/brainz-localization-full-ui-final-20260926.xcresult`, and `/private/tmp/brainz-localization-focused-final-20260926.xcresult` held iterative and accepted test evidence. The non-final full-UI bundle was intentionally interrupted after a command accidentally repeated the `test` action; the fresh single-action bundle is the authoritative 14/14 result.
+- `/private/tmp/brainz-localization-screenshots-20260926.BsZxr0`, `/private/tmp/brainz-xcstrings-plural-validate-20260926`, `/private/tmp/brainz-plural-sync-candidate-20260926.xcstrings`, and `/private/tmp/brainz-localizations-check-20260926.log` held exported visual evidence and bounded catalog diagnostics.
+- `Brainz Plural Validation` (`C8D9323C-5963-47EF-8BC2-1B007F0C5119`) and `Brainz Localization QA` (`7D77F3E0-0E28-4CCD-8EDE-64541369EEEF`) were disposable iOS 27 simulators. Fixture launches denied request-gated transport and used no credential or live API request.
+- Final validation passes 641/641 app tests, 14/14 guarded UI tests with the live-auth route excluded, and 6/6 focused post-sync plural tests. The compiler-backed catalog check matches 1,588 production keys with 31 plural resources; the Release executable contains `x86_64` and `arm64`. Arabic direction uses English fallback and proves geometry, not Arabic translation quality.
+- No package, browser, runtime, host application, credential, or additional skill was installed. Existing Xcode 27, the iOS 27 runtime, `jq`, Apple command-line tools, and the existing UX Writing skill were reused.
+- Cleanup completed after acceptance: all 15 exact artifacts above were moved through `/Users/nabeel/.Trash/Brainz-Localization-20260926.*`; that dedicated bucket alone was permanently deleted, reclaiming 2,183,232 KiB. Both exact simulators were shut down and deleted. A post-cleanup audit found no recorded artifact, bucket, or simulator; source, Git history, Xcode, its runtime, the UX Writing skill, shared Nix content, credentials, user files, and unrelated Trash remained untouched.
+
 ## Web-assisted authentication and Fresh Releases supersession — 2026-09-26
 
 - `.derived-data/web-auth-focused`, `.derived-data/web-auth-root`, `.derived-data/web-auth-full-tests`, `.derived-data/web-auth-ui-tests`, `.derived-data/web-auth-release`, `.derived-data/web-auth-live-route`, and `.derived-data/web-auth-live-route-reset` held focused and complete tests, Debug visual builds, direct production-route checks, and the final universal Release simulator build.

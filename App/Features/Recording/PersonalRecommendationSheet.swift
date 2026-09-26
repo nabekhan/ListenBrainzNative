@@ -140,9 +140,7 @@ struct PersonalRecommendationSheet: View {
                 Text("Followers")
                 Spacer()
                 if model.selectedCount > 0 {
-                    Text(model.selectedCount == 1
-                        ? String(localized: "1 selected")
-                        : String(localized: "\(model.selectedCount) selected"))
+                    Text(String(localized: "\(model.selectedCount) selected"))
                         .textCase(nil)
                 }
             }

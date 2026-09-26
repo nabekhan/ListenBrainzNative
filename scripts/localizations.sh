@@ -57,6 +57,38 @@ make_source_copy_editable() {
 validate_catalog() {
     local candidate_catalog="$1"
     jq -e '
+        def valid_string_unit:
+            type == "object"
+            and (.state? == "translated" or .state? == "new")
+            and (.value | type == "string" and length > 0);
+
+        def valid_plural:
+            type == "object"
+            and has("one")
+            and has("other")
+            and (
+                to_entries
+                | all(.key | IN("zero", "one", "two", "few", "many", "other"))
+            )
+            and (
+                to_entries
+                | all(.value.stringUnit? | valid_string_unit)
+            );
+
+        def valid_english_localization:
+            type == "object"
+            and (
+                if has("stringUnit") then
+                    (has("variations") | not)
+                    and (.stringUnit | valid_string_unit)
+                elif .variations?.plural? != null then
+                    (.variations | type == "object" and (keys | length == 1) and has("plural"))
+                    and (.variations.plural | valid_plural)
+                else
+                    false
+                end
+            );
+
         .sourceLanguage == "en"
         and (.strings | type == "object")
         and (.strings | has("") | not)
@@ -68,7 +100,7 @@ validate_catalog() {
         and (
             .strings
             | to_entries
-            | all(.value.localizations.en.stringUnit.value | type == "string")
+            | all(.value.localizations.en? | valid_english_localization)
         )
     ' "$candidate_catalog" >/dev/null
 }

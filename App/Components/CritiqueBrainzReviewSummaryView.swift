@@ -83,9 +83,7 @@ struct CritiqueBrainzReviewSummaryView: View {
                         CritiqueBrainzReviewReaderView(summary: summary)
                     } label: {
                         Label(
-                            summary.reviews.count == 1
-                                ? String(localized: "Read this review")
-                                : String(localized: "Read these reviews"),
+                            String(localized: "Read \(summary.reviews.count) reviews"),
                             systemImage: "text.page"
                         )
                     }
@@ -122,17 +120,14 @@ struct CritiqueBrainzReviewSummaryView: View {
 
     private func averageRatingLabel(_ rating: Double, count: Int) -> String {
         let ratingValue = rating.formatted(.number.precision(.fractionLength(1)))
-        let countValue = count.formatted()
-        return count == 1
-            ? String(localized: "\(ratingValue) out of 5 · \(countValue) rating")
-            : String(localized: "\(ratingValue) out of 5 · \(countValue) ratings")
+        let ratingCount = String(localized: "\(count) ratings")
+        return String(localized: "\(ratingValue) out of 5 · \(ratingCount)")
     }
 
     private func averageRatingAccessibilityLabel(_ rating: Double, count: Int) -> String {
         let ratingValue = rating.formatted(.number.precision(.fractionLength(1)))
-        return count == 1
-            ? String(localized: "Average CritiqueBrainz rating: \(ratingValue) out of 5, from \(count) rating")
-            : String(localized: "Average CritiqueBrainz rating: \(ratingValue) out of 5, from \(count) ratings")
+        let ratingCount = String(localized: "\(count) ratings")
+        return String(localized: "Average CritiqueBrainz rating: \(ratingValue) out of 5, from \(ratingCount)")
     }
 
     private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {

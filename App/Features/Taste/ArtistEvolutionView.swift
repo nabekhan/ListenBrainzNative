@@ -560,9 +560,7 @@ struct ArtistEvolutionArtistLegend: View {
 }
 
 private func artistAccessibilityLabel(_ artist: ArtistEvolutionActivity.Artist) -> String {
-    let count = artist.listenCount == 1
-        ? String(localized: "\(artist.listenCount.formatted()) listen")
-        : String(localized: "\(artist.listenCount.formatted()) listens")
+    let count = String(localized: "\(artist.listenCount) listens")
     return String(localized: "\(artist.name), \(count)")
 }
 
@@ -660,9 +658,7 @@ struct ArtistEvolutionSelectedBreakdown: View {
     }
 
     private func listenCountLabel(_ count: Int) -> String {
-        count == 1
-            ? String(localized: "\(count.formatted()) listen")
-            : String(localized: "\(count.formatted()) listens")
+        String(localized: "\(count) listens")
     }
 
     private func artistCountAccessibilityLabel(

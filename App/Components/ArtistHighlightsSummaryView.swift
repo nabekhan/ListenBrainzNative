@@ -101,6 +101,7 @@ struct ArtistHighlightsSummaryView: View {
                 }
                 .pickerStyle(.segmented)
                 .accessibilityLabel("Popular music category")
+                .accessibilityIdentifier("artist-highlights-category")
             }
 
             switch model?.selection ?? .tracks {
@@ -456,27 +457,19 @@ struct ArtistHighlightsSummaryView: View {
     private func fullCountSummary(listens: Int?, listeners: Int?) -> String? {
         joinedCounts(
             listens: listens,
-            listeners: listeners,
-            formatter: { $0.formatted(.number.grouping(.automatic)) }
+            listeners: listeners
         )
     }
 
     private func joinedCounts(
         listens: Int?,
-        listeners: Int?,
-        formatter: (Int) -> String
+        listeners: Int?
     ) -> String? {
         let listenText = listens.map {
-            let count = formatter($0)
-            return $0 == 1
-                ? String(localized: "\(count) listen")
-                : String(localized: "\(count) listens")
+            String(localized: "\($0) listens")
         }
         let listenerText = listeners.map {
-            let count = formatter($0)
-            return $0 == 1
-                ? String(localized: "\(count) listener")
-                : String(localized: "\(count) listeners")
+            String(localized: "\($0) listeners")
         }
         let values = [listenText, listenerText].compactMap { $0 }
         return values.isEmpty ? nil : values.joined(separator: " · ")

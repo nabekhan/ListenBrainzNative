@@ -30,16 +30,10 @@ struct PopularitySummaryPresentation: Equatable {
 
     func accessibilityLabel(locale: Locale = .autoupdatingCurrent) -> String {
         let listens = listenCount.map {
-            let count = $0.formatted(.number.grouping(.automatic).locale(locale))
-            return $0 == 1
-                ? String(localized: "\(count) listen", locale: locale)
-                : String(localized: "\(count) listens", locale: locale)
+            String(localized: "\($0) listens", locale: locale)
         }
         let listeners = listenerCount.map {
-            let count = $0.formatted(.number.grouping(.automatic).locale(locale))
-            return $0 == 1
-                ? String(localized: "\(count) listener", locale: locale)
-                : String(localized: "\(count) listeners", locale: locale)
+            String(localized: "\($0) listeners", locale: locale)
         }
 
         let totals: String

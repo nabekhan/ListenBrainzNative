@@ -117,6 +117,97 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "Profile-playlists-iPad-RTL")
     }
 
+    func testHomeMetricsFollowArabicRightToLeftLayout() throws {
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        defer { device.orientation = .portrait }
+
+        let app = launchFixture(
+            "-brainz-home-pin-demo",
+            additionalArguments: arabicRightToLeftArguments
+        )
+        let window = app.windows.firstMatch
+        let screen = app.scrollViews["home-screen"]
+        let totalListens = app.descendants(matching: .any)["home-total-listens-metric"]
+        let topArtist = app.descendants(matching: .any)["home-top-artist-metric"]
+
+        XCTAssertTrue(screen.waitForExistence(timeout: 10))
+        XCTAssertTrue(totalListens.waitForExistence(timeout: 10))
+        XCTAssertTrue(topArtist.waitForExistence(timeout: 10))
+        assertVisibleFrame(totalListens, in: window)
+        assertVisibleFrame(topArtist, in: window)
+        XCTAssertGreaterThan(totalListens.frame.midX, topArtist.frame.midX)
+        keepScreenshot(named: "Home-iPad-Arabic-RTL")
+    }
+
+    func testArtistHighlightsFixtureSurvivesArabicRightToLeftLayout() throws {
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        defer { device.orientation = .portrait }
+
+        let app = launchFixture(
+            "-brainz-artist-highlights-demo",
+            additionalArguments: arabicRightToLeftArguments
+        )
+        let window = app.windows.firstMatch
+        let screen = app.scrollViews["artist-highlights-screen"]
+        let category = app.descendants(matching: .any)["artist-highlights-category"]
+
+        XCTAssertTrue(screen.waitForExistence(timeout: 15))
+        XCTAssertTrue(category.waitForExistence(timeout: 15))
+        assertVisibleFrame(screen, in: window)
+        assertVisibleFrame(category, in: window)
+        keepScreenshot(named: "Artist-highlights-iPad-Arabic-RTL")
+    }
+
+    func testArtistOriginsCountryFixtureSurvivesArabicRightToLeftLayout() throws {
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        defer { device.orientation = .portrait }
+
+        let app = launchFixture(
+            "-brainz-artist-origins-country-demo",
+            additionalArguments: arabicRightToLeftArguments
+        )
+        let window = app.windows.firstMatch
+        let sheet = app.descendants(matching: .any)["artist-origins-country-sheet"]
+        let summary = app.descendants(matching: .any)
+            .matching(identifier: "artist-origins-country-summary")
+            .firstMatch
+
+        XCTAssertTrue(sheet.waitForExistence(timeout: 15))
+        XCTAssertTrue(summary.waitForExistence(timeout: 15))
+        assertVisibleFrame(sheet, in: window)
+        assertVisibleFrame(summary, in: window)
+        keepScreenshot(named: "Artist-origins-country-iPad-Arabic-RTL")
+    }
+
+    func testYearInMusicFixtureSurvivesArabicRightToLeftLayout() throws {
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        defer { device.orientation = .portrait }
+
+        let app = launchFixture(
+            "-brainz-year-in-music-demo",
+            additionalArguments: arabicRightToLeftArguments
+        )
+        let window = app.windows.firstMatch
+        let screen = app.scrollViews["year-in-music-screen"]
+        let hero = app.descendants(matching: .any)["year-in-music-hero"]
+        let firstCard = app.descendants(matching: .any)
+            .matching(identifier: "year-in-music-identity-card")
+            .firstMatch
+
+        XCTAssertTrue(screen.waitForExistence(timeout: 15))
+        XCTAssertTrue(hero.waitForExistence(timeout: 15))
+        assertVisibleFrame(hero, in: window)
+        keepScreenshot(named: "Year-in-Music-hero-iPad-Arabic-RTL")
+        reveal(firstCard, in: screen)
+        XCTAssertTrue(firstCard.waitForExistence(timeout: 5))
+        assertVisibleFrame(firstCard, in: window)
+        keepScreenshot(named: "Year-in-Music-identity-iPad-Arabic-RTL")
+    }
+
     func testHomeFixtureSurvivesExpandedPseudoLocalization() throws {
         let device = XCUIDevice.shared
         device.orientation = .portrait
@@ -133,6 +224,32 @@ final class ReleaseLayoutUITests: XCTestCase {
         XCTAssertTrue(accountLabel.waitForExistence(timeout: 10))
         XCTAssertTrue(app.windows.firstMatch.frame.intersects(accountLabel.frame))
         keepScreenshot(named: "Home-iPad-pseudo-localized")
+    }
+
+    func testYearInMusicFixtureSurvivesExpandedPseudoLocalization() throws {
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        defer { device.orientation = .portrait }
+
+        let app = launchFixture(
+            "-brainz-year-in-music-demo",
+            additionalArguments: ["-NSDoubleLocalizedStrings", "YES"]
+        )
+        let window = app.windows.firstMatch
+        let screen = app.scrollViews["year-in-music-screen"]
+        let hero = app.descendants(matching: .any)["year-in-music-hero"]
+        let firstCard = app.descendants(matching: .any)
+            .matching(identifier: "year-in-music-identity-card")
+            .firstMatch
+
+        XCTAssertTrue(screen.waitForExistence(timeout: 15))
+        XCTAssertTrue(hero.waitForExistence(timeout: 15))
+        assertVisibleFrame(hero, in: window)
+        keepScreenshot(named: "Year-in-Music-hero-iPad-pseudo-localized")
+        reveal(firstCard, in: screen)
+        XCTAssertTrue(firstCard.waitForExistence(timeout: 5))
+        assertVisibleFrame(firstCard, in: window)
+        keepScreenshot(named: "Year-in-Music-identity-iPad-pseudo-localized")
     }
 
     func testPlaylistExportExplainsPrivateFileBeforeSharing() throws {
@@ -216,6 +333,32 @@ final class ReleaseLayoutUITests: XCTestCase {
             .sufficientElementDescription,
             .trait,
         ]
+    }
+
+    private var arabicRightToLeftArguments: [String] {
+        [
+            "-AppleLanguages", "(ar)",
+            "-AppleLocale", "ar_SA",
+            "-NSForceRightToLeftWritingDirection", "YES",
+        ]
+    }
+
+    private func assertVisibleFrame(
+        _ element: XCUIElement,
+        in window: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertGreaterThan(element.frame.width, 0, file: file, line: line)
+        XCTAssertGreaterThan(element.frame.height, 0, file: file, line: line)
+        XCTAssertTrue(window.frame.intersects(element.frame), file: file, line: line)
+    }
+
+    private func reveal(_ element: XCUIElement, in scrollView: XCUIElement) {
+        for _ in 0 ..< 6 {
+            if element.exists, scrollView.frame.intersects(element.frame) { return }
+            scrollView.swipeUp()
+        }
     }
 
     private func accessibilityValue(of element: XCUIElement) -> String {
