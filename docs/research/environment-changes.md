@@ -4,6 +4,14 @@ Updated: 2026-09-25
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
 
+## Release layout and request hardening — 2026-09-25
+
+- `Brainz Release iPad QA` (`A158E3AE-84B5-4F6D-9AC5-49070852AFF9`) was a disposable iPad Air 11-inch (M4), iOS 27 simulator used for portrait, rotation, RTL, pseudo-localization, request-guard, and regression testing.
+- `.derived-data/release-hardening`, `.derived-data/release-hardening-focused`, `.derived-data/release-hardening-full`, `.derived-data/release-hardening-release`, `.derived-data/release-hardening-ui`, and `.derived-data/release-hardening-ui-final` held scoped build/test products.
+- `/private/tmp/brainz-release-hardening-*` held focused/full/UI result bundles, build logs, exported screenshot attachments, and the final localization log. The first `ui-2` result bundle was incomplete after an interrupted Xcode finalization; later numbered and `*-final` bundles replaced it.
+- No package, browser, runtime, host application, or skill was installed. Existing Xcode 27/iOS 27, Apple command-line tools, and ephemeral Nix XcodeGen were reused. No live credential, authenticated production request, or mutation was used.
+- Cleanup completed after product commit `46a0fc3`: the simulator was terminated, shut down, and deleted. The six named Derived Data directories and every matching temporary artifact above were moved into the dedicated `Brainz-Release-Hardening-20260925-Codex` Trash bucket, verified in isolation, and that bucket alone was deleted. This reclaimed 3.1 GB without inspecting or changing unrelated Trash. A final exact audit found no matching build artifact, bucket, or simulator.
+
 ## Release identity and privacy — 2026-09-25
 
 - `/Users/nabeel/.codex/generated_images/01a0acca-7585-72a3-9b9b-dcc5896a5aff/exec-9a5b5f28-cca7-452b-bac5-de9c9b1b1bd0.png` is the built-in image-generation output used to derive the tracked 1024×1024 app icon. Cleanup: after acceptance, remove only that exact generated-image directory; the final tracked asset remains in the repository.
