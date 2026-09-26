@@ -50,6 +50,7 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-edit-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-add-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-export-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-confirmation-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-confirmed-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-review-demo")
@@ -281,6 +282,8 @@ struct MainTabView: View {
                 GenericArtVisualQAScreen(fixture: .unavailable)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-generic-art-failure-demo") {
                 GenericArtVisualQAScreen(fixture: .failure)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-export-demo") {
+                PlaylistExportVisualQAScreen()
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo") {
                 PlaylistCopyVisualQAScreen()
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-confirmation-demo") {

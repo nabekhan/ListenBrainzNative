@@ -8,6 +8,7 @@ Brainz is an independent, open-source iOS client for ListenBrainz. It is not ope
 
 - If you sign in, Brainz stores your ListenBrainz user token and canonical username in the iOS Keychain. The item is available only while the device is unlocked and cannot migrate to another device.
 - Brainz stores preferences, recently loaded listening data, and small recovery records needed to avoid repeating uncertain changes.
+- When you export a playlist, Brainz creates a protected temporary JSON file containing its details, tracks, and contributor names. Brainz removes export folders after 24 hours; iOS may remove temporary files sooner.
 - Choosing **Disconnect account** removes the saved credential and the account's saved listening snapshot. Small mutation-safety records may remain until an uncertain action is resolved or the app's local data is removed. To remove the Keychain credential and other local app data, disconnect first and then delete the app.
 
 ## What leaves your device
@@ -18,6 +19,7 @@ Brainz has no intermediary account service. It sends requests directly to the se
 - ListenBrainz and MusicBrainz receive searches and music identifiers needed to return results and metadata. Signed-in ListenBrainz user and playlist searches are linked to your ListenBrainz account; MusicBrainz music searches do not include your ListenBrainz token.
 - CritiqueBrainz, the Cover Art Archive, the Internet Archive, and Google Fonts may receive requests for reviews, artwork, or generated-art resources when those features are opened.
 - Links to music services open only after you choose them. Those services then apply their own privacy policies.
+- Files leave Brainz only when you choose a destination in the system share sheet. Anyone you share a playlist file with can read its contents.
 
 ListenBrainz makes listening data public and uses it to build recommendations. Other submitted content may be public or restricted according to each feature's visibility controls, so review those settings before submitting text. MetaBrainz records normal web and API access logs—including IP address, user agent, endpoint, and parameters—and says IP addresses are retained for seven days. Read the [ListenBrainz terms](https://listenbrainz.org/terms-of-service/) and [MetaBrainz privacy policy](https://metabrainz.org/privacy) before submitting data.
 

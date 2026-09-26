@@ -10,8 +10,9 @@ Checked against current Apple and MetaBrainz documentation on 2026-09-25.
 | Device archive | An unsigned generic-iOS Release archive succeeds for arm64. Its app bundle contains `Assets.car`, opaque 120×120 and 152×152 icon files, and `CFBundleIconName = AppIcon`. |
 | Privacy manifest | `PrivacyInfo.xcprivacy` is copied byte-for-byte to the app-bundle root. It declares no tracking, the app-local UserDefaults reason `CA92.1`, and conservative core-functionality data categories. |
 | iPad resizing | iPad declares portrait, upside-down portrait, and both landscape orientations. The earlier archive warning is gone; `UIRequiresFullScreen` is not used. |
-| Simulator layout regression | Six XCUITests exercise iPad portrait, device rotation/landscape survival, RTL History controls, RTL Feed, RTL Profile playlists, and expanded pseudo-localization. Screenshots were inspected at 820×1180, and directional navigation uses semantic SF Symbols. |
+| Simulator layout regression | Seven guarded XCUITests exercise iPad portrait, device rotation/landscape survival, RTL History controls, RTL Feed, RTL Profile playlists, expanded pseudo-localization, and the private-playlist export disclosure/share affordance. Screenshots were inspected at 820×1180, and directional navigation uses semantic SF Symbols. |
 | Request diagnostics | The process-wide ListenBrainz gate exposes a Release-enabled in-memory snapshot containing only fixed feature categories, lifecycle counters, and current/maximum transport counts. Guarded visual fixtures fail before any request-gated transport can start. |
+| Physical-device preflight | A paired current iPhone is reachable and has Developer Mode enabled. The Mac has no configured Xcode developer account, development team, or Apple Development signing identity, so no app was built for or installed on the phone. The intended first device run uses the isolated QA bundle, local fixtures, and fail-fast request guard. |
 | Launch screen | Xcode's generated launch-screen dictionary is present in the archived `Info.plist`. |
 | Public policy | Root `PRIVACY.md` explains local storage, direct service traffic, tracking, MetaBrainz logging, and user controls in plain language. |
 | In-app user controls | Profile opens a request-free native Settings surface with the same privacy policy, canonical ListenBrainz data controls, local appearance, and a confirmed disconnect action that removes the saved credential and listening snapshot without overstating residual safety-record cleanup. |
@@ -45,7 +46,7 @@ The single source deliberately omits hand-authored dark and tinted variants. App
 
 ## Still required before release
 
-- choose the final bundle identifier, signing team, version/build number, and distribution certificate;
+- configure an Apple Developer account and Apple Development identity for the isolated physical-device QA build, then choose the final bundle identifier, signing team, version/build number, and distribution certificate;
 - make a signed archive, export or upload it, inspect Apple's generated privacy report, and complete TestFlight processing;
 - enter App Store name, subtitle, description, category, age rating, support URL, privacy-policy URL, screenshots, and review notes;
 - confirm the App Store privacy questionnaire against the shipped binary and service behavior;

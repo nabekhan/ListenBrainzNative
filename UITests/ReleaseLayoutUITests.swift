@@ -109,6 +109,28 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "Home-iPad-pseudo-localized")
     }
 
+    func testPlaylistExportExplainsPrivateFileBeforeSharing() throws {
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        defer { device.orientation = .portrait }
+
+        let app = launchFixture("-brainz-playlist-export-demo")
+
+        XCTAssertTrue(app.navigationBars["Export playlist"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Private playlist"].exists)
+        XCTAssertTrue(
+            app.staticTexts["Anyone you share the file with can read its contents."].exists
+        )
+        let shareButton = app.buttons["Share playlist file"]
+        XCTAssertTrue(shareButton.exists)
+        let scrollView = app.scrollViews.firstMatch
+        for _ in 0 ..< 3 where !shareButton.isHittable {
+            scrollView.swipeUp()
+        }
+        XCTAssertTrue(shareButton.isHittable)
+        keepScreenshot(named: "Playlist-export-iPad-private")
+    }
+
     private func launchFixture(
         _ fixture: String,
         additionalArguments: [String] = []

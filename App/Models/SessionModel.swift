@@ -178,6 +178,7 @@ final class SessionModel {
                 || arguments.contains("-brainz-playlist-edit-demo")
                 || arguments.contains("-brainz-playlist-add-demo")
                 || arguments.contains("-brainz-playlist-copy-demo")
+                || arguments.contains("-brainz-playlist-export-demo")
                 || arguments.contains("-brainz-playlist-delete-confirmation-demo")
                 || arguments.contains("-brainz-playlist-delete-confirmed-demo")
                 || arguments.contains("-brainz-playlist-delete-review-demo")

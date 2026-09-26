@@ -5,6 +5,10 @@ struct ListenBrainzNativeApp: App {
     @State private var session = SessionModel()
     @AppStorage(AppAppearance.storageKey) private var appearance: AppAppearance = .system
 
+    init() {
+        PlaylistExportStaging.cleanupStaleFiles()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView(session: session)

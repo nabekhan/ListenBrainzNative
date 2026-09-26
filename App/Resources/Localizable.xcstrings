@@ -1791,6 +1791,16 @@
         }
       }
     },
+    "Anyone you share the file with can read its contents.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anyone you share the file with can read its contents."
+          }
+        }
+      }
+    },
     "Appearance": {
       "localizations": {
         "en": {
@@ -4371,6 +4381,26 @@
         }
       }
     },
+    "Export playlist": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export playlist"
+          }
+        }
+      }
+    },
+    "Export playlist file": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export playlist file"
+          }
+        }
+      }
+    },
     "F": {
       "localizations": {
         "en": {
@@ -5137,6 +5167,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Include tags"
+          }
+        }
+      }
+    },
+    "Includes playlist details, tracks, and contributor names.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Includes playlist details, tracks, and contributor names."
           }
         }
       }
@@ -9801,6 +9841,16 @@
         }
       }
     },
+    "Playlist file": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist file"
+          }
+        }
+      }
+    },
     "Playlist link unavailable": {
       "localizations": {
         "en": {
@@ -12091,6 +12141,26 @@
         }
       }
     },
+    "Share playlist file": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share playlist file"
+          }
+        }
+      }
+    },
+    "Share playlist link": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share playlist link"
+          }
+        }
+      }
+    },
     "Share recipe link": {
       "localizations": {
         "en": {
@@ -13141,6 +13211,16 @@
         }
       }
     },
+    "The file is created on this device.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file is created on this device."
+          }
+        }
+      }
+    },
     "The first request couldn’t be confirmed, so Brainz didn’t send it again. Wait until after the next hour, then refresh.": {
       "localizations": {
         "en": {
@@ -13777,6 +13857,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "This playlist is private, was removed, or is no longer available."
+          }
+        }
+      }
+    },
+    "This playlist is too large to export on this device.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This playlist is too large to export on this device."
           }
         }
       }

@@ -34,6 +34,8 @@ struct PlaylistDetailView: View {
     @State private var showsArtwork = false
     @State private var showsReorder = false
     @State private var showsTrackRemoval = false
+    @State private var showsExport = false
+    @State private var exportDetail: PlaylistDetail?
 
     init(
         playlist: SearchPlaylist,
@@ -189,6 +191,11 @@ struct PlaylistDetailView: View {
                 }
             }
         }
+        .sheet(isPresented: $showsExport, onDismiss: { exportDetail = nil }) {
+            if let exportDetail {
+                PlaylistExportSheet(detail: exportDetail)
+            }
+        }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if canEdit {
@@ -214,7 +221,7 @@ struct PlaylistDetailView: View {
                                 : "Refreshing playlist before duplication"
                         )
                 }
-                if canCopy || canCreateArtwork || canDelete || canReorder || canSelectTracksForRemoval || actionURL != nil {
+                if canCopy || canCreateArtwork || canDelete || canReorder || canSelectTracksForRemoval || actionURL != nil || model.detail != nil {
                     Menu {
                         if canSelectTracksForRemoval {
                             Button {
@@ -259,6 +266,22 @@ struct PlaylistDetailView: View {
                                     || copyModel.requiresReconciliation
                             )
                         }
+                        if let detail = model.detail {
+                            Button {
+                                exportDetail = detail
+                                showsExport = true
+                            } label: {
+                                Label("Export playlist file", systemImage: "doc.badge.arrow.up")
+                            }
+                        }
+                        if let url = actionURL {
+                            ShareLink(item: url, subject: Text(displayTitle)) {
+                                Label("Share playlist link", systemImage: "square.and.arrow.up")
+                            }
+                            Link(destination: url) {
+                                Label("Open in ListenBrainz", systemImage: "arrow.up.right.square")
+                            }
+                        }
                         if canDelete, let deletionMBID = model.detail?.mbid {
                             Divider()
                             Button(role: .destructive) {
@@ -273,11 +296,6 @@ struct PlaylistDetailView: View {
                                         playlistMBID: deletionMBID
                                     )
                             )
-                        }
-                        if let url = actionURL {
-                            Link(destination: url) {
-                                Label("Open in ListenBrainz", systemImage: "arrow.up.right.square")
-                            }
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")

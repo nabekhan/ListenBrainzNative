@@ -24,6 +24,7 @@ targets:
   ListenBrainzNative:
     type: application
     platform: iOS
+    productName: Brainz
     sources:
       - path: App
     dependencies:
