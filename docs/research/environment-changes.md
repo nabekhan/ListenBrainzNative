@@ -4,6 +4,15 @@ Updated: 2026-09-26
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
 
+## Home refresh request audit — 2026-09-26
+
+- `.derived-data/home-refresh-flight`, `.derived-data/request-audit-focused`, `.derived-data/request-audit-full`, and `.derived-data/request-audit-release` held the delegated compile attempt, accepted focused regression, complete app suite, and universal Release simulator build.
+- `/private/tmp/brainz-home-refresh-flight-20260926.xcresult` recorded the superseded compile failure caused by awaiting an actor inside an XCTest autoclosure. `/private/tmp/brainz-home-refresh-flight-retry-20260926.xcresult`, `/private/tmp/brainz-request-audit-focused-20260926.xcresult`, and `/private/tmp/brainz-request-audit-full-20260926.xcresult` recorded the corrected delegated test plus independent focused and complete verification. `/private/tmp/brainz-request-audit-simulator-udid` held only the disposable simulator identifier.
+- `Brainz Request Audit QA` (`4E757CA9-EF1E-4B1A-B1C2-296B633F23CD`) was a disposable iPhone 17 Pro on iOS 27. The slice used injected providers only and made no production API request or mutation.
+- Final validation passes the focused refresh-flight regression and all 642 app tests with no failure, skip, expected failure, or runtime warning. The sole catalog still matches 1,588 production keys, the Release executable contains `x86_64` and `arm64`, and independent request-safety review reports READY.
+- No package, browser, runtime, host application, credential, or skill was installed. Existing Xcode 27, the iOS 27 runtime, `jq`, and Apple command-line tools were reused; the existing UX Writing skill remained installed and unchanged because this slice added no interface copy.
+- Cleanup completed after acceptance: the nine exact Derived Data, result-bundle, and UDID-record paths were moved through `/Users/nabeel/.Trash/Brainz-Request-Audit-20260926-0439`; that dedicated bucket alone was permanently deleted, reclaiming 1,770,676 KiB. The exact simulator was shut down and deleted. An exact post-cleanup audit found no recorded artifact, bucket, or simulator; source, Git history, Xcode, its runtime, skills, shared Nix content, credentials, user files, and unrelated Trash remained untouched.
+
 ## Native plurals and right-to-left layout — 2026-09-26
 
 - `.derived-data/localization-focused`, `.derived-data/localization-full-unit`, `.derived-data/localization-full-ui`, and `.derived-data/localization-release` held focused plural tests, the complete unit suite, guarded UI tests, and the universal Release simulator build.

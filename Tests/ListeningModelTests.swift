@@ -47,6 +47,41 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(model.snapshot.topRecordings.first?.title, "Fixture Track")
     }
 
+    func testOverlappingHomeRefreshesShareOneCompleteFlight() async throws {
+        let provider = HomeRefreshFlightProvider(delay: .milliseconds(60))
+        let model = ListeningModel(
+            account: Account(username: "listener", token: "token"),
+            provider: provider,
+            cache: SnapshotCache(
+                rootDirectory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+            )
+        )
+
+        let first = Task { await model.refresh() }
+        while await provider.requestCount(for: .recentListens) == 0 {
+            try await ContinuousClock().sleep(for: .milliseconds(1))
+        }
+        let second = Task { await model.refresh() }
+        first.cancel()
+
+        await second.value
+        await first.value
+
+        for endpoint in HomeRefreshFlightProvider.Endpoint.allCases {
+            let requestCount = await provider.requestCount(for: endpoint)
+            XCTAssertEqual(
+                requestCount,
+                1,
+                "Overlapping refreshes should share the \(endpoint) request."
+            )
+        }
+        XCTAssertEqual(model.phase, .ready)
+        XCTAssertEqual(model.snapshot.listenCount, 7)
+        XCTAssertEqual(model.snapshot.topArtists.count, 1)
+        XCTAssertEqual(model.snapshot.topReleases.count, 1)
+        XCTAssertEqual(model.snapshot.topRecordings.count, 1)
+    }
+
     func testReleaseGroupRankingIsLazyAndCoalescesRepeatedRequests() async throws {
         let provider = ReleaseGroupRankingProvider(delay: .milliseconds(80))
         let model = ListeningModel(
@@ -3546,6 +3581,114 @@ private actor DeleteListenTransportSpy: ListenDeletionTransport {
         }
         if let error { throw error }
     }
+}
+
+private actor HomeRefreshFlightProvider: ListeningProvider {
+    enum Endpoint: CaseIterable, Hashable, Sendable {
+        case recentListens
+        case playingNow
+        case listenCount
+        case topArtists
+        case topReleases
+        case topRecordings
+    }
+
+    private let delay: Duration
+    private var requests: [Endpoint: Int] = [:]
+
+    init(delay: Duration) {
+        self.delay = delay
+    }
+
+    func validateToken() async throws -> String { "fixture-user" }
+
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] {
+        try await record(.recentListens)
+        return [listen(title: "Recent fixture", timestamp: 1_700_000_000, isPlayingNow: false)]
+    }
+
+    func playingNow(username: String) async throws -> Listen? {
+        try await record(.playingNow)
+        return listen(title: "Playing fixture", timestamp: 1_700_000_100, isPlayingNow: true)
+    }
+
+    func listenCount(username: String) async throws -> Int {
+        try await record(.listenCount)
+        return 7
+    }
+
+    func topArtists(username: String, count: Int) async throws -> [RankedArtist] {
+        try await record(.topArtists)
+        return [.init(mbid: Self.artistMBID, name: "Fixture Artist", listenCount: 7)]
+    }
+
+    func topReleases(username: String, count: Int) async throws -> [RankedRelease] {
+        try await record(.topReleases)
+        return [
+            .init(
+                mbid: Self.releaseMBID,
+                name: "Fixture Release",
+                artistName: "Fixture Artist",
+                artistMBIDs: [Self.artistMBID],
+                listenCount: 7
+            ),
+        ]
+    }
+
+    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] {
+        try await record(.topRecordings)
+        return [
+            .init(
+                mbid: Self.recordingMBID,
+                releaseMBID: Self.releaseMBID,
+                title: "Fixture Recording",
+                artistName: "Fixture Artist",
+                artistMBIDs: [Self.artistMBID],
+                releaseTitle: "Fixture Release",
+                listenCount: 7
+            ),
+        ]
+    }
+
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        .init(period: period, from: .distantPast, to: .distantPast, lastUpdated: .distantPast, buckets: [])
+    }
+
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+    func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+
+    func requestCount(for endpoint: Endpoint) -> Int {
+        requests[endpoint, default: 0]
+    }
+
+    private func record(_ endpoint: Endpoint) async throws {
+        requests[endpoint, default: 0] += 1
+        try await ContinuousClock().sleep(for: delay)
+    }
+
+    private func listen(title: String, timestamp: TimeInterval, isPlayingNow: Bool) -> Listen {
+        Listen(
+            recording: Recording(
+                identity: .init(mbid: Self.recordingMBID, msid: nil),
+                title: title,
+                artistName: "Fixture Artist",
+                artistMBIDs: [Self.artistMBID],
+                releaseTitle: "Fixture Release",
+                releaseMBID: Self.releaseMBID,
+                releaseGroupMBID: nil,
+                artworkReleaseMBID: Self.releaseMBID,
+                durationMilliseconds: 180_000,
+                source: "Fixture"
+            ),
+            listenedAt: Date(timeIntervalSince1970: timestamp),
+            insertedAt: nil,
+            isPlayingNow: isPlayingNow
+        )
+    }
+
+    private static let artistMBID = UUID(uuidString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")!
+    private static let releaseMBID = UUID(uuidString: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")!
+    private static let recordingMBID = UUID(uuidString: "cccccccc-cccc-cccc-cccc-cccccccccccc")!
 }
 
 private actor FixtureProvider: ListeningProvider {

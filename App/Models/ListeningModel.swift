@@ -15,6 +15,11 @@ final class ListeningModel {
         let task: Task<Void, Never>
     }
 
+    private struct HomeRefreshFlight {
+        let id: UUID
+        let task: Task<Void, Never>
+    }
+
     private struct ListenDeletionKey: Hashable, Sendable {
         let listenedAt: Int
         let recordingMSID: UUID
@@ -86,6 +91,7 @@ final class ListeningModel {
     var deletionSafetyRecoveryNeeded = false
     private var didLoad = false
     private var cacheLease: UUID?
+    private var homeRefreshFlight: HomeRefreshFlight?
     private var selectedDayRequestID: UUID?
     private var deletionRequestsInFlight: Set<ListenDeletionKey> = []
 
@@ -148,6 +154,26 @@ final class ListeningModel {
     }
 
     func refresh() async {
+        if let flight = homeRefreshFlight {
+            await flight.task.value
+            return
+        }
+
+        let flightID = UUID()
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer {
+                if self.homeRefreshFlight?.id == flightID {
+                    self.homeRefreshFlight = nil
+                }
+            }
+            await self.performHomeRefresh()
+        }
+        homeRefreshFlight = HomeRefreshFlight(id: flightID, task: task)
+        await task.value
+    }
+
+    private func performHomeRefresh() async {
         if phase == .ready { phase = .refreshing }
         do {
             let newListens = try await provider.recentListens(
