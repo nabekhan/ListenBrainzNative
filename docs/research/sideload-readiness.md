@@ -59,7 +59,7 @@ TestFlight and App Store Connect remain a later distribution path. This workflow
 
 ## Validated checkpoint
 
-The 2026-09-26 run produced `Brainz-0.1.0-1-unsigned.ipa` at 7,007,793 bytes with SHA-256 `4b2fb1370750eca6bba1436dea56bfea0bcd72593c21c8cb8e8a0e9b549c2ad8`. Independent extraction found exactly 11 ZIP entries under `Payload/Brainz.app`, one unsigned arm64 Mach-O object, the expected bundle/version/build, and a privacy manifest matching source. No symlink, profile, `_CodeSignature`, signed nested code, extra top-level path, publication directory, or temporary archive root remained. The generated IPA was removed after recording this evidence and can be reproduced with the script.
+The 2026-09-26 hardened-source run produced `Brainz-0.1.0-1-unsigned.ipa` at 7,054,888 bytes with SHA-256 `02e4c2479f453c659aaa3bb09787595ddb130f8340f76669c6800fd5dc832315`. Independent extraction found the exact top-level `Payload/Brainz.app/`, one expected unsigned arm64 app executable, the expected bundle/version/build, and a privacy manifest matching source. No symlink, profile, `_CodeSignature`, nested framework/dylib/bundle, unexpected executable, extra top-level path, publication directory, or temporary archive root remained. The generated IPA was removed after recording this evidence and can be reproduced with the script.
 
 ## Cleanup
 
