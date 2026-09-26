@@ -5,10 +5,14 @@ Snapshot: 2026-09-26.
 ## Portable checkpoint
 
 - Branch: `main`
-- Last validated product commit: `738c4971e6a3ad1890e11fec9f5221c50531f81e`
+- Last validated product commit: `1e52ccd8c8acfec8dd86911b07e1497cf920f15a`
 - Remote: `https://github.com/nabekhan/ListenBrainzNative.git`
 - Remote `main` is verified after this handoff note is pushed.
-- No change in this checkpoint is partially applied. The playlist-export, release-layout, request-audit, and simulator accessibility slices are complete for the audited source.
+- No change in this checkpoint is partially applied. Web-assisted authentication, Fresh Releases request supersession, playlist export, release layout, request auditing, and simulator accessibility are complete for the audited source, except for the explicitly pending manual credentialed sign-in trial.
+
+Authentication now leads with a native sheet that keeps username/password entry inside the exact official MetaBrainz pages, shares only an ephemeral WebKit data store with a hidden ListenBrainz Settings extractor, and validates the resulting canonical token exactly once through the existing provider. A stateful allowlist binds scheme, host, port, path, method, OAuth parameters, and callback state; popups, downloads, file selection, media capture, and JavaScript dialogs fail closed. The manual-token route remains available. Keychain persistence is `WhenUnlockedThisDeviceOnly`, occurs only after cancellation/generation checks, and cannot suspend across the final commit boundary. A credential-free live route reached the current official MetaBrainz login page; a complete account/token/Keychain trial still requires manual secret entry that does not cross automation logs.
+
+Fresh Releases now gives the visible exact query sole ownership of active work. Equal requests still coalesce and loaded query states remain cached, while a scope/window/status change cancels distinct superseded work and prevents a late success, failure, or cancellation from publishing stale state. Type/tag filtering stays local and makes no request.
 
 Directional navigation now uses semantic forward/backward SF Symbols, including correctly mirrored History controls and disclosures. The Feed hero ornament and avatar badge use semantic RTL placement rather than physical offsets. A generated UI-test bundle covers iPad portrait, device rotation/landscape survival, RTL History, RTL Feed, RTL Profile playlists, expanded pseudo-localization, private-playlist export, Home metric semantics, and Recording feedback state.
 
@@ -30,12 +34,12 @@ The bundled manifest declares no tracking; the app-local `UserDefaults` reason `
 
 Final evidence:
 
-- The complete app suite passes 628/628 with no failure, skip, or expected failure. The final guarded UI suite passes 9/9, including direct VoiceOver label/value/selected-state assertions and native accessibility audits; all launches deny request-gated transport and no guard violation occurs.
+- The complete app suite passes 639/639 with no failure, skip, expected failure, or runtime warning. The final guarded UI suite passes 9/9 with the opt-in live-auth route test explicitly excluded; all fixture launches deny request-gated transport and no guard violation occurs.
 - The focused playlist-export suite passes 12/12, covering deterministic encoding, order and duplicates, canonical metadata, empty playlists, provenance rejection, byte-bounded Unicode filenames, adversarial scalar counts, track and artist-cardinality limits, control-heavy text, protected staging, and stale cleanup.
 - Deterministic request-audit coverage includes read/mutation success, failure, pre-start and in-flight cancellation, exact coalescing, queued cancellation, mutation serialization, and the maximum of two independent read transports.
-- `scripts/localizations.sh check` compiler-verifies all 1,618 production keys in the sole string catalog, including the new accessibility values.
+- `scripts/localizations.sh check` compiler-verifies all 1,632 production keys in the sole string catalog, including every new authentication label, disclosure, progress state, and error.
 - A clean generic Release simulator build succeeds and its executable contains both `x86_64` and `arm64`. Its sole packaging warning is the expected AppIntents metadata skip because the app has no AppIntents dependency. XcodeGen regeneration is byte-stable.
-- Independent correctness, security, request-safety, and final-diff reviews report READY. The export review confirms local-only behavior, bounded encoding and staging, canonical identifiers, duplicate preservation, centralized localization, and truthful privacy documentation.
+- Independent correctness, security, request-safety, and final-diff reviews report READY. The authentication review confirms ephemeral browser isolation, exact route/state enforcement, bounded local DOM extraction, one validation read, cancellation-safe persistence, complete trust-banner accessibility, and no credential logging or clipboard handling. The credential-free live route, light/dark, iPhone SE, and maximum-Dynamic-Type checks pass; the full credentialed flow remains an explicitly unclaimed release check.
 - The earlier final unsigned generic-device Release archive remains valid for the unchanged packaging surface. Its bundle contains the 1024-point AppIcon renditions, opaque 120×120 phone and 152×152 iPad icons, the generated launch-screen dictionary, and no orientation-validation warning.
 - The archived privacy manifest is byte-identical to source (`bd70e057eabd5df561467219da1f29a96230ddaa858965aa0db44e79a1c89428`) and parses with the reviewed categories, purposes, and required-reason declaration.
 - The installed icon was visually accepted on an iPhone 17 Pro simulator in light and dark Home Screen appearances with the system-applied mask.
@@ -58,7 +62,7 @@ Install Xcode and a compatible iOS simulator runtime before building. Reinstall 
 
 ## Next product work
 
-The immediate distribution target is sideloading, not TestFlight, and the deterministic unsigned IPA workflow is complete. The next release gate is to use a compatible external signer, inspect the resulting profile/entitlements/signature without committing them, and install the signed artifact on physical hardware. Then perform isolated authenticated disposable-account, physical-iPad, Stage Manager/resizable-window, translated-locale, VoiceOver, request-volume, performance, and crash checks. A paired iPhone with Developer Mode was available at this checkpoint, but no signing identity or profile was used and no physical install was attempted.
+The immediate distribution target is sideloading, not TestFlight, and the deterministic unsigned IPA workflow is complete. The next source checkpoint is true catalog plurals plus native-locale/RTL review; the next authenticated release check is manual web sign-in, token extraction, Keychain restore, one account read, and a request-audit snapshot on an isolated simulator. External signing, physical-device installation, physical iPad/Stage Manager, performance, and crash checks follow without blocking simulator product work. A paired iPhone with Developer Mode was available at this checkpoint, but no signing identity or profile was used and no physical install was attempted.
 
 After those foundations, evaluate current public MusicKit playback and content-resolution APIs as a separate researched slice; keep service playlist import/export, automatic capture, background submission, and offline retry distinct from the read-first product. Do not begin the proposed libspot/librespot experiment until the core client is complete, and then only on its own branch after licensing, Spotify policy, authentication, maintenance, and App Store review.
 
@@ -74,7 +78,7 @@ Playback/content resolution, MusicKit capture, and Spotify-linked playback remai
 
 ## Local cleanup
 
-This checkpoint installed no package, browser, runtime, host application, or additional skill. It reused Xcode 27, the iOS 27 runtime, ephemeral Nix XcodeGen, `jq`, the existing UX-writing skill, and Apple command-line tools. The accepted accessibility slice's seven exact Derived Data directories and one crash report were moved through a dedicated Trash bucket and that bucket alone was deleted, reclaiming 2,947,928 KiB. The disposable `Brainz Accessibility QA` simulator was shut down and deleted, and no matching artifact, localization working directory, crash report, or simulator remains. Earlier playlist-export cleanup reclaimed 3,559,916 KiB and removed its own exact simulator and artifacts.
+This checkpoint installed no package, browser, runtime, host application, or additional skill. It reused Xcode 27, the iOS 27 runtime, ephemeral Nix XcodeGen, `jq`, the existing UX-writing skill, and Apple command-line tools. The web-auth/Fresh Releases slice's 35 exact Derived Data, log, screenshot, sample, and result-bundle artifacts were moved through one dedicated Trash bucket and that bucket alone was deleted path by path, reclaiming 4,008,232 KiB. Its iPhone 17 Pro and iPhone SE simulators were terminated, shut down, and deleted; an exact audit found no matching artifact, bucket, or simulator. The earlier accessibility cleanup reclaimed 2,947,928 KiB, and playlist-export cleanup reclaimed 3,559,916 KiB.
 
 The sideload slice's validated unsigned IPA and the exact project Derived Data cache touched by the first diagnostic run were moved through a dedicated Trash bucket and that bucket alone was deleted, reclaiming 1,141,732 KiB. Interrupted isolated roots, inspection roots, publication roots, and a failed link-test directory were removed by exact path. No generated IPA, project cache, archive root, signing material, profile, certificate, or new tool remains.
 
