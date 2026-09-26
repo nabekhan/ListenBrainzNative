@@ -4,6 +4,13 @@ Updated: 2026-09-26
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
 
+## Post-pagination unsigned IPA closure — 2026-09-26
+
+- `scripts/package-ipa.sh` built clean checkpoint `f81d1b6` into `/private/tmp/Brainz-0.1.0-1-f81d1b6-unsigned.ipa` using its isolated, self-cleaning archive, Derived Data, staging, and duplicate-package root. The accepted artifact was 7,108,377 bytes with SHA-256 `208866dbb1f5b9cdcea049b3e91fdbf8495c108dd308cf6c44fb869ea8a33b7b`.
+- Independent structural inspection verified 12 unique entries, one thin arm64 iOS executable, the exact bundle/version/minimum-OS identity, source-identical privacy data, and current CritiqueBrainz pagination symbols and localized action. Independent security inspection additionally found no path collision, header mismatch, unsafe compression, encryption, special node, non-system dependency, signature residue, profile, entitlement blob, nested code, or common embedded-secret signature. Both reviews report SHIP for use as an unsigned external-signing input; they do not cover a future signer, profile, entitlements, signature, installation, or physical-device behavior.
+- No package, signer, profile, certificate, credential, runtime, host application, network request, or additional skill was used or installed. Existing Xcode 27, Apple command-line tools, and the tracked packaging workflow were reused.
+- After evidence was recorded, the exact IPA was moved through `/Users/nabeel/.Trash/Brainz-Post-Pagination-IPA-20260926.4TTZ76`; that dedicated one-file bucket alone was deleted, reclaiming 6,944 KiB. The packaging root had already self-cleaned, and a targeted audit found no matching IPA, `brainz-ipa.*` root, or cleanup bucket.
+
 ## Bounded CritiqueBrainz review pagination — 2026-09-26
 
 - `.derived-data/critiquebrainz-pagination-root-{focused,full,analyze}`, `/private/tmp/critiquebrainz-pagination-*.xcresult`, `/private/tmp/brainz-critiquebrainz-pagination-*`, and one abandoned `brainz-localizations.KbutDO` root held worker/reviewer/root focused tests, the accepted complete suite, Release analysis, compiler logs, exported UI-test evidence, and light/dark/accessibility screenshots. The abandoned localization root came from intentionally stopping an obsolete second compiler check after independent review required source changes; the final compiler-backed check then completed successfully in its self-cleaning root.
