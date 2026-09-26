@@ -1,10 +1,10 @@
 # ListenBrainz capability map
 
-Snapshot: 2026-09-25. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
+Snapshot: 2026-09-26. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
 
 | User capability | API | Web | Android | iOS | LBKit | KMP | Priority | Product decision |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
-| Token validation/authentication | Y | Y | Y | Y | Y | Y | P0 | Token-first onboarding; Keychain storage |
+| Token validation/authentication | Y | Y | Y | Y | Y | Y | P0 | Web-assisted sign-in through the exact official MetaBrainz/ListenBrainz flow, one token-validation read, device-only Keychain storage, and manual-token fallback |
 | Recent and historical listens | Y | Y | Y | Y | Y | Y | P0 | Flagship paginated history with exact server-bounded local-day navigation plus presentation-only search across already-loaded canonical and submitted artist, release, and track metadata; server-wide filtering remains unsupported |
 | Playing Now | Y | Y | Y | P | Y | Y | P0 | Home hero and conditional bottom accessory |
 | Listen count | Y | Y | Y | Y | Y | Y | P0 | Profile/home summary |

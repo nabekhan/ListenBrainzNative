@@ -16,10 +16,12 @@ final class SessionModel {
     var isWorking = false
     var errorMessage: String?
     private var didRestore = false
+    private var signInAttempt = 0
     private let snapshotCache: SnapshotCache
     private let credentialStore: any CredentialStoring
     private let defaults: UserDefaults
     private let validateToken: @Sendable (String) async throws -> String
+    private let beforeCredentialSave: @Sendable () async -> Void
 
     init(
         snapshotCache: SnapshotCache = .shared,
@@ -27,12 +29,14 @@ final class SessionModel {
         defaults: UserDefaults = .standard,
         validateToken: @escaping @Sendable (String) async throws -> String = { token in
             try await ListenBrainzProvider(token: token).validateToken()
-        }
+        },
+        beforeCredentialSave: @escaping @Sendable () async -> Void = {}
     ) {
         self.snapshotCache = snapshotCache
         self.credentialStore = credentialStore
         self.defaults = defaults
         self.validateToken = validateToken
+        self.beforeCredentialSave = beforeCredentialSave
     }
 
     func restore() async {
@@ -51,7 +55,7 @@ final class SessionModel {
             case .legacyToken(let token):
                 let username = try canonicalUsername(try await validateToken(token))
                 try await invalidateSnapshots(usernames: [legacyUsername, username])
-                try await credentialStore.save(StoredCredential(username: username, token: token))
+                try credentialStore.save(StoredCredential(username: username, token: token))
                 defaults.removeObject(forKey: Self.publicUsernameKey)
                 state = .active(Account(username: username, token: token))
             case nil:
@@ -67,24 +71,58 @@ final class SessionModel {
         }
     }
 
-    func signIn(token rawToken: String) async {
+    /// Reserves the next sign-in generation before an asynchronously-delivered
+    /// credential can begin validation. This keeps a dismissed web flow from
+    /// starting after its cancellation signal.
+    func beginSignInAttempt() -> Int {
+        signInAttempt &+= 1
+        isWorking = true
+        errorMessage = nil
+        return signInAttempt
+    }
+
+    func signIn(token rawToken: String, attempt expectedAttempt: Int? = nil) async {
         let token = rawToken.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !token.isEmpty else {
             errorMessage = String(localized: "Paste the user token from your ListenBrainz settings.")
             return
         }
-        isWorking = true
-        errorMessage = nil
-        defer { isWorking = false }
+        let attempt: Int
+        if let expectedAttempt {
+            guard signInAttempt == expectedAttempt else { return }
+            attempt = expectedAttempt
+        } else {
+            attempt = beginSignInAttempt()
+        }
+        defer {
+            if signInAttempt == attempt {
+                isWorking = false
+            }
+        }
         do {
             let username = try canonicalUsername(try await validateToken(token))
+            guard signInAttempt == attempt, !Task.isCancelled else { return }
             try await invalidateSnapshotsBeforeActivating(username: username)
-            try await credentialStore.save(StoredCredential(username: username, token: token))
+            guard signInAttempt == attempt, !Task.isCancelled else { return }
+            let credential = StoredCredential(username: username, token: token)
+            await beforeCredentialSave()
+            guard signInAttempt == attempt, !Task.isCancelled else { return }
+            try credentialStore.save(credential)
             defaults.removeObject(forKey: Self.publicUsernameKey)
             state = .active(Account(username: username, token: token))
         } catch {
-            errorMessage = error.localizedDescription
+            if signInAttempt == attempt, !Task.isCancelled {
+                errorMessage = error.localizedDescription
+            }
         }
+    }
+
+    /// Invalidates a pending validation result before it can change local state.
+    /// The caller may also cancel its task; the generation check protects the
+    /// Keychain boundary when the provider does not cooperate with cancellation.
+    func cancelPendingSignIn() {
+        signInAttempt &+= 1
+        isWorking = false
     }
 
     func browsePublicProfile(username rawUsername: String) async {
@@ -160,6 +198,10 @@ final class SessionModel {
     #if DEBUG
         private func restoreFixtureAccount() -> Bool {
             let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("-brainz-authentication-demo") {
+                state = .signedOut
+                return true
+            }
             if arguments.contains("-brainz-home-pin-demo")
                 || arguments.contains("-brainz-home-pin-empty-demo")
                 || arguments.contains("-brainz-home-pin-failure-demo")

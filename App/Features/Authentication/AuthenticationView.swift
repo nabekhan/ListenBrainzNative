@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct AuthenticationView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Bindable var session: SessionModel
     @State private var token = ""
     @State private var username = ""
     @State private var showsPublicProfile = false
+    @State private var showsWebSignIn = false
 
     var body: some View {
         NavigationStack {
@@ -24,6 +26,16 @@ struct AuthenticationView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Welcome")
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showsWebSignIn) {
+                ListenBrainzWebSignInView(session: session)
+            }
+            .task {
+                #if DEBUG
+                    if ProcessInfo.processInfo.arguments.contains("-brainz-open-web-sign-in") {
+                        showsWebSignIn = true
+                    }
+                #endif
+            }
         }
     }
 
@@ -37,29 +49,58 @@ struct AuthenticationView: View {
                         .font(.system(size: 48, weight: .semibold))
                     Spacer()
                     Text("Your music life,\nbeautifully native.")
-                        .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                        .font(
+                            .system(
+                                dynamicTypeSize.isAccessibilitySize ? .title : .largeTitle,
+                                design: .rounded,
+                                weight: .bold
+                            )
+                        )
                     Text("History, taste, discovery, and the people who listen like you.")
-                        .font(.headline)
+                        .font(dynamicTypeSize.isAccessibilitySize ? .body.weight(.semibold) : .headline)
                         .foregroundStyle(.white.opacity(0.82))
                 }
                 .foregroundStyle(.white)
                 .padding(24)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             }
-            .frame(height: 300)
+            .frame(minHeight: 300)
         }
     }
 
     private var signInSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "Connect ListenBrainz", subtitle: "Use your personal token for private actions such as feedback and deleting listens.")
+            SectionHeader(
+                title: "Connect ListenBrainz",
+                subtitle: "Sign in to add feedback, pin tracks, manage playlists, and edit your listens."
+            )
+
+            Button {
+                showsWebSignIn = true
+            } label: {
+                Label("Continue with MusicBrainz", systemImage: "person.crop.circle.badge.checkmark")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.roundedRectangle(radius: 13))
+            .disabled(session.isWorking)
+            .accessibilityIdentifier("continue-musicbrainz-sign-in")
+
+            Text("Prefer a token? Paste it below.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
 
             SecureField("User token", text: $token)
                 .textContentType(.password)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .padding(14)
-                .background(.background, in: .rect(cornerRadius: 13, style: .continuous))
+                .background(
+                    Color(.secondarySystemGroupedBackground),
+                    in: .rect(cornerRadius: 13, style: .continuous)
+                )
 
             if let message = session.errorMessage {
                 Label(message, systemImage: "exclamationmark.circle.fill")
@@ -72,17 +113,17 @@ struct AuthenticationView: View {
             } label: {
                 HStack {
                     if session.isWorking { ProgressView().tint(.white) }
-                    Text(session.isWorking ? "Checking token…" : "Continue")
+                    Text(session.isWorking ? "Checking token…" : "Continue with token")
                         .frame(maxWidth: .infinity)
                 }
                 .padding(.vertical, 6)
             }
             .buttonStyle(.borderedProminent)
             .buttonBorderShape(.roundedRectangle(radius: 13))
-            .disabled(session.isWorking)
+            .disabled(session.isWorking || token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
             Link(destination: URL(string: "https://listenbrainz.org/settings/")!) {
-                Label("Find your token in ListenBrainz Settings", systemImage: "arrow.up.right")
+                Label("Find your token in ListenBrainz settings", systemImage: "arrow.up.right")
                     .font(.subheadline.weight(.semibold))
             }
         }
@@ -109,9 +150,12 @@ struct AuthenticationView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .padding(14)
-                    .background(.background, in: .rect(cornerRadius: 13, style: .continuous))
+                    .background(
+                        Color(.secondarySystemGroupedBackground),
+                        in: .rect(cornerRadius: 13, style: .continuous)
+                    )
                     .onSubmit { Task { await session.browsePublicProfile(username: username) } }
-                Button("Browse Profile") {
+                Button("Browse profile") {
                     Task { await session.browsePublicProfile(username: username) }
                 }
                     .buttonStyle(.bordered)
@@ -121,7 +165,7 @@ struct AuthenticationView: View {
 
     private var privacyNote: some View {
         Label {
-            Text("Your token is stored only in this device’s Keychain. It is never written to logs, preferences, or source files.")
+            Text("Your token stays in this device’s Keychain and is sent only to ListenBrainz.")
         } icon: {
             Image(systemName: "lock.shield.fill")
                 .foregroundStyle(AppTheme.secondary)

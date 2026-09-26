@@ -335,7 +335,7 @@ struct SettingsView: View {
 
     private struct SettingsVisualCredentialStore: CredentialStoring {
         func load() async throws -> LoadedCredential? { nil }
-        func save(_ credential: StoredCredential) async throws {}
+        func save(_ credential: StoredCredential) throws {}
         func delete() async throws {}
     }
 

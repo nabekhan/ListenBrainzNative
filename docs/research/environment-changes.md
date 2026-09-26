@@ -4,6 +4,16 @@ Updated: 2026-09-26
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
 
+## Web-assisted authentication and Fresh Releases supersession — 2026-09-26
+
+- `.derived-data/web-auth-focused`, `.derived-data/web-auth-root`, `.derived-data/web-auth-full-tests`, `.derived-data/web-auth-ui-tests`, `.derived-data/web-auth-release`, `.derived-data/web-auth-live-route`, and `.derived-data/web-auth-live-route-reset` held focused and complete tests, Debug visual builds, direct production-route checks, and the final universal Release simulator build.
+- `/private/tmp/brainz-web-auth-focused.log`, `/private/tmp/brainz-web-auth-root.log`, `/private/tmp/brainz-xcodebuild.sample`, the exact `brainz-auth*.png` screenshots, and the exact `brainz-web-auth-*-20260926.xcresult` bundles held transient compiler, route, visual, and test evidence.
+- `Brainz Live Account QA` (`C3163B13-D6D7-46FE-B199-53495E37B8BE`) was erased before the credential-free production-route check and used for the final app, UI, light/dark, and maximum-Dynamic-Type checks. `Brainz Auth Small QA` (`416C169A-B8AE-45AB-969C-BCEA6510E0BF`) was created only for the accepted iPhone SE layout check, then terminated, shut down, and deleted.
+- The exact official ListenBrainz-to-MetaBrainz route reached the current MetaBrainz login page in an ephemeral WebKit session. No username, password, token, account session, authenticated API request, or mutation was entered or captured. The remaining full token-extraction/Keychain/account-read trial requires manual credential entry that does not cross automation logs.
+- Final validation passes 639/639 app tests and 9/9 guarded layout/accessibility UI tests with no failure, skip, expected failure, or runtime warning; the compiler-backed catalog check matches all 1,632 production keys; and the Release simulator executable contains `x86_64` and `arm64`. Light, dark, iPhone SE, and maximum-Dynamic-Type review confirmed that the full official hostname and credential disclosure remain visible.
+- Independent correctness, security, and request-safety reviews found no release-blocking issue. Browser authentication makes no ListenBrainz API request before extracting the token and then permits exactly one validation read; Fresh Releases cancels superseded exact queries, preserves same-query coalescing, and has no lifecycle poll or retry loop.
+- No package, browser, runtime, host application, credential, or additional skill was installed. Existing Xcode 27, the iOS 27 runtime, `jq`, Apple command-line tools, and the existing UX Writing skill were reused.
+
 ## Deterministic sideload IPA — 2026-09-26
 
 - `scripts/package-ipa.sh` generated ignored `dist/Brainz-0.1.0-1-unsigned.ipa` from one isolated generic-iOS Release archive. The accepted artifact was 7,007,793 bytes with SHA-256 `4b2fb1370750eca6bba1436dea56bfea0bcd72593c21c8cb8e8a0e9b549c2ad8`; internal duplicate packaging and independent extraction verified deterministic bytes, 11 exact payload entries, one unsigned arm64 Mach-O object, correct identity/version/privacy data, and no symlink, profile, signature, or extra top-level entry.

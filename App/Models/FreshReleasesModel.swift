@@ -57,6 +57,16 @@ final class FreshReleasesModel {
         await resolve(task, requestID: requestID, for: query)
     }
 
+    /// Loads the query currently presented by Discover.
+    ///
+    /// A query change supersedes work that can no longer become visible. Keep
+    /// completed query states as a cache, but cancel only distinct in-flight
+    /// reads so another waiter for the same query can continue to coalesce.
+    func loadActive(query: FreshReleaseQuery) async {
+        retireInFlightQueries(except: query)
+        await load(query: query)
+    }
+
     func refresh(scope: FreshReleaseScope) async {
         await refresh(query: .default(for: scope))
     }
@@ -83,6 +93,18 @@ final class FreshReleasesModel {
             states[query] = error is CancellationError ? .idle : .failed(error.localizedDescription)
             inFlight[query] = nil
             requestIDs[query] = nil
+        }
+    }
+
+    private func retireInFlightQueries(except activeQuery: FreshReleaseQuery) {
+        let retiredQueries = inFlight.keys.filter { $0 != activeQuery }
+        for query in retiredQueries {
+            inFlight[query]?.cancel()
+            inFlight[query] = nil
+            requestIDs[query] = nil
+            if state(for: query) == .loading {
+                states[query] = .idle
+            }
         }
     }
 }

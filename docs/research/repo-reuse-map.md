@@ -1,6 +1,6 @@
 # Repository reuse map
 
-Snapshot: 2026-09-25. Repository/source inspection, Xcode 27 builds, simulator runs, and live public-data checks are complete for the implemented slices.
+Snapshot: 2026-09-26. Repository/source inspection, Xcode 27 builds, simulator runs, and live public-data checks are complete for the implemented slices.
 
 | Repository | Purpose / state | License | Best reusable value | Modernization / difficulty | Decision |
 |---|---|---|---|---|---|
@@ -27,6 +27,7 @@ Snapshot: 2026-09-25. Repository/source inspection, Xcode 27 builds, simulator r
 | Overall information architecture | first.fm + current LB web | Profile/history/ranking hierarchy and LB product grouping | Native tab/search flow for Home, History, Discover, Stats, Profile |
 | API/domain | ListenBrainzKit | Existing P0 clients/models | Reliability fixes, app adapters, typed CF/social/pins/following-pins/detail/era/evolution/artist-map/artist-activity/entity-listener/generic-art/generated-radio extensions |
 | Product behavior | LB API/web + Android | Semantics, event types, pagination, edge cases | Native iOS interaction |
+| Authentication | Current LB web/server + official Android/iOS behavior + native WebKit/Keychain | Official redirect, settings-token, and validation semantics only; no GPL source copied | Original fail-closed two-WebView handoff with one ephemeral store, exact stateful route policy, hidden settings-token extraction, cancellation-safe validation, atomic Keychain persistence, and manual-token fallback |
 | Bottom accessory | Apple native APIs + Minidisc behavior | System API behavior; MPL patterns where needed | Conditional Playing Now/latest-listen accessory |
 | History/listen row and loaded search | first.fm + current LB API/web + official Android/KMP + native SwiftUI search | Dense scrobble hierarchy, date-jump behavior, timestamp/MSID deletion semantics, submitted-versus-resolved mapping concepts, and native search presentation; no GPL UI copied | MSID-stable pagination, exact local-day bounds, adjacent-day navigation, feedback, track-specific deletion confirmation, read-only zero-request Listen details, durable no-replay state, and accessibility-responsive local matching across already-loaded canonical/submitted metadata with no ListenBrainz/MusicBrainz provider request or row hydration |
 | Manual metadata mapping | Current LB web/server behavior + existing Listen Details and recording search + ListenBrainzKit | Search/select/confirm semantics, submitted-recording-ID precedence, the existing debounced MusicBrainz search path, and MPL manual-mapping GET/POST transports; no GPL UI or source copied | Independent native selection/review/status UI, zero-read Listen Details entry, one explicit coalesced status lookup, explicit prefilled candidate search, app-owned state, one-shot serialized save, and persistent indeterminate-outcome recovery |

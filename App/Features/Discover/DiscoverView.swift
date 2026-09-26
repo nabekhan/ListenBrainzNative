@@ -68,7 +68,7 @@ struct DiscoverView: View {
                     .disabled(model.isLoading(query: activeQuery))
                 }
             }
-            .task(id: activeQuery) { await model.load(query: activeQuery) }
+            .task(id: activeQuery) { await model.loadActive(query: activeQuery) }
             .onChange(of: scope) { _, value in
                 appliedFilters = appliedFilters.normalized(for: value)
             }

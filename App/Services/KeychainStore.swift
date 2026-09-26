@@ -25,7 +25,9 @@ enum LoadedCredential: Equatable, Sendable {
 
 protocol CredentialStoring: Sendable {
     func load() async throws -> LoadedCredential?
-    func save(_ credential: StoredCredential) async throws
+    /// A save must not suspend. SessionModel checks cancellation immediately
+    /// before this boundary, so a cancelled task cannot write afterward.
+    func save(_ credential: StoredCredential) throws
     func delete() async throws
 }
 
@@ -61,7 +63,7 @@ struct KeychainCredentialStore: CredentialStoring {
         return .legacyToken(token)
     }
 
-    func save(_ credential: StoredCredential) async throws {
+    func save(_ credential: StoredCredential) throws {
         let data = try JSONEncoder().encode(credential)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

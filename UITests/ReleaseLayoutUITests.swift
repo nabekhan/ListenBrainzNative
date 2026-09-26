@@ -2,6 +2,32 @@ import XCTest
 
 @MainActor
 final class ReleaseLayoutUITests: XCTestCase {
+    func testLiveWebSignInReachesOfficialMetaBrainzPage() throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["BRAINZ_LIVE_AUTH_ROUTE"] == "1",
+            "Set BRAINZ_LIVE_AUTH_ROUTE=1 in the UI-test runner to run this intentional production route check."
+        )
+
+        let app = XCUIApplication()
+        app.launchArguments = ["-brainz-authentication-demo"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+
+        let continueButton = app.buttons["continue-musicbrainz-sign-in"]
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 10))
+        continueButton.tap()
+
+        let officialHost = app.staticTexts["official-sign-in-host"]
+        XCTAssertTrue(
+            officialHost.waitForExistence(timeout: 30),
+            "The guarded sign-in flow did not reach the exact official MetaBrainz host."
+        )
+        XCTAssertEqual(officialHost.label, "Official site: metabrainz.org")
+        XCTAssertFalse(app.staticTexts["Sign-in unavailable"].exists)
+
+        app.buttons["Cancel"].tap()
+    }
+
     func testHomeFixtureUsesRegularWidthInPortrait() throws {
         let device = XCUIDevice.shared
         device.orientation = .portrait

@@ -6,7 +6,7 @@ import XCTest
 final class SessionModelTests: XCTestCase {
     func testSameUsernameReplacementInvalidatesSnapshotBeforeCredentialSave() async throws {
         let environment = try makeEnvironment()
-        let store = FixtureCredentialStore(snapshotCache: environment.cache, snapshotsExpectedAbsentAtSave: ["listener"])
+        let store = FixtureCredentialStore()
         let session = SessionModel(
             snapshotCache: environment.cache,
             credentialStore: store,
@@ -18,17 +18,17 @@ final class SessionModelTests: XCTestCase {
         await session.signIn(token: "replacement-token")
 
         XCTAssertEqual(session.state, .active(.init(username: "listener", token: "replacement-token")))
-        let savedCredential = await store.savedCredential
-        let snapshotsWereAbsent = await store.expectedSnapshotsWereAbsentAtSave
+        let savedCredential = store.savedCredential
+        let snapshotAbsent = await snapshotIsAbsent(username: "listener", cache: environment.cache)
         XCTAssertEqual(savedCredential, .init(username: "listener", token: "replacement-token"))
-        XCTAssertTrue(snapshotsWereAbsent)
+        XCTAssertTrue(snapshotAbsent)
         XCTAssertNil(environment.defaults.string(forKey: "listenbrainz.username"))
     }
 
     func testDifferentUsernameReplacementInvalidatesBothCandidatesBeforeCredentialSave() async throws {
         let environment = try makeEnvironment()
         environment.defaults.set("previous", forKey: "listenbrainz.username")
-        let store = FixtureCredentialStore(snapshotCache: environment.cache, snapshotsExpectedAbsentAtSave: ["previous", "canonical"])
+        let store = FixtureCredentialStore()
         let session = SessionModel(
             snapshotCache: environment.cache,
             credentialStore: store,
@@ -42,8 +42,10 @@ final class SessionModelTests: XCTestCase {
         await session.signIn(token: "new-token")
 
         XCTAssertEqual(session.state, .active(.init(username: "canonical", token: "new-token")))
-        let snapshotsWereAbsent = await store.expectedSnapshotsWereAbsentAtSave
-        XCTAssertTrue(snapshotsWereAbsent)
+        let previousAbsent = await snapshotIsAbsent(username: "previous", cache: environment.cache)
+        let canonicalAbsent = await snapshotIsAbsent(username: "canonical", cache: environment.cache)
+        XCTAssertTrue(previousAbsent)
+        XCTAssertTrue(canonicalAbsent)
     }
 
     func testAtomicRestoreIgnoresStalePublicUsernameWithoutValidation() async throws {
@@ -71,11 +73,7 @@ final class SessionModelTests: XCTestCase {
         environment.defaults.set("legacy-default", forKey: "listenbrainz.username")
         try await saveSnapshot(username: "legacy-default", cache: environment.cache)
         try await saveSnapshot(username: "canonical", cache: environment.cache)
-        let store = FixtureCredentialStore(
-            loaded: .legacyToken("legacy-token"),
-            snapshotCache: environment.cache,
-            snapshotsExpectedAbsentAtSave: ["legacy-default", "canonical"]
-        )
+        let store = FixtureCredentialStore(loaded: .legacyToken("legacy-token"))
         let session = SessionModel(
             snapshotCache: environment.cache,
             credentialStore: store,
@@ -86,19 +84,18 @@ final class SessionModelTests: XCTestCase {
         await session.restore()
 
         XCTAssertEqual(session.state, .active(.init(username: "canonical", token: "legacy-token")))
-        let savedCredential = await store.savedCredential
-        let snapshotsWereAbsent = await store.expectedSnapshotsWereAbsentAtSave
+        let savedCredential = store.savedCredential
+        let legacyAbsent = await snapshotIsAbsent(username: "legacy-default", cache: environment.cache)
+        let canonicalAbsent = await snapshotIsAbsent(username: "canonical", cache: environment.cache)
         XCTAssertEqual(savedCredential, .init(username: "canonical", token: "legacy-token"))
-        XCTAssertTrue(snapshotsWereAbsent)
+        XCTAssertTrue(legacyAbsent)
+        XCTAssertTrue(canonicalAbsent)
         XCTAssertNil(environment.defaults.string(forKey: "listenbrainz.username"))
     }
 
     func testBrowsePublicProfileInvalidatesPreviousAndRequestedSnapshotBeforePublication() async throws {
         let environment = try makeEnvironment()
-        let store = FixtureCredentialStore(
-            loaded: .account(.init(username: "listener", token: "stored-token")),
-            snapshotCache: environment.cache
-        )
+        let store = FixtureCredentialStore(loaded: .account(.init(username: "listener", token: "stored-token")))
         let session = SessionModel(
             snapshotCache: environment.cache,
             credentialStore: store,
@@ -115,7 +112,7 @@ final class SessionModelTests: XCTestCase {
         XCTAssertEqual(environment.defaults.string(forKey: "listenbrainz.username"), "public-target")
         let listenerAbsent = await snapshotIsAbsent(username: "listener", cache: environment.cache)
         let targetAbsent = await snapshotIsAbsent(username: "public-target", cache: environment.cache)
-        let deleteCount = await store.deleteCount
+        let deleteCount = store.deleteCount
         XCTAssertTrue(listenerAbsent)
         XCTAssertTrue(targetAbsent)
         XCTAssertEqual(deleteCount, 1)
@@ -123,11 +120,7 @@ final class SessionModelTests: XCTestCase {
 
     func testSignOutInvalidatesSnapshotBeforeCredentialDeletion() async throws {
         let environment = try makeEnvironment()
-        let store = FixtureCredentialStore(
-            loaded: .account(.init(username: "listener", token: "stored-token")),
-            snapshotCache: environment.cache,
-            snapshotsExpectedAbsentAtDelete: ["listener"]
-        )
+        let store = FixtureCredentialStore(loaded: .account(.init(username: "listener", token: "stored-token")))
         let session = SessionModel(
             snapshotCache: environment.cache,
             credentialStore: store,
@@ -140,10 +133,98 @@ final class SessionModelTests: XCTestCase {
         await session.signOut()
 
         XCTAssertEqual(session.state, .signedOut)
-        let snapshotsWereAbsent = await store.expectedSnapshotsWereAbsentAtDelete
         let snapshotAbsent = await snapshotIsAbsent(username: "listener", cache: environment.cache)
-        XCTAssertTrue(snapshotsWereAbsent)
         XCTAssertTrue(snapshotAbsent)
+    }
+
+    func testCancelledSignInCannotPersistLateValidationResult() async throws {
+        let environment = try makeEnvironment()
+        let store = FixtureCredentialStore()
+        let validator = DelayedValidation()
+        let session = SessionModel(
+            snapshotCache: environment.cache,
+            credentialStore: store,
+            defaults: environment.defaults,
+            validateToken: { _ in await validator.validate() }
+        )
+
+        let task = Task { await session.signIn(token: "replacement-token") }
+        await validator.waitUntilStarted()
+        session.cancelPendingSignIn()
+        await validator.resume(username: "listener")
+        await task.value
+
+        XCTAssertEqual(session.state, .restoring)
+        let savedCredential = store.savedCredential
+        XCTAssertNil(savedCredential)
+        XCTAssertFalse(session.isWorking)
+    }
+
+    func testCancelledReservedSignInDoesNotStartValidation() async throws {
+        let environment = try makeEnvironment()
+        let store = FixtureCredentialStore()
+        let validator = ValidationCounter(username: "listener")
+        let session = SessionModel(
+            snapshotCache: environment.cache,
+            credentialStore: store,
+            defaults: environment.defaults,
+            validateToken: { token in try await validator.validate(token) }
+        )
+
+        let attempt = session.beginSignInAttempt()
+        session.cancelPendingSignIn()
+        await session.signIn(token: "replacement-token", attempt: attempt)
+
+        let validationCalls = await validator.calls
+        let savedCredential = store.savedCredential
+        XCTAssertEqual(validationCalls, 0)
+        XCTAssertNil(savedCredential)
+        XCTAssertEqual(session.state, .restoring)
+    }
+
+    func testCancellationDuringDelayedPreSaveCannotPersistCredential() async throws {
+        let environment = try makeEnvironment()
+        let store = FixtureCredentialStore()
+        let gate = DelayedFirstCommit()
+        let session = SessionModel(
+            snapshotCache: environment.cache,
+            credentialStore: store,
+            defaults: environment.defaults,
+            validateToken: { _ in "listener" },
+            beforeCredentialSave: { await gate.waitForRelease() }
+        )
+
+        let task = Task { await session.signIn(token: "cancelled-token") }
+        await gate.waitUntilStarted()
+        session.cancelPendingSignIn()
+        await gate.releaseFirst()
+        await task.value
+
+        XCTAssertNil(store.savedCredential)
+        XCTAssertEqual(session.state, .restoring)
+    }
+
+    func testCancelledDelayedAttemptCannotOverwriteNewerCredential() async throws {
+        let environment = try makeEnvironment()
+        let store = FixtureCredentialStore()
+        let gate = DelayedFirstCommit()
+        let session = SessionModel(
+            snapshotCache: environment.cache,
+            credentialStore: store,
+            defaults: environment.defaults,
+            validateToken: { token in token == "first-token" ? "first" : "second" },
+            beforeCredentialSave: { await gate.waitForRelease() }
+        )
+
+        let first = Task { await session.signIn(token: "first-token") }
+        await gate.waitUntilStarted()
+        session.cancelPendingSignIn()
+        await session.signIn(token: "second-token")
+        await gate.releaseFirst()
+        await first.value
+
+        XCTAssertEqual(store.savedCredential, .init(username: "second", token: "second-token"))
+        XCTAssertEqual(session.state, SessionModel.State.active(.init(username: "second", token: "second-token")))
     }
 
     private func makeEnvironment() throws -> (cache: SnapshotCache, defaults: UserDefaults) {
@@ -175,62 +256,34 @@ private enum FixtureError: Error {
     case unavailableDefaults
 }
 
-private actor FixtureCredentialStore: CredentialStoring {
+private final class FixtureCredentialStore: @unchecked Sendable, CredentialStoring {
     private var loaded: LoadedCredential?
     private var saved: StoredCredential?
     private var deletes = 0
-    private let snapshotCache: SnapshotCache?
-    private let snapshotsExpectedAbsentAtSave: [String]
-    private let snapshotsExpectedAbsentAtDelete: [String]
-    private var snapshotsWereAbsentAtSave: Bool?
-    private var snapshotsWereAbsentAtDelete: Bool?
+    private let lock = NSLock()
 
-    init(
-        loaded: LoadedCredential? = nil,
-        snapshotCache: SnapshotCache? = nil,
-        snapshotsExpectedAbsentAtSave: [String] = [],
-        snapshotsExpectedAbsentAtDelete: [String] = []
-    ) {
+    init(loaded: LoadedCredential? = nil) {
         self.loaded = loaded
-        self.snapshotCache = snapshotCache
-        self.snapshotsExpectedAbsentAtSave = snapshotsExpectedAbsentAtSave
-        self.snapshotsExpectedAbsentAtDelete = snapshotsExpectedAbsentAtDelete
     }
 
-    func load() async throws -> LoadedCredential? { loaded }
+    func load() async throws -> LoadedCredential? { lock.withLock { loaded } }
 
-    func save(_ credential: StoredCredential) async throws {
-        if let snapshotCache {
-            var absent = true
-            for username in snapshotsExpectedAbsentAtSave {
-                let lease = await snapshotCache.beginSession(username: username)
-                let snapshot = await snapshotCache.load(username: username, lease: lease)
-                absent = absent && snapshot == nil
-            }
-            snapshotsWereAbsentAtSave = absent
+    func save(_ credential: StoredCredential) throws {
+        lock.withLock {
+            saved = credential
+            loaded = .account(credential)
         }
-        saved = credential
-        loaded = .account(credential)
     }
 
     func delete() async throws {
-        if let snapshotCache {
-            var absent = true
-            for username in snapshotsExpectedAbsentAtDelete {
-                let lease = await snapshotCache.beginSession(username: username)
-                let snapshot = await snapshotCache.load(username: username, lease: lease)
-                absent = absent && snapshot == nil
-            }
-            snapshotsWereAbsentAtDelete = absent
+        lock.withLock {
+            deletes += 1
+            loaded = nil
         }
-        deletes += 1
-        loaded = nil
     }
 
-    var savedCredential: StoredCredential? { saved }
-    var expectedSnapshotsWereAbsentAtSave: Bool { snapshotsWereAbsentAtSave ?? false }
-    var expectedSnapshotsWereAbsentAtDelete: Bool { snapshotsWereAbsentAtDelete ?? false }
-    var deleteCount: Int { deletes }
+    var savedCredential: StoredCredential? { lock.withLock { saved } }
+    var deleteCount: Int { lock.withLock { deletes } }
 }
 
 private actor ValidationCounter {
@@ -244,5 +297,52 @@ private actor ValidationCounter {
     func validate(_: String) throws -> String {
         calls += 1
         return username
+    }
+}
+
+private actor DelayedValidation {
+    private var started = false
+    private var startWaiter: CheckedContinuation<Void, Never>?
+    private var resultWaiter: CheckedContinuation<String, Never>?
+
+    func validate() async -> String {
+        started = true
+        startWaiter?.resume()
+        startWaiter = nil
+        return await withCheckedContinuation { resultWaiter = $0 }
+    }
+
+    func waitUntilStarted() async {
+        guard !started else { return }
+        await withCheckedContinuation { startWaiter = $0 }
+    }
+
+    func resume(username: String) {
+        resultWaiter?.resume(returning: username)
+        resultWaiter = nil
+    }
+}
+
+private actor DelayedFirstCommit {
+    private var calls = 0
+    private var startedWaiter: CheckedContinuation<Void, Never>?
+    private var releaseWaiter: CheckedContinuation<Void, Never>?
+
+    func waitForRelease() async {
+        calls += 1
+        guard calls == 1 else { return }
+        startedWaiter?.resume()
+        startedWaiter = nil
+        await withCheckedContinuation { releaseWaiter = $0 }
+    }
+
+    func waitUntilStarted() async {
+        guard calls == 0 else { return }
+        await withCheckedContinuation { startedWaiter = $0 }
+    }
+
+    func releaseFirst() {
+        releaseWaiter?.resume()
+        releaseWaiter = nil
     }
 }

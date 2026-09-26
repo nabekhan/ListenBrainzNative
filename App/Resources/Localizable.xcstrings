@@ -2461,16 +2461,6 @@
         }
       }
     },
-    "Browse Profile": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Browse Profile"
-          }
-        }
-      }
-    },
     "Browse a public profile": {
       "localizations": {
         "en": {
@@ -2487,6 +2477,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Browse listens from a specific local calendar day"
+          }
+        }
+      }
+    },
+    "Browse profile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browse profile"
           }
         }
       }
@@ -3141,12 +3141,22 @@
         }
       }
     },
-    "Continue": {
+    "Continue with MusicBrainz": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Continue"
+            "value": "Continue with MusicBrainz"
+          }
+        }
+      }
+    },
+    "Continue with token": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue with token"
           }
         }
       }
@@ -4291,6 +4301,16 @@
         }
       }
     },
+    "Enter your password only on the official page. Brainz never sees or saves it.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter your password only on the official page. Brainz never sees or saves it."
+          }
+        }
+      }
+    },
     "Evening": {
       "localizations": {
         "en": {
@@ -4501,12 +4521,12 @@
         }
       }
     },
-    "Find your token in ListenBrainz Settings": {
+    "Find your token in ListenBrainz settings": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Find your token in ListenBrainz Settings"
+            "value": "Find your token in ListenBrainz settings"
           }
         }
       }
@@ -4557,6 +4577,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Finding your sound through the day…"
+          }
+        }
+      }
+    },
+    "Finishing sign-in…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finishing sign-in…"
           }
         }
       }
@@ -8831,6 +8861,16 @@
         }
       }
     },
+    "Official site: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Official site: %@"
+          }
+        }
+      }
+    },
     "Oldest first": {
       "localizations": {
         "en": {
@@ -10037,6 +10077,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Popularity unavailable"
+          }
+        }
+      }
+    },
+    "Prefer a token? Paste it below.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prefer a token? Paste it below."
           }
         }
       }
@@ -12581,12 +12631,32 @@
         }
       }
     },
+    "Sign in": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in"
+          }
+        }
+      }
+    },
     "Sign in for your feed": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Sign in for your feed"
+          }
+        }
+      }
+    },
+    "Sign in to add feedback, pin tracks, manage playlists, and edit your listens.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to add feedback, pin tracks, manage playlists, and edit your listens."
           }
         }
       }
@@ -12717,6 +12787,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sign in with a token to tune your recommendations."
+          }
+        }
+      }
+    },
+    "Sign-in unavailable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign-in unavailable"
           }
         }
       }
@@ -13801,6 +13881,16 @@
         }
       }
     },
+    "This page isn’t part of the secure sign-in flow. Try again or use your token instead.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This page isn’t part of the secure sign-in flow. Try again or use your token instead."
+          }
+        }
+      }
+    },
     "This permanently deletes the playlist from ListenBrainz. It can’t be undone.": {
       "localizations": {
         "en": {
@@ -14017,6 +14107,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "This result does not contain a valid ListenBrainz playlist ID."
+          }
+        }
+      }
+    },
+    "This sign-in page tried to download a file. Try again or use your token instead.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This sign-in page tried to download a file. Try again or use your token instead."
           }
         }
       }
@@ -14951,6 +15051,16 @@
         }
       }
     },
+    "Use a token instead": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use a token instead"
+          }
+        }
+      }
+    },
     "Use an exact MusicBrainz artist name or MBID. Parentheses belong in Advanced.": {
       "localizations": {
         "en": {
@@ -14987,16 +15097,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Use your device appearance or choose a theme for Brainz."
-          }
-        }
-      }
-    },
-    "Use your personal token for private actions such as feedback and deleting listens.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Use your personal token for private actions such as feedback and deleting listens."
           }
         }
       }
@@ -15201,6 +15301,26 @@
         }
       }
     },
+    "We couldn’t finish sign-in. Try again or use your token instead.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We couldn’t finish sign-in. Try again or use your token instead."
+          }
+        }
+      }
+    },
+    "We couldn’t load the secure sign-in page. Check your connection and try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We couldn’t load the secure sign-in page. Check your connection and try again."
+          }
+        }
+      }
+    },
     "We couldn’t load this pinned track. Try again in a moment.": {
       "localizations": {
         "en": {
@@ -15211,12 +15331,32 @@
         }
       }
     },
+    "We couldn’t open ListenBrainz settings safely. Try again or use your token instead.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We couldn’t open ListenBrainz settings safely. Try again or use your token instead."
+          }
+        }
+      }
+    },
     "We couldn’t restore your saved sign-in. Sign in again.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "We couldn’t restore your saved sign-in. Sign in again."
+          }
+        }
+      }
+    },
+    "We couldn’t verify this sign-in. Try again or use your token instead.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We couldn’t verify this sign-in. Try again or use your token instead."
           }
         }
       }
@@ -15731,12 +15871,12 @@
         }
       }
     },
-    "Your token is stored only in this device’s Keychain. It is never written to logs, preferences, or source files.": {
+    "Your token stays in this device’s Keychain and is sent only to ListenBrainz.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your token is stored only in this device’s Keychain. It is never written to logs, preferences, or source files."
+            "value": "Your token stays in this device’s Keychain and is sent only to ListenBrainz."
           }
         }
       }

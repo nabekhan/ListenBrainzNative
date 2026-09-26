@@ -1718,6 +1718,98 @@ final class ListeningModelTests: XCTestCase {
         await load.value
     }
 
+    func testFreshReleaseActiveQuerySupersedesDelayedRequest() async throws {
+        let provider = FixtureProvider(freshReleaseDelay: .seconds(1))
+        let model = FreshReleasesModel(
+            account: Account(username: "fixture-\(UUID().uuidString)", token: ""),
+            provider: provider
+        )
+        let firstQuery = FreshReleaseQuery(scope: .forYou)
+        let secondQuery = FreshReleaseQuery(scope: .all)
+        let first = Task { await model.loadActive(query: firstQuery) }
+        let clock = ContinuousClock()
+        while await provider.freshReleaseRequestCount(for: firstQuery) < 1 {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+
+        await model.loadActive(query: secondQuery)
+        await first.value
+
+        XCTAssertEqual(model.state(for: firstQuery), .idle)
+        guard case .loaded = model.state(for: secondQuery) else {
+            return XCTFail("Expected only the active Fresh Releases query to load")
+        }
+        let firstCancellationCount = await provider.freshReleaseCancellationCount(for: firstQuery)
+        let firstRequestCount = await provider.freshReleaseRequestCount(for: firstQuery)
+        let secondRequestCount = await provider.freshReleaseRequestCount(for: secondQuery)
+        XCTAssertEqual(firstCancellationCount, 1)
+        XCTAssertEqual(firstRequestCount, 1)
+        XCTAssertEqual(secondRequestCount, 1)
+    }
+
+    func testFreshReleaseActiveQueryCoalescesSameInFlightRequest() async throws {
+        let provider = FixtureProvider(freshReleaseDelay: .milliseconds(80))
+        let model = FreshReleasesModel(
+            account: Account(username: "fixture-\(UUID().uuidString)", token: ""),
+            provider: provider
+        )
+        let query = FreshReleaseQuery(scope: .all)
+        let first = Task { await model.loadActive(query: query) }
+        let clock = ContinuousClock()
+        while await provider.freshReleaseRequestCount(for: query) < 1 {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+
+        let second = Task { await model.loadActive(query: query) }
+        await first.value
+        await second.value
+
+        guard case .loaded = model.state(for: query) else {
+            return XCTFail("Expected the active Fresh Releases query to finish loading")
+        }
+        let requestCount = await provider.freshReleaseRequestCount(for: query)
+        let cancellationCount = await provider.freshReleaseCancellationCount(for: query)
+        XCTAssertEqual(requestCount, 1)
+        XCTAssertEqual(cancellationCount, 0)
+    }
+
+    func testFreshReleaseActiveQueryKeepsOnlyLatestOfRapidSupersession() async throws {
+        let provider = FixtureProvider(freshReleaseDelay: .seconds(1))
+        let model = FreshReleasesModel(
+            account: Account(username: "fixture-\(UUID().uuidString)", token: ""),
+            provider: provider
+        )
+        let firstQuery = FreshReleaseQuery(scope: .forYou, days: .seven)
+        let secondQuery = FreshReleaseQuery(scope: .all, days: .seven)
+        let thirdQuery = FreshReleaseQuery(scope: .forYou, days: .thirty)
+        let first = Task { await model.loadActive(query: firstQuery) }
+        let clock = ContinuousClock()
+        while await provider.freshReleaseRequestCount(for: firstQuery) < 1 {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+
+        let second = Task { await model.loadActive(query: secondQuery) }
+        while await provider.freshReleaseRequestCount(for: secondQuery) < 1 {
+            try await clock.sleep(for: .milliseconds(1))
+        }
+
+        await model.loadActive(query: thirdQuery)
+        await first.value
+        await second.value
+
+        XCTAssertEqual(model.state(for: firstQuery), .idle)
+        XCTAssertEqual(model.state(for: secondQuery), .idle)
+        guard case .loaded = model.state(for: thirdQuery) else {
+            return XCTFail("Expected only the newest Fresh Releases query to load")
+        }
+        let firstCancellationCount = await provider.freshReleaseCancellationCount(for: firstQuery)
+        let secondCancellationCount = await provider.freshReleaseCancellationCount(for: secondQuery)
+        let requestCount = await provider.freshReleaseRequestCount()
+        XCTAssertEqual(firstCancellationCount, 1)
+        XCTAssertEqual(secondCancellationCount, 1)
+        XCTAssertEqual(requestCount, 3)
+    }
+
     func testFreshReleaseQueryNormalizesEquivalentServerShapes() {
         let normalized = FreshReleaseQuery(
             scope: .all,
@@ -3465,6 +3557,7 @@ private actor FixtureProvider: ListeningProvider {
     private var activityRequests: [ListeningActivityPeriod: Int] = [:]
     private var freshReleaseRequests: [FreshReleaseScope: Int] = [:]
     private var freshReleaseQueries: [FreshReleaseQuery: Int] = [:]
+    private var freshReleaseCancellations: [FreshReleaseQuery: Int] = [:]
 
     init(activityDelay: Duration? = nil, freshReleaseDelay: Duration? = nil) {
         self.activityDelay = activityDelay
@@ -3551,7 +3644,12 @@ private actor FixtureProvider: ListeningProvider {
         freshReleaseRequests[query.scope, default: 0] += 1
         freshReleaseQueries[query, default: 0] += 1
         if let freshReleaseDelay {
-            try await ContinuousClock().sleep(for: freshReleaseDelay)
+            do {
+                try await ContinuousClock().sleep(for: freshReleaseDelay)
+            } catch is CancellationError {
+                freshReleaseCancellations[query, default: 0] += 1
+                throw CancellationError()
+            }
         }
         guard query.scope == .all else { return [] }
         return [
@@ -3589,6 +3687,10 @@ private actor FixtureProvider: ListeningProvider {
 
     func freshReleaseRequestCount() -> Int {
         freshReleaseQueries.values.reduce(0, +)
+    }
+
+    func freshReleaseCancellationCount(for query: FreshReleaseQuery) -> Int {
+        freshReleaseCancellations[query, default: 0]
     }
 
     private func listen(title: String, timestamp: TimeInterval, isPlayingNow: Bool = false) -> Listen {

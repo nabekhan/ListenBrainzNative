@@ -41,6 +41,7 @@
 		28308D4569131B6901FA4203 /* SettingsViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 149EBE62DA7CDC90453C6CEA /* SettingsViewTests.swift */; };
 		29B645DBF921F0BBC957C07F /* GeneratedArtworkModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1515EAD260E36F91A29FAF5 /* GeneratedArtworkModelTests.swift */; };
 		2A8E1BB1202E6CB8253E5221 /* ProfilePlaylistsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66F0C5093821A3A87343832 /* ProfilePlaylistsProvider.swift */; };
+		2B0BC47A7CCD8BD7FAC5E2BC /* ListenBrainzWebSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41A90D0DA3741EC7D16704BC /* ListenBrainzWebSignInView.swift */; };
 		2BF62BFA67E1454AFDD7C232 /* ManualMappingProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5C879A9F19C8FE2AC54675A /* ManualMappingProvider.swift */; };
 		2D6DAEBF12542FE63EBD75F0 /* FeedModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72EA4638A7EB62DF693C0B15 /* FeedModel.swift */; };
 		2E4C0A7F8A1F5EF01CCDE56C /* RadioModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B092450568E7F84906D24CD3 /* RadioModelTests.swift */; };
@@ -146,6 +147,7 @@
 		BA2C93F949F621690EE76294 /* GeneratedArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65AB00819B0357218DD4300D /* GeneratedArtwork.swift */; };
 		C2D7F0CD4AF8E23A3944B5CF /* PlaylistDeletionModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EB7AFAA6F65C2D06DC5ECC1 /* PlaylistDeletionModelTests.swift */; };
 		C31B632EBB12B7BDA9A345B3 /* RadioProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BB2EADCF9020D2B3BDD6BBA /* RadioProviderTests.swift */; };
+		C398FCAAAD390B3F807D97CA /* ListenBrainzWebSignInPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64526F4D3455F0024F4D4D4B /* ListenBrainzWebSignInPolicyTests.swift */; };
 		C400325C9993529EB95EB59A /* SimilarArtistModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37B6390F98E1EBF4E1E8606 /* SimilarArtistModels.swift */; };
 		C51A7CFA91015ED8EDD090D4 /* SearchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406BFC379388B9725ABBBF3E /* SearchModel.swift */; };
 		C675F4A76118319114058495 /* YearInMusicModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4122F3C9AC4A14A10CAB3866 /* YearInMusicModelTests.swift */; };
@@ -252,6 +254,7 @@
 		40D6C8571901D47830CC2850 /* YearInMusicArtworkProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearInMusicArtworkProvider.swift; sourceTree = "<group>"; };
 		4115F1D782F741E044C6363B /* ListenSubmissionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenSubmissionProvider.swift; sourceTree = "<group>"; };
 		4122F3C9AC4A14A10CAB3866 /* YearInMusicModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearInMusicModelTests.swift; sourceTree = "<group>"; };
+		41A90D0DA3741EC7D16704BC /* ListenBrainzWebSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenBrainzWebSignInView.swift; sourceTree = "<group>"; };
 		437CD7A87C63D1F3A37363FB /* ListenBrainzNativeUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ListenBrainzNativeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		445829BC50154244B5591728 /* PlaylistMutationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistMutationTests.swift; sourceTree = "<group>"; };
 		44F89EA5D5E0E0647DB6755B /* SessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionModel.swift; sourceTree = "<group>"; };
@@ -272,6 +275,7 @@
 		5A31783EBD66F5D59FD659FC /* FollowingPinsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FollowingPinsProvider.swift; sourceTree = "<group>"; };
 		61A453DC671E0AE48DE5FD6D /* ListenBrainzNativeTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ListenBrainzNativeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		63322AC38BB841A99005C1BF /* PlaylistMutationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistMutationModels.swift; sourceTree = "<group>"; };
+		64526F4D3455F0024F4D4D4B /* ListenBrainzWebSignInPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenBrainzWebSignInPolicyTests.swift; sourceTree = "<group>"; };
 		65596B1CF40A3F700EFA1D76 /* PlaylistAddSheetModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistAddSheetModelTests.swift; sourceTree = "<group>"; };
 		659F6BF93F2ADE29B73AC2E5 /* SnapshotCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotCache.swift; sourceTree = "<group>"; };
 		65AB00819B0357218DD4300D /* GeneratedArtwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratedArtwork.swift; sourceTree = "<group>"; };
@@ -741,6 +745,7 @@
 				D1515EAD260E36F91A29FAF5 /* GeneratedArtworkModelTests.swift */,
 				8B49A926472F92B0F2ACE627 /* GeneratedArtworkProviderTests.swift */,
 				10C232571C0EDA4584243130 /* GenreActivityPresentationTests.swift */,
+				64526F4D3455F0024F4D4D4B /* ListenBrainzWebSignInPolicyTests.swift */,
 				04BCABBDB540BFFC39527300 /* ListeningModelTests.swift */,
 				C5B5A4E8ABF99C74E9414899 /* ListenInspectionTests.swift */,
 				A1A77184F9FC31E360C92905 /* ListenSubmissionModelTests.swift */,
@@ -799,6 +804,7 @@
 			isa = PBXGroup;
 			children = (
 				0CA165DC8218B530B6F41180 /* AuthenticationView.swift */,
+				41A90D0DA3741EC7D16704BC /* ListenBrainzWebSignInView.swift */,
 			);
 			path = Authentication;
 			sourceTree = "<group>";
@@ -941,6 +947,7 @@
 				29B645DBF921F0BBC957C07F /* GeneratedArtworkModelTests.swift in Sources */,
 				5D33EF72A354063571AA4F93 /* GeneratedArtworkProviderTests.swift in Sources */,
 				56961544979AD39F56EA366B /* GenreActivityPresentationTests.swift in Sources */,
+				C398FCAAAD390B3F807D97CA /* ListenBrainzWebSignInPolicyTests.swift in Sources */,
 				E6BB92FC32E46557994D38A3 /* ListenInspectionTests.swift in Sources */,
 				6888F930CACC4A83A17CE42B /* ListenSubmissionModelTests.swift in Sources */,
 				A686BC80CE777828101F3C11 /* ListeningModelTests.swift in Sources */,
@@ -1020,6 +1027,7 @@
 				E03C8BE0755A2F8A0BC849BD /* KeychainStore.swift in Sources */,
 				0BEE2B0FBDAFA8B6EDE90A80 /* ListenBrainzNativeApp.swift in Sources */,
 				8CC211BC670EB9B4DF390ADF /* ListenBrainzProvider.swift in Sources */,
+				2B0BC47A7CCD8BD7FAC5E2BC /* ListenBrainzWebSignInView.swift in Sources */,
 				36E959422315C3F0CB2308BB /* ListenInspectionSheet.swift in Sources */,
 				0DC5A6AD9306EE572703A8A9 /* ListenRow.swift in Sources */,
 				AE1A23F908E32B2399B63A84 /* ListenSubmissionModel.swift in Sources */,
