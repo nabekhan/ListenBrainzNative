@@ -2,11 +2,16 @@
 /.build/
 /DerivedData/
 /.derived-data/
+/dist/
 /References/
 *.xcuserstate
 xcuserdata/
 Secrets.xcconfig
 *.mobileprovision
+*.provisionprofile
+*.ipa
+*.p8
+*.pem
 .env
 .env.*
 *.p12

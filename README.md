@@ -72,6 +72,18 @@ scripts/localizations.sh check
 
 Both modes perform a Release extraction with Xcode and use `jq` to preserve explicit editable English values and remove compiler-marked stale keys. `check` works on a temporary copy and fails if the committed catalog has missing or stale production keys; DEBUG-only fixture copy is excluded. If `jq` is not installed, run either command through `nix shell nixpkgs#jq -c`.
 
+## Sideload IPA
+
+Build and validate an unsigned, re-signable device IPA:
+
+```sh
+scripts/package-ipa.sh
+```
+
+The default output is `dist/Brainz-<version>-<build>-unsigned.ipa`. The script checks the arm64 executable, bundle metadata, icons, launch screen, privacy manifest, unsigned state, exact `Payload/Brainz.app` layout, ZIP integrity, and deterministic packaging from the same archive.
+
+The generated IPA is **not directly installable**. A compatible external signer must add the provisioning profile, entitlements, and signature before sideloading. Do not commit signing credentials, profiles, or generated IPAs. See `docs/research/sideload-readiness.md` for the signing boundary and remaining physical-device checks.
+
 ## Research and provenance
 
 This repository follows an inspect-first, reuse-first workflow. Start with:
@@ -80,6 +92,7 @@ This repository follows an inspect-first, reuse-first workflow. Start with:
 - `docs/research/implementation-plan.md`
 - `docs/research/localization.md`
 - `docs/research/app-store-readiness.md`
+- `docs/research/sideload-readiness.md`
 - `docs/research/listenbrainz-feature-map.md`
 - `docs/research/listenbrainzkit-gap-analysis.md`
 - `docs/research/playlist-export.md`

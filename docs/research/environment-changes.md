@@ -4,6 +4,14 @@ Updated: 2026-09-26
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
 
+## Deterministic sideload IPA — 2026-09-26
+
+- `scripts/package-ipa.sh` generated ignored `dist/Brainz-0.1.0-1-unsigned.ipa` from one isolated generic-iOS Release archive. The accepted artifact was 7,007,793 bytes with SHA-256 `4b2fb1370750eca6bba1436dea56bfea0bcd72593c21c8cb8e8a0e9b549c2ad8`; internal duplicate packaging and independent extraction verified deterministic bytes, 11 exact payload entries, one unsigned arm64 Mach-O object, correct identity/version/privacy data, and no symlink, profile, signature, or extra top-level entry.
+- The first diagnostic archive was stopped after revealing that Derived Data had not yet been isolated and had touched the pre-existing project cache at `~/Library/Developer/Xcode/DerivedData/ListenBrainzNative-ctangothsghmbuekveysigyisjjf`. Later diagnostic runs were stopped before publication to address no-overwrite and nested-code review findings. The final script keeps Derived Data, archive, staging, and duplicate IPA inputs inside a unique `/private/tmp/brainz-ipa.*` root with explicit signal cleanup.
+- Temporary `brainz-ipa.*`, `brainz-ipa-inspect.*`, `brainz-ipa-negative.*`, `brainz-ipa-guards.*`, and `brainz-link-test.*` roots held only isolated build or safety-test data. No certificate, private key, provisioning profile, signing identity, Apple account, app credential, or device installation was used.
+- No package, browser, runtime, host application, or additional skill was installed. Existing Xcode 27, Apple command-line tools, and the existing UX Writing skill were reused.
+- Cleanup completed after acceptance: the exact generated IPA and exact project Derived Data cache were moved through a dedicated `Brainz-Sideload-20260926.*` Trash bucket; its two entries were verified and the bucket alone was deleted, reclaiming 1,141,732 KiB. The failed-test and interrupted temporary roots were removed by exact path. A final audit found no matching IPA, `dist` directory, project cache, build/archive/inspection/publication root, or cleanup target.
+
 ## Accessibility and sideload release alignment — 2026-09-26
 
 - `.derived-data/accessibility-compile`, `.derived-data/accessibility-ui`, `.derived-data/accessibility-ui-full`, `.derived-data/accessibility-ui-full-acceptance`, `.derived-data/accessibility-ui-full-final`, `.derived-data/accessibility-ui-full-final2`, and `.derived-data/accessibility-unit-final` held iterative compiler checks, the final 9/9 guarded UI result, and the final 628/628 app-test result.

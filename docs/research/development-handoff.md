@@ -24,6 +24,8 @@ Loaded playlists can now be exported as normalized `.jspf.json` files without a 
 
 `project.yml` now declares the app target's `productName: Brainz`, keeping regenerated product and scheme references aligned with the shipping name. Two consecutive XcodeGen generations produced the same project-and-scheme hash.
 
+`scripts/package-ipa.sh` now supplies the immediate sideload artifact boundary. It uses only pinned Apple/BSD tools and an isolated temporary Derived Data/archive root, verifies the arm64 executable, unsigned nested code, and exact reviewed resources, rejects profiles/signatures/symlinks, normalizes staged payload timestamps, compares two packages from the same archive, and atomically publishes without replacing an existing path. Repository-wide ignores cover generated IPAs and common private signing formats. Signing credentials, profiles, entitlements, and device installation remain deliberately external.
+
 The bundled manifest declares no tracking; the app-local `UserDefaults` reason `CA92.1`; linked User ID, Product Interaction, Other User Content, and Search History; and conservatively linked Other Diagnostic Data for MetaBrainz's retained access logs. User ID and Product Interaction include Product Personalization, while Other Diagnostic Data includes Analytics. Signed-in ListenBrainz searches are treated as linked because the client sends the token; MusicBrainz music searches remain token-free.
 
 Final evidence:
@@ -39,6 +41,7 @@ Final evidence:
 - The installed icon was visually accepted on an iPhone 17 Pro simulator in light and dark Home Screen appearances with the system-applied mask.
 - The prior release-foundation checkpoint passed the unchanged vendored ListenBrainzKit baseline at 146/146 across 20 suites. No live credential, production request, or mutation was used for this export checkpoint.
 - Independent packaging and security reviews report READY after correcting authenticated Search History linkage, personalization purposes, retained-log disclosure, disconnect-retention wording, and the confidential-reporting route.
+- The final unsigned sideload workflow produced a 7,007,793-byte IPA with SHA-256 `4b2fb1370750eca6bba1436dea56bfea0bcd72593c21c8cb8e8a0e9b549c2ad8`. Its two internal packages were byte-identical; independent extraction verified exactly 11 entries under `Payload/Brainz.app`, one unsigned arm64 Mach-O object, bundle `dev.nabekhan.listenbrainznative`, version `0.1.0 (1)`, the source privacy hash, and no symlink, profile, signature, extra top-level entry, overwrite, or surviving temporary root. Independent correctness and security re-reviews report READY for the default/user-owned output boundary.
 
 ## Resume on another Mac
 
@@ -55,7 +58,7 @@ Install Xcode and a compatible iOS simulator runtime before building. Reinstall 
 
 ## Next product work
 
-The immediate distribution target is sideloading, not TestFlight. The next bounded work is a deterministic repository script that produces and validates an unsigned, re-signable IPA containing only `Payload/Brainz.app`; the unsigned artifact is not directly installable. After an external signing workflow supplies a compatible provisioning identity, perform isolated physical-device, authenticated disposable-account, physical-iPad, Stage Manager/resizable-window, translated-locale, VoiceOver, performance, and crash checks. A paired iPhone with Developer Mode was available at this checkpoint, but Xcode had no configured developer account, team, or Apple Development identity, so no physical build or install was attempted.
+The immediate distribution target is sideloading, not TestFlight, and the deterministic unsigned IPA workflow is complete. The next release gate is to use a compatible external signer, inspect the resulting profile/entitlements/signature without committing them, and install the signed artifact on physical hardware. Then perform isolated authenticated disposable-account, physical-iPad, Stage Manager/resizable-window, translated-locale, VoiceOver, request-volume, performance, and crash checks. A paired iPhone with Developer Mode was available at this checkpoint, but no signing identity or profile was used and no physical install was attempted.
 
 After those foundations, evaluate current public MusicKit playback and content-resolution APIs as a separate researched slice; keep service playlist import/export, automatic capture, background submission, and offline retry distinct from the read-first product. Do not begin the proposed libspot/librespot experiment until the core client is complete, and then only on its own branch after licensing, Spotify policy, authentication, maintenance, and App Store review.
 
@@ -72,5 +75,7 @@ Playback/content resolution, MusicKit capture, and Spotify-linked playback remai
 ## Local cleanup
 
 This checkpoint installed no package, browser, runtime, host application, or additional skill. It reused Xcode 27, the iOS 27 runtime, ephemeral Nix XcodeGen, `jq`, the existing UX-writing skill, and Apple command-line tools. The accepted accessibility slice's seven exact Derived Data directories and one crash report were moved through a dedicated Trash bucket and that bucket alone was deleted, reclaiming 2,947,928 KiB. The disposable `Brainz Accessibility QA` simulator was shut down and deleted, and no matching artifact, localization working directory, crash report, or simulator remains. Earlier playlist-export cleanup reclaimed 3,559,916 KiB and removed its own exact simulator and artifacts.
+
+The sideload slice's validated unsigned IPA and the exact project Derived Data cache touched by the first diagnostic run were moved through a dedicated Trash bucket and that bucket alone was deleted, reclaiming 1,141,732 KiB. Interrupted isolated roots, inspection roots, publication roots, and a failed link-test directory were removed by exact path. No generated IPA, project cache, archive root, signing material, profile, certificate, or new tool remains.
 
 The source checkout, Git history, tracked Xcode project, `project.yml`, Apple Command Line Tools, shared Nix store, pre-existing developer data, user settings, credentials, personal files, and unrelated Trash contents remain preserved. Exact artifact paths and cleanup commands are recorded in `environment-changes.md`.

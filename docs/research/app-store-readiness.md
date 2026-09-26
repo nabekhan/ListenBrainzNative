@@ -4,7 +4,7 @@ Checked against current Apple and MetaBrainz documentation on 2026-09-25.
 
 ## Immediate distribution target
 
-The first release target is a **re-signable sideload IPA**, not TestFlight. The repository will produce and inspect an unsigned IPA payload that a compatible signing workflow can re-sign with the user's own provisioning identity. The unsigned artifact is not directly installable and must never be described as a finished signed release.
+The first release target is a **re-signable sideload IPA**, not TestFlight. The repository produces and inspects an unsigned IPA payload that a compatible signing workflow can re-sign with the user's own provisioning identity. The unsigned artifact is not directly installable and must never be described as a finished signed release.
 
 This changes release sequencing, not product quality: the first signed sideload build still needs physical-device, authenticated disposable-account, accessibility, performance, crash, privacy, and request-safety checks. TestFlight and App Store Connect remain a later distribution path and should stay compatible where that does not complicate the sideload workflow.
 
@@ -14,6 +14,7 @@ This changes release sequencing, not product quality: the first signed sideload 
 | --- | --- |
 | App identity | `AppIcon.appiconset` contains one opaque 1024×1024 universal iOS source. Xcode 27 generates phone and iPad renditions, and `project.yml` owns the `AppIcon` build setting. |
 | Device archive | An unsigned generic-iOS Release archive succeeds for arm64. Its app bundle contains `Assets.car`, opaque 120×120 and 152×152 icon files, and `CFBundleIconName = AppIcon`. |
+| Unsigned IPA workflow | `scripts/package-ipa.sh` isolates Derived Data and the archive in a temporary root, validates bundle identity/resources/privacy/unsigned nested code, rejects symlinks and unsafe output paths, packages only `Payload/Brainz.app`, and proves byte-identical output from the same archive before publishing without overwrite. |
 | Privacy manifest | `PrivacyInfo.xcprivacy` is copied byte-for-byte to the app-bundle root. It declares no tracking, the app-local UserDefaults reason `CA92.1`, and conservative core-functionality data categories. |
 | iPad resizing | iPad declares portrait, upside-down portrait, and both landscape orientations. The earlier archive warning is gone; `UIRequiresFullScreen` is not used. |
 | Simulator layout and accessibility regression | Nine guarded XCUITests exercise iPad portrait, device rotation/landscape survival, RTL History controls, RTL Feed, RTL Profile playlists, expanded pseudo-localization, private-playlist export, Home metric semantics, and Recording feedback state. The two semantic fixtures run native hit-region, description, trait, and element-detection audits, and directional navigation uses semantic SF Symbols. |
@@ -52,8 +53,7 @@ The single source deliberately omits hand-authored dark and tinted variants. App
 
 ## Still required before the sideload release
 
-- create a deterministic unsigned IPA containing only `Payload/Brainz.app`, validate its bundle metadata, arm64 executable, resources, privacy manifest, and unsigned state, then verify that the same archive packages identically;
-- re-sign that payload with an appropriate provisioning identity and keep certificates, profiles, and signing logs out of source control;
+- re-sign the validated unsigned payload with an appropriate provisioning identity and keep certificates, profiles, and signing logs out of source control;
 - install the signed IPA on a physical iPhone and run authenticated disposable-account QA without real user data or replaying mutations;
 - repeat rotation, Stage Manager/resizable-window, RTL, and VoiceOver checks on physical iPad hardware where available, and test actual translations once they exist; and
 - complete final accessibility, performance, crash, direct-network-bypass, request-volume, and regression passes on the signed candidate.
