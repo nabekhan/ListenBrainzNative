@@ -4,6 +4,18 @@ Updated: 2026-09-25
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
 
+## Release identity and privacy — 2026-09-25
+
+- `/Users/nabeel/.codex/generated_images/01a0acca-7585-72a3-9b9b-dcc5896a5aff/exec-9a5b5f28-cca7-452b-bac5-de9c9b1b1bd0.png` is the built-in image-generation output used to derive the tracked 1024×1024 app icon. Cleanup: after acceptance, remove only that exact generated-image directory; the final tracked asset remains in the repository.
+- `/tmp/brainz-icon.9ID7lT/` contains an early resize/alpha diagnostic. Cleanup: remove only this exact temporary directory.
+- `.derived-data/release-identity/` contains the first and corrected unsigned generic-iOS archives plus shared device build products. `.derived-data/release-identity-sim/` contains the universal simulator Release build. Cleanup: remove only these two exact directories after evidence is recorded.
+- `.derived-data/release-foundation-tests/` contains the isolated full-app regression build and result bundle. `Packages/ListenBrainzKit/.build/` contains the vendored package test build. Cleanup: remove only these exact directories after the final checkpoint is recorded.
+- `/tmp/brainz-release-identity-archive.log`, `/tmp/brainz-release-identity-archive-v2.log`, `/tmp/brainz-release-identity-sim-build.log`, `/tmp/brainz-release-identity-home-light.png`, and `/tmp/brainz-release-identity-home-dark.png` are transient build and visual evidence. Cleanup: remove only these exact files.
+- `/tmp/brainz-release-foundation-app-tests.log`, `/tmp/brainz-release-foundation-kit-tests.log`, and `/tmp/brainz-release-foundation-localizations.log` are transient regression evidence. Cleanup: remove only these exact files after their pass counts are recorded.
+- `.derived-data/release-identity/Brainz-final.xcarchive` and `/tmp/brainz-release-foundation-final-archive.log` are the final unsigned device archive and build log after the reviewed privacy corrections. They are contained by the existing release-identity cleanup scope except for the named log.
+- `Brainz Release Identity QA` (`4AC26932-A0F4-4E69-BA39-D4E13BD7D16C`) is a disposable iOS 27 simulator. Cleanup: shut down and delete only this UUID after icon QA and tests finish.
+- No package, browser, runtime, host application, or additional skill was installed. The existing UX Writing and image-generation skills were used; the existing Xcode 27/iOS 27 runtime, ephemeral Nix XcodeGen environment, `ffmpeg`, `jq`, and Apple command-line tools were reused.
+
 ## Rebuild after portable cleanup — 2026-09-24
 
 - Xcode 27.0 (`27A266a`) was already present at `/Applications/Xcode.app`; its command-line selection and completed first-launch state were verified. No second Xcode application was installed.

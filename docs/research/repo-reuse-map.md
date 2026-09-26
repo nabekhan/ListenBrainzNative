@@ -63,6 +63,7 @@ Snapshot: 2026-09-25. Repository/source inspection, Xcode 27 builds, simulator r
 | Scrobbling/offline retry | FastScrobbler behavior + Cassette/Minidisc | MPL queue code only if later adopted | Deferred capture module |
 | CritiqueBrainz review highlights/full-text reader | Current ListenBrainz web + official KMP service/models | Current `limit=5` request shape, five-minute stale policy, entity semantics, and tolerant response fields were referenced only; GPL KMP code was not copied | Native summary card, strict entity validation, ephemeral bounded transport, cache, links, accessibility, and retry state; the reader expands the cached value with zero additional requests |
 | Connected services | Current ListenBrainz server/frontend + Android/KMP behavior + ListenBrainzKit | Own-account authorization, service identifiers, and canonical web-management route; GPL KMP was behavior reference only | Native private Account destination, credential-scoped five-minute cache/gate, honest known labels, unknown identifier fallback, and small MPL Kit path-safety repair |
+| App identity and release privacy | Current Apple platform requirements + existing Brainz palette | Native asset catalog, one-source icon generation, bundled privacy manifest, resizable iPad configuration, and plain-language policy; no donor asset or official service mark copied | Original waveform/history icon, conservative data-flow declarations, app-only UserDefaults reason, archive inspection, and Home Screen visual QA |
 
 ## Additional discovery verdict
 

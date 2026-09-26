@@ -114,6 +114,7 @@
 		83FBD884DA1FAF3F93FC3EB0 /* FollowingPinsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A95F9C7EA292554B930383 /* FollowingPinsModel.swift */; };
 		873D948C6823F9E8E0508D57 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 193432530B75E845B61C532C /* HomeView.swift */; };
 		87F6993AB8FCC5A87744AF75 /* RadioProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54E68B4CE90FAE05D067A92C /* RadioProvider.swift */; };
+		8AB2010AE4933BB6CD64DFC4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 461F52592F6EFD974403502B /* Assets.xcassets */; };
 		8B76B12A2FDBC963BEF8B64F /* TopListenersSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C47DB8E8CDB8B6E43A990514 /* TopListenersSummaryView.swift */; };
 		8CC211BC670EB9B4DF390ADF /* ListenBrainzProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93089B0F4FF96EC2558216C /* ListenBrainzProvider.swift */; };
 		8F16CB7E1FE040E5D24D2591 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F268D31AB8CD90FD6B664A12 /* HistoryView.swift */; };
@@ -170,6 +171,7 @@
 		F2A06B0A87EA1A5A145EBCAB /* ListeningModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37C43C08CFE953B3F3A8BC47 /* ListeningModel.swift */; };
 		F35D014CF1E559E054877C1F /* SimilarArtistsSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59647D03E0B7F95A9547DDD1 /* SimilarArtistsSummaryView.swift */; };
 		F462DD49582CE885E41AD221 /* MediaDetailModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB292AE014CE0F99033BA579 /* MediaDetailModelTests.swift */; };
+		F5617F4808AA10F69AB7DE41 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 29A4172E10F069DB9320B337 /* PrivacyInfo.xcprivacy */; };
 		F5ABC8C33EC088A2730330B6 /* YearInMusicArtworkProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35903A33BA7CEC0EBAA24C72 /* YearInMusicArtworkProviderTests.swift */; };
 		F803391DB2A7F0AC3F4214FC /* ArtistHighlightsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DB8214E5494FF8A2A44F041 /* ArtistHighlightsModel.swift */; };
 		F8594971067C532075F7C071 /* FreshReleasesModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FA2FB88A5EB6BD9C478E53C /* FreshReleasesModel.swift */; };
@@ -216,6 +218,7 @@
 		279EF0995049BDBEF7989E01 /* MediaDetailProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaDetailProvider.swift; sourceTree = "<group>"; };
 		2800AEF9CD1729574F03F998 /* SimilarArtistsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimilarArtistsProvider.swift; sourceTree = "<group>"; };
 		2809A2878037BFAD5289AA5B /* ExternalMediaDestinationActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalMediaDestinationActions.swift; sourceTree = "<group>"; };
+		29A4172E10F069DB9320B337 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		2B68CB67CEB5A14CC03AFCB5 /* RadioPlaylistSaveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioPlaylistSaveTests.swift; sourceTree = "<group>"; };
 		2EA074F8AA02345A7E2BF670 /* PlaylistDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistDetailView.swift; sourceTree = "<group>"; };
 		3110A121662AEA4E6BA9654A /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -236,6 +239,7 @@
 		4122F3C9AC4A14A10CAB3866 /* YearInMusicModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearInMusicModelTests.swift; sourceTree = "<group>"; };
 		445829BC50154244B5591728 /* PlaylistMutationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistMutationTests.swift; sourceTree = "<group>"; };
 		44F89EA5D5E0E0647DB6755B /* SessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionModel.swift; sourceTree = "<group>"; };
+		461F52592F6EFD974403502B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		462BB30902139F26E0615C4A /* FeaturedListenCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeaturedListenCard.swift; sourceTree = "<group>"; };
 		4638C4F1EDAA8A2A26D835AD /* SimilarArtistsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimilarArtistsModel.swift; sourceTree = "<group>"; };
 		4D5B85F6A7DDA54743F12645 /* SocialProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialProvider.swift; sourceTree = "<group>"; };
@@ -504,6 +508,7 @@
 		75C9C0FCDFEA125FA0D5F14B /* App */ = {
 			isa = PBXGroup;
 			children = (
+				461F52592F6EFD974403502B /* Assets.xcassets */,
 				99DD4D81FE060960A6C14DB8 /* ListenBrainzNativeApp.swift */,
 				3110A121662AEA4E6BA9654A /* RootView.swift */,
 				21DCA4BA41DBE2C742EA95A4 /* Components */,
@@ -627,6 +632,7 @@
 			isa = PBXGroup;
 			children = (
 				AFBE76928AA6AEDA795142C2 /* Localizable.xcstrings */,
+				29A4172E10F069DB9320B337 /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -837,7 +843,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8AB2010AE4933BB6CD64DFC4 /* Assets.xcassets in Resources */,
 				3026BED4266E50B22B781838 /* Localizable.xcstrings in Resources */,
+				F5617F4808AA10F69AB7DE41 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1151,6 +1159,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1180,6 +1189,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

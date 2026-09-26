@@ -76,6 +76,7 @@ This repository follows an inspect-first, reuse-first workflow. Start with:
 - `docs/research/development-handoff.md`
 - `docs/research/implementation-plan.md`
 - `docs/research/localization.md`
+- `docs/research/app-store-readiness.md`
 - `docs/research/listenbrainz-feature-map.md`
 - `docs/research/listenbrainzkit-gap-analysis.md`
 - `docs/research/playlist-mutations.md`
@@ -86,6 +87,8 @@ This repository follows an inspect-first, reuse-first workflow. Start with:
 - `docs/research/repo-reuse-map.md`
 - `docs/research/license-map.md`
 - `THIRD_PARTY.md`
+
+The public data-handling summary is in [`PRIVACY.md`](PRIVACY.md).
 
 Temporary clones, installed tooling, and cleanup instructions are recorded in `docs/research/environment-changes.md`.
 
