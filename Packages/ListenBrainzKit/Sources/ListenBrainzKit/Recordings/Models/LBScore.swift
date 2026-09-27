@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-public enum LBScore: Int, Codable {
+public enum LBScore: Int, Codable, Sendable {
     case love = 1
     case hate = -1
     case none = 0

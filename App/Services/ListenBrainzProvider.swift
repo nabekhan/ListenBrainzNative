@@ -452,12 +452,12 @@ struct ListenBrainzProvider: ListeningProvider {
         }
     }
 
-    static func map(_ metadata: LBTrackMetadata, msid: UUID?) -> Recording {
+    static func map(_ metadata: LBTrackMetadata, msid: UUID?, mbid: UUID? = nil) -> Recording {
         let mapped = metadata.mbidMapping
         let additional = metadata.additionalInfo
         let externalLinks = externalLinks(mapped: mapped, additional: additional)
         return Recording(
-            identity: .init(mbid: mapped?.recordingMbid ?? additional?.recordingMbid, msid: msid),
+            identity: .init(mbid: mbid ?? mapped?.recordingMbid ?? additional?.recordingMbid, msid: msid),
             title: mapped?.recordingName ?? metadata.track,
             artistName: metadata.artist,
             artistMBIDs: mapped?.artistMbids ?? additional?.artistMbids ?? [],
@@ -672,6 +672,7 @@ actor RequestGate {
         case pinsHistory
         case pinsFollowing
         case profilePlaylists
+        case profileFeedback
         case recordingShareFollowers
         case searchListenBrainzUsers
         case searchListenBrainzPlaylists
@@ -750,6 +751,7 @@ actor RequestGate {
         static func pinHistory(_ scope: ReadScope, user: String, count: Int, offset: Int) -> Self { endpoint(scope, .pinsHistory, [userID(user), String(count), String(offset)]) }
         static func followingPins(_ scope: ReadScope, user: String, count: Int, offset: Int) -> Self { endpoint(scope, .pinsFollowing, [userID(user), String(count), String(offset)]) }
         static func profilePlaylists(_ scope: ReadScope, user: String, category: String, offset: Int, count: Int) -> Self { endpoint(scope, .profilePlaylists, [userID(user), category, String(offset), String(count)]) }
+        static func profileFeedback(_ scope: ReadScope, user: String, score: Int, offset: Int, count: Int) -> Self { endpoint(scope, .profileFeedback, [userID(user), String(score), String(offset), String(count), "metadata:true"]) }
         static func releaseGroup(_ scope: ReadScope, mbid: UUID) -> Self { endpoint(scope, .metadataRelease, [uuid(mbid), "artist", "tag"]) }
         static func manualMapping(_ scope: ReadScope, msid: UUID) -> Self { endpoint(scope, .metadataManualMapping, [uuid(msid)]) }
         static func playlistDetail(_ scope: ReadScope, mbid: UUID) -> Self { endpoint(scope, .playlistDetail, [uuid(mbid)]) }

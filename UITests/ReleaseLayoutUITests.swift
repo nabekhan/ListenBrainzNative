@@ -419,6 +419,78 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "User-data-export-iPad-private")
     }
 
+    func testFeedbackLibraryLoadsOnlyTheSelectedRatingAndPagesExplicitly() throws {
+        let app = launchFixture("-brainz-feedback-library-demo")
+        let screen = app.scrollViews["feedback-library-screen"]
+        let loved = app.buttons["Loved"]
+        let hated = app.buttons["Hated"]
+
+        XCTAssertTrue(screen.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Loved & Hated"].exists)
+        XCTAssertTrue(loved.waitForExistence(timeout: 10))
+        XCTAssertTrue(hated.exists)
+        XCTAssertTrue(
+            app.staticTexts["A Long Way Home Through the Quietest Part of the Night"]
+                .waitForExistence(timeout: 10)
+        )
+        XCTAssertFalse(app.staticTexts["Skip This One"].exists)
+
+        hated.tap()
+
+        XCTAssertTrue(app.staticTexts["Skip This One"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Unmapped Demo"].exists)
+        XCTAssertTrue(app.staticTexts["Details unavailable"].exists)
+
+        loved.tap()
+        let loadMore = app.buttons["feedback-load-more"]
+        reveal(loadMore, in: screen)
+        XCTAssertTrue(loadMore.isHittable)
+        loadMore.tap()
+        XCTAssertTrue(app.staticTexts["Signals"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["New Grass"].exists)
+        XCTAssertFalse(app.buttons["feedback-load-more"].exists)
+
+        try assertNoAccessibilityIssues(
+            in: app,
+            auditTypes: semanticAuditTypes.union(.elementDetection)
+        )
+        keepScreenshot(named: "Feedback-library-iPad-accessibility-audit")
+    }
+
+    func testFeedbackLibraryKeepsRowsWhenTheNextPageFails() throws {
+        let app = launchFixture("-brainz-feedback-library-partial-error-demo")
+        let screen = app.scrollViews["feedback-library-screen"]
+        let firstTrack = app.staticTexts["A Long Way Home Through the Quietest Part of the Night"]
+        let loadMore = app.buttons["feedback-load-more"]
+
+        XCTAssertTrue(screen.waitForExistence(timeout: 10))
+        XCTAssertTrue(firstTrack.waitForExistence(timeout: 10))
+        reveal(loadMore, in: screen)
+        XCTAssertTrue(loadMore.isHittable)
+        loadMore.tap()
+
+        XCTAssertTrue(app.staticTexts["Check your connection, then try again."].waitForExistence(timeout: 10))
+        XCTAssertTrue(firstTrack.exists)
+        XCTAssertTrue(app.buttons["Retry"].exists)
+        keepScreenshot(named: "Feedback-library-iPad-partial-error")
+    }
+
+    func testFeedbackLibrarySurvivesRightToLeftLayout() throws {
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        defer { device.orientation = .portrait }
+
+        let app = launchFixture(
+            "-brainz-feedback-library-demo",
+            additionalArguments: arabicRightToLeftArguments
+        )
+
+        XCTAssertTrue(app.scrollViews["feedback-library-screen"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Loved"].exists)
+        XCTAssertTrue(app.buttons["Hated"].exists)
+        keepScreenshot(named: "Feedback-library-iPad-RTL")
+    }
+
     private var semanticAuditTypes: XCUIAccessibilityAuditType {
         [
             .hitRegion,

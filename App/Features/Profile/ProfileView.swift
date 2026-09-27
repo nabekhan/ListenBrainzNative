@@ -8,6 +8,8 @@ struct ProfileView: View {
     @State private var selectedPlaylistCategory: ProfilePlaylistCategory
     private let connectedServicesProvider: (any ConnectedServicesProviding)?
     private let connectedServicesCache: EntityDetailCache<ConnectedServicesCacheKey, ConnectedServices>
+    private let feedbackProvider: (any ProfileFeedbackProviding)?
+    private let feedbackCache: EntityDetailCache<ProfileFeedbackPageKey, ProfileFeedbackPage>
 
     init(
         model: ListeningModel,
@@ -16,6 +18,8 @@ struct ProfileView: View {
         playlistCache: EntityDetailCache<ProfilePlaylistPageKey, ProfilePlaylistPage> = ProfilePlaylistCaches.pages,
         connectedServicesProvider: (any ConnectedServicesProviding)? = nil,
         connectedServicesCache: EntityDetailCache<ConnectedServicesCacheKey, ConnectedServices> = ConnectedServicesCaches.values,
+        feedbackProvider: (any ProfileFeedbackProviding)? = nil,
+        feedbackCache: EntityDetailCache<ProfileFeedbackPageKey, ProfileFeedbackPage> = ProfileFeedbackCaches.pages,
         initialPlaylistCategory: ProfilePlaylistCategory = .owned
     ) {
         _model = Bindable(wrappedValue: model)
@@ -28,6 +32,8 @@ struct ProfileView: View {
         _selectedPlaylistCategory = State(initialValue: initialPlaylistCategory)
         self.connectedServicesProvider = connectedServicesProvider
         self.connectedServicesCache = connectedServicesCache
+        self.feedbackProvider = feedbackProvider
+        self.feedbackCache = feedbackCache
     }
 
     var body: some View {
@@ -36,6 +42,13 @@ struct ProfileView: View {
                 LazyVStack(alignment: .leading, spacing: 30) {
                     profileHeader
                     CurrentPinSection(isOwner: model.account.isAuthenticated)
+                    ProfileFeedbackLink(
+                        username: model.account.username,
+                        isOwner: true,
+                        listeningModel: model,
+                        provider: feedbackProvider,
+                        cache: feedbackCache
+                    )
                     if !model.snapshot.topArtists.isEmpty { favoriteArtists }
                     if !model.snapshot.topReleases.isEmpty { favoriteReleases }
                     if !model.snapshot.topRecordings.isEmpty { favoriteRecordings }

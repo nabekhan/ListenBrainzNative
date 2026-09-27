@@ -23,10 +23,5 @@ struct RecordingUserFeedbackRequest: APIRequest {
                           statusErrors: [:])
     }
 
-    struct Result: Decodable {
-        let count: Int
-        let feedback: [LBFeedback]
-        let offset: Int
-        let totalCount: Int
-    }
+    typealias Result = LBFeedbackPage
 }

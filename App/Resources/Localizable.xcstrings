@@ -3635,6 +3635,16 @@
         }
       }
     },
+    "Couldn’t refresh. Showing saved ratings.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t refresh. Showing saved ratings."
+          }
+        }
+      }
+    },
     "Couldn’t refresh. Showing saved reviews.": {
       "localizations": {
         "en": {
@@ -5495,6 +5505,26 @@
         }
       }
     },
+    "Hated": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hated"
+          }
+        }
+      }
+    },
+    "Hated tracks": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hated tracks"
+          }
+        }
+      }
+    },
     "Hear how your soundtrack changes with the clock.": {
       "localizations": {
         "en": {
@@ -6363,6 +6393,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ListenBrainz couldn’t duplicate this playlist. Reload it and try again."
+          }
+        }
+      }
+    },
+    "ListenBrainz couldn’t find this listener.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz couldn’t find this listener."
           }
         }
       }
@@ -7467,6 +7507,16 @@
         }
       }
     },
+    "Load more": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load more"
+          }
+        }
+      }
+    },
     "Load more pins": {
       "localizations": {
         "en": {
@@ -7617,6 +7667,16 @@
         }
       }
     },
+    "Loading hated tracks…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading hated tracks…"
+          }
+        }
+      }
+    },
     "Loading listeners…": {
       "localizations": {
         "en": {
@@ -7657,6 +7717,16 @@
         }
       }
     },
+    "Loading loved tracks…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading loved tracks…"
+          }
+        }
+      }
+    },
     "Loading more pins…": {
       "localizations": {
         "en": {
@@ -7683,6 +7753,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loading more reviews…"
+          }
+        }
+      }
+    },
+    "Loading more tracks…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading more tracks…"
           }
         }
       }
@@ -7953,6 +8033,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Love"
+          }
+        }
+      }
+    },
+    "Loved": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loved"
+          }
+        }
+      }
+    },
+    "Loved & Hated": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loved & Hated"
+          }
+        }
+      }
+    },
+    "Loved tracks": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loved tracks"
           }
         }
       }
@@ -8997,6 +9107,16 @@
         }
       }
     },
+    "No hated tracks yet": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hated tracks yet"
+          }
+        }
+      }
+    },
     "No leading genre tags were available for %@. Unmapped listens may not appear here.": {
       "localizations": {
         "en": {
@@ -9043,6 +9163,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No listens yet"
+          }
+        }
+      }
+    },
+    "No loved tracks yet": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No loved tracks yet"
           }
         }
       }
@@ -10017,6 +10147,16 @@
         }
       }
     },
+    "Opens loved and hated tracks from %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens loved and hated tracks from %@"
+          }
+        }
+      }
+    },
     "Opens recording details": {
       "localizations": {
         "en": {
@@ -10143,6 +10283,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Opens your annual ListenBrainz retrospective"
+          }
+        }
+      }
+    },
+    "Opens your loved and hated tracks": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens your loved and hated tracks"
           }
         }
       }
@@ -11073,6 +11223,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rating %lld out of 5"
+          }
+        }
+      }
+    },
+    "Ratings couldn’t load": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ratings couldn’t load"
           }
         }
       }
@@ -12333,6 +12493,16 @@
         }
       }
     },
+    "Review tracks you’ve rated on ListenBrainz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review tracks you’ve rated on ListenBrainz"
+          }
+        }
+      }
+    },
     "Reviews couldn’t load": {
       "localizations": {
         "en": {
@@ -12741,6 +12911,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "See the artists and albums shaping this period."
+          }
+        }
+      }
+    },
+    "See track ratings from %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See track ratings from %@"
           }
         }
       }
@@ -13363,6 +13543,16 @@
           "stringUnit": {
             "state": "new",
             "value": "Showing %1$@ from %2$@"
+          }
+        }
+      }
+    },
+    "Showing %lld of %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Showing %1$lld of %2$lld"
           }
         }
       }
@@ -14857,6 +15047,26 @@
         }
       }
     },
+    "This listener hasn’t hated any tracks yet.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This listener hasn’t hated any tracks yet."
+          }
+        }
+      }
+    },
+    "This listener hasn’t loved any tracks yet.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This listener hasn’t loved any tracks yet."
+          }
+        }
+      }
+    },
     "This makes the activity visible in your ListenBrainz feed again.": {
       "localizations": {
         "en": {
@@ -15527,6 +15737,16 @@
         }
       }
     },
+    "Track ratings from %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Track ratings from %@"
+          }
+        }
+      }
+    },
     "Track removed": {
       "localizations": {
         "en": {
@@ -15607,6 +15827,16 @@
         }
       }
     },
+    "Tracks this listener marked on ListenBrainz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tracks this listener marked on ListenBrainz"
+          }
+        }
+      }
+    },
     "Tracks this listener returns to most": {
       "localizations": {
         "en": {
@@ -15623,6 +15853,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tracks unavailable"
+          }
+        }
+      }
+    },
+    "Tracks you hate on ListenBrainz will appear here.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tracks you hate on ListenBrainz will appear here."
+          }
+        }
+      }
+    },
+    "Tracks you love on ListenBrainz will appear here.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tracks you love on ListenBrainz will appear here."
+          }
+        }
+      }
+    },
+    "Tracks you marked on ListenBrainz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tracks you marked on ListenBrainz"
           }
         }
       }
@@ -17045,6 +17305,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Your top tracks"
+          }
+        }
+      }
+    },
+    "Your track ratings": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your track ratings"
           }
         }
       }

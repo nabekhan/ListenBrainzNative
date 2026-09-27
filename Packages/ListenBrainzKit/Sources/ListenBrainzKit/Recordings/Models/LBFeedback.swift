@@ -4,10 +4,14 @@
 
 import Foundation
 
-public struct LBFeedback: Decodable {
+public struct LBFeedback: Decodable, Equatable, Sendable {
     /// When the feedback was given. Not populated by getFeedbackFor()
     public let created: Date?
-    public let recordingMbid: UUID
+    /// MusicBrainz ID of the recording, when ListenBrainz has mapped it.
+    ///
+    /// Feedback submitted for an MSID is valid even when it has no recording
+    /// MBID mapping yet, so callers must handle the absent value.
+    public let recordingMbid: UUID?
     public let recordingMsid: UUID?
     /// Love, Hate, or No Score
     public let score: LBScore

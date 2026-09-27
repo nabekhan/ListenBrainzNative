@@ -59,6 +59,81 @@ import Testing
         #expect(feedback.trackMetadata?.mbidMapping?.releaseMbid == UUID(uuidString: "7421153c-1740-471e-ad2d-e3741b9a3b96")!)
     }
 
+    @Test("MSID-only feedback deserializes without a recording MBID")
+    func decodeMSIDOnlyFeedback() throws {
+        let raw = """
+        {"created": 1736100000,
+         "recording_msid": "12121212-1212-1212-1212-121212121212",
+         "score": -1,
+         "user_id": "a_user"}
+        """
+
+        let feedback = try JSONDecoder.ListenBrainz.decode(LBFeedback.self, from: Data(raw.utf8))
+
+        #expect(feedback.recordingMbid == nil)
+        #expect(feedback.recordingMsid == UUID(uuidString: "12121212-1212-1212-1212-121212121212"))
+        #expect(feedback.score == .hate)
+    }
+
+    @Test("User feedback page preserves pagination metadata and legacy list API")
+    func userFeedbackPage() async throws {
+        let response = try JSONDecoder.ListenBrainz.decode(
+            LBFeedbackPage.self,
+            from: Data("""
+            {"count": 1,
+             "feedback": [{"created": 1736100000,
+                            "recording_mbid": "9d763275-0b67-4edf-8aee-3d9511068716",
+                            "score": 1,
+                            "user_id": "a_user"}],
+             "offset": 25,
+             "total_count": 37}
+            """.utf8)
+        )
+        let mock = MockAPIClient(result: .success(response))
+        let page = try await LBRecordingsClient(mock).feedbackPage(
+            user: "listener", score: .love, count: 10, offset: 25, metadata: true
+        )
+
+        #expect(page.count == 1)
+        #expect(page.offset == 25)
+        #expect(page.totalCount == 37)
+        #expect(page.feedback.count == 1)
+        let request = try #require(mock.request as? RecordingUserFeedbackRequest)
+        #expect(request.data.path == "/1/feedback/user/listener/get-feedback")
+        #expect(request.data.queryItems["score"] == ["1"])
+        #expect(request.data.queryItems["count"] == ["10"])
+        #expect(request.data.queryItems["offset"] == ["25"])
+        #expect(request.data.queryItems["metadata"] == ["true"])
+
+        let legacyMock = MockAPIClient(result: .success(response))
+        let legacy = try await LBRecordingsClient(legacyMock).getFeedback(
+            user: "listener", score: .love, count: 10, offset: 25, metadata: true
+        )
+        #expect(legacy == page.feedback)
+    }
+
+    @Test("Feedback lookup omits MSID-only rows from its MBID map")
+    func feedbackForRecordingsOmitsMSIDOnlyRows() async throws {
+        let mbid = UUID(uuidString: "9d763275-0b67-4edf-8aee-3d9511068716")!
+        let response = try JSONDecoder.ListenBrainz.decode(
+            RecordingFeedbackForRequest.Result.self,
+            from: Data("""
+            {"feedback": [
+                {"recording_mbid": "9d763275-0b67-4edf-8aee-3d9511068716",
+                 "score": 1, "user_id": "a_user"},
+                {"recording_msid": "12121212-1212-1212-1212-121212121212",
+                 "score": -1, "user_id": "a_user"}
+            ]}
+            """.utf8)
+        )
+
+        let feedback = try await LBRecordingsClient(MockAPIClient(result: .success(response)))
+            .getFeedbackFor(mbids: [mbid], by: "a_user")
+
+        #expect(feedback.count == 1)
+        #expect(feedback[mbid]?.score == .love)
+    }
+
     @Test("MBID mapping decodes URL relationships without failing a listen")
     func decodeURLRelationships() throws {
         let raw = """

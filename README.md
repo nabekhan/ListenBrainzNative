@@ -27,7 +27,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Safe append from Recording Detail to owned or collaborating playlists, with canonical-MBID gating, duplicate confirmation, and no automatic mutation replay
 - Authenticated duplication of any visible playlist, with a fresh source preflight, canonical returned-copy navigation, and a durable no-replay barrier for ambiguous responses
 - Canonical MusicBrainz edition pages with release-group links and ordered, multi-disc track lists
-- Recording feedback for authenticated users
+- Authenticated recording feedback actions plus a public, lazy Loved/Hated library on own and visited profiles
 - Native public CritiqueBrainz review publishing from Artist, Recording, and Release Group pages, with optional rating, language selection, explicit licensing consent, and durable duplicate-safe recovery
 - Public and multi-recipient personal recording recommendations, with follower-only selection and optional 280-character notes
 - Cached snapshots for useful cold starts and degraded-network behavior

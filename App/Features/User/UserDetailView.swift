@@ -7,12 +7,21 @@ struct UserDetailView: View {
     @State private var pins: PinsModel
     @State private var viewerListeningModel: ListeningModel
     @State private var isShowingSocial = false
+    private let feedbackProvider: (any ProfileFeedbackProviding)?
+    private let feedbackCache: EntityDetailCache<ProfileFeedbackPageKey, ProfileFeedbackPage>
 
-    init(user: SearchUser, viewer: Account) {
+    init(
+        user: SearchUser,
+        viewer: Account,
+        feedbackProvider: (any ProfileFeedbackProviding)? = nil,
+        feedbackCache: EntityDetailCache<ProfileFeedbackPageKey, ProfileFeedbackPage> = ProfileFeedbackCaches.pages
+    ) {
         self.viewer = viewer
         _model = State(initialValue: UserDetailModel(user: user))
         _pins = State(initialValue: PinsModel(account: Account(username: user.username, token: "")))
         _viewerListeningModel = State(initialValue: ListeningModel(account: viewer))
+        self.feedbackProvider = feedbackProvider
+        self.feedbackCache = feedbackCache
     }
 
     var body: some View {
@@ -123,6 +132,13 @@ struct UserDetailView: View {
             .environment(pins)
 
         socialLink
+        ProfileFeedbackLink(
+            username: model.user.username,
+            isOwner: model.user.isSameListener(as: viewer),
+            listeningModel: viewerListeningModel,
+            provider: feedbackProvider,
+            cache: feedbackCache
+        )
         UserProfileExploreSection(
             user: model.user,
             viewer: viewer,

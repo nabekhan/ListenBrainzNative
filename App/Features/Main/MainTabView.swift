@@ -46,6 +46,10 @@ struct MainTabView: View {
             if ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-visitor-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-failure-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-partial-error-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-feed-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-edit-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-add-demo")
@@ -338,6 +342,20 @@ struct MainTabView: View {
                 PlaylistCollaboratorPickerVisualQAScreen()
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-add-demo") {
                 PlaylistAddVisualQAScreen()
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-failure-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-partial-error-demo")
+            {
+                ProfileFeedbackLibraryVisualQAScreen(
+                    state: ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-empty-demo")
+                        ? .empty
+                        : ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-failure-demo")
+                            ? .failure
+                            : ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-partial-error-demo")
+                                ? .partialFailure
+                                : .populated
+                )
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-visitor-demo")

@@ -44,11 +44,25 @@ public struct LBRecordingsClient: Sendable {
     public func getFeedback(user: String, score: LBScore? = nil,
                             count: Int? = nil, offset: Int? = nil,
                             metadata: Bool? = nil) async throws -> [LBFeedback] {
+        try await feedbackPage(user: user, score: score, count: count,
+                               offset: offset, metadata: metadata).feedback
+    }
+
+    /// Get one page of feedback given by a user, retaining pagination metadata.
+    /// - Parameters:
+    ///   - user:     Username to get feedback from
+    ///   - score:    Type of feedback to return, eg. only loved tracks
+    ///   - count:    Number of items to return
+    ///   - offset:   Number of items to skip, for pagination
+    ///   - metadata: Fetch basic metadata for recordings, including mbidMapping
+    /// - Returns: A page of feedbacks and its pagination information
+    public func feedbackPage(user: String, score: LBScore? = nil,
+                             count: Int? = nil, offset: Int? = nil,
+                             metadata: Bool? = nil) async throws -> LBFeedbackPage {
         let request = RecordingUserFeedbackRequest(username: user, score: score,
                                                    count: count, offset: offset,
                                                    metadata: metadata)
-        let res = try await apiClient.execute(request)
-        return res.feedback
+        return try await apiClient.execute(request)
     }
 
     /// Get feedback given about a recording by various users
@@ -90,7 +104,9 @@ public struct LBRecordingsClient: Sendable {
         let request = RecordingFeedbackForRequest(mbids: mbids, username: user)
         let res = try await (apiClient.execute(request)).feedback
 
-        return [UUID: LBFeedback](res.map { ($0.recordingMbid, $0) },
+        return [UUID: LBFeedback](res.compactMap { feedback in
+            feedback.recordingMbid.map { ($0, feedback) }
+        },
                                   uniquingKeysWith: { lhs, _ in lhs })
     }
 }
