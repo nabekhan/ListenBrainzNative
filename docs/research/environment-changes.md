@@ -1,8 +1,16 @@
 # Environment and cleanup log
 
-Updated: 2026-09-26
+Updated: 2026-09-27
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
+
+## Native account-data export — 2026-09-27
+
+- Product commit `ff3b9de` adds the current ListenBrainz bulk account-data export as an authenticated native Settings destination: explicit list/refresh, full or inclusive date-range creation, status, bounded streamed ZIP download, explicit sharing, local-copy removal, and server-job deletion. The client does not poll or automatically retry. Durable creation reservations, lifecycle admission closure, cancellation-uncooperative flight draining, strict same-origin authentication, ZIP validation, generated paths, free-space and size ceilings, protected non-backed-up storage, SHA-256 verification, and account-transition purge harden the private-data boundary.
+- Final validation passes all 153 ListenBrainzKit tests, 14 focused export tests, 704 app unit tests, and 18 request-denied UI cases with the opt-in live-auth route excluded. Both XCResults report zero failure, skip, expected failure, or runtime warning. The compiler-backed catalog matches 1,701 production keys; iPad light, iPhone dark, and accessibility-large inspection found no layout blocker; the universal Release simulator executable contains `x86_64` and `arm64`; and Release analysis succeeds with only the expected no-AppIntents metadata-extraction warning. Independent correctness and security re-reviews report PASS/SHIP.
+- `.derived-data/user-data-export-*`, `Packages/ListenBrainzKit/.build`, `/private/tmp/brainz-user-data-export-*`, `/private/tmp/brainz-export-ui.oW0e2i`, and the exact Trash-resident `/Users/nabeel/.Trash/lb-server-contract.JN7zZz` held isolated build/test/analyzer products, logs, screenshots, UI attachments, and one contract-only shallow server clone. The existing iPhone 18 Pro (`97954173-FD11-4F23-839F-9AA9CDC8B2B6`) and iPad Pro 11-inch M5 (`FA75ADB5-F1E1-46AF-87F2-A4D13AAAD114`) simulators were restored to light/large, Brainz was terminated, and both devices were shut down but preserved.
+- No package, browser, runtime, host application, credential, token, live request, or server mutation was installed or used. Existing Xcode 27, the iOS 27 runtime, Apple command-line tools, the existing UX Writing skill, and ephemeral Nix XcodeGen were reused. Current GPL ListenBrainz server and official-client sources supplied behavior and contract evidence only; no GPL source or UI was copied.
+- Cleanup moved 27 exact disposable paths through `/Users/nabeel/.Trash/Brainz-User-Data-Export-20260927.tIHixS` and deleted that dedicated bucket alone, reclaiming 3,998,772 KiB. A targeted post-cleanup audit found no matching artifact, process, cleanup bucket, contract clone, or booted simulator; source, Git history, Xcode, the runtime, skills, shared Nix content, credentials, simulator devices, user files, and unrelated Trash remained untouched.
 
 ## Native CritiqueBrainz review publishing — 2026-09-26
 
