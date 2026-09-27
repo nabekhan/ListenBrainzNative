@@ -21,9 +21,21 @@ struct SearchView: View {
            arguments.indices.contains(flag + 1) {
             initialQuery = arguments[flag + 1]
         }
+        let provider: (any SearchProviding)? = if arguments.contains("-brainz-search-pagination-demo")
+            || arguments.contains("-brainz-search-pagination-failure-demo")
+        {
+            VisualQASearchProvider(
+                failsOnce: arguments.contains("-brainz-search-pagination-failure-demo")
+            )
+        } else {
+            nil
+        }
+        #else
+        let provider: (any SearchProviding)? = nil
         #endif
         let model = SearchModel(
             account: account,
+            provider: provider,
             initialQuery: initialQuery,
             initialScope: initialScope
         )
@@ -116,14 +128,58 @@ struct SearchView: View {
                 Button("Try Again") { Task { await model.retry() } }
             }
         case .loaded:
-            List(model.results) { result in
-                NavigationLink(value: result) {
-                    SearchResultRow(result: result)
+            List {
+                ForEach(model.results) { result in
+                    NavigationLink(value: result) {
+                        SearchResultRow(result: result)
+                    }
                 }
+                paginationFooter
             }
             .listStyle(.plain)
+            .accessibilityIdentifier("search-results-list")
         case .idle:
             EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private var paginationFooter: some View {
+        if model.isLoadingMore {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading more results…")
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .accessibilityElement(children: .combine)
+        } else if let message = model.loadMoreError {
+            VStack(spacing: 9) {
+                Label("More results couldn’t load", systemImage: "wifi.exclamationmark")
+                    .font(.subheadline.weight(.semibold))
+                Text(message)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button("Try again") {
+                    Task { await model.loadMore() }
+                }
+                .buttonStyle(.bordered)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .accessibilityIdentifier("search-load-more-error")
+        } else if model.canLoadMore {
+            Button {
+                Task { await model.loadMore() }
+            } label: {
+                Label("Load more results", systemImage: "arrow.down.circle")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderless)
+            .padding(.vertical, 8)
+            .accessibilityIdentifier("search-load-more")
         }
     }
 
@@ -161,6 +217,98 @@ struct SearchView: View {
     }
     #endif
 }
+
+#if DEBUG
+private actor VisualQASearchProvider: SearchProviding {
+    enum FixtureError: LocalizedError {
+        case unavailable
+
+        var errorDescription: String? {
+            String(localized: "More results are temporarily unavailable.")
+        }
+    }
+
+    private let failsOnce: Bool
+    private var didFail = false
+
+    init(failsOnce: Bool) {
+        self.failsOnce = failsOnce
+    }
+
+    func search(query: String, scope: SearchScope) async throws -> [SearchResult] {
+        try await searchPage(
+            query: query,
+            scope: scope,
+            offset: 0,
+            limit: SearchProvider.maximumPageSize
+        ).results
+    }
+
+    func searchPage(
+        query _: String,
+        scope _: SearchScope,
+        offset: Int,
+        limit _: Int
+    ) async throws -> SearchPage {
+        if offset > 0, failsOnce, !didFail {
+            didFail = true
+            throw FixtureError.unavailable
+        }
+
+        if offset == 0 {
+            return SearchPage(
+                results: [
+                    .playlist(.init(
+                        title: "Night Walks",
+                        creator: "sound-explorer",
+                        annotation: "Quiet discoveries for an evening outside.",
+                        identifier: "https://listenbrainz.org/playlist/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                        isPublic: true,
+                        lastModifiedAt: nil
+                    )),
+                    .playlist(.init(
+                        title: "Deep Focus",
+                        creator: "headphones-on",
+                        annotation: "Instrumental music for unbroken concentration.",
+                        identifier: "https://listenbrainz.org/playlist/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                        isPublic: true,
+                        lastModifiedAt: nil
+                    )),
+                ],
+                offset: 0,
+                rawResultCount: 2,
+                totalResultCount: 4,
+                allowsPagination: true
+            )
+        }
+
+        return SearchPage(
+            results: [
+                .playlist(.init(
+                    title: "Deep Focus",
+                    creator: "headphones-on",
+                    annotation: "Instrumental music for unbroken concentration.",
+                    identifier: "https://listenbrainz.org/playlist/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                    isPublic: true,
+                    lastModifiedAt: nil
+                )),
+                .playlist(.init(
+                    title: "Late Night Coding",
+                    creator: "syntax-and-sound",
+                    annotation: "A patient pulse for one more thoughtful commit.",
+                    identifier: "https://listenbrainz.org/playlist/cccccccc-cccc-cccc-cccc-cccccccccccc",
+                    isPublic: true,
+                    lastModifiedAt: nil
+                )),
+            ],
+            offset: offset,
+            rawResultCount: 2,
+            totalResultCount: 4,
+            allowsPagination: true
+        )
+    }
+}
+#endif
 
 private struct SearchResultRow: View {
     let result: SearchResult

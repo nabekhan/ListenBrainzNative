@@ -43,20 +43,27 @@ import Testing
         #expect(request.data.preservesTrailingSlash)
     }
 
-    @Test("Public playlist search uses the generic search endpoint and clamps paging")
-    func searchPlaylists() async throws {
+    @Test("Public playlist search page preserves pagination and clamps requests")
+    func searchPlaylistsPage() async throws {
         let client = LBCoreClient(MockAPIClient(result: .success(
-            RawPlaylistResponse(playlists: [])
+            try playlistPageResponse(requestedCount: 100)
         )))
 
-        let playlists = try await client.searchPlaylists(query: "ambient", count: 400, offset: -9)
+        let page = try await client.searchPlaylistsPage(query: " ambient ", count: 400, offset: -9)
 
-        #expect(playlists.isEmpty)
+        #expect(page.requestedCount == 100)
+        #expect(page.offset == 20)
+        #expect(page.playlistCount == 42)
+        #expect(page.playlists.map(\.title) == ["Quiet records"])
         let request = try #require((client.apiClient as? MockAPIClient)?.request as? SearchPlaylistsRequest)
         #expect(request.data.path == "/1/playlist/search")
         #expect(request.data.queryItems["query"] == ["ambient"])
         #expect(request.data.queryItems["count"] == ["100"])
         #expect(request.data.queryItems["offset"] == ["0"])
+
+        let legacyMock = MockAPIClient(result: .success(try playlistPageResponse(requestedCount: 20)))
+        let playlists = try await LBCoreClient(legacyMock).searchPlaylists(query: "ambient")
+        #expect(playlists.map(\.title) == ["Quiet records"])
     }
 
     @Test("Public playlist search rejects short queries before transport")
@@ -68,6 +75,35 @@ import Testing
             _ = try await client.searchPlaylists(query: " ab ")
         }
         #expect(mock.request == nil)
+    }
+
+    @Test("Playlist pages ignore malformed pagination metadata")
+    func playlistPageMalformedPaginationMetadata() throws {
+        let response = try JSONDecoder.ListenBrainz.decode(
+            RawPlaylistResponse.self,
+            from: Data(#"""
+            {
+              "count": "twenty",
+              "offset": [],
+              "playlist_count": true,
+              "playlists": [{"playlist": {
+                "creator": "listener",
+                "title": "Quiet records",
+                "identifier": "https://listenbrainz.org/playlist/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "extension": {
+                  "https://musicbrainz.org/doc/jspf#playlist": {"public": true}
+                },
+                "track": []
+              }}]
+            }
+            """#.utf8)
+        )
+
+        let page = LBPlaylistPage(raw: response)
+        #expect(page.playlists.map(\.title) == ["Quiet records"])
+        #expect(page.requestedCount == nil)
+        #expect(page.offset == nil)
+        #expect(page.playlistCount == nil)
     }
 
     @Test("User playlist page retains pagination metadata and legacy list API")

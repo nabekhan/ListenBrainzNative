@@ -676,6 +676,7 @@ actor RequestGate {
         case recordingShareFollowers
         case searchListenBrainzUsers
         case searchListenBrainzPlaylists
+        case musicBrainzRelease
         case critiqueBrainzReviews
         case connectedServices
         case artistPageContext
@@ -745,7 +746,25 @@ actor RequestGate {
         static func compatibility(_ scope: ReadScope, viewer: String, user: String) -> Self { endpoint(scope, .socialCompatibility, [userID(viewer), userID(user)]) }
         static func yearInMusic(_ scope: ReadScope, user: String, year: Int) -> Self { endpoint(scope, .yearInMusicSummary, [userID(user), String(year)]) }
         static func searchUsers(_ scope: ReadScope, query: String) -> Self { endpoint(scope, .searchListenBrainzUsers, [query]) }
-        static func searchPlaylists(_ scope: ReadScope, query: String, count: Int) -> Self { endpoint(scope, .searchListenBrainzPlaylists, [query, String(count)]) }
+        static func searchPlaylists(
+            _ scope: ReadScope,
+            query: String,
+            offset: Int = 0,
+            count: Int
+        ) -> Self {
+            endpoint(scope, .searchListenBrainzPlaylists, [query, String(offset), String(count)])
+        }
+        static func musicBrainzSearch(
+            scope: String,
+            query: String,
+            offset: Int,
+            count: Int
+        ) -> Self {
+            endpoint(.anonymous, .searchResults, ["musicbrainz", scope, query, String(offset), String(count)])
+        }
+        static func musicBrainzRelease(mbid: UUID) -> Self {
+            endpoint(.anonymous, .musicBrainzRelease, [uuid(mbid)])
+        }
         static func historyRecent(_ scope: ReadScope, user: String, before: Date?, after: Date?, count: Int) -> Self { endpoint(scope, .historyRecent, [userID(user), epoch(before), epoch(after), String(count)]) }
         static func feedPage(_ scope: ReadScope, user: String, mode: String, before: Date?, minimum: Date?, count: Int) -> Self { endpoint(scope, .feedPage, [userID(user), mode, epoch(before), epoch(minimum), String(count)]) }
         static func pinHistory(_ scope: ReadScope, user: String, count: Int, offset: Int) -> Self { endpoint(scope, .pinsHistory, [userID(user), String(count), String(offset)]) }

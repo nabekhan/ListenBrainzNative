@@ -64,7 +64,7 @@ public struct LBPlaylistMetadata: Equatable, Sendable {
     }
 }
 
-/// One metadata-only page returned by a ListenBrainz user-playlist endpoint.
+/// One metadata-only page returned by a ListenBrainz playlist-list endpoint.
 ///
 /// The list endpoints report pagination using `count`, `offset`, and
 /// `playlist_count`. `count` is the requested page size rather than the number
@@ -84,7 +84,7 @@ public struct LBPlaylistPage: Equatable, Sendable {
     /// The server-reported offset of this page.
     public let offset: Int?
 
-    /// Total playlists available from the endpoint.
+    /// Total playlists available from the endpoint, when reported by the server.
     public let playlistCount: Int?
 
     public init(

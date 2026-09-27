@@ -17,8 +17,8 @@ Brainz is an independent, open-source iOS client for ListenBrainz. It is not ope
 
 Brainz has no intermediary account service. It sends requests directly to the services needed for its features:
 
-- ListenBrainz receives your username and, while you are signed in, your user token with ListenBrainz requests. Actions such as submitting or deleting listens, feedback, pins, recommendations, social actions, manual mappings, and playlist changes are stored by ListenBrainz.
-- ListenBrainz and MusicBrainz receive searches and music identifiers needed to return results and metadata. Signed-in ListenBrainz user and playlist searches are linked to your ListenBrainz account; MusicBrainz music searches do not include your ListenBrainz token.
+- ListenBrainz receives your username and, while you are signed in, your user token with authenticated ListenBrainz requests. Actions such as submitting or deleting listens, feedback, pins, recommendations, social actions, manual mappings, and playlist changes are stored by ListenBrainz.
+- ListenBrainz and MusicBrainz receive searches and music identifiers needed to return results and metadata. Brainz deliberately omits your ListenBrainz token from user, playlist, artist, album, and track searches. MetaBrainz access logs may still contain request parameters and network information as described below.
 - Opening published reviews may send the canonical entity identifier directly to CritiqueBrainz. Publishing a review sends its text, optional rating, language, and canonical entity identity to ListenBrainz, which uses your linked CritiqueBrainz account to publish it publicly.
 - Requesting a data archive asks ListenBrainz to prepare it. Brainz checks its status only when you open or refresh the export screen; it does not poll. ListenBrainz keeps the server copy until its displayed expiry unless you remove it there.
 - The Cover Art Archive, the Internet Archive, and Google Fonts may receive requests for artwork or generated-art resources when those features are opened.

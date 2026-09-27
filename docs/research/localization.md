@@ -26,12 +26,12 @@ Both modes first reject additional `.xcstrings`, `.strings`, or `.stringsdict` r
 
 ## Current checkpoint
 
-- The single catalog contains 1,701 exact Release-extracted production keys, no empty key, no stale entry, and an editable English value for every key.
+- The single catalog contains 1,732 exact Release-extracted production keys, no empty key, no stale entry, and an editable English value for every key.
 - The audited production UI, including computed/model notices and accessibility descriptions, uses compiler-extracted literals, `LocalizedStringResource`, or `String(localized:)` as appropriate.
 - Thirty-one high-value count phrases now use native String Catalog plural variants with required English `one` and `other` forms. The catalog validator accepts only valid CLDR categories and checks every plural leaf; direct and composed labels cover listens, listeners, artists, releases, tracks, ratings, playlists, albums, minutes, hours, active days, reviews, and related actions.
 - Usernames, server responses, artist/release/recording names, playlist text, identifiers, URLs, and fixture data remain explicit verbatim values.
 - Calendar years use a non-grouping localized number style, avoiding output such as `2,021` while preserving locale digits.
 - Runtime tests verify English `0`, `1`, and `2` selection. Request-denied iPad fixtures cover Home, Artist Highlights, Artist Origins, and Year in Music under forced Arabic right-to-left geometry; expanded pseudo-localization additionally stress-tests Home and Year in Music. Because the catalog does not yet contain Arabic translations, this proves mirroring and layout survival with English fallback, not Arabic wording or Arabic plural rules.
-- `scripts/localizations.sh check` matches all 1,701 keys. The latest complete checkpoint passes 704 app unit tests and 18 guarded UI tests with the opt-in live-auth route excluded; zero tests fail. Independent source re-review found no remaining count regression or concrete production-copy bypass; the Release extraction and byte comparison guard compiler-recognized UI APIs, while the all-`App` source-boundary scan catches common ordinary-`String` escapes.
+- `scripts/localizations.sh check` matches all 1,732 keys. The current Search checkpoint passes 723 app unit tests and both focused request-denied Search UI tests with zero failure or XCResult runtime warning. The Release extraction and byte comparison guard compiler-recognized UI APIs, while the all-`App` source-boundary scan catches common ordinary-`String` escapes.
 
 Before shipping a non-English locale, add and review that locale's plural categories, dates, durations, possessives, capitalization, right-to-left behavior, screenshots, and translations with native-language QA. Continue converting lower-priority count-sensitive phrases as they become translation scope; do not mistake forced layout direction for translated-locale validation.

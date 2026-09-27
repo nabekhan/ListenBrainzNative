@@ -2203,6 +2203,54 @@ enum SearchResult: Identifiable, Hashable, Sendable {
     }
 }
 
+/// One bounded search response. Pagination is offered only when the upstream
+/// service reports a trustworthy total; malformed or older responses remain a
+/// useful first page without encouraging speculative follow-up requests.
+struct SearchPage: Equatable, Sendable {
+    let results: [SearchResult]
+    let offset: Int
+    let rawResultCount: Int
+    let totalResultCount: Int?
+    let nextOffset: Int?
+
+    init(
+        results: [SearchResult],
+        offset: Int,
+        rawResultCount: Int,
+        totalResultCount: Int?,
+        allowsPagination: Bool
+    ) {
+        let safeOffset = max(offset, 0)
+        let safeRawResultCount = max(rawResultCount, 0)
+        let safeTotal = totalResultCount.flatMap { $0 >= 0 ? $0 : nil }
+        let (candidateOffset, overflowed) = safeOffset.addingReportingOverflow(safeRawResultCount)
+
+        self.results = results
+        self.offset = safeOffset
+        self.rawResultCount = safeRawResultCount
+        self.totalResultCount = safeTotal
+        if allowsPagination,
+           !overflowed,
+           safeRawResultCount > 0,
+           let safeTotal,
+           candidateOffset < safeTotal {
+            nextOffset = candidateOffset
+        } else {
+            nextOffset = nil
+        }
+    }
+
+    static func single(_ results: [SearchResult]) -> Self {
+        .init(
+            results: results,
+            offset: 0,
+            rawResultCount: results.count,
+            totalResultCount: results.count,
+            allowsPagination: false
+        )
+    }
+}
+
 enum SearchLoadState: Equatable {
     case idle
     case waiting

@@ -419,6 +419,53 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "User-data-export-iPad-private")
     }
 
+    func testSearchPaginationWaitsForExplicitLoadMoreAction() throws {
+        let app = launchFixture(
+            "-brainz-search-pagination-demo",
+            additionalArguments: searchPaginationArguments
+        )
+        let loadMore = app.buttons["search-load-more"]
+
+        XCTAssertTrue(app.staticTexts["Night Walks"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Deep Focus"].exists)
+        XCTAssertFalse(app.staticTexts["Late Night Coding"].exists)
+        XCTAssertTrue(loadMore.waitForExistence(timeout: 5))
+        keepScreenshot(named: "Search-pagination-first-page")
+
+        loadMore.tap()
+
+        XCTAssertTrue(app.staticTexts["Late Night Coding"].waitForExistence(timeout: 10))
+        XCTAssertEqual(
+            app.staticTexts.matching(NSPredicate(format: "label == %@", "Deep Focus")).count,
+            1
+        )
+        XCTAssertFalse(loadMore.exists)
+        keepScreenshot(named: "Search-pagination-second-page")
+    }
+
+    func testSearchPaginationFailureKeepsResultsAndRetriesExplicitly() throws {
+        let app = launchFixture(
+            "-brainz-search-pagination-failure-demo",
+            additionalArguments: searchPaginationArguments
+        )
+        let loadMore = app.buttons["search-load-more"]
+
+        XCTAssertTrue(app.staticTexts["Night Walks"].waitForExistence(timeout: 15))
+        XCTAssertTrue(loadMore.waitForExistence(timeout: 5))
+        loadMore.tap()
+
+        let error = app.descendants(matching: .any)["search-load-more-error"]
+        XCTAssertTrue(error.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Night Walks"].exists)
+        XCTAssertTrue(app.staticTexts["More results are temporarily unavailable."].exists)
+        keepScreenshot(named: "Search-pagination-inline-error")
+
+        app.buttons["Try again"].tap()
+
+        XCTAssertTrue(app.staticTexts["Late Night Coding"].waitForExistence(timeout: 10))
+        XCTAssertFalse(error.exists)
+    }
+
     func testFeedbackLibraryLoadsOnlyTheSelectedRatingAndPagesExplicitly() throws {
         let app = launchFixture("-brainz-feedback-library-demo")
         let screen = app.scrollViews["feedback-library-screen"]
@@ -504,6 +551,14 @@ final class ReleaseLayoutUITests: XCTestCase {
             "-AppleLanguages", "(ar)",
             "-AppleLocale", "ar_SA",
             "-NSForceRightToLeftWritingDirection", "YES",
+        ]
+    }
+
+    private var searchPaginationArguments: [String] {
+        [
+            "-brainz-open-search",
+            "-brainz-search-query", "ambient",
+            "-brainz-search-scope", "playlists",
         ]
     }
 

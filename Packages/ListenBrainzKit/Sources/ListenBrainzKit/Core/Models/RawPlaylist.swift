@@ -8,6 +8,37 @@ struct RawPlaylistResponse: Decodable {
     var playlistCount: Int?
     var playlists: [PlaylistPayload]
 
+    init(
+        count: Int? = nil,
+        offset: Int? = nil,
+        playlistCount: Int? = nil,
+        playlists: [PlaylistPayload]
+    ) {
+        self.count = count
+        self.offset = offset
+        self.playlistCount = playlistCount
+        self.playlists = playlists
+    }
+
+    /// Pagination is useful metadata, but it must not make an otherwise valid
+    /// playlist response unusable when an older server sends a malformed value.
+    /// Preserve valid integer fields and treat absent or malformed values as
+    /// unknown.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        playlists = try container.decode([PlaylistPayload].self, forKey: .playlists)
+        count = try? container.decodeIfPresent(Int.self, forKey: .count)
+        offset = try? container.decodeIfPresent(Int.self, forKey: .offset)
+        playlistCount = try? container.decodeIfPresent(Int.self, forKey: .playlistCount)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case count
+        case offset
+        case playlistCount
+        case playlists
+    }
+
     struct PlaylistPayload: Decodable {
         var playlist: RawPlaylist
     }

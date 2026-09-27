@@ -20,8 +20,9 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Native LB Radio recipe generation from listening history, unheard recommendations, artists, tags, or advanced Troi prompts, with one batched metadata enrichment and honest browse-only playback state
 - For You recording recommendations with native feedback, plus Daily/Weekly generated playlists
 - Music-first My Feed, Following, and Similar listening feeds with cached pagination, thanks, hide/unhide, and owner deletion
-- Native user search, visited-user profiles, followers/following, similar listeners, and compatibility
-- Pin history and owner pin actions; public playlist search and complete playlist detail
+- Native single-page user search plus explicit paginated artist, album, track, and public-playlist search, with cancellation, bounded caching, and no speculative loading
+- Visited-user profiles, followers/following, similar listeners, and compatibility
+- Pin history and owner pin actions; complete playlist detail
 - Request-free export of an already-loaded playlist as a bounded, protected JSPF JSON file, with private-playlist disclosure before sharing
 - Lazy owned and collaborating Profile playlists with privacy-aware caching, server pagination, authenticated empty-playlist creation, owner metadata/privacy editing, and direct detail navigation
 - Safe append from Recording Detail to owned or collaborating playlists, with canonical-MBID gating, duplicate confirmation, and no automatic mutation replay

@@ -289,6 +289,8 @@ final class SessionModel {
                 || arguments.contains("-brainz-home-tracks-demo")
                 || arguments.contains("-brainz-fresh-releases-demo")
                 || arguments.contains("-brainz-fresh-releases-filters-demo")
+                || arguments.contains("-brainz-search-pagination-demo")
+                || arguments.contains("-brainz-search-pagination-failure-demo")
             {
                 state = .active(Account(username: "visual-taste", token: "visual-taste"))
                 return true

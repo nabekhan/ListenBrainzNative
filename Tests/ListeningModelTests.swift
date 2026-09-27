@@ -2153,6 +2153,7 @@ final class ListeningModelTests: XCTestCase {
             query: "A/B + C && D || E",
             scope: .artists,
             limit: 999,
+            offset: 42,
             userAgent: "Brainz test"
         )
         let components = try XCTUnwrap(URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false))
@@ -2160,6 +2161,7 @@ final class ListeningModelTests: XCTestCase {
 
         XCTAssertEqual(values["query"], "\"A\\/B \\+ C \\&\\& D \\|\\| E\"")
         XCTAssertEqual(values["limit"], "25")
+        XCTAssertEqual(values["offset"], "42")
         XCTAssertEqual(values["fmt"], "json")
         XCTAssertTrue(components.path.hasSuffix("/artist/"))
         XCTAssertEqual(request.value(forHTTPHeaderField: "User-Agent"), "Brainz test")
@@ -2188,6 +2190,91 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(MusicBrainzSearchClient.retryAfter(response, now: now), 12)
     }
 
+    nonisolated func testMusicBrainzGateSerializesAndPacesSearchAndReleaseReads() async throws {
+        let gate = MusicBrainzSearchClient.makeRequestGate(
+            minimumInterval: .milliseconds(40)
+        )
+        let clock = ContinuousClock()
+        let origin = clock.now
+        let firstKey = RequestGate.ReadKey.musicBrainzSearch(
+            scope: SearchScope.artists.rawValue,
+            query: "first",
+            offset: 0,
+            count: 25
+        )
+        let secondKey = RequestGate.ReadKey.musicBrainzSearch(
+            scope: SearchScope.artists.rawValue,
+            query: "second",
+            offset: 0,
+            count: 25
+        )
+        let releaseKey = RequestGate.ReadKey.musicBrainzRelease(
+            mbid: UUID(uuidString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")!
+        )
+
+        async let first = gate.read(for: firstKey) { origin.duration(to: clock.now) }
+        async let second = gate.read(for: secondKey) { origin.duration(to: clock.now) }
+        async let release = gate.read(for: releaseKey) { origin.duration(to: clock.now) }
+        let starts = try await [first, second, release].sorted()
+
+        for pair in zip(starts, starts.dropFirst()) {
+            XCTAssertGreaterThanOrEqual(
+                pair.1,
+                pair.0 + Duration.milliseconds(30)
+            )
+        }
+        let audit = await gate.requestAuditSnapshot()
+        XCTAssertEqual(audit.maximumActiveReadTransports, 1)
+    }
+
+    nonisolated func testMusicBrainzReleaseCoalescesWireDataWithoutSharingCallerContext() async throws {
+        let releaseID = UUID(uuidString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")!
+        let firstGroupID = UUID(uuidString: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")!
+        let secondGroupID = UUID(uuidString: "cccccccc-cccc-cccc-cccc-cccccccccccc")!
+        let probe = MusicBrainzTransportProbe(
+            data: Data(#"{"title":"Server edition","media":[]}"#.utf8)
+        )
+        let client = MusicBrainzSearchClient(
+            gate: MusicBrainzSearchClient.makeRequestGate(minimumInterval: .zero),
+            transport: { request in try await probe.response(for: request) }
+        )
+        let firstContext = ReleaseSeed(
+            mbid: releaseID,
+            title: "First seed",
+            artistName: "First artist",
+            artistMBIDs: [],
+            releaseGroupMBID: firstGroupID,
+            releaseDate: "2001-01-01",
+            primaryType: "Album",
+            artworkReleaseMBID: releaseID
+        )
+        let secondContext = ReleaseSeed(
+            mbid: releaseID,
+            title: "Second seed",
+            artistName: "Second artist",
+            artistMBIDs: [],
+            releaseGroupMBID: secondGroupID,
+            releaseDate: "2002-02-02",
+            primaryType: "EP",
+            artworkReleaseMBID: releaseID
+        )
+
+        async let first = client.release(mbid: releaseID, context: firstContext)
+        async let second = client.release(mbid: releaseID, context: secondContext)
+        let (firstDetail, secondDetail) = try await (first, second)
+        let requestCount = await probe.requestCount()
+
+        XCTAssertEqual(requestCount, 1)
+        XCTAssertEqual(firstDetail.artistCreditName, "First artist")
+        XCTAssertEqual(firstDetail.releaseGroupMBID, firstGroupID)
+        XCTAssertEqual(firstDetail.releaseDate, "2001-01-01")
+        XCTAssertEqual(firstDetail.releaseGroupPrimaryType, "Album")
+        XCTAssertEqual(secondDetail.artistCreditName, "Second artist")
+        XCTAssertEqual(secondDetail.releaseGroupMBID, secondGroupID)
+        XCTAssertEqual(secondDetail.releaseDate, "2002-02-02")
+        XCTAssertEqual(secondDetail.releaseGroupPrimaryType, "EP")
+    }
+
     func testMusicBrainzRecordingDecodeToleratesSparseMetadataAndKeepsCreditJoinPhrases() throws {
         let data = Data(#"""
         {
@@ -2209,6 +2296,144 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertEqual(recording.artistName, "One feat. Two")
         XCTAssertEqual(recording.releaseTitle, nil)
         XCTAssertEqual(recording.artistMBIDs.count, 2)
+    }
+
+    func testMusicBrainzSearchPageAdvancesByRawRowsWhenOneIdentityIsInvalid() throws {
+        let data = Data(#"""
+        {
+          "count": 8,
+          "offset": 2,
+          "artists": [
+            {"id": "not-a-mbid", "name": "Unmapped"},
+            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "name": "Mapped"}
+          ]
+        }
+        """#.utf8)
+
+        let page = try MusicBrainzSearchClient.decodePage(
+            data: data,
+            scope: .artists,
+            requestedOffset: 2,
+            requestedLimit: 2
+        )
+
+        XCTAssertEqual(page.results.map(\.title), ["Mapped"])
+        XCTAssertEqual(page.rawResultCount, 2)
+        XCTAssertEqual(page.totalResultCount, 8)
+        XCTAssertEqual(page.nextOffset, 4)
+    }
+
+    func testMusicBrainzSearchPageRejectsMismatchedServerOffset() {
+        let data = Data(#"""
+        {
+          "count": 8,
+          "offset": 3,
+          "artists": [
+            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "name": "Mapped"}
+          ]
+        }
+        """#.utf8)
+
+        XCTAssertThrowsError(
+            try MusicBrainzSearchClient.decodePage(
+                data: data,
+                scope: .artists,
+                requestedOffset: 2,
+                requestedLimit: 2
+            )
+        )
+    }
+
+    func testSearchPaginationIsExplicitDeduplicatesAndAdvancesByRawRows() async {
+        let provider = PaginatedSearchFixtureProvider()
+        let model = SearchModel(
+            account: Account(username: "fixture", token: ""),
+            provider: provider,
+            pageSize: 2
+        )
+        model.update(query: "ambient")
+
+        await model.searchImmediatelyForTesting()
+
+        XCTAssertEqual(model.results.map(\.title), ["ambient first", "Shared result"])
+        XCTAssertTrue(model.canLoadMore)
+        let initialOffsets = await provider.offsets()
+        XCTAssertEqual(initialOffsets, [0])
+
+        await model.loadMore()
+
+        XCTAssertEqual(
+            model.results.map(\.title),
+            ["ambient first", "Shared result", "ambient second"]
+        )
+        XCTAssertEqual(model.totalResultCount, 4)
+        XCTAssertFalse(model.canLoadMore)
+        let finalOffsets = await provider.offsets()
+        XCTAssertEqual(finalOffsets, [0, 2])
+    }
+
+    func testSearchLoadMoreFailurePreservesResultsAndRetriesOnlyOnDemand() async {
+        let provider = PaginatedSearchFixtureProvider(failuresRemainingAtSecondPage: 1)
+        let model = SearchModel(
+            account: Account(username: "fixture", token: ""),
+            provider: provider,
+            pageSize: 2
+        )
+        model.update(query: "ambient")
+        await model.searchImmediatelyForTesting()
+
+        await model.loadMore()
+
+        XCTAssertEqual(model.results.map(\.title), ["ambient first", "Shared result"])
+        XCTAssertNotNil(model.loadMoreError)
+        XCTAssertTrue(model.canLoadMore)
+        let failedOffsets = await provider.offsets()
+        XCTAssertEqual(failedOffsets, [0, 2])
+
+        await model.loadMore()
+
+        XCTAssertNil(model.loadMoreError)
+        XCTAssertEqual(
+            model.results.map(\.title),
+            ["ambient first", "Shared result", "ambient second"]
+        )
+        let retriedOffsets = await provider.offsets()
+        XCTAssertEqual(retriedOffsets, [0, 2, 2])
+    }
+
+    func testChangingSearchCancelsAnInFlightLoadMoreWithoutAppendingStaleRows() async throws {
+        let provider = PaginatedSearchFixtureProvider(
+            secondPageDelay: .milliseconds(80),
+            ignoresCancellation: true
+        )
+        let model = SearchModel(
+            account: Account(username: "fixture", token: ""),
+            provider: provider,
+            pageSize: 2
+        )
+        model.update(query: "older")
+        await model.searchImmediatelyForTesting()
+
+        let olderPage = Task { await model.loadMore() }
+        try await ContinuousClock().sleep(for: .milliseconds(10))
+        model.update(query: "newer")
+        await model.searchImmediatelyForTesting()
+        await olderPage.value
+
+        XCTAssertEqual(model.results.map(\.title), ["newer first", "Shared result"])
+        XCTAssertTrue(model.canLoadMore)
+    }
+
+    func testSearchPageDoesNotSpeculateWithoutServerPaginationMetadata() {
+        let page = SearchPage(
+            results: [.user(.init(username: "listener"))],
+            offset: 0,
+            rawResultCount: 1,
+            totalResultCount: nil,
+            allowsPagination: true
+        )
+
+        XCTAssertNil(page.nextOffset)
     }
 
     func testClosingSearchCancelsAnInFlightProviderRequest() async throws {
@@ -3138,6 +3363,101 @@ private actor SearchFixtureProvider: SearchProviding {
     func requestCount() -> Int { calls.count }
     func queries() -> [String] { calls.map(\.0) }
     func cancellationCount() -> Int { cancellations }
+}
+
+private actor MusicBrainzTransportProbe {
+    private let data: Data
+    private var calls = 0
+
+    init(data: Data) {
+        self.data = data
+    }
+
+    func response(for request: URLRequest) async throws -> (Data, URLResponse) {
+        calls += 1
+        try await ContinuousClock().sleep(for: .milliseconds(30))
+        let response = HTTPURLResponse(
+            url: try XCTUnwrap(request.url),
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"]
+        )!
+        return (data, response)
+    }
+
+    func requestCount() -> Int { calls }
+}
+
+private actor PaginatedSearchFixtureProvider: SearchProviding {
+    enum FixtureError: LocalizedError {
+        case unavailable
+
+        var errorDescription: String? { "Search page unavailable." }
+    }
+
+    private let secondPageDelay: Duration?
+    private let ignoresCancellation: Bool
+    private var failuresRemainingAtSecondPage: Int
+    private var calls: [(query: String, offset: Int)] = []
+
+    init(
+        failuresRemainingAtSecondPage: Int = 0,
+        secondPageDelay: Duration? = nil,
+        ignoresCancellation: Bool = false
+    ) {
+        self.failuresRemainingAtSecondPage = failuresRemainingAtSecondPage
+        self.secondPageDelay = secondPageDelay
+        self.ignoresCancellation = ignoresCancellation
+    }
+
+    func search(query: String, scope: SearchScope) async throws -> [SearchResult] {
+        try await searchPage(query: query, scope: scope, offset: 0, limit: 2).results
+    }
+
+    func searchPage(
+        query: String,
+        scope _: SearchScope,
+        offset: Int,
+        limit _: Int
+    ) async throws -> SearchPage {
+        calls.append((query, offset))
+        if offset > 0, let secondPageDelay {
+            if ignoresCancellation {
+                try? await ContinuousClock().sleep(for: secondPageDelay)
+            } else {
+                try await ContinuousClock().sleep(for: secondPageDelay)
+            }
+        }
+        if offset > 0, failuresRemainingAtSecondPage > 0 {
+            failuresRemainingAtSecondPage -= 1
+            throw FixtureError.unavailable
+        }
+
+        if offset == 0 {
+            return SearchPage(
+                results: [
+                    .user(.init(username: "\(query) first")),
+                    .user(.init(username: "Shared result")),
+                ],
+                offset: 0,
+                rawResultCount: 2,
+                totalResultCount: 4,
+                allowsPagination: true
+            )
+        }
+        return SearchPage(
+            results: [
+                .user(.init(username: "Shared result")),
+                .user(.init(username: "\(query) second")),
+            ],
+            offset: offset,
+            rawResultCount: 2,
+            totalResultCount: 4,
+            allowsPagination: true
+        )
+    }
+
+    func offsets() -> [Int] { calls.map(\.offset) }
 }
 
 private extension DailyActivity {

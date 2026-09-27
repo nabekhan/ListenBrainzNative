@@ -7537,6 +7537,16 @@
         }
       }
     },
+    "Load more results": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load more results"
+          }
+        }
+      }
+    },
     "Load more reviews": {
       "localizations": {
         "en": {
@@ -7743,6 +7753,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loading more recommendations…"
+          }
+        }
+      }
+    },
+    "Loading more results…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading more results…"
           }
         }
       }
@@ -8363,6 +8383,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "More playlists are available"
+          }
+        }
+      }
+    },
+    "More results couldn’t load": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More results couldn’t load"
           }
         }
       }
@@ -12811,6 +12841,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Search on MusicBrainz"
+          }
+        }
+      }
+    },
+    "Search results couldn’t load. Try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search results couldn’t load. Try again."
           }
         }
       }

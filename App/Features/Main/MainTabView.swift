@@ -99,6 +99,8 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-home-tracks-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-fresh-releases-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-fresh-releases-filters-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-search-pagination-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-search-pagination-failure-demo")
             {
                 let visualAccount = Account(username: "visual-taste", token: "visual-taste")
                 _model = State(
@@ -712,6 +714,7 @@ struct MainTabView: View {
                 #if DEBUG
                     if ProcessInfo.processInfo.arguments.contains("-brainz-open-recommendations")
                         || ProcessInfo.processInfo.arguments.contains("-brainz-open-feed")
+                        || ProcessInfo.processInfo.arguments.contains("-brainz-open-search")
                     {
                         selectedTab = .discover
                     }

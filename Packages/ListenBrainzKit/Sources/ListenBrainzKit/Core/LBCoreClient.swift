@@ -214,6 +214,20 @@ public struct LBCoreClient: Sendable {
         count: Int = 20,
         offset: Int = 0
     ) async throws -> [LBPlaylistMetadata] {
+        try await searchPlaylistsPage(query: query, count: count, offset: offset).playlists
+    }
+
+    /// Search one paginated page of public ListenBrainz playlists.
+    ///
+    /// The API requires at least three non-whitespace characters. The requested
+    /// page size is clamped to `1...100`, and negative offsets become zero.
+    /// The returned ``LBPlaylistPage`` preserves server pagination metadata
+    /// when available.
+    public func searchPlaylistsPage(
+        query: String,
+        count: Int = 20,
+        offset: Int = 0
+    ) async throws -> LBPlaylistPage {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmedQuery.count >= 3 else { throw LBError.invalidParam }
         let request = SearchPlaylistsRequest(
@@ -222,7 +236,7 @@ public struct LBCoreClient: Sendable {
             offset: max(offset, 0)
         )
         let result = try await apiClient.execute(request)
-        return result.playlists.map { LBPlaylistMetadata(raw: $0.playlist) }
+        return LBPlaylistPage(raw: result)
     }
 
     /// Fetch a complete ListenBrainz playlist and its JSPF track list.
