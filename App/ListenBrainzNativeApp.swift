@@ -7,6 +7,8 @@ struct ListenBrainzNativeApp: App {
 
     init() {
         PlaylistExportStaging.cleanupStaleFiles()
+        UserDataExportShareStaging.cleanupStaleFiles()
+        Task { await UserDataExportStorage.shared.cleanupExpired() }
     }
 
     var body: some Scene {

@@ -11,7 +11,8 @@ final class SessionModelTests: XCTestCase {
             snapshotCache: environment.cache,
             credentialStore: store,
             defaults: environment.defaults,
-            validateToken: { _ in "listener" }
+            validateToken: { _ in "listener" },
+            purgePrivateAccountData: {}
         )
         try await saveSnapshot(username: "listener", cache: environment.cache)
 
@@ -33,7 +34,8 @@ final class SessionModelTests: XCTestCase {
             snapshotCache: environment.cache,
             credentialStore: store,
             defaults: environment.defaults,
-            validateToken: { _ in "canonical" }
+            validateToken: { _ in "canonical" },
+            purgePrivateAccountData: {}
         )
         await session.restore()
         try await saveSnapshot(username: "previous", cache: environment.cache)
@@ -57,7 +59,8 @@ final class SessionModelTests: XCTestCase {
             snapshotCache: environment.cache,
             credentialStore: store,
             defaults: environment.defaults,
-            validateToken: { token in try await validator.validate(token) }
+            validateToken: { token in try await validator.validate(token) },
+            purgePrivateAccountData: {}
         )
 
         await session.restore()
@@ -78,7 +81,8 @@ final class SessionModelTests: XCTestCase {
             snapshotCache: environment.cache,
             credentialStore: store,
             defaults: environment.defaults,
-            validateToken: { _ in " canonical " }
+            validateToken: { _ in " canonical " },
+            purgePrivateAccountData: {}
         )
 
         await session.restore()
@@ -100,7 +104,8 @@ final class SessionModelTests: XCTestCase {
             snapshotCache: environment.cache,
             credentialStore: store,
             defaults: environment.defaults,
-            validateToken: { _ in "unused" }
+            validateToken: { _ in "unused" },
+            purgePrivateAccountData: {}
         )
         await session.restore()
         try await saveSnapshot(username: "listener", cache: environment.cache)
@@ -125,7 +130,8 @@ final class SessionModelTests: XCTestCase {
             snapshotCache: environment.cache,
             credentialStore: store,
             defaults: environment.defaults,
-            validateToken: { _ in "unused" }
+            validateToken: { _ in "unused" },
+            purgePrivateAccountData: {}
         )
         await session.restore()
         try await saveSnapshot(username: "listener", cache: environment.cache)
@@ -145,7 +151,8 @@ final class SessionModelTests: XCTestCase {
             snapshotCache: environment.cache,
             credentialStore: store,
             defaults: environment.defaults,
-            validateToken: { _ in await validator.validate() }
+            validateToken: { _ in await validator.validate() },
+            purgePrivateAccountData: {}
         )
 
         let task = Task { await session.signIn(token: "replacement-token") }
@@ -168,7 +175,8 @@ final class SessionModelTests: XCTestCase {
             snapshotCache: environment.cache,
             credentialStore: store,
             defaults: environment.defaults,
-            validateToken: { token in try await validator.validate(token) }
+            validateToken: { token in try await validator.validate(token) },
+            purgePrivateAccountData: {}
         )
 
         let attempt = session.beginSignInAttempt()
@@ -191,7 +199,8 @@ final class SessionModelTests: XCTestCase {
             credentialStore: store,
             defaults: environment.defaults,
             validateToken: { _ in "listener" },
-            beforeCredentialSave: { await gate.waitForRelease() }
+            beforeCredentialSave: { await gate.waitForRelease() },
+            purgePrivateAccountData: {}
         )
 
         let task = Task { await session.signIn(token: "cancelled-token") }
@@ -213,7 +222,8 @@ final class SessionModelTests: XCTestCase {
             credentialStore: store,
             defaults: environment.defaults,
             validateToken: { token in token == "first-token" ? "first" : "second" },
-            beforeCredentialSave: { await gate.waitForRelease() }
+            beforeCredentialSave: { await gate.waitForRelease() },
+            purgePrivateAccountData: {}
         )
 
         let first = Task { await session.signIn(token: "first-token") }
@@ -225,6 +235,49 @@ final class SessionModelTests: XCTestCase {
 
         XCTAssertEqual(store.savedCredential, .init(username: "second", token: "second-token"))
         XCTAssertEqual(session.state, SessionModel.State.active(.init(username: "second", token: "second-token")))
+    }
+
+    func testSignOutPurgesPrivateExportsBeforeDeletingCredential() async throws {
+        let environment = try makeEnvironment()
+        let events = SessionEventRecorder()
+        let store = FixtureCredentialStore(
+            loaded: .account(.init(username: "listener", token: "stored-token")),
+            onDelete: { events.record("delete") }
+        )
+        let session = SessionModel(
+            snapshotCache: environment.cache,
+            credentialStore: store,
+            defaults: environment.defaults,
+            validateToken: { _ in "unused" },
+            purgePrivateAccountData: { events.record("purge") }
+        )
+        await session.restore()
+
+        await session.signOut()
+
+        XCTAssertEqual(events.values, ["purge", "delete"])
+        XCTAssertEqual(session.state, .signedOut)
+    }
+
+    func testAccountReplacementPurgesPrivateExportsBeforeSavingCredential() async throws {
+        let environment = try makeEnvironment()
+        let events = SessionEventRecorder()
+        let store = FixtureCredentialStore(onSave: { events.record("save") })
+        let session = SessionModel(
+            snapshotCache: environment.cache,
+            credentialStore: store,
+            defaults: environment.defaults,
+            validateToken: { _ in "listener" },
+            purgePrivateAccountData: { events.record("purge") }
+        )
+
+        await session.signIn(token: "replacement-token")
+
+        XCTAssertEqual(events.values, ["purge", "save"])
+        XCTAssertEqual(
+            session.state,
+            .active(.init(username: "listener", token: "replacement-token"))
+        )
     }
 
     private func makeEnvironment() throws -> (cache: SnapshotCache, defaults: UserDefaults) {
@@ -261,14 +314,23 @@ private final class FixtureCredentialStore: @unchecked Sendable, CredentialStori
     private var saved: StoredCredential?
     private var deletes = 0
     private let lock = NSLock()
+    private let onSave: @Sendable () -> Void
+    private let onDelete: @Sendable () -> Void
 
-    init(loaded: LoadedCredential? = nil) {
+    init(
+        loaded: LoadedCredential? = nil,
+        onSave: @escaping @Sendable () -> Void = {},
+        onDelete: @escaping @Sendable () -> Void = {}
+    ) {
         self.loaded = loaded
+        self.onSave = onSave
+        self.onDelete = onDelete
     }
 
     func load() async throws -> LoadedCredential? { lock.withLock { loaded } }
 
     func save(_ credential: StoredCredential) throws {
+        onSave()
         lock.withLock {
             saved = credential
             loaded = .account(credential)
@@ -276,6 +338,7 @@ private final class FixtureCredentialStore: @unchecked Sendable, CredentialStori
     }
 
     func delete() async throws {
+        onDelete()
         lock.withLock {
             deletes += 1
             loaded = nil
@@ -284,6 +347,17 @@ private final class FixtureCredentialStore: @unchecked Sendable, CredentialStori
 
     var savedCredential: StoredCredential? { lock.withLock { saved } }
     var deleteCount: Int { lock.withLock { deletes } }
+}
+
+private final class SessionEventRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var events: [String] = []
+
+    func record(_ event: String) {
+        lock.withLock { events.append(event) }
+    }
+
+    var values: [String] { lock.withLock { events } }
 }
 
 private actor ValidationCounter {

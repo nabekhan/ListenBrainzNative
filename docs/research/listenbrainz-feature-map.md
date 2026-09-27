@@ -1,6 +1,6 @@
 # ListenBrainz capability map
 
-Snapshot: 2026-09-26. `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
+Snapshot: 2026-09-27, including ListenBrainz server `v-2026-09-24.0` (`71f92e1`). `Y` means source/API evidence exists; `P` means partial or narrower coverage; `—` means no evidence found; `?` means the audit could not establish it. Website evidence combines current production frontend source with targeted live mobile inspection through an isolated temporary browser setup.
 
 | User capability | API | Web | Android | iOS | LBKit | KMP | Priority | Product decision |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
@@ -62,13 +62,15 @@ Snapshot: 2026-09-26. `Y` means source/API evidence exists; `P` means partial or
 | AI Brainz | Y | Y | — | — | — | — | P3 | Experimental; not first-release critical |
 | Offline listen linking/unmapped-data tools | Y | Y | P | ? | — | P | P3 | Advanced metadata maintenance |
 | Timezone, recommendation, player preferences | Y | Y | Y | P | — | P | P2 | Native request-free Settings owns local appearance; server-side preferences remain a secure authenticated web handoff rather than speculative client toggles or eager reads |
-| Account data import/export/delete | Y | Y | P | P | — | P | P3 | Native privacy and account destinations use the canonical secure web controls; disconnect removes the credential and saved listening snapshot while accurately disclosing retained mutation-safety records |
+| Account data export | Y | Y | — | — | Y* | — | P1 | Native authenticated list/create/status/download flow with explicit refresh only, durable duplicate-create protection, bounded streamed ZIPs, protected local retention eligible for cleanup after 24 hours, explicit sharing, and purge-before-disconnect. `Y*` is the local upstreamable Kit extension |
+| Account data import/delete | Y | Y | P | P | — | P | P3 | Keep canonical secure web controls until a concrete native workflow justifies new mutation handling |
 | Flairs/donor identity | Y | Y | — | — | — | — | P3 | Preserve when showing user identity |
 
 ## Current product findings
 
 - The website treats **Feed**, **Dashboard**, and **Explore** as its three main areas. User pages add Stats, Taste, Playlists, Recommendations, and Year in Music.
 - The server has grown well beyond basic top lists: artist/genre/era/evolution activity, current and legacy Year in Music, social thanks, art generation, playlist import/export, Fresh Releases, Music Neighborhood, and AI Brainz are current surfaces.
+- The September 2026 server adds authenticated bulk user-data export. The server explicitly prefers this archive path over clients paginating an entire listening history, so Brainz exposes it as a privacy/data tool rather than using it for routine browsing. One account may have only one waiting or in-progress export; completed ZIPs expire server-side, and the client never polls, retries creation, or deletes a server archive automatically.
 - The aggregate social feed currently excludes ordinary listens. Following and Similar are separate listen-only recent feeds, so the native UI keeps those modes distinct instead of implying one unified event stream.
 - The iOS product should start with high-value read paths, then add mutations to the same entity screens. Android-only notification-listener scrobbling and foreground playback services have no direct public-iOS equivalent.
 - Public API calls were checked against real ListenBrainz data and include messy but useful identity fields: recording MSID, mapped MBIDs, multi-artist credits, Cover Art Archive IDs, service/source metadata, and external URL relations.

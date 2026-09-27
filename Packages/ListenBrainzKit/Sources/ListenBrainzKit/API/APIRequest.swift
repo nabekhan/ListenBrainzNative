@@ -41,6 +41,10 @@ struct APIRequestData<Body: Encodable> {
     /// body is attached to a URL request. This is a final backstop for bounded
     /// mutation payloads whose textual inputs are validated earlier.
     let maximumRequestBodyBytes: Int?
+    /// Optional hard ceiling applied to a streamed download before it is moved
+    /// into the caller-provided destination. This is deliberately separate
+    /// from `maximumResponseBytes`: downloads never accumulate in memory.
+    let maximumDownloadBytes: Int?
     /// `true` only when a request has already percent-encoded an individual
     /// path segment. This prevents `URL.appending(path:)` from escaping `%` a
     /// second time while keeping the default behavior unchanged for old calls.
@@ -55,6 +59,7 @@ struct APIRequestData<Body: Encodable> {
          preservesTrailingSlash: Bool = false,
          maximumResponseBytes: Int? = nil,
          maximumRequestBodyBytes: Int? = nil,
+         maximumDownloadBytes: Int? = nil,
          pathIsPercentEncoded: Bool = false) {
         self.path = path
         self.method = method
@@ -65,6 +70,7 @@ struct APIRequestData<Body: Encodable> {
         self.preservesTrailingSlash = preservesTrailingSlash
         self.maximumResponseBytes = maximumResponseBytes
         self.maximumRequestBodyBytes = maximumRequestBodyBytes
+        self.maximumDownloadBytes = maximumDownloadBytes
         self.pathIsPercentEncoded = pathIsPercentEncoded
     }
 }

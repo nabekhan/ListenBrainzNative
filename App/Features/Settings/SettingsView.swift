@@ -78,6 +78,7 @@ struct SettingsView: View {
 
     private let connectedServicesProvider: (any ConnectedServicesProviding)?
     private let connectedServicesCache: EntityDetailCache<ConnectedServicesCacheKey, ConnectedServices>
+    private let userDataExportProvider: (any UserDataExportProviding)?
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage(AppAppearance.storageKey) private var appearance: AppAppearance = .system
@@ -89,12 +90,14 @@ struct SettingsView: View {
         session: SessionModel,
         connectedServicesProvider: (any ConnectedServicesProviding)? = nil,
         connectedServicesCache: EntityDetailCache<ConnectedServicesCacheKey, ConnectedServices> = ConnectedServicesCaches.values,
+        userDataExportProvider: (any UserDataExportProviding)? = nil,
         initiallyShowsDisconnectConfirmation: Bool = false
     ) {
         self.account = account
         _session = Bindable(wrappedValue: session)
         self.connectedServicesProvider = connectedServicesProvider
         self.connectedServicesCache = connectedServicesCache
+        self.userDataExportProvider = userDataExportProvider
         _showsDisconnectConfirmation = State(initialValue: initiallyShowsDisconnectConfirmation)
     }
 
@@ -119,7 +122,7 @@ struct SettingsView: View {
             }
             Button("Keep connected", role: .cancel) {}
         } message: {
-            Text("Brainz will remove the saved token and listening snapshot from this device. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data won’t be deleted.")
+            Text("Brainz will remove the saved token, listening snapshot, and downloaded data archives from this device. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data won’t be deleted.")
         }
         .alert(
             disconnectErrorTitle,
@@ -209,6 +212,15 @@ struct SettingsView: View {
             }
 
             if account.isAuthenticated {
+                NavigationLink {
+                    UserDataExportView(
+                        account: account,
+                        provider: userDataExportProvider
+                    )
+                } label: {
+                    Label("Download your data", systemImage: "archivebox")
+                }
+
                 Link(destination: SettingsLinks.listenBrainzSettings) {
                     Label("Manage settings on ListenBrainz", systemImage: "arrow.up.right.square")
                 }
@@ -217,7 +229,7 @@ struct SettingsView: View {
             Text("ListenBrainz")
         } footer: {
             if account.isAuthenticated {
-                Text("Manage your timezone, player, token, data export, and account deletion on ListenBrainz.")
+                Text("Manage your timezone, player, token, and account deletion on ListenBrainz.")
             }
         }
     }
@@ -281,7 +293,7 @@ struct SettingsView: View {
             }
         } footer: {
             if account.isAuthenticated {
-                Text("Disconnecting removes the saved token and listening snapshot. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data stay unchanged.")
+                Text("Disconnecting removes the saved token, listening snapshot, and downloaded data archives. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data stay unchanged.")
             } else {
                 Text("Leaving returns to sign-in. You can browse this public profile again at any time.")
             }

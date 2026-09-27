@@ -23,4 +23,9 @@ class MockAPIClient: APIClient, @unchecked Sendable {
 
         return res
     }
+
+    func download<Request: APIRequest>(_ request: Request, to destination: URL) async throws -> URL {
+        self.request = request
+        throw LBError.unknownError
+    }
 }

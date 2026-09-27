@@ -22,6 +22,7 @@ final class SessionModel {
     private let defaults: UserDefaults
     private let validateToken: @Sendable (String) async throws -> String
     private let beforeCredentialSave: @Sendable () async -> Void
+    private let purgePrivateAccountData: @Sendable () async throws -> Void
 
     init(
         snapshotCache: SnapshotCache = .shared,
@@ -30,13 +31,17 @@ final class SessionModel {
         validateToken: @escaping @Sendable (String) async throws -> String = { token in
             try await ListenBrainzProvider(token: token).validateToken()
         },
-        beforeCredentialSave: @escaping @Sendable () async -> Void = {}
+        beforeCredentialSave: @escaping @Sendable () async -> Void = {},
+        purgePrivateAccountData: @escaping @Sendable () async throws -> Void = {
+            try await UserDataExportAccountLifecycle.purgeAll()
+        }
     ) {
         self.snapshotCache = snapshotCache
         self.credentialStore = credentialStore
         self.defaults = defaults
         self.validateToken = validateToken
         self.beforeCredentialSave = beforeCredentialSave
+        self.purgePrivateAccountData = purgePrivateAccountData
     }
 
     func restore() async {
@@ -54,11 +59,12 @@ final class SessionModel {
                 state = .active(Account(username: credential.username, token: credential.token))
             case .legacyToken(let token):
                 let username = try canonicalUsername(try await validateToken(token))
-                try await invalidateSnapshots(usernames: [legacyUsername, username])
+                try await invalidatePrivateLocalData(usernames: [legacyUsername, username])
                 try credentialStore.save(StoredCredential(username: username, token: token))
                 defaults.removeObject(forKey: Self.publicUsernameKey)
                 state = .active(Account(username: username, token: token))
             case nil:
+                try await purgePrivateAccountData()
                 if let legacyUsername {
                     state = .active(Account(username: legacyUsername, token: ""))
                 } else {
@@ -134,7 +140,7 @@ final class SessionModel {
         do {
             // Do this before making public state visible, including when the
             // requested username matches the previous authenticated account.
-            try await invalidateSnapshots(usernames: [activeUsername, username])
+            try await invalidatePrivateLocalData(usernames: [activeUsername, username])
             try await credentialStore.delete()
             defaults.set(username, forKey: Self.publicUsernameKey)
             state = .active(Account(username: username, token: ""))
@@ -149,7 +155,7 @@ final class SessionModel {
             // Keep the credential active unless its username-keyed snapshot was
             // removed first. A termination between these steps must not leave
             // authenticated data behind an apparently signed-out session.
-            try await invalidateSnapshots(usernames: [activeUsername])
+            try await invalidatePrivateLocalData(usernames: [activeUsername])
             try await credentialStore.delete()
             defaults.removeObject(forKey: Self.publicUsernameKey)
             state = .signedOut
@@ -163,7 +169,7 @@ final class SessionModel {
     /// credential replacement must evict both identity candidates before the
     /// new account becomes observable, so an older token cannot restore data.
     func invalidateSnapshotsBeforeActivating(username: String) async throws {
-        try await invalidateSnapshots(usernames: [activeUsername, username])
+        try await invalidatePrivateLocalData(usernames: [activeUsername, username])
     }
 
     private var activeUsername: String? {
@@ -193,6 +199,14 @@ final class SessionModel {
         for username in candidates {
             try await snapshotCache.invalidate(username: username)
         }
+    }
+
+    private func invalidatePrivateLocalData(usernames: [String?]) async throws {
+        // Export archives can contain the complete private account history.
+        // Cancel and drain their transports, then remove protected files before
+        // a credential or visible account identity is changed.
+        try await purgePrivateAccountData()
+        try await invalidateSnapshots(usernames: usernames)
     }
 
     #if DEBUG
@@ -242,6 +256,9 @@ final class SessionModel {
                 || arguments.contains("-brainz-connected-services-demo")
                 || arguments.contains("-brainz-connected-services-empty-demo")
                 || arguments.contains("-brainz-connected-services-failure-demo")
+                || arguments.contains("-brainz-user-data-export-demo")
+                || arguments.contains("-brainz-user-data-export-empty-demo")
+                || arguments.contains("-brainz-user-data-export-failure-demo")
                 || arguments.contains("-brainz-settings-demo")
                 || arguments.contains("-brainz-settings-disconnect-demo")
                 || arguments.contains("-brainz-log-listen-demo")

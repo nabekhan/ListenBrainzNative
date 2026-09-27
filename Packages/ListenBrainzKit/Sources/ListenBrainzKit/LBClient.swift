@@ -17,6 +17,7 @@ public struct LBClient: Sendable {
     public let popularity: LBPopularityClient
     public let art: LBArtClient
     public let radio: LBRadioClient
+    public let userDataExports: LBUserDataExportClient
 
     public init(
         token: String,
@@ -43,5 +44,6 @@ public struct LBClient: Sendable {
         self.popularity = LBPopularityClient(client)
         self.art = LBArtClient(client)
         self.radio = LBRadioClient(client)
+        self.userDataExports = LBUserDataExportClient(client)
     }
 }

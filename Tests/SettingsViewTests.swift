@@ -8,13 +8,15 @@ final class SettingsViewTests: XCTestCase {
     @MainActor
     func testOpeningSettingsDoesNotLoadConnectedServices() async throws {
         let provider = SettingsCountingConnectedServicesProvider()
+        let exportProvider = SettingsCountingUserDataExportProvider()
         let defaultsName = "SettingsViewTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsName))
         defer { defaults.removePersistentDomain(forName: defaultsName) }
 
         let session = SessionModel(
             credentialStore: SettingsNoopCredentialStore(),
-            defaults: defaults
+            defaults: defaults,
+            purgePrivateAccountData: {}
         )
         let host = UIHostingController(
             rootView: NavigationStack {
@@ -22,7 +24,8 @@ final class SettingsViewTests: XCTestCase {
                     account: Account(username: "fixture-listener", token: "fixture-token"),
                     session: session,
                     connectedServicesProvider: provider,
-                    connectedServicesCache: EntityDetailCache()
+                    connectedServicesCache: EntityDetailCache(),
+                    userDataExportProvider: exportProvider
                 )
             }
         )
@@ -39,7 +42,9 @@ final class SettingsViewTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(100))
 
         let requestCount = await provider.requestCount()
+        let exportRequestCount = await exportProvider.requestCount()
         XCTAssertEqual(requestCount, 0)
+        XCTAssertEqual(exportRequestCount, 0)
     }
 
     func testAppearanceMapsToExpectedColorSchemes() {
@@ -93,6 +98,34 @@ private actor SettingsCountingConnectedServicesProvider: ConnectedServicesProvid
         return ConnectedServices(identifiers: [])
     }
 
+    func requestCount() -> Int { count }
+}
+
+private actor SettingsCountingUserDataExportProvider: UserDataExportProviding {
+    private var count = 0
+
+    func list() async throws -> [UserDataExportJob] {
+        count += 1
+        return []
+    }
+
+    func status(exportID _: Int) async throws -> UserDataExportJob {
+        count += 1
+        throw UserDataExportProviderError.notFound
+    }
+
+    func create(range _: UserDataExportRange) async throws -> UserDataExportJob {
+        count += 1
+        throw UserDataExportProviderError.rejected
+    }
+
+    func download(_ job: UserDataExportJob) async throws -> UserDataExportArchive {
+        count += 1
+        throw UserDataExportProviderError.unavailable
+    }
+
+    func deleteFromListenBrainz(exportID _: Int) async throws { count += 1 }
+    func removeLocalArchive(exportID _: Int) async throws { count += 1 }
     func requestCount() -> Int { count }
 }
 

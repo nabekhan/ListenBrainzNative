@@ -393,6 +393,32 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "CritiqueBrainz-review-composer")
     }
 
+    func testUserDataExportExplainsPrivacyAndManualRefresh() throws {
+        let app = launchFixture("-brainz-user-data-export-demo")
+        let screen = app.scrollViews["user-data-export-screen"]
+
+        XCTAssertTrue(screen.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Download your data"].exists)
+        XCTAssertTrue(app.staticTexts["Keep this archive private"].exists)
+        XCTAssertTrue(
+            app.staticTexts[
+                "It can contain your full listening history and account data. Share or save it only where you trust."
+            ].exists
+        )
+        XCTAssertTrue(app.buttons["Refresh"].exists)
+        XCTAssertTrue(
+            app.staticTexts[
+                "ListenBrainz prepares this in the background. Brainz checks only when you refresh."
+            ].exists
+        )
+
+        try assertNoAccessibilityIssues(
+            in: app,
+            auditTypes: semanticAuditTypes.union(.elementDetection)
+        )
+        keepScreenshot(named: "User-data-export-iPad-private")
+    }
+
     private var semanticAuditTypes: XCUIAccessibilityAuditType {
         [
             .hitRegion,

@@ -1833,6 +1833,16 @@
         }
       }
     },
+    "All listening history": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All listening history"
+          }
+        }
+      }
+    },
     "All-time ListenBrainz snapshot": {
       "localizations": {
         "en": {
@@ -1949,6 +1959,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apply"
+          }
+        }
+      }
+    },
+    "Archive downloaded. Choose where to save or share it.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archive downloaded. Choose where to save or share it."
+          }
+        }
+      }
+    },
+    "Archive requested. Refresh later to check its status.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archive requested. Refresh later to check its status."
           }
         }
       }
@@ -2263,6 +2293,16 @@
         }
       }
     },
+    "Available until %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Available until %@"
+          }
+        }
+      }
+    },
     "Average CritiqueBrainz rating: %@ out of 5, from %@": {
       "localizations": {
         "en": {
@@ -2433,6 +2473,16 @@
         }
       }
     },
+    "Brainz couldn’t confirm whether ListenBrainz started the archive. Refresh before trying again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brainz couldn’t confirm whether ListenBrainz started the archive. Refresh before trying again."
+          }
+        }
+      }
+    },
     "Brainz couldn’t confirm whether the match was saved. Refresh History before sending it again.": {
       "localizations": {
         "en": {
@@ -2563,12 +2613,22 @@
         }
       }
     },
-    "Brainz will remove the saved token and listening snapshot from this device. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data won’t be deleted.": {
+    "Brainz removes this protected copy after 24 hours during its next storage cleanup, or when you disconnect.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Brainz will remove the saved token and listening snapshot from this device. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data won’t be deleted."
+            "value": "Brainz removes this protected copy after 24 hours during its next storage cleanup, or when you disconnect."
+          }
+        }
+      }
+    },
+    "Brainz will remove the saved token, listening snapshot, and downloaded data archives from this device. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data won’t be deleted.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brainz will remove the saved token, listening snapshot, and downloaded data archives from this device. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data won’t be deleted."
           }
         }
       }
@@ -2975,6 +3035,16 @@
         }
       }
     },
+    "Choose an end date on or after the start date.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose an end date on or after the start date."
+          }
+        }
+      }
+    },
     "Choose at least one follower.": {
       "localizations": {
         "en": {
@@ -2991,6 +3061,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Choose date"
+          }
+        }
+      }
+    },
+    "Choose dates": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose dates"
           }
         }
       }
@@ -3415,6 +3495,16 @@
         }
       }
     },
+    "Couldn’t download the archive. Check your connection and try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t download the archive. Check your connection and try again."
+          }
+        }
+      }
+    },
     "Couldn’t leave public profile": {
       "localizations": {
         "en": {
@@ -3461,6 +3551,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn’t load this day"
+          }
+        }
+      }
+    },
+    "Couldn’t load your data exports. Check your connection and try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load your data exports. Check your connection and try again."
           }
         }
       }
@@ -3541,6 +3641,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn’t refresh. Showing saved reviews."
+          }
+        }
+      }
+    },
+    "Couldn’t remove the downloaded copy. Try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t remove the downloaded copy. Try again."
+          }
+        }
+      }
+    },
+    "Couldn’t request the archive. Check your connection and try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t request the archive. Check your connection and try again."
           }
         }
       }
@@ -3695,12 +3815,52 @@
         }
       }
     },
+    "Create a private ZIP archive of your listening history, profile, feedback, and pins.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a private ZIP archive of your listening history, profile, feedback, and pins."
+          }
+        }
+      }
+    },
     "Create album collage": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Create album collage"
+          }
+        }
+      }
+    },
+    "Create an archive": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create an archive"
+          }
+        }
+      }
+    },
+    "Create an archive when you want a portable copy of your ListenBrainz data.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create an archive when you want a portable copy of your ListenBrainz data."
+          }
+        }
+      }
+    },
+    "Create archive": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create archive"
           }
         }
       }
@@ -3941,6 +4101,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dark"
+          }
+        }
+      }
+    },
+    "Data exports are private": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data exports are private"
+          }
+        }
+      }
+    },
+    "Data exports couldn’t load": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data exports couldn’t load"
+          }
+        }
+      }
+    },
+    "Date limits apply only to listens. Feedback, pins, and profile data are always included.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date limits apply only to listens. Feedback, pins, and profile data are always included."
           }
         }
       }
@@ -4235,12 +4425,12 @@
         }
       }
     },
-    "Disconnecting removes the saved token and listening snapshot. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data stay unchanged.": {
+    "Disconnecting removes the saved token, listening snapshot, and downloaded data archives. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data stay unchanged.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Disconnecting removes the saved token and listening snapshot. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data stay unchanged."
+            "value": "Disconnecting removes the saved token, listening snapshot, and downloaded data archives. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data stay unchanged."
           }
         }
       }
@@ -4331,6 +4521,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Double-tap to select"
+          }
+        }
+      }
+    },
+    "Download archive": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download archive"
+          }
+        }
+      }
+    },
+    "Download your data": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download your data"
+          }
+        }
+      }
+    },
+    "Downloaded copy removed from this device.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloaded copy removed from this device."
+          }
+        }
+      }
+    },
+    "Downloading archive…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading archive…"
           }
         }
       }
@@ -4441,6 +4671,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Edition details unavailable"
+          }
+        }
+      }
+    },
+    "End date": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End date"
           }
         }
       }
@@ -4621,6 +4861,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Export playlist file"
+          }
+        }
+      }
+    },
+    "Export status refreshed.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export status refreshed."
           }
         }
       }
@@ -4941,6 +5191,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "For example: artist:(Björk):2 tag:(art pop):1::or"
+          }
+        }
+      }
+    },
+    "Free some storage on this device, then download the archive again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free some storage on this device, then download the archive again."
           }
         }
       }
@@ -5455,6 +5715,16 @@
         }
       }
     },
+    "It can contain your full listening history and account data. Share or save it only where you trust.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It can contain your full listening history and account data. Share or save it only where you trust."
+          }
+        }
+      }
+    },
     "It may have reached ListenBrainz. Check History or your profile before sending it again.": {
       "localizations": {
         "en": {
@@ -5511,6 +5781,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Keep connected"
+          }
+        }
+      }
+    },
+    "Keep downloaded copy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep downloaded copy"
+          }
+        }
+      }
+    },
+    "Keep this archive private": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep this archive private"
           }
         }
       }
@@ -6097,6 +6387,26 @@
         }
       }
     },
+    "ListenBrainz couldn’t load your data exports. Try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz couldn’t load your data exports. Try again."
+          }
+        }
+      }
+    },
+    "ListenBrainz couldn’t prepare this archive. Refresh before requesting another one.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz couldn’t prepare this archive. Refresh before requesting another one."
+          }
+        }
+      }
+    },
     "ListenBrainz couldn’t remove the selected tracks. Refresh the playlist and try again.": {
       "localizations": {
         "en": {
@@ -6143,6 +6453,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ListenBrainz couldn’t share this recommendation. A selected listener may no longer follow you."
+          }
+        }
+      }
+    },
+    "ListenBrainz couldn’t start this archive. Refresh and check the date range.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz couldn’t start this archive. Refresh and check the date range."
           }
         }
       }
@@ -6203,6 +6523,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ListenBrainz creates this artwork on demand. Cover images and fonts load from ListenBrainz, Internet Archive, and Google Fonts. Sharing is optional."
+          }
+        }
+      }
+    },
+    "ListenBrainz data archive": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz data archive"
           }
         }
       }
@@ -6447,6 +6777,16 @@
         }
       }
     },
+    "ListenBrainz is already preparing an archive. Refresh later to check it.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz is already preparing an archive. Refresh later to check it."
+          }
+        }
+      }
+    },
     "ListenBrainz is arranging your mix…": {
       "localizations": {
         "en": {
@@ -6653,6 +6993,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ListenBrainz permits personal recommendations only to listeners who follow you."
+          }
+        }
+      }
+    },
+    "ListenBrainz prepares this in the background. Brainz checks only when you refresh.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz prepares this in the background. Brainz checks only when you refresh."
           }
         }
       }
@@ -7007,6 +7357,16 @@
         }
       }
     },
+    "Listening history": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listening history"
+          }
+        }
+      }
+    },
     "Listening hours calculated by ListenBrainz · UTC": {
       "localizations": {
         "en": {
@@ -7203,6 +7563,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loading connected services…"
+          }
+        }
+      }
+    },
+    "Loading data exports…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading data exports…"
           }
         }
       }
@@ -7677,12 +8047,12 @@
         }
       }
     },
-    "Manage your timezone, player, token, data export, and account deletion on ListenBrainz.": {
+    "Manage your timezone, player, token, and account deletion on ListenBrainz.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Manage your timezone, player, token, data export, and account deletion on ListenBrainz."
+            "value": "Manage your timezone, player, token, and account deletion on ListenBrainz."
           }
         }
       }
@@ -8453,6 +8823,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No album stats yet"
+          }
+        }
+      }
+    },
+    "No archives yet": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No archives yet"
           }
         }
       }
@@ -9673,6 +10053,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Opens the album collage editor"
+          }
+        }
+      }
+    },
+    "Opens the system share sheet. Anyone you choose can read the archive.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens the system share sheet. Anyone you choose can read the archive."
           }
         }
       }
@@ -11099,6 +11489,26 @@
         }
       }
     },
+    "Refresh your exports before creating another archive.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh your exports before creating another archive."
+          }
+        }
+      }
+    },
+    "Refresh your exports before requesting another archive.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh your exports before requesting another archive."
+          }
+        }
+      }
+    },
     "Refreshing edition details…": {
       "localizations": {
         "en": {
@@ -11483,12 +11893,42 @@
         }
       }
     },
+    "Remove downloaded copy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove downloaded copy"
+          }
+        }
+      }
+    },
+    "Remove downloaded copy?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove downloaded copy?"
+          }
+        }
+      }
+    },
     "Remove from Playlist": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Remove from Playlist"
+          }
+        }
+      }
+    },
+    "Remove from this device": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove from this device"
           }
         }
       }
@@ -11599,6 +12039,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Report unavailable"
+          }
+        }
+      }
+    },
+    "Requested %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Requested %@"
+          }
+        }
+      }
+    },
+    "Requesting archive…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Requesting archive…"
           }
         }
       }
@@ -12665,6 +13125,16 @@
         }
       }
     },
+    "Share or save archive": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share or save archive"
+          }
+        }
+      }
+    },
     "Share playlist file": {
       "localizations": {
         "en": {
@@ -13147,6 +13617,16 @@
         }
       }
     },
+    "Sign in to create and download your ListenBrainz data archive.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to create and download your ListenBrainz data archive."
+          }
+        }
+      }
+    },
     "Sign in to delete this listen.": {
       "localizations": {
         "en": {
@@ -13423,6 +13903,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spotify ID"
+          }
+        }
+      }
+    },
+    "Start date": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start date"
           }
         }
       }
@@ -13793,6 +14283,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "The copy response was lost. A fresh Owned Playlists check is required; another copy stays disabled unless a matching destination is verified."
+          }
+        }
+      }
+    },
+    "The downloaded archive couldn’t be verified. Try downloading it again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The downloaded archive couldn’t be verified. Try downloading it again."
           }
         }
       }
@@ -14187,6 +14687,36 @@
         }
       }
     },
+    "This archive has a status this version of Brainz doesn’t recognize.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This archive has a status this version of Brainz doesn’t recognize."
+          }
+        }
+      }
+    },
+    "This archive is no longer available. Refresh the list.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This archive is no longer available. Refresh the list."
+          }
+        }
+      }
+    },
+    "This archive isn’t ready to download. Refresh its status and try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This archive isn’t ready to download. Refresh its status and try again."
+          }
+        }
+      }
+    },
     "This artwork includes a resource Brainz can’t load safely.": {
       "localizations": {
         "en": {
@@ -14547,6 +15077,16 @@
         }
       }
     },
+    "This removes Brainz’s local copy. The archive on ListenBrainz remains available until it expires.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This removes Brainz’s local copy. The archive on ListenBrainz remains available until it expires."
+          }
+        }
+      }
+    },
     "This removes one track from “%@” for everyone who uses it.": {
       "localizations": {
         "en": {
@@ -14613,6 +15153,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "This will replace the current match for this recording ID."
+          }
+        }
+      }
+    },
+    "Through %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Through %@"
           }
         }
       }
@@ -15749,6 +16299,16 @@
         }
       }
     },
+    "Waiting": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting"
+          }
+        }
+      }
+    },
     "Waiting for matched top albums": {
       "localizations": {
         "en": {
@@ -16189,6 +16749,16 @@
         }
       }
     },
+    "Your ListenBrainz data": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your ListenBrainz data"
+          }
+        }
+      }
+    },
     "Your ListenBrainz sign-in can’t send listens. Sign in again and try once more.": {
       "localizations": {
         "en": {
@@ -16249,6 +16819,16 @@
         }
       }
     },
+    "Your ListenBrainz sign-in needs attention. Sign in again to manage data exports.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your ListenBrainz sign-in needs attention. Sign in again to manage data exports."
+          }
+        }
+      }
+    },
     "Your ListenBrainz sign-in needs attention. Sign in again to view connected services.": {
       "localizations": {
         "en": {
@@ -16305,6 +16885,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Your all-time listening"
+          }
+        }
+      }
+    },
+    "Your archives": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your archives"
           }
         }
       }

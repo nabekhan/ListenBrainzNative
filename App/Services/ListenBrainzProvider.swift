@@ -678,6 +678,9 @@ actor RequestGate {
         case critiqueBrainzReviews
         case connectedServices
         case artistPageContext
+        case userDataExportList
+        case userDataExportStatus
+        case userDataExportDownload
     }
 
     struct ReadKey: Hashable, Sendable {
@@ -799,6 +802,15 @@ actor RequestGate {
         static func artistPageContext(_ scope: ReadScope, artistMBID: UUID) -> Self {
             endpoint(scope, .artistPageContext, [uuid(artistMBID)])
         }
+        static func userDataExportList(_ scope: ReadScope) -> Self {
+            endpoint(scope, .userDataExportList, [])
+        }
+        static func userDataExportStatus(_ scope: ReadScope, exportID: Int) -> Self {
+            endpoint(scope, .userDataExportStatus, [String(exportID)])
+        }
+        static func userDataExportDownload(_ scope: ReadScope, exportID: Int) -> Self {
+            endpoint(scope, .userDataExportDownload, [String(exportID)])
+        }
         private static func uuid(_ id: UUID) -> String { id.uuidString.lowercased() }
         private static func artOptions(_ value: LBArtGridOptions) -> [String] { [String(value.captions), String(value.skipMissing), String(value.showRank), String(value.showListenCount), String(value.showRelease), String(value.showArtist)] }
         private static func artBackground(_ value: LBArtGridBackground) -> String {
@@ -904,6 +916,7 @@ actor RequestGate {
     private var queuedReadWaiters: [ReadSlotWaiter] = []
     private var preCancelledReadWaiters: Set<ReadWaiterIdentity> = []
     private var drainingWaiters: [UUID: [UUID: CheckedContinuation<Void, any Swift.Error>]] = [:]
+    private var cancellationDrainWaiters: [UUID: [UUID: CheckedContinuation<Void, Never>]] = [:]
     private var preCancelledDrainingWaiters: Set<DrainingWaiterIdentity> = []
     private var readAuditCounts: [ReadFeature: RequestAuditSnapshot.LifecycleCounts] = [:]
     private var mutationAuditCounts = RequestAuditSnapshot.LifecycleCounts()
@@ -967,6 +980,7 @@ actor RequestGate {
     /// read-side 429 also delays a following mutation.
     func read<Result: Sendable>(
         for key: ReadKey,
+        drainOnFinalCancellation: Bool = false,
         _ operation: @escaping @Sendable () async throws -> Result,
         deferralForError: @escaping @Sendable (any Swift.Error) -> Duration? = { _ in nil }
     ) async throws -> Result {
@@ -980,7 +994,12 @@ actor RequestGate {
                 // key remains reserved until termination so a replacement
                 // caller cannot overlap an equivalent request.
                 try await waitForDrainingFlight(key: key, flightID: existing.id)
-                return try await read(for: key, operation, deferralForError: deferralForError)
+                return try await read(
+                    for: key,
+                    drainOnFinalCancellation: drainOnFinalCancellation,
+                    operation,
+                    deferralForError: deferralForError
+                )
             }
             guard existing.resultType == requestedType else {
                 throw ReadError.incompatibleReadResultType
@@ -1028,6 +1047,15 @@ actor RequestGate {
             }
             return typedValue
         } catch is CancellationError {
+            if drainOnFinalCancellation {
+                // A cancelled final waiter owns the cancellation of the
+                // shared flight. Sensitive lifecycle owners can require actual
+                // transport termination before they report completion.
+                await waitForCancelledFlightToDrainIfNeeded(
+                    key: key,
+                    flightID: flight.id
+                )
+            }
             throw CancellationError()
         }
     }
@@ -1230,8 +1258,12 @@ actor RequestGate {
             }
         }
         let drainContinuations = drainingWaiters.removeValue(forKey: flightID).map { Array($0.values) } ?? []
+        let cancellationDrainContinuations = cancellationDrainWaiters
+            .removeValue(forKey: flightID)
+            .map { Array($0.values) } ?? []
         preCancelledDrainingWaiters = preCancelledDrainingWaiters.filter { $0.flightID != flightID }
         for continuation in drainContinuations { continuation.resume() }
+        for continuation in cancellationDrainContinuations { continuation.resume() }
     }
 
     private func releaseReadSlot(for flightID: UUID) {
@@ -1309,6 +1341,31 @@ actor RequestGate {
         }, onCancel: {
             Task { await self.cancelDrainingWaiter(waiterID, key: key, flightID: flightID) }
         })
+    }
+
+    /// Cancellation of a final read waiter cancels the unstructured flight,
+    /// but the operation may need time to unwind. This deliberately ignores
+    /// further cancellation so lifecycle owners can await actual termination.
+    private func waitForCancelledFlightToDrainIfNeeded(
+        key: ReadKey,
+        flightID: UUID
+    ) async {
+        guard let flight = readFlights[key],
+              flight.id == flightID,
+              flight.waiters.isEmpty
+        else { return }
+
+        let waiterID = UUID()
+        await withCheckedContinuation { continuation in
+            guard let current = readFlights[key],
+                  current.id == flightID,
+                  current.waiters.isEmpty
+            else {
+                continuation.resume()
+                return
+            }
+            cancellationDrainWaiters[flightID, default: [:]][waiterID] = continuation
+        }
     }
 
     private func cancelDrainingWaiter(_ waiterID: UUID, key: ReadKey, flightID: UUID) {

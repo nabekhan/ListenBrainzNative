@@ -3,14 +3,20 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import Foundation
+#if canImport(Darwin)
+import Darwin
+#else
+import Glibc
+#endif
 
 protocol APIClient: Sendable {
     func execute<Request: APIRequest>(_ request: Request) async throws -> Request.Result
+    func download<Request: APIRequest>(_ request: Request, to destination: URL) async throws -> URL
 }
 
 struct ListenBrainzAPIClient: APIClient {
     private static let officialRoot = URL(string: "https://api.listenbrainz.org")!
-    private static let session: URLSession = {
+    private static let sharedSession: URLSession = {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.urlCache = nil
         configuration.httpCookieStorage = nil
@@ -26,16 +32,19 @@ struct ListenBrainzAPIClient: APIClient {
     let root: URL
     let userAgent: String
     private let allowsTokenToRoot: Bool
+    private let session: URLSession
 
     init(
         token: String,
         root: URL?,
         allowsTokenToCustomRoot: Bool = false,
-        userAgent: String
+        userAgent: String,
+        session: URLSession? = nil
     ) {
         self.token = token
         self.root = root ?? Self.officialRoot
         self.userAgent = userAgent
+        self.session = session ?? Self.sharedSession
         self.allowsTokenToRoot = root == nil
             || allowsTokenToCustomRoot
             || AuthenticatedRedirectDelegate.sameOrigin(self.root, Self.officialRoot)
@@ -47,7 +56,7 @@ struct ListenBrainzAPIClient: APIClient {
         let resp: URLResponse
 
         if let maximumResponseBytes = request.data.maximumResponseBytes {
-            let (bytes, response) = try await Self.session.bytes(for: req)
+            let (bytes, response) = try await session.bytes(for: req)
             if let httpResponse = response as? HTTPURLResponse,
                let error = responseError(from: httpResponse, for: request) {
                 throw error
@@ -70,7 +79,7 @@ struct ListenBrainzAPIClient: APIClient {
             data = boundedData
             resp = response
         } else {
-            (data, resp) = try await Self.session.data(for: req)
+            (data, resp) = try await session.data(for: req)
         }
 
         if let httpResp = resp as? HTTPURLResponse,
@@ -79,6 +88,103 @@ struct ListenBrainzAPIClient: APIClient {
         }
 
         return try request.decodeResponse(data, response: resp as? HTTPURLResponse)
+    }
+
+    func download<Request: APIRequest>(_ request: Request, to destination: URL) async throws -> URL {
+        guard let maximumDownloadBytes = request.data.maximumDownloadBytes,
+              maximumDownloadBytes > 0,
+              destination.isFileURL,
+              !FileManager.default.fileExists(atPath: destination.path)
+        else { throw LBError.invalidParam }
+
+        let req = try makeURLRequest(request)
+        let (bytes, response) = try await session.bytes(for: req)
+        let maximumBytes = Int64(maximumDownloadBytes)
+        try validateDownloadResponse(response: response, request: request, maximumDownloadBytes: maximumBytes)
+
+        var createdDestination = false
+        do {
+            let file = try createExclusiveFile(at: destination)
+            createdDestination = true
+            defer { try? file.close() }
+
+            var receivedBytes: Int64 = 0
+            var signature = Data()
+            signature.reserveCapacity(4)
+            var buffer = Data()
+            buffer.reserveCapacity(64 * 1_024)
+            for try await byte in bytes {
+                try Task.checkCancellation()
+                receivedBytes += 1
+                guard receivedBytes <= maximumBytes else { throw LBError.invalidResponse }
+                if signature.count < 4 { signature.append(byte) }
+                buffer.append(byte)
+                if buffer.count >= 64 * 1_024 {
+                    try file.write(contentsOf: buffer)
+                    buffer.removeAll(keepingCapacity: true)
+                }
+            }
+            if !buffer.isEmpty {
+                try file.write(contentsOf: buffer)
+            }
+            guard signature == Data([0x50, 0x4B, 0x03, 0x04]) else {
+                throw LBError.invalidResponse
+            }
+            try file.synchronize()
+            createdDestination = false
+            return destination
+        } catch {
+            if createdDestination {
+                try? FileManager.default.removeItem(at: destination)
+            }
+            throw error
+        }
+    }
+
+    func validateDownloadResponse<Request: APIRequest>(
+        response: URLResponse,
+        request: Request,
+        maximumDownloadBytes: Int64
+    ) throws {
+        guard let httpResponse = response as? HTTPURLResponse else { throw LBError.invalidResponse }
+        if let error = responseError(from: httpResponse, for: request) { throw error }
+
+        let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type")?
+            .split(separator: ";", maxSplits: 1, omittingEmptySubsequences: true)
+            .first?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard contentType == "application/zip",
+              response.expectedContentLength <= maximumDownloadBytes || response.expectedContentLength < 0
+        else { throw LBError.invalidResponse }
+    }
+
+    private func createExclusiveFile(at destination: URL) throws -> FileHandle {
+        let descriptor = open(destination.path, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR)
+        guard descriptor >= 0 else {
+            if errno == EEXIST { throw LBError.invalidParam }
+            throw LBError.unknownError
+        }
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        do {
+            #if os(iOS)
+            try FileManager.default.setAttributes(
+                [.protectionKey: FileProtectionType.complete],
+                ofItemAtPath: destination.path
+            )
+            #endif
+            #if canImport(Darwin)
+            var protectedURL = destination
+            var resourceValues = URLResourceValues()
+            resourceValues.isExcludedFromBackup = true
+            try protectedURL.setResourceValues(resourceValues)
+            #endif
+            return handle
+        } catch {
+            try? handle.close()
+            try? FileManager.default.removeItem(at: destination)
+            throw LBError.unknownError
+        }
     }
 
     func makeURLRequest<Request: APIRequest>(_ request: Request) throws -> URLRequest {

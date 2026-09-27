@@ -640,6 +640,17 @@ struct MainTabView: View {
                     )
                 }
                 .environment(pins)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-user-data-export-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-user-data-export-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-user-data-export-failure-demo")
+            {
+                UserDataExportVisualQAScreen(
+                    state: ProcessInfo.processInfo.arguments.contains("-brainz-user-data-export-empty-demo")
+                        ? .empty
+                        : ProcessInfo.processInfo.arguments.contains("-brainz-user-data-export-failure-demo")
+                            ? .failure
+                            : .populated
+                )
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-settings-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-settings-public-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-settings-disconnect-demo")
