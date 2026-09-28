@@ -86,6 +86,20 @@ The default output is `dist/Brainz-<version>-<build>-unsigned.ipa`. The script c
 
 The generated IPA is **not directly installable**. A compatible external signer must add the provisioning profile, entitlements, and signature before sideloading. Do not commit signing credentials, profiles, or generated IPAs. See `docs/research/sideload-readiness.md` for the signing boundary and remaining physical-device checks.
 
+## Guarded simulator UI matrix
+
+Run the deterministic fixture matrix against explicit existing simulators only:
+
+```sh
+scripts/test-ui-matrix.sh \
+  --iphone-udid <IPHONE_SIMULATOR_UDID> \
+  --ipad-udid <IPAD_SIMULATOR_UDID>
+```
+
+Pass `--output-root /absolute/path` to retain results somewhere specific. The script refuses an existing output directory, builds test products once, and retains three separate XCResult bundles: the full guarded iPhone fixture suite, the established six-test iPad responsive/RTL/pseudo-localization subset, and a focused dark-mode maximum-Dynamic-Type iPhone subset. It always excludes the opt-in live MetaBrainz sign-in route and each fixture denies shared request-gate transport, so it is credential-free and fails before any guarded ListenBrainz transport. That guard does not claim to intercept arbitrary future networking outside the required gate; fixture data and artwork must remain local when new cases are added.
+
+The matrix temporarily boots supplied simulators when needed, sets their appearance and content size, verifies those settings, then restores the original appearance, Dynamic Type category, and boot/shutdown state on normal exit or interruption. It does not replace physical-device, signed-build, real-authentication, or translated-language QA.
+
 ## Research and provenance
 
 This repository follows an inspect-first, reuse-first workflow. Start with:

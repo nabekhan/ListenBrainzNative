@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @Bindable var model: ListeningModel
     @Environment(PinsModel.self) private var pins
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var isLogListenPresented = false
 
     var body: some View {
@@ -116,22 +117,35 @@ struct HomeView: View {
     private var snapshotStrip: some View {
         let totalListenCount = model.snapshot.listenCount?.formatted(.number.notation(.compactName))
         let topArtist = model.snapshot.topArtists.first?.name
-        return HStack(spacing: 12) {
-            metric(
-                totalListenCount ?? "—",
-                label: "Total listens",
-                icon: "waveform",
-                accessibilityIdentifier: "home-total-listens-metric",
-                accessibilityValue: totalListenCount ?? String(localized: "Not available")
-            )
-            metric(
-                topArtist ?? "—",
-                label: "Top artist",
-                icon: "person.wave.2",
-                accessibilityIdentifier: "home-top-artist-metric",
-                accessibilityValue: topArtist ?? String(localized: "Not available")
-            )
+        return Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: 12) {
+                    snapshotMetrics(totalListenCount: totalListenCount, topArtist: topArtist)
+                }
+            } else {
+                HStack(spacing: 12) {
+                    snapshotMetrics(totalListenCount: totalListenCount, topArtist: topArtist)
+                }
+            }
         }
+    }
+
+    @ViewBuilder
+    private func snapshotMetrics(totalListenCount: String?, topArtist: String?) -> some View {
+        metric(
+            totalListenCount ?? "—",
+            label: "Total listens",
+            icon: "waveform",
+            accessibilityIdentifier: "home-total-listens-metric",
+            accessibilityValue: totalListenCount ?? String(localized: "Not available")
+        )
+        metric(
+            topArtist ?? "—",
+            label: "Top artist",
+            icon: "person.wave.2",
+            accessibilityIdentifier: "home-top-artist-metric",
+            accessibilityValue: topArtist ?? String(localized: "Not available")
+        )
     }
 
     private func metric(

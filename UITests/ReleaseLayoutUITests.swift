@@ -46,6 +46,7 @@ final class ReleaseLayoutUITests: XCTestCase {
 
         XCTAssertTrue(window.waitForExistence(timeout: 10))
         XCTAssertGreaterThan(window.frame.height, window.frame.width)
+        assertMatrixPortraitWidth(window)
         XCTAssertTrue(app.staticTexts["@visual-home"].waitForExistence(timeout: 10))
         keepScreenshot(named: "Home-iPad-portrait")
     }
@@ -319,6 +320,17 @@ final class ReleaseLayoutUITests: XCTestCase {
         XCTAssertTrue(topArtist.waitForExistence(timeout: 10))
         XCTAssertEqual(topArtist.label, "Top artist")
         XCTAssertEqual(accessibilityValue(of: topArtist), "Harbor Lights")
+
+        if ProcessInfo.processInfo.environment["BRAINZ_UI_MATRIX_VARIANT"] == "dark-accessibility" {
+            let window = app.windows.firstMatch
+            assertVisibleFrame(totalListens, in: window)
+            assertVisibleFrame(topArtist, in: window)
+            XCTAssertGreaterThanOrEqual(
+                topArtist.frame.minY,
+                totalListens.frame.maxY,
+                "Home metrics should stack vertically at maximum Dynamic Type."
+            )
+        }
 
         try assertNoAccessibilityIssues(
             in: app,
@@ -646,10 +658,38 @@ final class ReleaseLayoutUITests: XCTestCase {
         app.launchArguments = [
             fixture,
             "-brainz-deny-request-gate-transport",
+            "-app.appearance", "system",
         ] + additionalArguments
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
         return app
+    }
+
+    private func assertMatrixPortraitWidth(
+        _ window: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        switch ProcessInfo.processInfo.environment["BRAINZ_UI_MATRIX_DEVICE"] {
+        case "iphone":
+            XCTAssertLessThan(
+                window.frame.width,
+                600,
+                "The iPhone matrix destination unexpectedly used a regular-width window.",
+                file: file,
+                line: line
+            )
+        case "ipad":
+            XCTAssertGreaterThanOrEqual(
+                window.frame.width,
+                600,
+                "The iPad matrix destination unexpectedly used a compact-width window.",
+                file: file,
+                line: line
+            )
+        default:
+            break
+        }
     }
 
     private func keepScreenshot(named name: String) {
