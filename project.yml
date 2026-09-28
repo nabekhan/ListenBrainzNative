@@ -30,6 +30,8 @@ targets:
     productName: Brainz
     sources:
       - path: App
+      - path: THIRD_PARTY.md
+        buildPhase: resources
     dependencies:
       - package: ListenBrainzKit
       - package: Nuke
