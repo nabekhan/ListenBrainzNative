@@ -1,6 +1,6 @@
 # Sideload readiness
 
-Snapshot: 2026-09-27.
+Snapshot: 2026-09-28.
 
 ## Distribution contract
 
@@ -59,7 +59,7 @@ TestFlight and App Store Connect remain a later distribution path. This workflow
 
 ## Validated checkpoint
 
-The current 2026-09-27 run packaged clean product checkpoint `b50292b` as `Brainz-0.1.0-2-b50292b-unsigned.ipa`. It was 7,512,984 bytes with SHA-256 `153502a0353a2ade193195c1f70b622492560274708cac70a1f788dcf4365927`. Independent extraction found 12 unique entries beneath `Payload/`, one expected unencrypted unsigned arm64 iOS executable, bundle `dev.nabekhan.listenbrainznative`, version `0.1.0 (2)`, minimum iOS 18, only Apple system dependencies, and a privacy manifest byte-identical to source with SHA-256 `bd70e057eabd5df561467219da1f29a96230ddaa858965aa0db44e79a1c89428`. It found no traversal, normalization or case collision, duplicate, local/central-header mismatch, CRC failure, overlap, trailing data, unsafe node, symlink, profile, entitlement indicator, code-signature command or directory, nested code container, unexpected executable, encryption, or extra top-level path. The binary and packaged English resources contain the current Community Charts endpoints, types, and reviewed copy, binding the artifact to the current 1,754-key product checkpoint. Independent security review reports SHIP for this unsigned re-signing boundary. The reproducible IPA was removed after recording evidence; external signing and signed physical-device checks remain required.
+The current 2026-09-28 run packaged clean product checkpoint `c6fdc27` as `Brainz-0.1.0-3-c6fdc27-unsigned.ipa`. It was 7,514,682 bytes with SHA-256 `076eca4ee222fc46230142b64afba8153ddedf38fada5330c84df212f8fd6d7a`. Independent extraction found 12 unique entries beneath `Payload/`, one expected unencrypted unsigned arm64 iOS executable, bundle `dev.nabekhan.listenbrainznative`, version `0.1.0 (3)`, minimum iOS 18, both iPhone and iPad device families, only Apple system dependencies, and a privacy manifest byte-identical to source with SHA-256 `bd70e057eabd5df561467219da1f29a96230ddaa858965aa0db44e79a1c89428`. It found no unsafe ZIP path, duplicate, symlink, profile, entitlement, code-signature command or directory, nested code, unexpected executable, encryption, packaged test product, key, or credential file. Build 3 binds the payload to the accessibility-size Home fix and tracked guarded-matrix checkpoint; runtime XCResults remain the authoritative evidence for that behavior. Independent security review reports SHIP for this unsigned re-signing boundary. The reproducible IPA was removed after recording evidence; external signing and signed physical-device checks remain required.
 
 ## Cleanup
 

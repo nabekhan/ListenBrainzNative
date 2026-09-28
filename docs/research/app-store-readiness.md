@@ -1,6 +1,6 @@
 # App Store readiness
 
-Checked against current Apple and MetaBrainz documentation and the ListenBrainz server `v-2026-09-24.0` on 2026-09-27.
+Checked against current Apple and MetaBrainz documentation and the ListenBrainz server `v-2026-09-24.0` on 2026-09-28.
 
 ## Immediate distribution target
 
@@ -17,7 +17,7 @@ This changes release sequencing, not product quality: the first signed sideload 
 | Unsigned IPA workflow | `scripts/package-ipa.sh` isolates Derived Data and the archive in a temporary root, validates bundle identity/resources/privacy/unsigned nested code, rejects symlinks and unsafe output paths, packages only `Payload/Brainz.app`, and proves byte-identical output from the same archive before publishing without overwrite. |
 | Privacy manifest | `PrivacyInfo.xcprivacy` is copied byte-for-byte to the app-bundle root. It declares no tracking, the app-local UserDefaults reason `CA92.1`, and conservative core-functionality data categories. |
 | iPad resizing | iPad declares portrait, upside-down portrait, and both landscape orientations. The earlier archive warning is gone; `UIRequiresFullScreen` is not used. |
-| Simulator layout and accessibility regression | Twenty-three guarded XCUITests cover the established iPad portrait, rotation, RTL, pseudo-localization, export, metrics, feedback, and media-detail fixtures plus explicit Search paging and failure/retry. The prior 21-case complete checkpoint and this slice's two focused Search cases pass under the fail-fast transport guard; this is cumulative focused evidence, not a claim that the combined 23-case suite was rerun in one invocation. |
+| Simulator layout and accessibility regression | A tracked wrapper now runs all 24 credential-free guarded fixtures on iPhone, an established six-case responsive/RTL/pseudo-localization subset on an actual iPad simulator, and four high-value dark/maximum-Dynamic-Type variants. The final three XCResults record 34/34 executions passing with no failure, skip, or runtime warning. Visual review exposed and fixed Home's accessibility-size metric squeeze; the focused case now asserts vertical ordering. The guard covers required shared ListenBrainz transport, not arbitrary future networking outside that boundary. |
 | Request diagnostics | The process-wide ListenBrainz gate exposes a Release-enabled in-memory snapshot containing only fixed feature categories, lifecycle counters, and current/maximum transport counts. Guarded visual fixtures fail before any request-gated transport can start. A direct source audit found no ListenBrainz bypass, and Home now coalesces its complete six-endpoint refresh sequence at the model boundary as well as each exact transport. |
 | Simulator release diagnostics | The final static analyzer is clean; AddressSanitizer and ThreadSanitizer report no app fault in their complete/focused coverage; a normally signed Release simulator build launches with Keychain access; Time Profiler reports no potential hang; App Launch reports no file-system antipattern; and the final crash scan finds no new Brainz report. The Leaks trace contains one unclassified 32-byte allocation with a truncated stack and no app attribution, retained as a physical-candidate recheck rather than claimed away. |
 | Physical-device preflight | A paired current iPhone is reachable and has Developer Mode enabled. The Mac has no configured Xcode developer account, development team, or Apple Development signing identity, so no app was built for or installed on the phone. The intended first device run uses the isolated QA bundle, local fixtures, and fail-fast request guard. |
@@ -66,4 +66,4 @@ The single source deliberately omits hand-authored dark and tinted variants. App
 - enter App Store metadata, screenshots, review notes, support and privacy URLs, age rating, and category; and
 - reconcile the App Store privacy questionnaire with the shipped binary and observed service behavior.
 
-The source-level release foundation and guarded simulator pass are complete; this does not yet claim an installable sideload IPA, TestFlight readiness, or App Store readiness.
+The source-level release foundation, guarded simulator matrix, and independently inspected unsigned build-3 payload are complete; this does not yet claim an installable signed sideload IPA, TestFlight readiness, or App Store readiness.

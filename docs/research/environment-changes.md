@@ -1,8 +1,16 @@
 # Environment and cleanup log
 
-Updated: 2026-09-27
+Updated: 2026-09-28
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
+
+## Guarded simulator UI matrix — 2026-09-28
+
+- Product commit `c6fdc27` adds a tracked credential-free matrix requiring explicit iPhone and iPad simulator destinations. It builds once, runs all 24 guarded fixtures on iPhone, repeats six responsive/RTL/pseudo-localization cases on an actual iPad Pro 11-inch (M5), and repeats four high-value cases in dark mode at `accessibility-extra-extra-extra-large`. The final three XCResults record 34/34 passing executions with no failure, skip, expected failure, or runtime warning. All fixtures deny shared ListenBrainz request-gate transport, and the opt-in production sign-in route is excluded.
+- Screenshot inspection exposed Home's side-by-side metric squeeze at accessibility sizes. The production view now stacks those cards vertically while preserving its ordinary compact layout, and the focused matrix asserts the vertical order. Independent final source/evidence review reports SHIP. Both simulators were verified restored to light/large and shutdown.
+- Two XcodeGen generations were byte-stable at project hash `4fb42f886a7c5a282c2fd35cf0a5068b330f285cfdd71ad0ba5bde6062201358`. The clean build-3 unsigned IPA was 7,514,682 bytes with SHA-256 `076eca4ee222fc46230142b64afba8153ddedf38fada5330c84df212f8fd6d7a`; independent static inspection reports SHIP for the unsigned re-signing boundary and verifies a byte-identical privacy manifest, one unsigned/unencrypted arm64 executable, only system dependencies, and no profile, entitlements, nested code, test product, key, or credential file.
+- `/private/tmp/brainz-ui-matrix-validation.20260927`, `/private/tmp/brainz-ui-matrix-attachments-audit-20260927`, `/private/tmp/brainz-ui-matrix-validation-final.20260927`, `/private/tmp/brainz-ui-matrix-final-screenshots-audit-20260927`, two exact XcodeGen logs, three exact test-identifier files, `/private/tmp/brainz-ipa-audit-c6fdc27.UKwMJ3`, and `/private/tmp/Brainz-0.1.0-3-c6fdc27-unsigned.ipa` held the two complete matrix runs, exported screenshots, deterministic-generation evidence, independent extraction, and inspected package. No package, browser, runtime, host application, credential, token, or additional skill was installed or used; existing Xcode 27, iOS 27, Apple command-line tools, `jq`, the UX Writing skill, and ephemeral Nix XcodeGen were reused.
+- Cleanup moved those 11 exact artifacts through `/Users/nabeel/.Trash/Brainz-UI-Matrix-20260927.wyMwzI`; after exact inspection, that dedicated bucket alone was permanently deleted, reclaiming 1,002,568 KiB. `scripts/package-ipa.sh` self-cleaned its isolated archive root. A targeted audit found no matching artifact, bucket, Brainz/build process, or booted simulator. Source, Git history, Xcode, the runtime, skills, credentials, simulator devices, user files, and unrelated Trash remained untouched. No live request or mutation was used.
 
 ## Community Charts — 2026-09-27
 
