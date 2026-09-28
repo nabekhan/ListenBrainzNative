@@ -9,6 +9,121 @@ import Testing
 
 @Suite
 struct LBStatisticsTests {
+    @Test("Sitewide ranking payloads preserve pagination metadata")
+    func deserializeSitewideRankingMetadata() throws {
+        let artists = try JSONDecoder.ListenBrainz.decode(
+            StatsArtistsRequest.Result.self,
+            from: Data("""
+            { "payload": {
+              "artists": [{ "artist_mbid": null, "artist_name": "Example Artist", "listen_count": 42 }],
+              "count": 25, "offset": 50, "total_artist_count": 1000, "range": "this_week",
+              "from_ts": 1, "to_ts": 2, "last_updated": 3
+            } }
+            """.utf8)
+        ).payload
+        #expect(artists.requestedCount == 25)
+        #expect(artists.offset == 50)
+        #expect(artists.totalArtistCount == 1000)
+        #expect(artists.range == "this_week")
+
+        let releases = try JSONDecoder.ListenBrainz.decode(
+            StatsReleasesRequest.Result.self,
+            from: Data("""
+            { "payload": {
+              "releases": [], "count": 20, "offset": 40,
+              "total_release_count": 300, "range": "month",
+              "from_ts": 1, "to_ts": 2, "last_updated": 3
+            } }
+            """.utf8)
+        ).payload
+        #expect(releases.requestedCount == 20)
+        #expect(releases.offset == 40)
+        #expect(releases.totalReleaseCount == 300)
+        #expect(releases.range == "month")
+
+        let groups = try JSONDecoder.ListenBrainz.decode(
+            StatsReleaseGroupsRequest.Result.self,
+            from: Data("""
+            { "payload": {
+              "release_groups": [], "count": 10, "offset": 20,
+              "total_release_group_count": 200, "range": "year",
+              "from_ts": 1, "to_ts": 2, "last_updated": 3
+            } }
+            """.utf8)
+        ).payload
+        #expect(groups.requestedCount == 10)
+        #expect(groups.offset == 20)
+        #expect(groups.totalReleaseGroupCount == 200)
+        #expect(groups.range == "year")
+
+        let recordings = try JSONDecoder.ListenBrainz.decode(
+            StatsRecordingsRequest.Result.self,
+            from: Data("""
+            { "payload": {
+              "recordings": [{
+                "artist_name": "Example Artist", "listen_count": 8,
+                "track_name": "Example Track"
+              }],
+              "count": 25, "offset": 0, "total_recording_count": 125, "range": "all_time",
+              "from_ts": 1, "to_ts": 2, "last_updated": 3
+            } }
+            """.utf8)
+        ).payload
+        #expect(recordings.requestedCount == 25)
+        #expect(recordings.offset == 0)
+        #expect(recordings.totalRecordingCount == 125)
+        #expect(recordings.range == "all_time")
+        #expect(recordings.recordings.first?.releaseName == nil)
+    }
+
+    @Test("Sitewide ranking requests use public routes and map no content to nil")
+    func sitewideRankingRequestSemantics() async throws {
+        let artists = StatsArtistsRequest(user: nil, count: 25, offset: 50, range: .thisWeek)
+        let releases = StatsReleasesRequest(user: nil, count: 25, offset: 25, range: .thisMonth)
+        let groups = StatsReleaseGroupsRequest(user: nil, count: 25, offset: 25, range: .thisMonth)
+        let recordings = StatsRecordingsRequest(user: nil, count: 25, offset: 0, range: .allTime)
+
+        #expect(artists.data.path == "/1/stats/sitewide/artists")
+        #expect(artists.data.queryItems == [
+            "count": ["25"], "offset": ["50"], "range": ["this_week"]
+        ])
+        #expect(groups.data.path == "/1/stats/sitewide/release-groups")
+        #expect(groups.data.queryItems == [
+            "count": ["25"], "offset": ["25"], "range": ["this_month"]
+        ])
+        #expect(recordings.data.path == "/1/stats/sitewide/recordings")
+        #expect(recordings.data.queryItems == [
+            "count": ["25"], "offset": ["0"], "range": ["all_time"]
+        ])
+        #expect(artists.data.maximumResponseBytes == StatsRankingRequestLimits.maximumResponseBytes)
+        #expect(releases.data.maximumResponseBytes == StatsRankingRequestLimits.maximumResponseBytes)
+        #expect(groups.data.maximumResponseBytes == StatsRankingRequestLimits.maximumResponseBytes)
+        #expect(recordings.data.maximumResponseBytes == StatsRankingRequestLimits.maximumResponseBytes)
+
+        let client = LBStatisticsClient(MockAPIClient(result: .failure(.noContent)))
+        #expect(try await client.topArtistsSitewide(count: 25, offset: 0, range: .thisWeek) == nil)
+        #expect(try await client.topReleaseGroupsSitewide(count: 25, offset: 0, range: .thisWeek) == nil)
+        #expect(try await client.topRecordingsSitewide(count: 25, offset: 0, range: .thisWeek) == nil)
+    }
+
+    @Test("Ranking responses reject a body declared above the hard ceiling")
+    func sitewideRankingResponseCeiling() async {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [OversizedRankingURLProtocol.self]
+        let client = ListenBrainzAPIClient(
+            token: "",
+            root: URL(string: "https://api.listenbrainz.org")!,
+            userAgent: "ListenBrainzKitTests/1.0",
+            session: URLSession(configuration: configuration)
+        )
+
+        await #expect(throws: LBError.invalidResponse) {
+            _ = try await client.execute(
+                StatsArtistsRequest(user: nil, count: 25, offset: 0, range: .thisWeek)
+            )
+        }
+    }
+
     @Test("Top listeners decode tolerantly and preserve useful rows")
     func deserializeTopListeners() throws {
         let response = try JSONDecoder.ListenBrainz.decode(
@@ -891,4 +1006,31 @@ struct LBStatisticsTests {
         let mbids = try #require(recording.artistMbids)
         #expect(mbids.count == 3)
     }
+}
+
+private final class OversizedRankingURLProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        guard let url = request.url,
+              let response = HTTPURLResponse(
+                url: url,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [
+                    "Content-Type": "application/json",
+                    "Content-Length": String(StatsRankingRequestLimits.maximumResponseBytes + 1),
+                ]
+              )
+        else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badURL))
+            return
+        }
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data("{}".utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }

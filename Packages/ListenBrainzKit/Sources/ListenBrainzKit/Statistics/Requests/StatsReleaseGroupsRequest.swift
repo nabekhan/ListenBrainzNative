@@ -21,7 +21,8 @@ public struct StatsReleaseGroupsRequest: APIRequest {
                               body: nil,
                               statusErrors: [400: .badRequest,
                                              404: .notFound,
-                                             204: .noContent])
+                                             204: .noContent],
+                              maximumResponseBytes: StatsRankingRequestLimits.maximumResponseBytes)
 
         } else {
             self.data = .init(path: "/1/stats/sitewide/release-groups",
@@ -31,7 +32,8 @@ public struct StatsReleaseGroupsRequest: APIRequest {
                               body: nil,
                               statusErrors: [400: .badRequest,
                                              404: .notFound,
-                                             204: .noContent])
+                                             204: .noContent],
+                              maximumResponseBytes: StatsRankingRequestLimits.maximumResponseBytes)
         }
     }
 

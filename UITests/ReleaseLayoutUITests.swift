@@ -466,6 +466,40 @@ final class ReleaseLayoutUITests: XCTestCase {
         XCTAssertFalse(error.exists)
     }
 
+    func testCommunityChartsPageOnlyAfterExplicitLoadMoreAction() throws {
+        let app = launchFixture("-brainz-community-charts-demo")
+        let screen = app.scrollViews["community-charts-screen"]
+        let loadMore = app.buttons["community-charts-load-more"]
+        let firstArtist = app.staticTexts["Nina Simone"]
+        let secondArtist = app.staticTexts["Radiohead"]
+
+        XCTAssertTrue(screen.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Community charts"].exists)
+        reveal(firstArtist, in: screen)
+        XCTAssertTrue(firstArtist.exists)
+        reveal(secondArtist, in: screen)
+        XCTAssertTrue(secondArtist.exists)
+        XCTAssertFalse(app.staticTexts["Björk"].exists)
+        reveal(loadMore, in: screen)
+        XCTAssertTrue(loadMore.isHittable)
+        keepScreenshot(named: "Community-charts-first-page")
+
+        loadMore.tap()
+
+        let thirdArtist = app.staticTexts["Björk"]
+        let fourthArtist = app.staticTexts["Massive Attack"]
+        reveal(thirdArtist, in: screen)
+        XCTAssertTrue(thirdArtist.exists)
+        reveal(fourthArtist, in: screen)
+        XCTAssertTrue(fourthArtist.exists)
+        XCTAssertFalse(loadMore.exists)
+        try assertNoAccessibilityIssues(
+            in: app,
+            auditTypes: semanticAuditTypes.union(.elementDetection)
+        )
+        keepScreenshot(named: "Community-charts-second-page")
+    }
+
     func testFeedbackLibraryLoadsOnlyTheSelectedRatingAndPagesExplicitly() throws {
         let app = launchFixture("-brainz-feedback-library-demo")
         let screen = app.scrollViews["feedback-library-screen"]

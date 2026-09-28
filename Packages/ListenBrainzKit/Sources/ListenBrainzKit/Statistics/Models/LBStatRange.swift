@@ -3,7 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 /// The ranges supported when fetching statistics
-public enum LBStatRange: String {
+public enum LBStatRange: String, Sendable {
     /// Past 7 days
     case thisWeek = "this_week"
     /// Past 30 days

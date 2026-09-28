@@ -291,6 +291,7 @@ final class SessionModel {
                 || arguments.contains("-brainz-fresh-releases-filters-demo")
                 || arguments.contains("-brainz-search-pagination-demo")
                 || arguments.contains("-brainz-search-pagination-failure-demo")
+                || arguments.contains("-brainz-community-charts-demo")
             {
                 state = .active(Account(username: "visual-taste", token: "visual-taste"))
                 return true

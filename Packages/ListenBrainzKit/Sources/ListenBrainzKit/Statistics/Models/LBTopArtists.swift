@@ -6,7 +6,13 @@ import Foundation
 
 public struct LBTopArtists: Decodable {
     public let artists: [Artist]
-    /// Total artists listened to beyond what's in .artists. Only populated from user
+    /// Number of rows the server accepted for this page.
+    public let requestedCount: Int?
+    /// Zero-based page offset returned by the server.
+    public let offset: Int?
+    /// Statistics range returned by the server.
+    public let range: String?
+    /// Total artists available for this range.
     public let totalArtistCount: Int?
     public let lastUpdated: Date
     public let from: Date
@@ -27,6 +33,9 @@ public struct LBTopArtists: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case artists
+        case requestedCount = "count"
+        case offset
+        case range
         case totalArtistCount
         case lastUpdated
         case from = "fromTs"

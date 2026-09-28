@@ -31,16 +31,22 @@ struct LBStatisticsIntegrationTests {
         }
     }
 
-    @Test("Top artists sitewide doesn't populate total artist count")
+    @Test("Top artists sitewide preserves result metadata")
     func topArtistsSitewide() async throws {
         let res = try #require(try await client.stats.topArtistsSitewide())
-        #expect(res.totalArtistCount == nil)
+        #expect(res.totalArtistCount != nil)
+        #expect(res.offset != nil)
+        #expect(res.requestedCount != nil)
+        #expect(res.range != nil)
     }
 
     @Test("Top artists limited and offset")
     func topArtistsSitewideLimited() async throws {
         let res = try #require(try await client.stats.topArtistsSitewide(count: 4, offset: 50, range: .month))
-        #expect(res.totalArtistCount == nil)
+        #expect(res.totalArtistCount != nil)
+        #expect(res.requestedCount == 4)
+        #expect(res.offset == 50)
+        #expect(res.range == LBStatRange.month.rawValue)
         #expect(res.artists.count == 4)
         #expect(Date.now.timeIntervalSince(res.from) / (60 * 60 * 24) < 90)
         #expect(Date.now.timeIntervalSince(res.to) / (60 * 60 * 24) < 30)
@@ -49,7 +55,10 @@ struct LBStatisticsIntegrationTests {
     @Test("Top releases limited and offset")
     func topReleasesSitewideLimited() async throws {
         let res = try #require(try await client.stats.topReleasesSitewide(count: 4, offset: 50, range: .month))
-        #expect(res.totalReleaseCount == nil)
+        #expect(res.totalReleaseCount != nil)
+        #expect(res.requestedCount == 4)
+        #expect(res.offset == 50)
+        #expect(res.range == LBStatRange.month.rawValue)
         #expect(res.releases.count == 4)
         #expect(Date.now.timeIntervalSince(res.from) / (60 * 60 * 24) < 90)
         #expect(Date.now.timeIntervalSince(res.to) / (60 * 60 * 24) < 30)
@@ -58,16 +67,22 @@ struct LBStatisticsIntegrationTests {
     @Test("Top release groups limited and offset")
     func topReleaseGroupsSitewideLimited() async throws {
         let res = try #require(try await client.stats.topReleaseGroupsSitewide(count: 4, offset: 50, range: .month))
-        #expect(res.totalReleaseGroupCount == nil)
+        #expect(res.totalReleaseGroupCount != nil)
+        #expect(res.requestedCount == 4)
+        #expect(res.offset == 50)
+        #expect(res.range == LBStatRange.month.rawValue)
         #expect(res.releaseGroups.count == 4)
         #expect(Date.now.timeIntervalSince(res.from) / (60 * 60 * 24) < 90)
         #expect(Date.now.timeIntervalSince(res.to) / (60 * 60 * 24) < 30)
     }
 
-    @Test("Top recorings limited and offset")
+    @Test("Top recordings limited and offset")
     func topRecordingsSitewideLimited() async throws {
         let res = try #require(try await client.stats.topRecordingsSitewide(count: 4, offset: 50, range: .month))
-        #expect(res.totalRecordingCount == nil)
+        #expect(res.totalRecordingCount != nil)
+        #expect(res.requestedCount == 4)
+        #expect(res.offset == 50)
+        #expect(res.range == LBStatRange.month.rawValue)
         #expect(res.recordings.count == 4)
         #expect(Date.now.timeIntervalSince(res.from) / (60 * 60 * 24) < 90)
         #expect(Date.now.timeIntervalSince(res.to) / (60 * 60 * 24) < 30)

@@ -6,6 +6,7 @@ Snapshot: 2026-09-27, Android checkout `3a0e4ef`; compared with ListenBrainz ser
 
 - `shared/src/commonMain` is substantial (278 files): Ktor/Ktorfit networking, serialization, repositories, models, resources/errors, Koin DI, Room/SQLite, DataStore, sockets, paging, metadata, listens, users, social/feed, playlists, recommendations, stats, pins, and some Compose code.
 - Service coverage includes recent/Playing Now/submit/delete, listen count and similarity, pins and feedback, user/sitewide activity, Created For You, followers/following, recommendations/reviews, full playlist mutation, feed actions, MusicBrainz search, CritiqueBrainz, Cover Art Archive, and larger artist/album payloads carrying popularity context.
+- The audited shared/Android tree does not expose the server's public sitewide top-artist, release-group, or recording rankings as a product surface. It has sitewide activity and broader statistics support, but not the website's Global Statistics ranking charts.
 - `ArtistService` and `ArtistPayload` already model the public `POST artist/{artist_mbid}` page response, including artist identity, `coverArt`, all-time `listeningStats`/top listeners, `popularRecordings`, popularity-ranked `releaseGroups`, and ranked `similarArtists`. The shared `ArtistViewModel` projects those fields into one screen state. This confirms that one response should own the native artist page, but the response is a broad internal page contract rather than a small documented API and does not justify importing the KMP framework for it.
 - `androidMain` (14 files) and `iosMain` (12 files) supply platform clients, persistence factories, file/image/log utilities, preferences, listen repository details, and remote-playback adapters.
 
@@ -28,6 +29,7 @@ Snapshot: 2026-09-27, Android checkout `3a0e4ef`; compared with ListenBrainz ser
 - Shared KMP currently exposes authenticated playlist-art transport/repository logic, but no generic stats-grid or artist-grid domain API. The native app therefore keeps the smaller typed Swift extension behind its provider boundary; KMP remains a behavior reference for playlist art rather than an iOS dependency.
 - Shared KMP does not currently expose a manual-mapping transport or native-ready workflow. The app therefore reuses the existing Swift ListenBrainzKit POST and keeps candidate search, precedence, and recovery behavior behind its app-facing provider.
 - Shared KMP does not currently expose the server's new account-data export endpoints. The native app therefore uses the smaller typed Swift extension; importing the full KMP graph would add no export coverage and would not solve its current iOS build failure.
+- Community Charts likewise does not justify KMP adoption: the native app uses the hardened Swift ranking models behind `CommunityChartsProviding`, so a future official implementation can replace transport without changing SwiftUI.
 
 ## UI migration status
 

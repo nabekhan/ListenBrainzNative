@@ -101,6 +101,7 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-fresh-releases-filters-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-search-pagination-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-search-pagination-failure-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-community-charts-demo")
             {
                 let visualAccount = Account(username: "visual-taste", token: "visual-taste")
                 _model = State(
@@ -370,6 +371,9 @@ struct MainTabView: View {
                         "-brainz-profile-playlists-visitor-demo"
                     )
                 )
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-community-charts-demo") {
+                CommunityChartsVisualQAScreen(listeningModel: model)
+                    .environment(pins)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-fresh-releases-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-fresh-releases-filters-demo")
             {

@@ -1,6 +1,6 @@
 # Sideload readiness
 
-Snapshot: 2026-09-26.
+Snapshot: 2026-09-27.
 
 ## Distribution contract
 

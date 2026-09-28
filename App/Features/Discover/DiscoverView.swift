@@ -31,6 +31,7 @@ struct DiscoverView: View {
                 LazyVStack(alignment: .leading, spacing: 22) {
                     if !isFreshReleasesVisualQA {
                         recommendationsLink
+                        communityChartsLink
                         radioLink
                         feedLink
                         followingPinsLink
@@ -254,6 +255,43 @@ struct DiscoverView: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("Open ListenBrainz recommendations")
+    }
+
+    private var communityChartsLink: some View {
+        NavigationLink {
+            CommunityChartsView(listeningModel: listeningModel)
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(AppTheme.artworkGradient(seed: "community-charts"))
+                    Image(systemName: "chart.bar.xaxis")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 72, height: 72)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Community charts")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text("Explore the artists, albums, and tracks heard most across ListenBrainz.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.forward")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(14)
+            .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Open ListenBrainz community rankings")
     }
 
     private var radioLink: some View {

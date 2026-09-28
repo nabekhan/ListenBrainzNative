@@ -6,7 +6,13 @@ import Foundation
 
 public struct LBTopReleaseGroups: Decodable {
     public let releaseGroups: [ReleaseGroup]
-    /// Total release groups listened to beyond what's in .releaseGroups. Only populated from user
+    /// Number of rows the server accepted for this page.
+    public let requestedCount: Int?
+    /// Zero-based page offset returned by the server.
+    public let offset: Int?
+    /// Statistics range returned by the server.
+    public let range: String?
+    /// Total release groups available for this range.
     public let totalReleaseGroupCount: Int?
     public let lastUpdated: Date
     public let from: Date
@@ -35,6 +41,9 @@ public struct LBTopReleaseGroups: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case releaseGroups
+        case requestedCount = "count"
+        case offset
+        case range
         case totalReleaseGroupCount
         case lastUpdated
         case from = "fromTs"
