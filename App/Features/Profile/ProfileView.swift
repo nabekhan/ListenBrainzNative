@@ -61,6 +61,7 @@ struct ProfileView: View {
                 .padding(.horizontal, 18)
                 .padding(.bottom, 40)
             }
+            .accessibilityIdentifier("profile-screen")
             .refreshable {
                 await model.refresh()
                 await pins.refresh()

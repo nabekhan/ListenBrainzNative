@@ -1,7 +1,105 @@
 import XCTest
+import UIKit
 
 @MainActor
 final class ReleaseLayoutUITests: XCTestCase {
+    /// This intentionally touches production data only when the runner opts
+    /// in. The token is provisioned directly to the simulator clipboard before
+    /// launch; it is never accepted from an XCTest argument or environment
+    /// value, and this test never reads the field after pasting.
+    func testOptInLiveAuthenticationSmokeIsReadOnlyAndRestoresSession() throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["BRAINZ_LIVE_AUTH_SMOKE"] == "1",
+            "Set BRAINZ_LIVE_AUTH_SMOKE=1 only for an intentional, clipboard-provisioned production read smoke test."
+        )
+        defer { clearSimulatorClipboard() }
+
+        let app = XCUIApplication()
+        app.launchArguments = ["-brainz-request-audit"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+
+        if app.navigationBars["Welcome"].waitForExistence(timeout: 5) {
+            pasteSimulatorClipboardToken(into: app)
+            app.buttons["Continue with token"].tap()
+        }
+
+        assertLiveTab("Home", navigationTitle: "Home", in: app)
+        assertLiveHomeContent(app)
+        assertLiveTab("History", navigationTitle: "History", in: app)
+        assertLiveTab("Discover", navigationTitle: "Discover", in: app)
+        assertLiveTab("Taste", navigationTitle: "Taste", in: app)
+        assertLiveTab("Profile", navigationTitle: "Profile", in: app)
+        assertExpectedUsernameIfSupplied(in: app)
+        assertLiveProfilePlaylistsSettle(in: app)
+
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+        XCTAssertFalse(
+            app.navigationBars["Welcome"].waitForExistence(timeout: 3),
+            "A successful live smoke test should restore its Keychain-backed session after relaunch."
+        )
+        assertLiveTab("Profile", navigationTitle: "Profile", in: app)
+        assertExpectedUsernameIfSupplied(in: app)
+        assertLiveProfilePlaylistsSettle(in: app)
+        app.terminate()
+    }
+
+    /// Removes only the simulator's local credential and private cached data.
+    /// It does not mutate the ListenBrainz account or any server-side music
+    /// data, and remains skipped unless a cleanup run explicitly opts in.
+    func testOptInLiveAuthenticationCleanupRemovesLocalSession() throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["BRAINZ_LIVE_AUTH_CLEANUP"] == "1",
+            "Set BRAINZ_LIVE_AUTH_CLEANUP=1 only when intentionally clearing a credentialed simulator."
+        )
+        let expectedUsername = try XCTUnwrap(
+            liveExpectedUsername(),
+            "Set BRAINZ_LIVE_EXPECTED_USERNAME before clearing a credentialed simulator."
+        )
+
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+        XCTAssertFalse(
+            app.navigationBars["Welcome"].waitForExistence(timeout: 3),
+            "The cleanup test expected an authenticated local session."
+        )
+
+        assertLiveTab("Profile", navigationTitle: "Profile", in: app)
+        assertExpectedUsername(expectedUsername, in: app)
+        let settingsButton = app.buttons["Settings"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
+        settingsButton.tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
+
+        let disconnectButton = app.buttons["Disconnect account"].firstMatch
+        reveal(disconnectButton, in: app.collectionViews.firstMatch)
+        XCTAssertTrue(disconnectButton.waitForExistence(timeout: 10))
+        disconnectButton.tap()
+        XCTAssertTrue(
+            app.staticTexts["Disconnect from ListenBrainz?"].waitForExistence(timeout: 10)
+        )
+
+        let confirmation = app.sheets.buttons["Disconnect account"]
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 10))
+        confirmation.tap()
+        XCTAssertTrue(
+            app.navigationBars["Welcome"].waitForExistence(timeout: 20),
+            "Disconnecting did not return to the signed-out screen."
+        )
+
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+        XCTAssertTrue(
+            app.navigationBars["Welcome"].waitForExistence(timeout: 10),
+            "The simulator restored a credential after local cleanup."
+        )
+        app.terminate()
+    }
+
     func testLiveWebSignInReachesOfficialMetaBrainzPage() throws {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["BRAINZ_LIVE_AUTH_ROUTE"] == "1",
@@ -663,6 +761,89 @@ final class ReleaseLayoutUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
         return app
+    }
+
+    private func pasteSimulatorClipboardToken(into app: XCUIApplication) {
+        let tokenField = app.secureTextFields["User token"]
+        XCTAssertTrue(
+            tokenField.waitForExistence(timeout: 10),
+            "The live smoke test expected the token field on the signed-out screen."
+        )
+        tokenField.tap()
+        tokenField.press(forDuration: 1)
+
+        let pasteItem = app.menuItems["Paste"]
+        XCTAssertTrue(
+            pasteItem.waitForExistence(timeout: 5),
+            "Provision the simulator clipboard before running the opt-in live smoke test."
+        )
+        pasteItem.tap()
+        clearSimulatorClipboard()
+    }
+
+    private func assertLiveHomeContent(_ app: XCUIApplication) {
+        XCTAssertTrue(
+            app.scrollViews["home-screen"].waitForExistence(timeout: 35),
+            "Home did not reach its stable read-only content anchor."
+        )
+    }
+
+    private func assertLiveTab(
+        _ tabName: String,
+        navigationTitle: String,
+        in app: XCUIApplication
+    ) {
+        let tab = app.tabBars.buttons[tabName]
+        XCTAssertTrue(tab.waitForExistence(timeout: 10), "Missing live smoke tab.")
+        tab.tap()
+        XCTAssertTrue(
+            app.navigationBars[navigationTitle].waitForExistence(timeout: 35),
+            "A read-only live smoke destination did not become stable."
+        )
+    }
+
+    private func assertExpectedUsernameIfSupplied(in app: XCUIApplication) {
+        guard let expectedUsername = liveExpectedUsername() else { return }
+        assertExpectedUsername(expectedUsername, in: app)
+    }
+
+    private func assertExpectedUsername(_ expectedUsername: String, in app: XCUIApplication) {
+        XCTAssertTrue(
+            app.staticTexts[expectedUsername].waitForExistence(timeout: 10),
+            "The authenticated account did not match the optional expected account."
+        )
+    }
+
+    private func liveExpectedUsername() -> String? {
+        let username = ProcessInfo.processInfo.environment["BRAINZ_LIVE_EXPECTED_USERNAME"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return username?.isEmpty == false ? username : nil
+    }
+
+    private func clearSimulatorClipboard() {
+        UIPasteboard.general.items = []
+    }
+
+    private func assertLiveProfilePlaylistsSettle(in app: XCUIApplication) {
+        let scrollView = app.scrollViews["profile-screen"]
+        XCTAssertTrue(
+            scrollView.waitForExistence(timeout: 10),
+            "The Profile screen did not expose its stable content anchor."
+        )
+
+        let sectionTitle = app.staticTexts["Playlists"]
+        reveal(sectionTitle, in: scrollView)
+
+        let readyState = app.descendants(matching: .any)["profile-playlists-ready"]
+        let failedState = app.descendants(matching: .any)["profile-playlists-failed"]
+        XCTAssertTrue(
+            readyState.waitForExistence(timeout: 35),
+            "The read-only profile playlist request did not settle successfully."
+        )
+        XCTAssertFalse(
+            failedState.exists,
+            "The read-only profile playlist request ended in an error state."
+        )
     }
 
     private func assertMatrixPortraitWidth(

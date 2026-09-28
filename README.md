@@ -100,6 +100,32 @@ Pass `--output-root /absolute/path` to retain results somewhere specific. The sc
 
 The matrix temporarily boots supplied simulators when needed, sets their appearance and content size, verifies those settings, then restores the original appearance, Dynamic Type category, and boot/shutdown state on normal exit or interruption. It does not replace physical-device, signed-build, real-authentication, or translated-language QA.
 
+## Opt-in authenticated simulator smoke test
+
+The repository includes one intentionally skipped, read-only production smoke test: `ReleaseLayoutUITests/testOptInLiveAuthenticationSmokeIsReadOnlyAndRestoresSession`. It is excluded unless the UI-test runner has `BRAINZ_LIVE_AUTH_SMOKE=1`. Before running it, copy a disposable ListenBrainz token directly into the target simulator clipboard. The test opens the normal app, uses the system Paste menu when signed out, visits only Home, History, Discover, Taste, and Profile, then relaunches once to verify the Keychain-backed session restores. It does not press refresh, feedback, pin, follow, playlist, deletion, or submission controls.
+
+Do not put a token in launch arguments, environment variables, scripts, source, screenshots, or XCResult attachments. An optional `BRAINZ_LIVE_EXPECTED_USERNAME` runner environment value can verify the signed-in account; it is not required for the smoke test. A live XCResult can contain UI metadata and must be treated as temporary private test evidence, then removed rather than committed or shared.
+
+The smoke test clears the simulator pasteboard immediately after using Paste and again on exit. If the Mac clipboard was used to transfer the token, clear it immediately after provisioning and verify both clipboards before and after the run:
+
+```sh
+: | pbcopy
+test "$(pbpaste | wc -c | tr -d ' ')" = 0
+: | xcrun simctl pbcopy <SIMULATOR_UDID>
+test "$(xcrun simctl pbpaste <SIMULATOR_UDID> | wc -c | tr -d ' ')" = 0
+```
+
+Launch the one test through Xcode or an explicit simulator destination after provisioning the clipboard. While it runs, inspect only the sanitized DEBUG lifecycle stream with:
+
+```sh
+xcrun simctl spawn <SIMULATOR_UDID> log stream --style compact --level debug \
+  --predicate 'subsystem == "dev.nabekhan.listenbrainznative" AND category == "request-audit"'
+```
+
+The test launches the app with `-brainz-request-audit`. Those DEBUG records contain only an endpoint-family label, lifecycle, aggregate counts, and read/mutation concurrency. They intentionally omit tokens, usernames, request identity components, URLs, queries, payloads, and response data. The deterministic fixture matrix remains credential-free and does not run this test.
+
+After retaining the evidence you need, run the separately guarded `testOptInLiveAuthenticationCleanupRemovesLocalSession` with `BRAINZ_LIVE_AUTH_CLEANUP=1` and the exact expected account in `BRAINZ_LIVE_EXPECTED_USERNAME`. The identity assertion runs before the destructive confirmation. The test uses the app's normal disconnect flow to remove only that simulator's saved credential and private local data, then confirms a relaunch stays signed out. It does not change the ListenBrainz account or server-side music data.
+
 ## Research and provenance
 
 This repository follows an inspect-first, reuse-first workflow. Start with:

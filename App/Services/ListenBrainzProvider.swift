@@ -1,6 +1,7 @@
 import Foundation
 import ListenBrainzKit
 import CryptoKit
+import OSLog
 
 struct ListenBrainzProvider: ListeningProvider {
     private let client: LBClient
@@ -594,6 +595,20 @@ private actor ListenDeletionAttemptState {
 actor RequestGate {
     static let shared = RequestGate()
 
+    #if DEBUG
+    /// This is deliberately an argument gate rather than a build-wide switch:
+    /// request lifecycle logs can be useful during an intentional smoke test,
+    /// but must stay absent from ordinary DEBUG runs too.
+    static func isRequestAuditLoggingEnabled(arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {
+        arguments.contains("-brainz-request-audit")
+    }
+
+    private static let requestAuditLogger = Logger(
+        subsystem: "dev.nabekhan.listenbrainznative",
+        category: "request-audit"
+    )
+    #endif
+
     /// An opaque process-local account boundary. Its digest is never persisted
     /// or emitted in telemetry, and a new process receives a new key.
     struct ReadScope: Hashable, Sendable {
@@ -959,6 +974,7 @@ actor RequestGate {
     #if DEBUG
     private var readTelemetry: [ReadTelemetry] = []
     private let maximumTelemetryEventCount = 128
+    private let requestAuditLoggingEnabled: Bool
     #endif
 
     init(
@@ -969,6 +985,9 @@ actor RequestGate {
         self.minimumInterval = minimumInterval
         self.maximumConcurrentReads = max(1, maximumConcurrentReads)
         self.pacesReadStarts = pacesReadStarts
+        #if DEBUG
+        requestAuditLoggingEnabled = Self.isRequestAuditLoggingEnabled()
+        #endif
     }
 
     func perform<Result: Sendable>(
@@ -1223,14 +1242,19 @@ actor RequestGate {
                 operationStarted: operationStarted
             )
         } catch {
-            if let delay = deferralForError(error) {
+            let transportWasCancelled = error is CancellationError
+                || (error as? URLError)?.code == .cancelled
+            if !transportWasCancelled, let delay = deferralForError(error) {
                 applyDeferral(for: delay)
             }
+            let surfacedError: any Swift.Error = transportWasCancelled
+                ? CancellationError()
+                : error
             completeRead(
                 for: key,
                 flightID: flightID,
-                result: .failure(error),
-                lifecycle: error is CancellationError ? .cancelled : .failed,
+                result: .failure(surfacedError),
+                lifecycle: transportWasCancelled ? .cancelled : .failed,
                 operationStarted: operationStarted
             )
         }
@@ -1454,6 +1478,11 @@ actor RequestGate {
             activeReadTransportCount = max(0, activeReadTransportCount - 1)
         }
         readAuditCounts[feature] = counts
+        recordRequestAuditLog(
+            feature: feature,
+            lifecycle: lifecycle,
+            counts: counts
+        )
     }
 
     private func recordMutationAudit(lifecycle: ReadLifecycle) {
@@ -1477,5 +1506,27 @@ actor RequestGate {
         case .coalesced:
             break
         }
+        recordRequestAuditLog(
+            feature: nil,
+            lifecycle: lifecycle,
+            counts: mutationAuditCounts
+        )
+    }
+
+    /// Emits only the endpoint-family label and aggregate lifecycle counters.
+    /// Never add read-key identity components, URLs, payloads, response data,
+    /// account names, or credential-derived values to this diagnostic stream.
+    private func recordRequestAuditLog(
+        feature: ReadFeature?,
+        lifecycle: ReadLifecycle,
+        counts: RequestAuditSnapshot.LifecycleCounts
+    ) {
+        #if DEBUG
+        guard requestAuditLoggingEnabled else { return }
+        let featureLabel = feature?.rawValue ?? "mutation"
+        Self.requestAuditLogger.debug(
+            "request_gate feature=\(featureLabel, privacy: .public) lifecycle=\(lifecycle.rawValue, privacy: .public) started=\(counts.started, privacy: .public) coalesced=\(counts.coalesced, privacy: .public) finished=\(counts.finished, privacy: .public) failed=\(counts.failed, privacy: .public) cancelled=\(counts.cancelled, privacy: .public) active_reads=\(self.activeReadTransportCount, privacy: .public) peak_reads=\(self.maximumActiveReadTransportCount, privacy: .public) active_mutations=\(self.activeMutationTransportCount, privacy: .public) peak_mutations=\(self.maximumActiveMutationTransportCount, privacy: .public) max_read_concurrency=\(self.maximumConcurrentReads, privacy: .public)"
+        )
+        #endif
     }
 }

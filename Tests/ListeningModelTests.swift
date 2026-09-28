@@ -2836,6 +2836,32 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertFalse(String(describing: audit).contains("private query"))
     }
 
+    nonisolated func testRequestGateNormalizesURLSessionReadCancellation() async throws {
+        let gate = RequestGate(minimumInterval: .zero)
+        let key = RequestGate.ReadKey(
+            scope: .anonymous,
+            feature: .profilePlaylists,
+            identityComponents: ["cancelled request"]
+        )
+
+        do {
+            let _: Int = try await gate.read(for: key) {
+                throw URLError(.cancelled)
+            }
+            XCTFail("A cancelled read transport should surface cancellation.")
+        } catch is CancellationError {}
+
+        let audit = await gate.requestAuditSnapshot()
+        let counts = try XCTUnwrap(
+            audit.reads.first { $0.feature == .profilePlaylists }?.counts
+        )
+        XCTAssertEqual(counts.started, 1)
+        XCTAssertEqual(counts.finished, 0)
+        XCTAssertEqual(counts.failed, 0)
+        XCTAssertEqual(counts.cancelled, 1)
+        XCTAssertEqual(audit.activeReadTransports, 0)
+    }
+
     nonisolated func testRequestGateCoalescesIdenticalReadsIntoOneTransport() async throws {
         let gate = RequestGate(minimumInterval: .zero)
         let probe = ReadGateProbe()
@@ -2878,6 +2904,16 @@ final class ListeningModelTests: XCTestCase {
         )
         XCTAssertEqual(counts.finished, 1)
         XCTAssertEqual(audit.activeReadTransports, 0)
+    }
+
+    func testRequestAuditLoggingRequiresTheExactOptInArgument() {
+        #if DEBUG
+        XCTAssertFalse(RequestGate.isRequestAuditLoggingEnabled(arguments: []))
+        XCTAssertFalse(RequestGate.isRequestAuditLoggingEnabled(arguments: ["-brainz-request-audit=1"]))
+        XCTAssertTrue(RequestGate.isRequestAuditLoggingEnabled(arguments: ["-brainz-request-audit"]))
+        #else
+        XCTFail("Request-audit logging must remain unavailable outside DEBUG builds.")
+        #endif
     }
 
     nonisolated func testRequestGateCancelsOnlyOneCoalescedReadWaiter() async throws {

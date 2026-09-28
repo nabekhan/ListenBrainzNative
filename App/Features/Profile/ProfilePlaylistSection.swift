@@ -41,6 +41,7 @@ struct ProfilePlaylistSection: View {
             .accessibilityLabel("Playlist category")
 
             stateContent
+                .accessibilityIdentifier(stateAccessibilityIdentifier)
         }
         .task(id: selection) {
             await model.load(category: selection)
@@ -233,6 +234,16 @@ struct ProfilePlaylistSection: View {
 
     private var resolvedMutationProvider: any PlaylistMutationProviding {
         mutationProvider ?? ListenBrainzPlaylistMutationProvider(token: viewer.token)
+    }
+
+    private var stateAccessibilityIdentifier: String {
+        switch model.state(for: selection).phase {
+        case .idle: "profile-playlists-idle"
+        case .loading: "profile-playlists-loading"
+        case .refreshing: "profile-playlists-refreshing"
+        case .ready: "profile-playlists-ready"
+        case .failed: "profile-playlists-failed"
+        }
     }
 }
 
