@@ -319,6 +319,8 @@ final class SessionModel {
             if arguments.contains("-brainz-year-in-music-demo")
                 || arguments.contains("-brainz-year-in-music-tracks-demo")
                 || arguments.contains("-brainz-year-in-music-identity-demo")
+                || arguments.contains("-brainz-year-in-music-origins-demo")
+                || arguments.contains("-brainz-year-in-music-similar-listeners-demo")
                 || arguments.contains("-brainz-year-in-music-evolution-demo")
                 || arguments.contains("-brainz-year-in-music-new-releases-demo")
                 || arguments.contains("-brainz-year-in-music-playlists-demo")

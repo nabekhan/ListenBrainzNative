@@ -12,6 +12,7 @@ struct YearInMusicView: View {
     static let latestSupportedYear = 2025
 
     let listeningModel: ListeningModel
+    private let viewer: Account
     private let subjectUsername: String
     private let artworkProvider: any YearInMusicArtworkProviding
     private let reportProvider: any YearInMusicProviding
@@ -34,6 +35,7 @@ struct YearInMusicView: View {
         cache: EntityDetailCache<YearInMusicCacheKey, YearInMusicReport>? = nil
     ) {
         self.listeningModel = listeningModel
+        viewer = account
         if let requestedSubject = subjectUsername?.trimmingCharacters(in: .whitespacesAndNewlines),
            !requestedSubject.isEmpty {
             self.subjectUsername = requestedSubject
@@ -205,6 +207,13 @@ struct YearInMusicView: View {
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-brainz-year-in-music-identity-demo") {
             YearInMusicIdentitySection(report: report)
+        } else if arguments.contains("-brainz-year-in-music-origins-demo") {
+            YearInMusicArtistOriginsSection(
+                countries: report.artistOrigins,
+                allowsNavigation: allowsMediaNavigation
+            )
+        } else if arguments.contains("-brainz-year-in-music-similar-listeners-demo") {
+            YearInMusicSimilarListenersSection(listeners: report.similarListeners, viewer: viewer)
         } else if arguments.contains("-brainz-year-in-music-evolution-demo") {
             YearInMusicArtistEvolutionSection(report: report)
         } else if arguments.contains("-brainz-year-in-music-artists-demo") {
@@ -236,6 +245,15 @@ struct YearInMusicView: View {
             YearInMusicHero(report: report)
             YearInMusicCalendarSection(report: report)
             if report.hasIdentityContent { YearInMusicIdentitySection(report: report) }
+            if !report.artistOrigins.isEmpty {
+                YearInMusicArtistOriginsSection(
+                    countries: report.artistOrigins,
+                    allowsNavigation: allowsMediaNavigation
+                )
+            }
+            if !report.similarListeners.isEmpty {
+                YearInMusicSimilarListenersSection(listeners: report.similarListeners, viewer: viewer)
+            }
             if report.artistEvolution != nil { YearInMusicArtistEvolutionSection(report: report) }
             YearInMusicArtistsSection(
                 artists: report.topArtists,
@@ -261,6 +279,12 @@ struct YearInMusicView: View {
         YearInMusicHero(report: report)
         if !report.listeningDays.isEmpty { YearInMusicCalendarSection(report: report) }
         if report.hasIdentityContent { YearInMusicIdentitySection(report: report) }
+        if !report.artistOrigins.isEmpty {
+            YearInMusicArtistOriginsSection(countries: report.artistOrigins, allowsNavigation: true)
+        }
+        if !report.similarListeners.isEmpty {
+            YearInMusicSimilarListenersSection(listeners: report.similarListeners, viewer: viewer)
+        }
         if report.artistEvolution != nil { YearInMusicArtistEvolutionSection(report: report) }
         if !report.topArtists.isEmpty { YearInMusicArtistsSection(artists: report.topArtists, allowsNavigation: true) }
         if !report.newReleasesOfTopArtists.isEmpty {
@@ -536,6 +560,126 @@ struct YearInMusicTeaserCard: View {
                 .padding(.bottom, 3)
         }
         .padding(18)
+    }
+}
+
+private struct YearInMusicArtistOriginsSection: View {
+    let countries: [ArtistOrigins.Country]
+    let allowsNavigation: Bool
+    @Environment(\.locale) private var locale
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Artist origins",
+                subtitle: "Where this year’s most-played artists came from"
+            )
+
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(countries.prefix(3)) { country in
+                    countryCard(country)
+                }
+            }
+        }
+        .accessibilityIdentifier("year-in-music-artist-origins")
+    }
+
+    private func countryCard(_ country: ArtistOrigins.Country) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Image(systemName: "globe.americas.fill")
+                    .foregroundStyle(AppTheme.secondary)
+                    .accessibilityHidden(true)
+                Text(ArtistOriginsPresentation.countryName(code: country.code, locale: locale))
+                    .font(.headline)
+                Spacer(minLength: 8)
+                Text(countrySummary(country))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            if !country.artists.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(country.artists.prefix(3)) { artist in
+                        artistRow(artist)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+        .accessibilityElement(children: .contain)
+    }
+
+    private func countrySummary(_ country: ArtistOrigins.Country) -> String {
+        let artists = String(localized: "\(country.artistCount) artists")
+        let listens = String(localized: "\(country.listenCount) listens")
+        return String(localized: "\(artists) · \(listens)")
+    }
+
+    @ViewBuilder
+    private func artistRow(_ artist: ArtistOrigins.Artist) -> some View {
+        let content = HStack(spacing: 10) {
+            Image(systemName: "music.mic")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.secondary)
+                .frame(width: 24, height: 24)
+                .background(AppTheme.secondary.opacity(0.12), in: .circle)
+                .accessibilityHidden(true)
+            Text(artist.name)
+                .font(.subheadline.weight(.medium))
+                .lineLimit(2)
+            Spacer(minLength: 8)
+            Text(artist.listenCount.formatted())
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "\(artist.name), \(artist.listenCount) listens"))
+
+        if allowsNavigation, let mbid = artist.mbid {
+            NavigationLink(value: RankedArtist(mbid: mbid, name: artist.name, listenCount: artist.listenCount)) {
+                content
+            }
+            .accessibilityHint("Opens artist details")
+        } else {
+            content
+        }
+    }
+}
+
+private struct YearInMusicSimilarListenersSection: View {
+    let listeners: [SimilarListener]
+    let viewer: Account
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Similar listeners",
+                subtitle: "People ListenBrainz matched to this year’s listening taste"
+            )
+
+            VStack(spacing: 0) {
+                ForEach(Array(listeners.prefix(5).enumerated()), id: \.element.id) { index, listener in
+                    NavigationLink {
+                        UserDetailView(user: listener.user, viewer: viewer)
+                    } label: {
+                        ListenerRow(user: listener.user, similarity: listener.normalizedSimilarity)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 7)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens listener profile")
+
+                    if index < min(listeners.count, 5) - 1 {
+                        Divider().padding(.leading, 70)
+                    }
+                }
+            }
+            .background(.thinMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+        }
+        .accessibilityIdentifier("year-in-music-similar-listeners")
     }
 }
 
@@ -1893,6 +2037,26 @@ private extension YearInMusicReport {
                 .init(decade: 2010, listenCount: 5_817),
                 .init(decade: 2000, listenCount: 3_420),
                 .init(decade: 1990, listenCount: 1_163),
+            ],
+            artistOrigins: [
+                .init(
+                    code: "CAN", artistCount: 18, listenCount: 1_426,
+                    artists: [
+                        .init(mbid: artistIDs[0], name: "Alvvays", listenCount: 612),
+                        .init(mbid: artistIDs[3], name: "Men I Trust", listenCount: 318),
+                    ]
+                ),
+                .init(
+                    code: "USA", artistCount: 46, listenCount: 1_218,
+                    artists: [
+                        .init(mbid: artistIDs[1], name: "Japanese Breakfast", listenCount: 497),
+                    ]
+                ),
+            ],
+            similarListeners: [
+                .init(user: .init(username: "summer-listener"), similarity: 0.92),
+                .init(user: .init(username: "deep-cuts"), similarity: 0.84),
+                .init(user: .init(username: "vinyl-mornings"), similarity: 0.77),
             ],
             artistEvolution: ArtistEvolutionActivity(
                 period: .thisYear,

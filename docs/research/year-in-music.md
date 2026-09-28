@@ -1,6 +1,6 @@
 # Year in Music working note
 
-Snapshot: 2026-09-22.
+Snapshot: 2026-09-28.
 
 ## Current product contract
 
@@ -14,6 +14,7 @@ Snapshot: 2026-09-22.
 ## Source comparison
 
 - The live 2025 website is a very long fixed-chart story with a persistent player; its data hierarchy is authoritative, but its GPL React/Sass was not copied.
+- Current server source at `71f92e100b938801da19cd9639cd78401b2c9a6c` still stores `artist_map` and `similar_users` inside the annual aggregate rather than behind chapter-specific reads.
 - Official Android and iOS implementations are older, hard-coded 2022/2023 references and remain behavior references only.
 - No usable current Year in Music implementation exists in KMP `commonMain`; there is no iOS-export advantage for this feature today.
 - ListenBrainzKit was the simplest reliable path. The local MPL extension now supplies tolerant current and archival decoding, per-segment username encoding, and a 16 MiB archival ceiling enforced while receiving and again before JSON decoding.
@@ -27,6 +28,7 @@ Snapshot: 2026-09-22.
 - The native story shows listening-time/listen totals, a Monday-first UTC annual heatmap, annual identity context, ranked artists, release groups, and recordings.
 - The identity chapter reuses the same aggregate response: it preserves the presence of `total_new_artists_discovered` (including a truthful zero), normalizes only canonical weekday names, presents genre strings explicitly as ListenBrainz tags, and groups positive release-year counts from 1850 through the report year into decades. Missing or invalid fields are omitted rather than invented, and no secondary request or row hydration is introduced.
 - The annual artist-evolution chapter also stays inside that aggregate. Documented English months and defensive numeric 1–12 buckets feed the existing `ArtistEvolutionActivity` identity/ordering normalizer; malformed or non-positive rows disappear, sparse months remain truthful zeroes, and the render-only native chart/legend is shared with Taste without importing its request-owning lifecycle. Mapped artists retain the existing Artist Detail route only after a tap, while unmapped names remain readable.
+- Artist origins and similar listeners are now native secondary chapters from the same decoded aggregate. Origins reuse the existing country/artist identity normalizer, merge duplicate country and artist rows, omit empty or invalid rows, and navigate only canonical artist MBIDs. Similar-listener names are trimmed, case-insensitively deduplicated, deterministically ranked, and displayed with a bounded similarity percentage. Neither chapter hydrates a row or starts a second provider request; a listener profile loads only after an explicit tap.
 - **New from top artists** uses `new_releases_of_top_artists` from that same annual response. A dedicated discovery model preserves server order and keeps release-group identity separate from concrete legacy-release and CAA artwork identity. Only a valid release-group MBID enables Release Group Detail; malformed, unmapped, and concrete-only rows remain readable without a false destination. The section previews six albums/singles, invents no date, type, rank, count, or confidence, and performs no provider read, row hydration, retry, or artwork prefetch. Normal visible artwork still loads lazily from Cover Art Archive through the shared `ArtworkView`.
 - Existing artist, release-group, release, and recording destinations are reused. The archive adapter preserves concrete releases for 2021–2022, uses the supplied safe HTTPS 2021 artwork map when present, and never collapses a release MBID into a release-group identity.
 - Cache keys include normalized user, request scope, and year; stale content survives refresh failures, and late/cancelled responses cannot overwrite newer state.
@@ -52,5 +54,5 @@ Snapshot: 2026-09-22.
 
 ## Deferred
 
-- Secondary payload chapters such as artist-map context and similar users remain deferred until their value and duplication with existing app surfaces are reviewed.
+- A geographic map remains optional; the current annual chapter presents the useful country and embedded-artist context without adding map assets, geocoding, or another request.
 - The full year-specific website animations and layouts remain reference-only GPL behavior; the native story deliberately normalizes the highest-value chapters instead of copying them.

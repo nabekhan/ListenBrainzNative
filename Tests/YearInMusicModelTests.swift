@@ -6,6 +6,86 @@ import ListenBrainzKit
 
 @MainActor
 final class YearInMusicModelTests: XCTestCase {
+    func testMappingRetainsNormalizedAnnualOriginsAndSimilarListeners() throws {
+        let artist = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+        let source = try yearInMusic("""
+        { "user_name": "listener", "year": 2025, "data": {
+          "artist_map": [
+            {"country":" can ","artist_count":2,"listen_count":7,"artists":[
+              {"artist_mbid":"\(artist)","artist_name":"Artist","listen_count":4},
+              {"artist_name":"   ","listen_count":100}
+            ]},
+            {"country":"CAN","artist_count":3,"listen_count":9,"artists":[
+              {"artist_mbid":"\(artist)","artist_name":" Artist ","listen_count":6}
+            ]},
+            {"country":"not a country","artist_count":1,"listen_count":2,"artists":[
+              {"artist_mbids":["not-a-uuid","22222222-2222-2222-2222-222222222222"],
+               "artist_name":"Legacy Artist","listen_count":2}
+            ]}
+          ],
+          "similar_users": {
+            " alpha ": 1.8,
+            "ALPHA": 0.2,
+            "beta": 0.9,
+            "   ": 0.95
+          }
+        } }
+        """)
+
+        let mapped = try XCTUnwrap(YearInMusicReport(source: source, requestedYear: 2025))
+        XCTAssertEqual(mapped.artistOrigins.count, 2)
+        let canada = try XCTUnwrap(mapped.artistOrigins.first(where: { $0.code == "CAN" }))
+        XCTAssertEqual(canada.artistCount, 5)
+        XCTAssertEqual(canada.listenCount, 16)
+        XCTAssertEqual(canada.artists, [.init(mbid: artist, name: "Artist", listenCount: 10)])
+        XCTAssertEqual(mapped.artistOrigins.first(where: { $0.code == nil })?.listenCount, 2)
+        XCTAssertEqual(
+            mapped.artistOrigins.first(where: { $0.code == nil })?.artists.first?.mbid,
+            UUID(uuidString: "22222222-2222-2222-2222-222222222222")
+        )
+        XCTAssertEqual(mapped.similarListeners.map(\.user.username), ["alpha", "beta"])
+        XCTAssertEqual(mapped.similarListeners.map(\.similarity), [1.8, 0.9])
+        XCTAssertEqual(mapped.similarListeners.first?.normalizedSimilarity, 1)
+    }
+
+    func testSecondaryContextPreventsAnAvailableAggregateFromLookingEmpty() {
+        let report = YearInMusicReport(
+            username: "listener",
+            year: 2025,
+            totals: .init(
+                listenCount: 0, artistCount: 0, recordingCount: 0,
+                releaseGroupCount: 0, newArtistCount: 0, listeningTime: 0,
+                hasArtistCount: false, hasRecordingCount: false,
+                hasReleaseCount: false, hasListeningTime: false,
+                hasNewArtistCount: false
+            ),
+            listeningDays: [],
+            topArtists: [],
+            topReleaseGroups: [],
+            topRecordings: [],
+            similarListeners: [.init(user: .init(username: "listener-friend"), similarity: 0.7)]
+        )
+
+        XCTAssertFalse(report.isEmpty)
+    }
+
+    func testEmptyAnnualOriginRowsStayOmitted() throws {
+        let source = try yearInMusic("""
+        { "user_name": "listener", "year": 2025, "data": {
+          "artist_map": [
+            {"country":null,"artist_count":null,"listen_count":null,"artists":[]},
+            {"country":"???","artist_count":-4,"listen_count":-8,"artists":[
+              {"artist_name":"   ","listen_count":9}
+            ]}
+          ]
+        } }
+        """)
+
+        let mapped = try XCTUnwrap(YearInMusicReport(source: source, requestedYear: 2025))
+        XCTAssertTrue(mapped.artistOrigins.isEmpty)
+        XCTAssertTrue(mapped.isEmpty)
+    }
+
     func testMappingNormalizesTotalsLeapDaysAndStableMediaIdentities() throws {
         let artistA = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
         let artistB = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!

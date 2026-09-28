@@ -291,6 +291,16 @@
         }
       }
     },
+    "%@, %lld listens": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@, %2$lld listens"
+          }
+        }
+      }
+    },
     "%@, MusicBrainz artist": {
       "localizations": {
         "en": {
@@ -10317,6 +10327,16 @@
         }
       }
     },
+    "Opens listener profile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens listener profile"
+          }
+        }
+      }
+    },
     "Opens loved and hated tracks from %@": {
       "localizations": {
         "en": {
@@ -10583,6 +10603,16 @@
           "stringUnit": {
             "state": "new",
             "value": "Peak · %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "People ListenBrainz matched to this year’s listening taste": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "People ListenBrainz matched to this year’s listening taste"
           }
         }
       }
@@ -17055,6 +17085,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "When you listen"
+          }
+        }
+      }
+    },
+    "Where this year’s most-played artists came from": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where this year’s most-played artists came from"
           }
         }
       }

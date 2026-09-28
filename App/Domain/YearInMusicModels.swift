@@ -35,6 +35,13 @@ struct YearInMusicReport: Hashable, Sendable {
     /// This is intentionally presentation-neutral so it can reuse the native
     /// artist-evolution chart without issuing a second statistics request.
     let artistEvolution: ArtistEvolutionActivity?
+    /// Artist-country context embedded in the annual aggregate. This shares
+    /// the normalization used by the dedicated artist-origins experience, but
+    /// does not imply that a second statistics request was made.
+    let artistOrigins: [ArtistOrigins.Country]
+    /// Similar listeners embedded in the annual aggregate. These are a
+    /// read-only retrospective signal, not a refreshed social graph.
+    let similarListeners: [SimilarListener]
 
     var isEmpty: Bool {
         totals.listenCount == 0
@@ -50,6 +57,8 @@ struct YearInMusicReport: Hashable, Sendable {
             && topGenres.isEmpty
             && releaseDecades.isEmpty
             && (artistEvolution?.isEmpty ?? true)
+            && artistOrigins.isEmpty
+            && similarListeners.isEmpty
     }
 
     var hasIdentityContent: Bool {
@@ -302,6 +311,8 @@ struct YearInMusicReport: Hashable, Sendable {
         mostActiveWeekday: Weekday? = nil,
         topGenres: [Genre] = [],
         releaseDecades: [ReleaseDecade] = [],
+        artistOrigins: [ArtistOrigins.Country] = [],
+        similarListeners: [SimilarListener] = [],
         artistEvolution: ArtistEvolutionActivity? = nil
     ) {
         self.username = username
@@ -319,6 +330,8 @@ struct YearInMusicReport: Hashable, Sendable {
         self.topGenres = topGenres
         self.releaseDecades = releaseDecades
         self.artistEvolution = artistEvolution
+        self.artistOrigins = artistOrigins
+        self.similarListeners = similarListeners
     }
 
     /// Maps only a report the API says exists.  `nil` is intentionally
@@ -356,6 +369,76 @@ struct YearInMusicReport: Hashable, Sendable {
         topGenres = Self.mapGenres(data.topGenres)
         releaseDecades = Self.mapReleaseDecades(data.mostListenedYear, reportYear: year)
         artistEvolution = Self.mapArtistEvolution(data.artistEvolutionActivity, year: year)
+        artistOrigins = Self.mapArtistOrigins(data.artistMap, year: year)
+        similarListeners = Self.mapSimilarListeners(data.similarUsers)
+    }
+
+    private static func mapArtistOrigins(
+        _ source: [LBYearInMusic.Report.ArtistMapEntry],
+        year: Int
+    ) -> [ArtistOrigins.Country] {
+        let rows = source.map { row in
+            ArtistOrigins.Row(
+                countryCode: row.country ?? "",
+                artistCount: nonNegative(row.artistCount),
+                listenCount: nonNegative(row.listenCount),
+                artists: row.artists.compactMap { artist in
+                    guard let name = artist.name?.trimmedNilIfEmpty else { return nil }
+                    return ArtistOrigins.Artist(
+                        mbid: artist.mbid.flatMap(UUID.init(uuidString:))
+                            ?? artist.mbids?.compactMap(UUID.init(uuidString:)).first,
+                        name: name,
+                        listenCount: nonNegative(artist.listenCount)
+                    )
+                }
+            )
+        }
+        guard !rows.isEmpty else { return [] }
+        return ArtistOrigins(
+            period: .thisYear,
+            from: annualBoundary(year),
+            to: annualBoundary(year + 1),
+            lastUpdated: .distantPast,
+            rows: rows
+        ).countries.filter { country in
+            country.artistCount > 0 || country.listenCount > 0 || !country.artists.isEmpty
+        }
+    }
+
+    private static func mapSimilarListeners(_ source: [String: Double]) -> [SimilarListener] {
+        var listeners: [String: SimilarListener] = [:]
+        for (rawUsername, rawSimilarity) in source {
+            guard let username = rawUsername.trimmedNilIfEmpty,
+                  rawSimilarity.isFinite
+            else { continue }
+            let candidate = SimilarListener(user: SearchUser(username: username), similarity: rawSimilarity)
+            let key = username.normalizedIdentity
+            if let existing = listeners[key] {
+                if candidate.normalizedSimilarity > existing.normalizedSimilarity
+                    || (candidate.normalizedSimilarity == existing.normalizedSimilarity
+                        && candidate.user.username.localizedCompare(existing.user.username) == .orderedAscending)
+                {
+                    listeners[key] = candidate
+                }
+            } else {
+                listeners[key] = candidate
+            }
+        }
+        return listeners.values.sorted { lhs, rhs in
+            if lhs.normalizedSimilarity != rhs.normalizedSimilarity {
+                return lhs.normalizedSimilarity > rhs.normalizedSimilarity
+            }
+            let order = lhs.user.username.localizedCaseInsensitiveCompare(rhs.user.username)
+            if order != .orderedSame { return order == .orderedAscending }
+            return lhs.user.username.localizedCompare(rhs.user.username) == .orderedAscending
+        }
+    }
+
+    private static func annualBoundary(_ year: Int) -> Date {
+        guard (1 ... 9_998).contains(year) else { return .distantPast }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar.date(from: DateComponents(year: year, month: 1, day: 1)) ?? .distantPast
     }
 
     private static func mapArtistEvolution(

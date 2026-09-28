@@ -326,6 +326,12 @@ final class ReleaseLayoutUITests: XCTestCase {
         let firstCard = app.descendants(matching: .any)
             .matching(identifier: "year-in-music-identity-card")
             .firstMatch
+        let origins = app.descendants(matching: .any)
+            .matching(identifier: "year-in-music-artist-origins")
+            .firstMatch
+        let listeners = app.descendants(matching: .any)
+            .matching(identifier: "year-in-music-similar-listeners")
+            .firstMatch
 
         XCTAssertTrue(screen.waitForExistence(timeout: 15))
         XCTAssertTrue(hero.waitForExistence(timeout: 15))
@@ -335,6 +341,36 @@ final class ReleaseLayoutUITests: XCTestCase {
         XCTAssertTrue(firstCard.waitForExistence(timeout: 5))
         assertVisibleFrame(firstCard, in: window)
         keepScreenshot(named: "Year-in-Music-identity-iPad-Arabic-RTL")
+        reveal(origins, in: screen)
+        XCTAssertTrue(origins.waitForExistence(timeout: 5))
+        assertVisibleFrame(origins, in: window)
+        reveal(listeners, in: screen)
+        XCTAssertTrue(listeners.waitForExistence(timeout: 5))
+        assertVisibleFrame(listeners, in: window)
+        keepScreenshot(named: "Year-in-Music-secondary-context-iPad-Arabic-RTL")
+    }
+
+    func testYearInMusicSecondaryContextUsesTheRequestDeniedFixture() throws {
+        let app = launchFixture("-brainz-year-in-music-demo")
+        let window = app.windows.firstMatch
+        let screen = app.scrollViews["year-in-music-screen"]
+        let origins = app.descendants(matching: .any)
+            .matching(identifier: "year-in-music-artist-origins")
+            .firstMatch
+        let listeners = app.descendants(matching: .any)
+            .matching(identifier: "year-in-music-similar-listeners")
+            .firstMatch
+
+        XCTAssertTrue(screen.waitForExistence(timeout: 15))
+        reveal(origins, in: screen)
+        XCTAssertTrue(origins.waitForExistence(timeout: 5))
+        assertVisibleFrame(origins, in: window)
+        keepScreenshot(named: "Year-in-Music-artist-origins")
+
+        reveal(listeners, in: screen)
+        XCTAssertTrue(listeners.waitForExistence(timeout: 5))
+        assertVisibleFrame(listeners, in: window)
+        keepScreenshot(named: "Year-in-Music-similar-listeners")
     }
 
     func testHomeFixtureSurvivesExpandedPseudoLocalization() throws {
@@ -370,6 +406,12 @@ final class ReleaseLayoutUITests: XCTestCase {
         let firstCard = app.descendants(matching: .any)
             .matching(identifier: "year-in-music-identity-card")
             .firstMatch
+        let origins = app.descendants(matching: .any)
+            .matching(identifier: "year-in-music-artist-origins")
+            .firstMatch
+        let listeners = app.descendants(matching: .any)
+            .matching(identifier: "year-in-music-similar-listeners")
+            .firstMatch
 
         XCTAssertTrue(screen.waitForExistence(timeout: 15))
         XCTAssertTrue(hero.waitForExistence(timeout: 15))
@@ -379,6 +421,13 @@ final class ReleaseLayoutUITests: XCTestCase {
         XCTAssertTrue(firstCard.waitForExistence(timeout: 5))
         assertVisibleFrame(firstCard, in: window)
         keepScreenshot(named: "Year-in-Music-identity-iPad-pseudo-localized")
+        reveal(origins, in: screen)
+        XCTAssertTrue(origins.waitForExistence(timeout: 5))
+        assertVisibleFrame(origins, in: window)
+        reveal(listeners, in: screen)
+        XCTAssertTrue(listeners.waitForExistence(timeout: 5))
+        assertVisibleFrame(listeners, in: window)
+        keepScreenshot(named: "Year-in-Music-secondary-context-iPad-pseudo-localized")
     }
 
     func testPlaylistExportExplainsPrivateFileBeforeSharing() throws {
