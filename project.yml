@@ -11,6 +11,9 @@ options:
 packages:
   ListenBrainzKit:
     path: Packages/ListenBrainzKit
+  Nuke:
+    url: https://github.com/kean/Nuke.git
+    exactVersion: 13.2.0
 
 settings:
   base:
@@ -29,6 +32,10 @@ targets:
       - path: App
     dependencies:
       - package: ListenBrainzKit
+      - package: Nuke
+        product: Nuke
+      - package: Nuke
+        product: NukeUI
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.nabekhan.listenbrainznative

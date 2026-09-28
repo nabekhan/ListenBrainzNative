@@ -1,4 +1,5 @@
 import SwiftUI
+import NukeUI
 
 struct ArtworkView: View {
     let url: URL?
@@ -7,26 +8,28 @@ struct ArtworkView: View {
     var showsPlaceholderSymbol = true
 
     var body: some View {
-        AsyncImage(url: url, transaction: .init(animation: .easeInOut(duration: 0.2))) { phase in
-            switch phase {
-            case let .success(image):
+        let request = ArtworkPipeline.request(for: url)
+        LazyImage(
+            request: request,
+            transaction: .init(animation: .easeInOut(duration: 0.2))
+        ) { state in
+            if let image = state.image {
                 image.resizable().scaledToFill()
-            case .empty:
-                if url == nil {
+            } else if state.error == nil {
+                if request == nil {
                     placeholder
                 } else {
                     placeholder.overlay { ProgressView().tint(.white.opacity(0.8)) }
                 }
-            case .failure:
-                placeholder
-            @unknown default:
+            } else {
                 placeholder
             }
         }
+        .pipeline(ArtworkPipeline.shared)
         .clipShape(.rect(cornerRadius: cornerRadius, style: .continuous))
         .contentShape(.rect(cornerRadius: cornerRadius, style: .continuous))
         .accessibilityLabel(
-            url == nil
+            request == nil
                 ? String(localized: "No artwork for \(title)")
                 : String(localized: "Artwork for \(title)")
         )

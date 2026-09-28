@@ -32,6 +32,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Native public CritiqueBrainz review publishing from Artist, Recording, and Release Group pages, with optional rating, language selection, explicit licensing consent, and durable duplicate-safe recovery
 - Public and multi-recipient personal recording recommendations, with follower-only selection and optional 280-character notes
 - Cached snapshots for useful cold starts and degraded-network behavior
+- Shared, size-managed cover-art loading with request coalescing, cancellation, and a credential-free offline cache
 - Native Profile-launched Settings with local System/Light/Dark appearance, lazy Connected Services, secure ListenBrainz account and privacy handoffs, project information, and transparent disconnect controls
 - Native iPhone/iPad navigation, Dynamic Type, dark mode, VoiceOver labels, and an iOS 26 bottom accessory with an iOS 18 fallback
 - Semantic right-to-left navigation plus a credential-free iPad UI regression suite covering portrait, rotation, RTL, and expanded pseudo-localization under a fail-fast request guard

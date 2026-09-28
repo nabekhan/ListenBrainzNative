@@ -53,6 +53,7 @@
 		2D6DAEBF12542FE63EBD75F0 /* FeedModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72EA4638A7EB62DF693C0B15 /* FeedModel.swift */; };
 		2D822DEC89B2E2DE4C441B66 /* ProfileFeedbackProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B4825627490FCB352CDE959 /* ProfileFeedbackProvider.swift */; };
 		2E4C0A7F8A1F5EF01CCDE56C /* RadioModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B092450568E7F84906D24CD3 /* RadioModelTests.swift */; };
+		2F124F16E3798C65734EB687 /* NukeUI in Frameworks */ = {isa = PBXBuildFile; productRef = AE8DF238E044D4EAEE939AC0 /* NukeUI */; };
 		2FABAD1401B714CA233A26FD /* PlaylistItemRemovalModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94E78D2AC1FC46709A9EBFB /* PlaylistItemRemovalModelTests.swift */; };
 		3002EF16004350755B6B772C /* ArtistOriginsPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E890F8FCD510D360635E3CA0 /* ArtistOriginsPresentationTests.swift */; };
 		3026BED4266E50B22B781838 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AFBE76928AA6AEDA795142C2 /* Localizable.xcstrings */; };
@@ -61,7 +62,9 @@
 		3199C180C78A004FDD9FC78C /* ConnectedServicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3A327C77A55F8E7C2E195F /* ConnectedServicesView.swift */; };
 		3266B0083863E11323404327 /* CritiqueBrainzReviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BACA106E2982676DD0874D3F /* CritiqueBrainzReviewTests.swift */; };
 		32882BFC39635FECFA19C13C /* ArtistOriginsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3289FD954EA81207EF7F88C /* ArtistOriginsTests.swift */; };
+		32ACDCDB13C87F0E1E8E7FE2 /* Nuke in Frameworks */ = {isa = PBXBuildFile; productRef = 3BB9C4EE5690303A3A0C90DD /* Nuke */; };
 		32F1F46D599D62AE2FC2D99B /* ConnectedServicesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5035425649EFDE3AF8A7FD37 /* ConnectedServicesProvider.swift */; };
+		3648A43D7A9ECA3680453E81 /* ArtworkPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1686125ED819B261B7476772 /* ArtworkPipeline.swift */; };
 		36B693EB322ACEAEB30CEA68 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40BD89E69FC6509633EC0D0 /* SearchView.swift */; };
 		36E959422315C3F0CB2308BB /* ListenInspectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EB037B821A263D8DE3196B3 /* ListenInspectionSheet.swift */; };
 		376D54E82B7EAF41963D088B /* ArtistEvolutionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D9AE00EC9D869B559DF005 /* ArtistEvolutionView.swift */; };
@@ -192,6 +195,7 @@
 		E876D2D5DD0C37CA00B4DE1C /* FeedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFA5781A5723D50654D8F20F /* FeedModels.swift */; };
 		E99A589357D3778E5409E02A /* ArtistHighlightsSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19CBA737676F0A7D40CCC6C0 /* ArtistHighlightsSummaryView.swift */; };
 		EE72E06B50B35907F47A2E94 /* UserDataExportModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80CF8E788D2011E0E93F5986 /* UserDataExportModels.swift */; };
+		EF00CF5F7E938DCFAE743446 /* ArtworkPipelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D02A38C29B80B33B8F54590A /* ArtworkPipelineTests.swift */; };
 		EFF9CF0628BBB4B61AC587D1 /* PlaylistMutationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63322AC38BB841A99005C1BF /* PlaylistMutationModels.swift */; };
 		F25111D9C16F7356B683B5F6 /* RecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3873BC4DDEF86902050F44EF /* RecommendationsView.swift */; };
 		F2A06B0A87EA1A5A145EBCAB /* ListeningModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37C43C08CFE953B3F3A8BC47 /* ListeningModel.swift */; };
@@ -241,6 +245,7 @@
 		12D4A1A234653FF49859C86C /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		149EBE62DA7CDC90453C6CEA /* SettingsViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewTests.swift; sourceTree = "<group>"; };
 		15A95F9C7EA292554B930383 /* FollowingPinsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FollowingPinsModel.swift; sourceTree = "<group>"; };
+		1686125ED819B261B7476772 /* ArtworkPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkPipeline.swift; sourceTree = "<group>"; };
 		193432530B75E845B61C532C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		19CBA737676F0A7D40CCC6C0 /* ArtistHighlightsSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtistHighlightsSummaryView.swift; sourceTree = "<group>"; };
 		1A6381D3A20FEE55C9401BE5 /* ConnectedServicesModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectedServicesModels.swift; sourceTree = "<group>"; };
@@ -390,6 +395,7 @@
 		CD23DF6E81EDB687A2D2FCB0 /* RecordingShareProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingShareProvider.swift; sourceTree = "<group>"; };
 		CDAB9FE7EC87E552920D8F89 /* PinProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinProvider.swift; sourceTree = "<group>"; };
 		CE8DFD6112BF0AB96DD8695E /* UserDataExportModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataExportModel.swift; sourceTree = "<group>"; };
+		D02A38C29B80B33B8F54590A /* ArtworkPipelineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkPipelineTests.swift; sourceTree = "<group>"; };
 		D1515EAD260E36F91A29FAF5 /* GeneratedArtworkModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratedArtworkModelTests.swift; sourceTree = "<group>"; };
 		D3C329C8B2BF423D0F69C4E0 /* PopularityProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopularityProviderTests.swift; sourceTree = "<group>"; };
 		D5C879A9F19C8FE2AC54675A /* ManualMappingProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualMappingProvider.swift; sourceTree = "<group>"; };
@@ -436,6 +442,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				CC3A7DA32A7662B18FF19C7D /* ListenBrainzKit in Frameworks */,
+				32ACDCDB13C87F0E1E8E7FE2 /* Nuke in Frameworks */,
+				2F124F16E3798C65734EB687 /* NukeUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -499,6 +507,7 @@
 		3FC4464063112389F5B0C5DC /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				1686125ED819B261B7476772 /* ArtworkPipeline.swift */,
 				032B1617709083B31FACCF6F /* CommunityChartsProvider.swift */,
 				5035425649EFDE3AF8A7FD37 /* ConnectedServicesProvider.swift */,
 				B98CD2FEA3C0B992159F2B90 /* CritiqueBrainzReviewsProvider.swift */,
@@ -797,6 +806,7 @@
 				3CC8C2195EE2604F9B6A2C8C /* ArtistHighlightsTests.swift */,
 				E890F8FCD510D360635E3CA0 /* ArtistOriginsPresentationTests.swift */,
 				F3289FD954EA81207EF7F88C /* ArtistOriginsTests.swift */,
+				D02A38C29B80B33B8F54590A /* ArtworkPipelineTests.swift */,
 				7C6EF6038F5EE11E45173EE2 /* CommunityChartsTests.swift */,
 				B01F6810F96206B890B6EB9A /* ConnectedServicesTests.swift */,
 				A43C9A9B717EC6B27CB4D6E7 /* CritiqueBrainzReviewSubmissionTests.swift */,
@@ -892,6 +902,8 @@
 			name = ListenBrainzNative;
 			packageProductDependencies = (
 				DAD5F0EAA0CE2CA0F3B5EF53 /* ListenBrainzKit */,
+				3BB9C4EE5690303A3A0C90DD /* Nuke */,
+				AE8DF238E044D4EAEE939AC0 /* NukeUI */,
 			);
 			productName = ListenBrainzNative;
 			productReference = 53E9E1D64E6592EEEBBF5569 /* Brainz.app */;
@@ -961,6 +973,7 @@
 			mainGroup = D8BEBB96FF1D8BF2B098C0FC;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				995768ED5B6AE2BB6937BC84 /* XCRemoteSwiftPackageReference "Nuke" */,
 				3ABB0ADC7068614B9B448E4E /* XCLocalSwiftPackageReference "Packages/ListenBrainzKit" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -1004,6 +1017,7 @@
 				1264FBDCD49005B1A96F31F9 /* ArtistHighlightsTests.swift in Sources */,
 				3002EF16004350755B6B772C /* ArtistOriginsPresentationTests.swift in Sources */,
 				32882BFC39635FECFA19C13C /* ArtistOriginsTests.swift in Sources */,
+				EF00CF5F7E938DCFAE743446 /* ArtworkPipelineTests.swift in Sources */,
 				0E8886B623D12E5191AE8DDD /* CommunityChartsTests.swift in Sources */,
 				3B6FA3E2DEB0D19408C92B4B /* ConnectedServicesTests.swift in Sources */,
 				4E9906E6BFB1929B3A144C56 /* CritiqueBrainzReviewSubmissionTests.swift in Sources */,
@@ -1062,6 +1076,7 @@
 				E99A589357D3778E5409E02A /* ArtistHighlightsSummaryView.swift in Sources */,
 				09E6583D6C50625EFD154E38 /* ArtistOriginsView.swift in Sources */,
 				8F38DC1DD8E0AF52E6CD89D5 /* ArtistPageModels.swift in Sources */,
+				3648A43D7A9ECA3680453E81 /* ArtworkPipeline.swift in Sources */,
 				E34A32570B1654294C87282B /* ArtworkView.swift in Sources */,
 				E5DFB4562DCD47EA091D69F0 /* AuthenticationView.swift in Sources */,
 				AEF7C312C571D075F2588917 /* CommunityChartsModel.swift in Sources */,
@@ -1523,7 +1538,28 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		995768ED5B6AE2BB6937BC84 /* XCRemoteSwiftPackageReference "Nuke" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kean/Nuke.git";
+			requirement = {
+				kind = exactVersion;
+				version = 13.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		3BB9C4EE5690303A3A0C90DD /* Nuke */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 995768ED5B6AE2BB6937BC84 /* XCRemoteSwiftPackageReference "Nuke" */;
+			productName = Nuke;
+		};
+		AE8DF238E044D4EAEE939AC0 /* NukeUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 995768ED5B6AE2BB6937BC84 /* XCRemoteSwiftPackageReference "Nuke" */;
+			productName = NukeUI;
+		};
 		DAD5F0EAA0CE2CA0F3B5EF53 /* ListenBrainzKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ListenBrainzKit;

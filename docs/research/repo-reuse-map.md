@@ -1,6 +1,6 @@
 # Repository reuse map
 
-Snapshot: 2026-09-27. Repository/source inspection, Xcode 27 builds, simulator runs, and live public-data checks are complete for the implemented slices.
+Snapshot: 2026-09-28. Repository/source inspection, Xcode 27 builds, simulator runs, and live public-data checks are complete for the implemented slices.
 
 | Repository | Purpose / state | License | Best reusable value | Modernization / difficulty | Decision |
 |---|---|---|---|---|---|
@@ -8,6 +8,7 @@ Snapshot: 2026-09-27. Repository/source inspection, Xcode 27 builds, simulator r
 | ListenBrainz Android/KMP | Mature official client; active | GPL-3+ with stated Apache sections | Edge cases, feature behavior, shared service shapes | KMP framework/export weight is high | Reference now; re-evaluate sharedKit |
 | ListenBrainz iOS | Official SwiftUI beta, iOS 16.2 | GPL-3+ with stated Apache sections | Apple constraints, feed/YiM/profile behavior | Combine/Alamofire architecture and uneven feature depth | Reference; independently implement |
 | ListenBrainzKit | Swift 6 API wrapper, iOS 16+, last commit 2025-02 | MPL-2.0 | P0 core, metadata, stats, feedback, playlist, and typed CF recommendation calls | Fix transport/rate policy; fill gaps incrementally | Vendor/fork under MPL |
+| Nuke 13.2.0 | Current Swift image pipeline, iOS 15+, Swift 6 | MIT | Coalescing, cancellation, bounded memory cache, LRU-managed disk cache, background preparation, and native SwiftUI loading | Keep policy in an app-owned wrapper; pin the exact version and audit cache privacy | Reuse `Nuke` + `NukeUI` through Swift Package Manager |
 | first.fm | Last.fm SwiftUI client, iOS 15.5, 2024 | MIT | Overall IA/personality; profile, scrobbles, rankings, entity pages, search | Replace callbacks/ObservableObject and Spotify artwork N+1 | Adapt concepts and selected MIT components |
 | AppleMusicBottombarSwiftUI | iOS 26 accessory/transition demo, active 2026 | No license | `tabViewBottomAccessory`, minimized bar, zoom transition behavior | Small, current, but legally non-reusable | Independently reproduce with Apple APIs |
 | Cassette | Full SwiftUI music app, iOS 18, active 2026 | MPL-2.0 | Media rows/cards/shelves, entity/detail VMs, empty/loading UI, Fresh Releases, LB behavior | Large but clean; preserve file notices | Selectively adapt MPL files |
@@ -63,7 +64,8 @@ Snapshot: 2026-09-27. Repository/source inspection, Xcode 27 builds, simulator r
 | Pins | Current LB API/web + official Android/iOS behavior | Product semantics, nullable-current response, and embedded card metadata; no GPL UI copied | Typed MPL Kit extension, one shared Home/Profile current card, lazy history, owner actions, current-only retry/refresh, and optimistic rollback |
 | Following Pins | Current LB API/server + existing native pin/feed hierarchy | Public aggregate paging and active-pin semantics; no GPL source or UI copied | Typed MPL Kit page/request plus independent artwork-first SwiftUI, owner-and-row dedupe, five-minute cache, cancellation, and no row hydration |
 | Auth/Keychain | first.fm/Cassette patterns | Small MIT/MPL patterns | Token validation and onboarding copy |
-| Caching | Cassette/Minidisc + URLCache | Actor/service patterns | Small stale-while-revalidate cache boundary |
+| Artwork loading and caching | Nuke 13.2.0 + official iOS/Android client behavior | Unmodified MIT package for coalescing, cancellation, background preparation, bounded memory, and LRU disk cleanup; official clients establish that artwork should be cached and concurrency-limited | App-owned HTTPS/image-only `ArtworkPipeline`, two data loads, 8 MiB response ceiling, 1,024-pixel decode target, 32 MiB/120-image memory cache, 128 MiB disk-cleanup threshold for public art, and the existing single `ArtworkView` surface |
+| API/model caching | Cassette/Minidisc + native persistence | Actor/service and stale-while-revalidate patterns | Small typed cache boundaries with account/public scope separation |
 | Scrobbling/offline retry | FastScrobbler behavior + Cassette/Minidisc | MPL queue code only if later adopted | Deferred capture module |
 | CritiqueBrainz review reading and creation | Current ListenBrainz web/server + official KMP service/models + current CritiqueBrainz contract | Entity and paging semantics, the official ListenBrainz broker request/response, legal-consent meaning, and language/rating bounds were referenced only; GPL source was not copied | Native summary and request-free reader, explicit bounded paging, plus an independently written composer, consent flow, one-shot broker integration, opaque durable journal, exact-payload retry, scoped recovery, localization, and cache refresh |
 | Connected services | Current ListenBrainz server/frontend + Android/KMP behavior + ListenBrainzKit | Own-account authorization, service identifiers, and canonical web-management route; GPL KMP was behavior reference only | Native private Account destination, credential-scoped five-minute cache/gate, honest known labels, unknown identifier fallback, and small MPL Kit path-safety repair |

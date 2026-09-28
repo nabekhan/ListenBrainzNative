@@ -1,6 +1,6 @@
 # Brainz privacy policy
 
-Last updated: September 27, 2026.
+Last updated: September 28, 2026.
 
 Brainz is an independent, open-source iOS client for ListenBrainz. It is not operated by the MetaBrainz Foundation.
 
@@ -8,6 +8,7 @@ Brainz is an independent, open-source iOS client for ListenBrainz. It is not ope
 
 - If you sign in, Brainz stores your ListenBrainz user token and canonical username in the iOS Keychain. The item is available only while the device is unlocked and cannot migrate to another device.
 - Brainz stores preferences, recently loaded listening data, and small recovery records needed to avoid repeating uncertain changes. Recently viewed public ListenBrainz profiles are usable from the app cache for seven days so they can open while a refresh is underway. Expired files are removed the next time Brainz reads or maintains this cache, and iOS may remove them sooner. This cache does not contain tokens, private playlists, or account-only data.
+- Brainz caches public cover art to reduce repeated downloads and show recently viewed artwork offline. Its cleanup threshold is 128 MB; cleanup runs periodically, so the cache may temporarily use more space. The cache contains no token or private account data. iOS may clear it when storage is needed, and deleting Brainz removes it.
 - CritiqueBrainz review recovery records contain only opaque fingerprints and timestamps. They do not contain review text, ratings, tokens, or credentials.
 - When you request your ListenBrainz data, Brainz can download a private ZIP archive containing listening history, profile data, feedback, and pins. Brainz stores a verified, protected, non-backed-up copy. Copies become eligible for removal after 24 hours and are removed during the next successful launch or export-storage cleanup, when you disconnect, or sooner if iOS clears temporary data. Opening the share sheet creates a separate protected temporary copy with the same cleanup schedule.
 - When you export a playlist, Brainz creates a protected temporary JSON file containing its details, tracks, and contributor names. Brainz removes export folders after 24 hours; iOS may remove temporary files sooner.
