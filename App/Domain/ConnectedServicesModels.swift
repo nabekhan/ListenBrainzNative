@@ -41,6 +41,56 @@ struct ConnectedServices: Hashable, Sendable {
             return lhsName.localizedCaseInsensitiveCompare(rhsName) == .orderedAscending
         }
     }
+
+    var playlistExportDestinations: [PlaylistExternalService] {
+        let connected = Set(services.map { $0.identifier.lowercased() })
+        return PlaylistExternalService.allCases.filter { service in
+            !service.connectionIdentifiers.isDisjoint(with: connected)
+        }
+    }
+}
+
+enum PlaylistExternalService: String, CaseIterable, Codable, Identifiable, Sendable {
+    case spotify
+    case appleMusic = "apple_music"
+    case soundCloud = "soundcloud"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .spotify:
+            String(localized: "Spotify")
+        case .appleMusic:
+            String(localized: "Apple Music")
+        case .soundCloud:
+            String(localized: "SoundCloud")
+        }
+    }
+
+    var connectionIdentifiers: Set<String> {
+        switch self {
+        case .spotify:
+            ["spotify"]
+        case .appleMusic:
+            // The account-services endpoint uses `apple`; playlist routes use
+            // `apple_music`. Accept both without exposing either wire name.
+            ["apple", "apple_music"]
+        case .soundCloud:
+            ["soundcloud"]
+        }
+    }
+
+    var serviceHomeURL: URL {
+        switch self {
+        case .spotify:
+            URL(string: "https://open.spotify.com/collection/playlists")!
+        case .appleMusic:
+            URL(string: "https://music.apple.com/")!
+        case .soundCloud:
+            URL(string: "https://soundcloud.com/you/sets")!
+        }
+    }
 }
 
 struct ConnectedServicesCacheKey: Hashable, Sendable {

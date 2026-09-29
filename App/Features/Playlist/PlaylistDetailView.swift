@@ -193,7 +193,7 @@ struct PlaylistDetailView: View {
         }
         .sheet(isPresented: $showsExport, onDismiss: { exportDetail = nil }) {
             if let exportDetail {
-                PlaylistExportSheet(detail: exportDetail)
+                PlaylistExportSheet(detail: exportDetail, account: viewer)
             }
         }
         .toolbar {
@@ -271,7 +271,7 @@ struct PlaylistDetailView: View {
                                 exportDetail = detail
                                 showsExport = true
                             } label: {
-                                Label("Export playlist file", systemImage: "doc.badge.arrow.up")
+                                Label("Export playlist", systemImage: "square.and.arrow.up")
                             }
                         }
                         if let url = actionURL {

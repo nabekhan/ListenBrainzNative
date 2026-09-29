@@ -1893,6 +1893,36 @@
         }
       }
     },
+    "Allow another %@ export?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow another %@ export?"
+          }
+        }
+      }
+    },
+    "Allow another export": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow another export"
+          }
+        }
+      }
+    },
+    "Allow another export?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow another export?"
+          }
+        }
+      }
+    },
     "Already in Playlist": {
       "localizations": {
         "en": {
@@ -1919,6 +1949,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "An earlier listen may already have been sent. Check History first. Resetting could let you send it twice."
+          }
+        }
+      }
+    },
+    "An export to %@ may already exist. Check %@ before allowing another export.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "An export to %1$@ may already exist. Check %2$@ before allowing another export."
           }
         }
       }
@@ -2443,6 +2483,16 @@
         }
       }
     },
+    "Brainz can’t read its duplicate-protection check. Check %@ before allowing another export.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brainz can’t read its duplicate-protection check. Check %@ before allowing another export."
+          }
+        }
+      }
+    },
     "Brainz can’t read this playlist’s deletion safety record. Check the playlist before resetting the record.": {
       "localizations": {
         "en": {
@@ -2553,6 +2603,16 @@
         }
       }
     },
+    "Brainz couldn’t reset its duplicate-protection check. Exporting again is still paused.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brainz couldn’t reset its duplicate-protection check. Exporting again is still paused."
+          }
+        }
+      }
+    },
     "Brainz couldn’t reset its safety record. Manual listens remain paused.": {
       "localizations": {
         "en": {
@@ -2609,6 +2669,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Brainz couldn’t safely read its review publishing records. Publishing is paused for every item to prevent duplicates."
+          }
+        }
+      }
+    },
+    "Brainz couldn’t save its duplicate-protection check, so no playlist was sent.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brainz couldn’t save its duplicate-protection check, so no playlist was sent."
           }
         }
       }
@@ -2823,6 +2893,26 @@
         }
       }
     },
+    "Check %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check %@"
+          }
+        }
+      }
+    },
+    "Check %@ before exporting again": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check %@ before exporting again"
+          }
+        }
+      }
+    },
     "Check Again": {
       "localizations": {
         "en": {
@@ -2969,6 +3059,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Checking your current pin…"
+          }
+        }
+      }
+    },
+    "Checks your ListenBrainz account for supported music services": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checks your ListenBrainz account for supported music services"
           }
         }
       }
@@ -3365,6 +3465,16 @@
         }
       }
     },
+    "Connect Spotify, Apple Music, or SoundCloud to export this playlist.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect Spotify, Apple Music, or SoundCloud to export this playlist."
+          }
+        }
+      }
+    },
     "Connect your token to open your private ListenBrainz feed": {
       "localizations": {
         "en": {
@@ -3581,6 +3691,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn’t download the archive. Check your connection and try again."
+          }
+        }
+      }
+    },
+    "Couldn’t export playlist": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t export playlist"
           }
         }
       }
@@ -4051,6 +4171,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Created for you"
+          }
+        }
+      }
+    },
+    "Creates a %@ %@ copy. Changes won’t sync.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Creates a %1$@ %2$@ copy. Changes won’t sync."
+          }
+        }
+      }
+    },
+    "Creates a new playlist": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Creates a new playlist"
+          }
+        }
+      }
+    },
+    "Creates a separate playlist through ListenBrainz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Creates a separate playlist through ListenBrainz"
           }
         }
       }
@@ -4975,12 +5125,12 @@
         }
       }
     },
-    "Export playlist file": {
+    "Export playlist?": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Export playlist file"
+            "value": "Export playlist?"
           }
         }
       }
@@ -4991,6 +5141,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Export status refreshed."
+          }
+        }
+      }
+    },
+    "Export to %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export to %@"
+          }
+        }
+      }
+    },
+    "Export to %@?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export to %@?"
+          }
+        }
+      }
+    },
+    "Exporting to %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporting to %@"
           }
         }
       }
@@ -5591,6 +5771,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Good morning"
+          }
+        }
+      }
+    },
+    "Got it": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Got it"
           }
         }
       }
@@ -6673,6 +6863,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ListenBrainz created the copy, but its current details could not be loaded. Duplicate stays disabled until the returned playlist is verified."
+          }
+        }
+      }
+    },
+    "ListenBrainz creates a separate copy. Later changes won’t sync automatically.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz creates a separate copy. Later changes won’t sync automatically."
           }
         }
       }
@@ -7857,6 +8057,16 @@
         }
       }
     },
+    "Loading linked services…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading linked services…"
+          }
+        }
+      }
+    },
     "Loading listeners…": {
       "localizations": {
         "en": {
@@ -8307,6 +8517,16 @@
         }
       }
     },
+    "Make exported playlist public": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make exported playlist public"
+          }
+        }
+      }
+    },
     "Makes one authenticated ListenBrainz Radio request, then one batched metadata request when mapped recordings are present": {
       "localizations": {
         "en": {
@@ -8333,6 +8553,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Manage CritiqueBrainz connection"
+          }
+        }
+      }
+    },
+    "Manage linked services on ListenBrainz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage linked services on ListenBrainz"
           }
         }
       }
@@ -8723,6 +8953,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Music service"
+          }
+        }
+      }
+    },
+    "Music services": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Music services"
           }
         }
       }
@@ -9957,6 +10197,16 @@
         }
       }
     },
+    "Only continue after checking %@. Another export could create a duplicate playlist.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only continue after checking %@. Another export could create a duplicate playlist."
+          }
+        }
+      }
+    },
     "Only playlist details are fetched here; tracks load when opened.": {
       "localizations": {
         "en": {
@@ -10013,6 +10263,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Only you and existing collaborators can open this playlist."
+          }
+        }
+      }
+    },
+    "Open %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open %@"
           }
         }
       }
@@ -10973,6 +11233,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Playlist details"
+          }
+        }
+      }
+    },
+    "Playlist exported": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist exported"
           }
         }
       }
@@ -12873,6 +13143,16 @@
         }
       }
     },
+    "Save a file or create a copy in a linked music service.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save a file or create a copy in a linked music service."
+          }
+        }
+      }
+    },
     "Save as playlist": {
       "localizations": {
         "en": {
@@ -13917,6 +14197,16 @@
         }
       }
     },
+    "Show linked services": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show linked services"
+          }
+        }
+      }
+    },
     "Show this activity again?": {
       "localizations": {
         "en": {
@@ -14263,6 +14553,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sign in to delete this listen."
+          }
+        }
+      }
+    },
+    "Sign in to export through a linked music service.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to export through a linked music service."
           }
         }
       }
@@ -14773,6 +15073,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tags"
+          }
+        }
+      }
+    },
+    "Take this playlist with you": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take this playlist with you"
           }
         }
       }
@@ -18009,6 +18319,26 @@
         }
       }
     },
+    "private": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "private"
+          }
+        }
+      }
+    },
+    "public": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "public"
+          }
+        }
+      }
+    },
     "recommendation": {
       "localizations": {
         "en": {
@@ -18185,6 +18515,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "“%@” was created as a public playlist and is now in Owned Playlists."
+          }
+        }
+      }
+    },
+    "“%@” was created in %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "“%1$@” was created in %2$@."
           }
         }
       }

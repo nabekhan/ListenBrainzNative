@@ -361,6 +361,33 @@ public struct LBCoreClient: Sendable {
         guard response.status == "ok" else { throw LBError.invalidResponse }
     }
 
+    /// Create a new playlist in a music service linked to the authenticated
+    /// ListenBrainz account.
+    ///
+    /// ListenBrainz performs this transfer synchronously and exposes no
+    /// idempotency key. Callers must not automatically replay the request after
+    /// an ambiguous transport result because another external playlist may
+    /// already have been created.
+    ///
+    /// - Returns: A validated HTTPS URL for the newly created playlist.
+    public func exportPlaylist(
+        mbid: UUID,
+        to service: LBPlaylistService,
+        isPublic: Bool
+    ) async throws -> URL {
+        let response = try await apiClient.execute(
+            ExportPlaylistToServiceRequest(
+                mbid: mbid,
+                service: service,
+                isPublic: isPublic
+            )
+        )
+        guard let url = service.validatedExternalPlaylistURL(response.externalUrl) else {
+            throw LBError.invalidResponse
+        }
+        return url
+    }
+
     /// Get playlists created for the given user
     /// - Parameters:
     ///   - username: User the playlists are created for

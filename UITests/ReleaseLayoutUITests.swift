@@ -468,6 +468,41 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "Playlist-export-iPad-private")
     }
 
+    func testPlaylistExportOffersLinkedServiceWithExplicitConfirmation() throws {
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        defer { device.orientation = .portrait }
+
+        let app = launchFixture(
+            "-brainz-playlist-export-demo",
+            additionalArguments: ["-brainz-deny-request-gate-transport"]
+        )
+        let scrollView = app.scrollViews.firstMatch
+        let loadServices = app.buttons["playlist-load-linked-services"]
+        let spotify = app.buttons["playlist-service-export-spotify"]
+
+        XCTAssertTrue(app.navigationBars["Export playlist"].waitForExistence(timeout: 10))
+        reveal(loadServices, in: scrollView)
+        XCTAssertTrue(loadServices.waitForExistence(timeout: 5))
+        XCTAssertTrue(loadServices.isHittable)
+        XCTAssertFalse(spotify.waitForExistence(timeout: 1))
+        loadServices.tap()
+        reveal(spotify, in: scrollView)
+        XCTAssertTrue(spotify.waitForExistence(timeout: 5))
+        XCTAssertTrue(spotify.isHittable)
+        spotify.tap()
+
+        XCTAssertTrue(app.staticTexts["Export to Spotify?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts[
+                "Creates a private Spotify copy. Changes won’t sync."
+            ].exists
+        )
+        XCTAssertTrue(app.buttons["Export to Spotify"].exists)
+        XCTAssertTrue(app.buttons["Cancel"].exists)
+        keepScreenshot(named: "Playlist-service-export-confirmation")
+    }
+
     func testHomeFixtureExposesMetricSemantics() throws {
         let device = XCUIDevice.shared
         device.orientation = .portrait
