@@ -62,6 +62,10 @@ final class ListeningModel {
     private(set) var isLoadingMoreSelectedDay = false
     private(set) var canLoadMoreSelectedDay = false
     private(set) var selectedDayError: String?
+    /// A failed revalidation is distinct from an initial empty-state failure:
+    /// callers can keep showing a saved day while offering a deliberate retry.
+    private(set) var selectedDayRefreshError: String?
+    private(set) var selectedDaySavedAt: Date?
     private(set) var listeningActivity: [ListeningActivityPeriod: ListeningActivityLoadState] = [:]
     private var listeningActivityRequestIDs: [ListeningActivityPeriod: UUID] = [:]
     private(set) var dailyActivity: [ListeningActivityPeriod: DailyActivityLoadState] = [:]
@@ -125,8 +129,13 @@ final class ListeningModel {
     func load() async {
         guard !didLoad else { return }
         didLoad = true
-        let lease = await cache.beginSession(username: account.username)
-        cacheLease = lease
+        let lease: UUID
+        if let cacheLease {
+            lease = cacheLease
+        } else {
+            lease = await cache.beginSession(username: account.username)
+            cacheLease = lease
+        }
         if let cached = await cache.load(username: account.username, lease: lease) {
             var restored = cached
             let visibleListens = removingDeletedListens(from: restored.recentListens)
@@ -229,20 +238,72 @@ final class ListeningModel {
 
     func refreshSelectedHistoryDay() async {
         guard let selectedHistoryDay else { return }
-        await loadSelectedHistoryDay(selectedHistoryDay)
+        await loadSelectedHistoryDay(selectedHistoryDay, forceRefresh: true)
     }
 
-    private func loadSelectedHistoryDay(_ bounds: HistoryDayBounds) async {
+    private func loadSelectedHistoryDay(_ bounds: HistoryDayBounds, forceRefresh: Bool = false) async {
         let requestID = UUID()
         selectedDayRequestID = requestID
+        let isSameDay = selectedHistoryDay == bounds
         selectedHistoryDay = bounds
-        selectedDayListens = []
         selectedDayError = nil
-        canLoadMoreSelectedDay = false
+        selectedDayRefreshError = nil
+        if !isSameDay { canLoadMoreSelectedDay = false }
         // A new day or a refresh supersedes any pagination task. Its stale
         // defer must not leave the replacement day permanently "loading more."
         isLoadingMoreSelectedDay = false
+        if !isSameDay {
+            selectedDayListens = []
+            selectedDaySavedAt = nil
+        }
+        // Mark the transition before awaiting disk I/O so a no-cache selection
+        // cannot briefly render as an empty completed day.
         isLoadingSelectedDay = true
+
+        let lease = await selectedDayCacheLease()
+        if !isSameDay, let cached = await cache.loadHistoryDay(
+            username: account.username,
+            lease: lease,
+            bounds: bounds
+        ) {
+            guard selectedDayRequestID == requestID else { return }
+            let visibleListens = removingDeletedListens(from: cached.listens)
+            selectedDayListens = visibleListens
+            canLoadMoreSelectedDay = cached.canLoadMore
+            selectedDaySavedAt = cached.savedAt
+            if visibleListens.count != cached.listens.count {
+                let visible = Set(visibleListens)
+                let keys = Set(cached.listens.compactMap { listen -> SnapshotCache.HistoryDayListenKey? in
+                    guard !visible.contains(listen), let key = ListenDeletionKey(listen) else { return nil }
+                    return SnapshotCache.HistoryDayListenKey(
+                        listenedAt: key.listenedAt,
+                        recordingMSID: key.recordingMSID
+                    )
+                })
+                await cache.removeHistoryDayListens(
+                    username: account.username,
+                    lease: lease,
+                    keys: keys
+                )
+            }
+            guard selectedDayRequestID == requestID else { return }
+            guard !Task.isCancelled else {
+                isLoadingSelectedDay = false
+                return
+            }
+            if cached.isFresh && !forceRefresh {
+                isLoadingSelectedDay = false
+                return
+            }
+        }
+
+        // A newer selection may have taken ownership while this task awaited
+        // its session lease or a cache miss. Never start a stale network read.
+        guard selectedDayRequestID == requestID else { return }
+        guard !Task.isCancelled else {
+            isLoadingSelectedDay = false
+            return
+        }
 
         do {
             let values = try await provider.recentListens(
@@ -258,7 +319,9 @@ final class ListeningModel {
             }
             selectedDayListens = removingDeletedListens(from: values)
             canLoadMoreSelectedDay = values.count == 100
+            selectedDaySavedAt = .now
             isLoadingSelectedDay = false
+            await saveSelectedHistoryDay(bounds: bounds, lease: lease)
         } catch {
             guard selectedDayRequestID == requestID else { return }
             isLoadingSelectedDay = false
@@ -267,7 +330,11 @@ final class ListeningModel {
                 || (error as? URLError)?.code == .cancelled {
                 return
             }
-            selectedDayError = error.localizedDescription
+            if selectedDaySavedAt != nil {
+                selectedDayRefreshError = error.localizedDescription
+            } else {
+                selectedDayError = error.localizedDescription
+            }
         }
     }
 
@@ -305,6 +372,10 @@ final class ListeningModel {
             // A full response with no new identities means this cursor cannot
             // make progress (for example, a server-side repeated boundary).
             canLoadMoreSelectedDay = values.count == 100 && !additions.isEmpty
+            selectedDaySavedAt = .now
+            if let lease = cacheLease {
+                await saveSelectedHistoryDay(bounds: bounds, lease: lease)
+            }
         } catch {
             guard selectedDayRequestID == requestID, !Task.isCancelled else { return }
             selectedDayError = error.localizedDescription
@@ -316,6 +387,8 @@ final class ListeningModel {
         selectedHistoryDay = nil
         selectedDayListens = []
         selectedDayError = nil
+        selectedDayRefreshError = nil
+        selectedDaySavedAt = nil
         isLoadingSelectedDay = false
         isLoadingMoreSelectedDay = false
         canLoadMoreSelectedDay = false
@@ -446,7 +519,7 @@ final class ListeningModel {
                 listenedAt: key.listenedAt,
                 recordingMSID: key.recordingMSID
             )
-            removeDeletedListen(key)
+            await removeDeletedListen(key)
             deletionNotice = String(localized: "ListenBrainz usually removes it shortly after the next hour. Statistics may update later.")
             await saveSnapshot()
         } catch is CancellationError {
@@ -1061,6 +1134,23 @@ final class ListeningModel {
         await cache.save(snapshot, username: account.username, lease: cacheLease)
     }
 
+    private func selectedDayCacheLease() async -> UUID {
+        if let cacheLease { return cacheLease }
+        let lease = await cache.beginSession(username: account.username)
+        cacheLease = lease
+        return lease
+    }
+
+    private func saveSelectedHistoryDay(bounds: HistoryDayBounds, lease: UUID) async {
+        await cache.saveHistoryDay(
+            listens: selectedDayListens,
+            canLoadMore: canLoadMoreSelectedDay,
+            username: account.username,
+            lease: lease,
+            bounds: bounds
+        )
+    }
+
     private func removingDeletedListens(from listens: [Listen]) -> [Listen] {
         listens.filter { listen in
             guard let key = ListenDeletionKey(listen) else { return true }
@@ -1072,11 +1162,19 @@ final class ListeningModel {
         }
     }
 
-    private func removeDeletedListen(_ key: ListenDeletionKey) {
+    private func removeDeletedListen(_ key: ListenDeletionKey) async {
         snapshot.recentListens = snapshot.recentListens.filter { ListenDeletionKey($0) != key }
         selectedDayListens = selectedDayListens.filter { ListenDeletionKey($0) != key }
         if let playingNow = snapshot.playingNow, ListenDeletionKey(playingNow) == key {
             snapshot.playingNow = nil
+        }
+        if let cacheLease {
+            await cache.removeHistoryDayListen(
+                username: account.username,
+                lease: cacheLease,
+                listenedAt: key.listenedAt,
+                recordingMSID: key.recordingMSID
+            )
         }
     }
 }

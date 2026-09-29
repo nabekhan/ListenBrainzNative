@@ -186,6 +186,7 @@ struct MainTabView: View {
             }
             if ProcessInfo.processInfo.arguments.contains("-brainz-history-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-history-saved-error-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-long-title-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-recovery-demo")
@@ -196,9 +197,14 @@ struct MainTabView: View {
                 let isInspectionDemo = ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-demo")
                     || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-unmapped-demo")
                     || ProcessInfo.processInfo.arguments.contains("-brainz-inspect-listen-saved-match-demo")
-                let visualAccount = isInspectionDemo
-                    ? Account(username: "visual-inspection", token: "visual-inspection")
-                    : Account(username: "visual-history", token: "visual-history")
+                let visualAccount: Account
+                if isInspectionDemo {
+                    visualAccount = Account(username: "visual-inspection", token: "visual-inspection")
+                } else if ProcessInfo.processInfo.arguments.contains("-brainz-history-saved-error-demo") {
+                    visualAccount = Account(username: "visual-history-saved-error", token: "visual-history")
+                } else {
+                    visualAccount = Account(username: "visual-history", token: "visual-history")
+                }
                 _model = State(
                     initialValue: ListeningModel(
                         account: visualAccount,
@@ -711,10 +717,17 @@ struct MainTabView: View {
                 #endif
                 await model.load()
                 #if DEBUG
-                    if ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo"),
+                    if (ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo")
+                        || ProcessInfo.processInfo.arguments.contains("-brainz-history-saved-error-demo")),
                         let day = Calendar.autoupdatingCurrent.date(byAdding: .day, value: -2, to: .now)
                     {
                         await model.selectHistoryDay(day)
+                        if ProcessInfo.processInfo.arguments.contains("-brainz-history-saved-error-demo") {
+                            await model.refreshSelectedHistoryDay()
+                            if model.selectedDayRefreshError == nil {
+                                await model.refreshSelectedHistoryDay()
+                            }
+                        }
                     }
                 #endif
             }
@@ -731,6 +744,7 @@ struct MainTabView: View {
                     }
                     if ProcessInfo.processInfo.arguments.contains("-brainz-history-demo")
                         || ProcessInfo.processInfo.arguments.contains("-brainz-history-day-demo")
+                        || ProcessInfo.processInfo.arguments.contains("-brainz-history-saved-error-demo")
                         || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-demo")
                         || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-long-title-demo")
                         || ProcessInfo.processInfo.arguments.contains("-brainz-history-delete-recovery-demo")
@@ -1596,7 +1610,7 @@ struct MainTabView: View {
         func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
     }
 
-    private struct VisualQAHistoryProvider: ListeningProvider {
+    private actor VisualQAHistoryProvider: ListeningProvider {
         private static let artworkReleaseMBID = UUID(uuidString: "1390f1b7-7851-48ae-983d-eb8a48f78048")!
         private static let titles = [
             "Night Drive", "Wildflower", "Parallel Lines", "Between the Bars",
@@ -1605,11 +1619,17 @@ struct MainTabView: View {
             "Everything We Heard Through the Open Windows on the Long Way Home",
         ]
         private static let artists = ["The Marías", "Alvvays", "Japanese Breakfast", "Radiohead"]
+        private var selectedDayReadCount = 0
 
         func validateToken() async throws -> String { "visual-history" }
 
         func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] {
             if after != nil, let before {
+                selectedDayReadCount += 1
+                if ProcessInfo.processInfo.arguments.contains("-brainz-history-saved-error-demo"),
+                   selectedDayReadCount > 1 {
+                    throw VisualQAHistoryError.unavailable
+                }
                 return (0..<12).map { index in
                     Self.makeListen(
                         index: index + 30,
@@ -1717,6 +1737,11 @@ struct MainTabView: View {
                 durationMilliseconds: 243_000
             )
         }
+    }
+
+    private enum VisualQAHistoryError: LocalizedError {
+        case unavailable
+        var errorDescription: String? { String(localized: "The preview history is unavailable.") }
     }
 
     private struct VisualQATasteProvider: ListeningProvider {

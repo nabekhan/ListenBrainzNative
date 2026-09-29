@@ -348,9 +348,12 @@ final class SessionModel {
                 state = .active(Account(username: "visual-taste", token: "visual-taste"))
                 return true
             }
+            if arguments.contains("-brainz-history-saved-error-demo") {
+                state = .active(Account(username: "visual-history-saved-error", token: "visual-history"))
+                return true
+            }
             if arguments.contains("-brainz-history-demo")
-                || arguments.contains("-brainz-history-day-demo")
-            {
+                || arguments.contains("-brainz-history-day-demo") {
                 state = .active(Account(username: "visual-history", token: "visual-history"))
                 return true
             }

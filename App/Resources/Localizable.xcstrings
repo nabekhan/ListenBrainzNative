@@ -2933,6 +2933,16 @@
         }
       }
     },
+    "Checking for updates…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking for updates…"
+          }
+        }
+      }
+    },
     "Checking saved match…": {
       "localizations": {
         "en": {
@@ -3595,6 +3605,16 @@
         }
       }
     },
+    "Couldn’t load earlier listens": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load earlier listens"
+          }
+        }
+      }
+    },
     "Couldn’t load playlists": {
       "localizations": {
         "en": {
@@ -3781,6 +3801,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn’t update recommendation feedback"
+          }
+        }
+      }
+    },
+    "Couldn’t update this day": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t update this day"
           }
         }
       }
@@ -12833,6 +12863,26 @@
         }
       }
     },
+    "Saved history has no listens for %@. Checking for updates…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved history has no listens for %@. Checking for updates…"
+          }
+        }
+      }
+    },
+    "Saved history has no listens for %@. Updates aren’t available right now.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved history has no listens for %@. Updates aren’t available right now."
+          }
+        }
+      }
+    },
     "Saved recording MBID": {
       "localizations": {
         "en": {
@@ -13853,6 +13903,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Showing saved genre activity. %@"
+          }
+        }
+      }
+    },
+    "Showing saved history instead.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showing saved history instead."
           }
         }
       }
@@ -15187,6 +15247,16 @@
         }
       }
     },
+    "This day isn’t available right now. Try again in a moment.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This day isn’t available right now. Try again in a moment."
+          }
+        }
+      }
+    },
     "This deletion is already in progress.": {
       "localizations": {
         "en": {
@@ -16287,16 +16357,6 @@
         }
       }
     },
-    "Try loading earlier listens again": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Try loading earlier listens again"
-          }
-        }
-      }
-    },
     "Try saving again": {
       "localizations": {
         "en": {
@@ -16623,6 +16683,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Updating from ListenBrainz…"
+          }
+        }
+      }
+    },
+    "Updating saved history…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updating saved history…"
           }
         }
       }

@@ -725,7 +725,7 @@ final class ListeningModelTests: XCTestCase {
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let day = calendar.date(from: DateComponents(year: 2025, month: 6, day: 8, hour: 12))!
         let provider = DayHistoryProvider(mode: .singleDay)
-        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        let model = ListeningModel(account: Account(username: "fixture-\(UUID().uuidString)", token: ""), provider: provider)
         let listensBefore = model.snapshot.recentListens
         let savedAtBefore = model.snapshot.savedAt
 
@@ -744,7 +744,7 @@ final class ListeningModelTests: XCTestCase {
         calendar.timeZone = TimeZone(identifier: "Pacific/Kiritimati")!
         let day = calendar.date(from: DateComponents(year: 2025, month: 6, day: 8, hour: 12))!
         let provider = DayHistoryProvider(mode: .singleDay)
-        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        let model = ListeningModel(account: Account(username: "fixture-\(UUID().uuidString)", token: ""), provider: provider)
 
         await model.selectHistoryDay(day, calendar: calendar)
         await model.refreshSelectedHistoryDay()
@@ -757,7 +757,7 @@ final class ListeningModelTests: XCTestCase {
 
     func testCancellingCurrentDayLoadClearsLoadingWithoutShowingAnError() async throws {
         let provider = DayHistoryProvider(mode: .staleSelection)
-        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        let model = ListeningModel(account: Account(username: "fixture-\(UUID().uuidString)", token: ""), provider: provider)
         let task = Task { await model.selectHistoryDay(.now) }
         let clock = ContinuousClock()
         while await provider.requests().isEmpty {
@@ -773,7 +773,7 @@ final class ListeningModelTests: XCTestCase {
 
     func testCancelledDayLoadThatReturnsNormallyStillClearsLoading() async throws {
         let provider = DayHistoryProvider(mode: .returnsAfterCancellation)
-        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        let model = ListeningModel(account: Account(username: "fixture-\(UUID().uuidString)", token: ""), provider: provider)
         let task = Task { await model.selectHistoryDay(.now) }
         let clock = ContinuousClock()
         while await provider.requests().isEmpty {
@@ -790,7 +790,7 @@ final class ListeningModelTests: XCTestCase {
 
     func testCancelledDayLoadReportedAsURLErrorDoesNotBecomeFailure() async throws {
         let provider = DayHistoryProvider(mode: .urlCancellation)
-        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        let model = ListeningModel(account: Account(username: "fixture-\(UUID().uuidString)", token: ""), provider: provider)
         let task = Task { await model.selectHistoryDay(.now) }
         let clock = ContinuousClock()
         while await provider.requests().isEmpty {
@@ -810,7 +810,7 @@ final class ListeningModelTests: XCTestCase {
         let firstDay = calendar.date(from: DateComponents(year: 2025, month: 6, day: 8, hour: 12))!
         let secondDay = calendar.date(byAdding: .day, value: 1, to: firstDay)!
         let provider = DayHistoryProvider(mode: .staleSelection)
-        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        let model = ListeningModel(account: Account(username: "fixture-\(UUID().uuidString)", token: ""), provider: provider)
 
         async let first: Void = model.selectHistoryDay(firstDay)
         try? await ContinuousClock().sleep(for: .milliseconds(5))
@@ -826,7 +826,7 @@ final class ListeningModelTests: XCTestCase {
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let day = calendar.date(from: DateComponents(year: 2025, month: 6, day: 8, hour: 12))!
         let provider = DayHistoryProvider(mode: .boundarySiblings)
-        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        let model = ListeningModel(account: Account(username: "fixture-\(UUID().uuidString)", token: ""), provider: provider)
 
         await model.selectHistoryDay(day, calendar: calendar)
         await model.loadMoreSelectedHistoryDay()
@@ -844,7 +844,7 @@ final class ListeningModelTests: XCTestCase {
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let day = calendar.date(from: DateComponents(year: 2025, month: 6, day: 8, hour: 12))!
         let provider = DayHistoryProvider(mode: .repeatedCursor)
-        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        let model = ListeningModel(account: Account(username: "fixture-\(UUID().uuidString)", token: ""), provider: provider)
 
         await model.selectHistoryDay(day, calendar: calendar)
         await model.loadMoreSelectedHistoryDay()
@@ -852,9 +852,201 @@ final class ListeningModelTests: XCTestCase {
         XCTAssertFalse(model.canLoadMoreSelectedDay)
     }
 
+    func testSelectedDayFreshCacheSurvivesNewModelWithoutAnotherRead() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let account = Account(username: "cached-day", token: "")
+        let day = Date.now
+        let firstProvider = CachedDayProvider()
+        let firstModel = ListeningModel(account: account, provider: firstProvider, cache: SnapshotCache(rootDirectory: root))
+
+        await firstModel.selectHistoryDay(day)
+        let firstRequestCount = await firstProvider.requestCount()
+        XCTAssertEqual(firstRequestCount, 1)
+        XCTAssertEqual(firstModel.selectedDayListens.count, 1)
+
+        let reopenedProvider = CachedDayProvider()
+        let reopenedModel = ListeningModel(account: account, provider: reopenedProvider, cache: SnapshotCache(rootDirectory: root))
+        await reopenedModel.selectHistoryDay(day)
+
+        let reopenedRequestCount = await reopenedProvider.requestCount()
+        XCTAssertEqual(reopenedRequestCount, 0)
+        XCTAssertEqual(reopenedModel.selectedDayListens.count, 1)
+        XCTAssertNotNil(reopenedModel.selectedDaySavedAt)
+    }
+
+    func testSelectedDayStaleCacheRendersThenRevalidatesExactlyOnce() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let account = Account(username: "stale-day", token: "")
+        let day = Date.now
+        let bounds = HistoryDayBounds(day: day)
+        let cache = SnapshotCache(rootDirectory: root)
+        let lease = await cache.beginSession(username: account.username)
+        let stale = cachedDayListen(title: "Saved", bounds: bounds)
+        await cache.saveHistoryDay(
+            listens: [stale],
+            canLoadMore: false,
+            username: account.username,
+            lease: lease,
+            bounds: bounds,
+            now: .now.addingTimeInterval(-301)
+        )
+
+        let provider = CachedDayProvider()
+        let model = ListeningModel(account: account, provider: provider, cache: SnapshotCache(rootDirectory: root))
+        await model.selectHistoryDay(day)
+
+        let staleRequestCount = await provider.requestCount()
+        XCTAssertEqual(staleRequestCount, 1)
+        XCTAssertEqual(model.selectedDayListens.first?.recording.title, "Network 1")
+        XCTAssertNil(model.selectedDayRefreshError)
+    }
+
+    func testSelectedDayStaleCacheRemainsVisibleWhileItsSingleRevalidationIsInFlight() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let account = Account(username: "stale-visible-day", token: "")
+        let day = Date.now
+        let bounds = HistoryDayBounds(day: day)
+        let cache = SnapshotCache(rootDirectory: root)
+        let lease = await cache.beginSession(username: account.username)
+        await cache.saveHistoryDay(
+            listens: [cachedDayListen(title: "Saved", bounds: bounds)],
+            canLoadMore: false,
+            username: account.username,
+            lease: lease,
+            bounds: bounds,
+            now: .now.addingTimeInterval(-301)
+        )
+        let provider = CachedDayProvider(delay: .milliseconds(80))
+        let model = ListeningModel(
+            account: account,
+            provider: provider,
+            cache: SnapshotCache(rootDirectory: root)
+        )
+
+        let load = Task { await model.selectHistoryDay(day) }
+        while await provider.requestCount() == 0 { await Task.yield() }
+
+        XCTAssertEqual(model.selectedDayListens.first?.recording.title, "Saved")
+        XCTAssertTrue(model.isLoadingSelectedDay)
+        XCTAssertNotNil(model.selectedDaySavedAt)
+
+        await load.value
+        let requestCount = await provider.requestCount()
+        XCTAssertEqual(requestCount, 1)
+        XCTAssertEqual(model.selectedDayListens.first?.recording.title, "Network 1")
+    }
+
+    func testSelectedDayStaleDiskCacheSurvivesItsSingleFailedRevalidation() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let account = Account(username: "stale-failure-day", token: "")
+        let day = Date.now
+        let bounds = HistoryDayBounds(day: day)
+        let cache = SnapshotCache(rootDirectory: root)
+        let lease = await cache.beginSession(username: account.username)
+        await cache.saveHistoryDay(
+            listens: [cachedDayListen(title: "Saved", bounds: bounds)],
+            canLoadMore: false,
+            username: account.username,
+            lease: lease,
+            bounds: bounds,
+            now: .now.addingTimeInterval(-301)
+        )
+        let provider = CachedDayProvider(failAfter: 0)
+        let model = ListeningModel(
+            account: account,
+            provider: provider,
+            cache: SnapshotCache(rootDirectory: root)
+        )
+
+        await model.selectHistoryDay(day)
+
+        let requestCount = await provider.requestCount()
+        XCTAssertEqual(requestCount, 1)
+        XCTAssertEqual(model.selectedDayListens.first?.recording.title, "Saved")
+        XCTAssertNil(model.selectedDayError)
+        XCTAssertNotNil(model.selectedDayRefreshError)
+        XCTAssertFalse(model.isLoadingSelectedDay)
+    }
+
+    func testSelectedDayExplicitRefreshKeepsSavedRowsWhenReadFails() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let provider = CachedDayProvider(failAfter: 1)
+        let model = ListeningModel(
+            account: Account(username: "refresh-day", token: ""),
+            provider: provider,
+            cache: SnapshotCache(rootDirectory: root)
+        )
+        await model.selectHistoryDay(.now)
+        let original = model.selectedDayListens
+
+        await model.refreshSelectedHistoryDay()
+
+        let refreshRequestCount = await provider.requestCount()
+        XCTAssertEqual(refreshRequestCount, 2)
+        XCTAssertEqual(model.selectedDayListens, original)
+        XCTAssertNil(model.selectedDayError)
+        XCTAssertNotNil(model.selectedDayRefreshError)
+    }
+
+    func testInvalidatingSnapshotCacheAlsoRemovesSelectedDays() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = SnapshotCache(rootDirectory: root)
+        let username = "invalidate-day"
+        let bounds = HistoryDayBounds(day: .now)
+        let lease = await cache.beginSession(username: username)
+        await cache.saveHistoryDay(
+            listens: [cachedDayListen(title: "Saved", bounds: bounds)],
+            canLoadMore: false,
+            username: username,
+            lease: lease,
+            bounds: bounds
+        )
+
+        try await cache.invalidate(username: username)
+        let reopenedLease = await cache.beginSession(username: username)
+        let value = await cache.loadHistoryDay(username: username, lease: reopenedLease, bounds: bounds)
+        XCTAssertNil(value)
+    }
+
+    func testConfirmedDeletionCannotResurrectFromAnotherCachedDayRead() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let username = "deleted-day"
+        let bounds = HistoryDayBounds(day: .now)
+        let listen = cachedDayListen(title: "Delete me", bounds: bounds)
+        let msid = try XCTUnwrap(listen.recording.identity.msid)
+        let cache = SnapshotCache(rootDirectory: root)
+        let lease = await cache.beginSession(username: username)
+        await cache.saveHistoryDay(
+            listens: [listen],
+            canLoadMore: false,
+            username: username,
+            lease: lease,
+            bounds: bounds
+        )
+
+        await cache.removeHistoryDayListen(
+            username: username,
+            lease: lease,
+            listenedAt: Int(listen.listenedAt.timeIntervalSince1970),
+            recordingMSID: msid
+        )
+
+        let reopened = SnapshotCache(rootDirectory: root)
+        let reopenedLease = await reopened.beginSession(username: username)
+        let value = await reopened.loadHistoryDay(username: username, lease: reopenedLease, bounds: bounds)
+        XCTAssertEqual(value?.listens, [])
+    }
+
     func testSelectingAnotherDayResetsSupersededPaginationState() async throws {
         let provider = DayHistoryProvider(mode: .stalePagination)
-        let model = ListeningModel(account: Account(username: "fixture", token: ""), provider: provider)
+        let model = ListeningModel(account: Account(username: "fixture-\(UUID().uuidString)", token: ""), provider: provider)
         await model.selectHistoryDay(.now.addingTimeInterval(-86_400))
         let pagination = Task { await model.loadMoreSelectedHistoryDay() }
         let clock = ContinuousClock()
@@ -3336,6 +3528,26 @@ final class ListeningModelTests: XCTestCase {
     }
 }
 
+private func cachedDayListen(title: String, bounds: HistoryDayBounds) -> Listen {
+    Listen(
+        recording: Recording(
+            identity: .init(mbid: UUID(), msid: UUID()),
+            title: title,
+            artistName: "Fixture Artist",
+            artistMBIDs: [],
+            releaseTitle: nil,
+            releaseMBID: nil,
+            releaseGroupMBID: nil,
+            artworkReleaseMBID: nil,
+            durationMilliseconds: nil,
+            source: nil
+        ),
+        listenedAt: bounds.earliest.addingTimeInterval(1),
+        insertedAt: nil,
+        isPlayingNow: false
+    )
+}
+
 private enum GateTestError: Error {
     case rateLimited
     case timeout
@@ -4318,6 +4530,40 @@ private actor ReleaseGroupRankingProvider: ListeningProvider {
 
     func requestCount() -> Int { requests }
     func cancellationCount() -> Int { cancellations }
+}
+
+private actor CachedDayProvider: ListeningProvider {
+    private let failAfter: Int?
+    private let delay: Duration?
+    private var calls = 0
+
+    init(failAfter: Int? = nil, delay: Duration? = nil) {
+        self.failAfter = failAfter
+        self.delay = delay
+    }
+
+    func validateToken() async throws -> String { "fixture-user" }
+
+    func recentListens(username: String, before: Date?, after: Date?, count: Int) async throws -> [Listen] {
+        calls += 1
+        if let failAfter, calls > failAfter { throw URLError(.notConnectedToInternet) }
+        if let delay { try await ContinuousClock().sleep(for: delay) }
+        guard let after else { return [] }
+        let bounds = HistoryDayBounds(day: after.addingTimeInterval(1))
+        return [cachedDayListen(title: "Network \(calls)", bounds: bounds)]
+    }
+
+    func playingNow(username: String) async throws -> Listen? { nil }
+    func listenCount(username: String) async throws -> Int { 0 }
+    func topArtists(username: String, count: Int) async throws -> [RankedArtist] { [] }
+    func topReleases(username: String, count: Int) async throws -> [RankedRelease] { [] }
+    func topRecordings(username: String, count: Int) async throws -> [RankedRecording] { [] }
+    func listenActivity(username: String, period: ListeningActivityPeriod) async throws -> ListeningActivity {
+        .init(period: period, from: .distantPast, to: .distantPast, lastUpdated: .distantPast, buckets: [])
+    }
+    func freshReleases(username: String, scope: FreshReleaseScope) async throws -> [FreshRelease] { [] }
+    func submitFeedback(_ feedback: RecordingFeedback, for recording: Recording) async throws {}
+    func requestCount() -> Int { calls }
 }
 
 private actor DayHistoryProvider: ListeningProvider {

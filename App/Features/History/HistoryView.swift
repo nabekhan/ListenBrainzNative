@@ -171,22 +171,31 @@ struct HistoryView: View {
 
     private var selectedDayContent: some View {
         Group {
-            if model.isLoadingSelectedDay, model.selectedDayListens.isEmpty {
+            if model.isLoadingSelectedDay,
+               model.selectedDayListens.isEmpty,
+               model.selectedDaySavedAt == nil {
                 LoadingStateView(title: "Opening this day")
             } else if let error = model.selectedDayError, model.selectedDayListens.isEmpty {
                 ContentUnavailableView {
                     Label("Couldn’t load this day", systemImage: "exclamationmark.triangle")
                 } description: {
-                    Text(error)
+                    Text("This day isn’t available right now. Try again in a moment.")
                 } actions: {
                     Button("Try Again") { Task { await model.refreshSelectedHistoryDay() } }
+                        .accessibilityHint(error)
                 }
             } else if model.selectedDayListens.isEmpty {
                 ContentUnavailableView {
                     Label("No listens on this day", systemImage: "calendar.badge.exclamationmark")
                 } description: {
-                    Text("Nothing was submitted on \(selectedDayTitle).")
+                    Text(selectedDayEmptyDescription)
                 } actions: {
+                    if model.isLoadingSelectedDay, model.selectedDaySavedAt != nil {
+                        ProgressView("Checking for updates…")
+                    } else if let error = model.selectedDayRefreshError {
+                        Button("Try Again") { Task { await model.refreshSelectedHistoryDay() } }
+                            .accessibilityHint(error)
+                    }
                     Button("Choose Another Day") {
                         draftDay = model.selectedHistoryDay?.day ?? .now
                         isDatePickerPresented = true
@@ -206,6 +215,7 @@ struct HistoryView: View {
         List {
             if isShowingSelectedDay {
                 selectedDayNavigation
+                selectedDaySavedState
             } else if let playing = filteredPlayingNow {
                 Section("Playing now") {
                     NavigationLink(value: playing.recording) { ListenRow(listen: playing) }
@@ -270,8 +280,15 @@ struct HistoryView: View {
                isShowingSelectedDay,
                !model.selectedDayListens.isEmpty {
                 Section {
-                    Button("Try loading earlier listens again") { Task { await model.loadMoreSelectedHistoryDay() } }
-                        .accessibilityHint(error)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Couldn’t load earlier listens", systemImage: "exclamationmark.triangle")
+                            .font(.subheadline.weight(.semibold))
+                        Button { Task { await model.loadMoreSelectedHistoryDay() } } label: {
+                            Label("Try Again", systemImage: "arrow.clockwise")
+                        }
+                            .buttonStyle(.borderless)
+                            .accessibilityHint(error)
+                    }
                 }
             }
 
@@ -316,6 +333,35 @@ struct HistoryView: View {
                     .buttonStyle(.borderless)
                     .disabled(isSelectedDayTodayOrLater)
                     .accessibilityLabel("Next day")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var selectedDaySavedState: some View {
+        if model.isLoadingSelectedDay, model.selectedDaySavedAt != nil {
+            Section {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Updating saved history…")
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        } else if let error = model.selectedDayRefreshError {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Couldn’t update this day", systemImage: "exclamationmark.triangle")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Showing saved history instead.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Button { Task { await model.refreshSelectedHistoryDay() } } label: {
+                        Label("Try Again", systemImage: "arrow.clockwise")
+                    }
+                        .buttonStyle(.borderless)
+                        .accessibilityHint(error)
+                }
             }
         }
     }
@@ -418,6 +464,16 @@ struct HistoryView: View {
     private var loadedListenCountTitle: String {
         let count = model.selectedDayListens.count
         return String(localized: "\(count) listens loaded")
+    }
+
+    private var selectedDayEmptyDescription: String {
+        if model.isLoadingSelectedDay, model.selectedDaySavedAt != nil {
+            return String(localized: "Saved history has no listens for \(selectedDayTitle). Checking for updates…")
+        }
+        if model.selectedDayRefreshError != nil {
+            return String(localized: "Saved history has no listens for \(selectedDayTitle). Updates aren’t available right now.")
+        }
+        return String(localized: "Nothing was submitted on \(selectedDayTitle).")
     }
 
     private var historyAlertBinding: Binding<HistoryAlert?> {

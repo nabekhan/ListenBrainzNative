@@ -187,6 +187,22 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "History-iPad-RTL")
     }
 
+    func testHistorySavedFallbackKeepsRowsAndOffersOneClearRetry() throws {
+        let app = launchFixture("-brainz-history-saved-error-demo")
+
+        XCTAssertTrue(app.staticTexts["Couldn’t update this day"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Showing saved history instead."].exists)
+        XCTAssertTrue(app.buttons["Try Again"].exists)
+        keepScreenshot(named: "History-saved-fallback-notice")
+
+        let savedRow = app.staticTexts["Night Drive"]
+        let list = app.collectionViews.firstMatch
+        XCTAssertTrue(list.waitForExistence(timeout: 5))
+        reveal(savedRow, in: list)
+        XCTAssertTrue(savedRow.waitForExistence(timeout: 5))
+        keepScreenshot(named: "History-saved-fallback")
+    }
+
     func testFeedFixtureSurvivesRightToLeftLayout() throws {
         let device = XCUIDevice.shared
         device.orientation = .portrait
