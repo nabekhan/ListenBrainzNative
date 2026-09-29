@@ -188,6 +188,30 @@ final class ArchivedHistoryReaderTests: XCTestCase {
         await assertReaderError(.invalidArchive, reader: ArchivedHistoryReader(), archive: monthArchive)
     }
 
+    func testRejectsEntryWhoseDeclaredSizeDoesNotMatchExtractedBytes() async throws {
+        let path = "listens/2026/9.jsonl"
+        let archive = try makeArchive(entries: [
+            ("user.json", Data(#"{"username":"nabecite"}"#.utf8)),
+            (path, joinedJSONL([
+                listenJSON(timestamp: 100, msid: UUID(), mappingRecording: nil)
+            ]))
+        ])
+        defer { try? FileManager.default.removeItem(at: archive.fileURL) }
+
+        try replaceCentralDirectoryUncompressedSize(for: path, with: 1, in: archive.fileURL)
+        let patched = try Archive(url: archive.fileURL, accessMode: .read)
+        XCTAssertEqual(try XCTUnwrap(patched[path]).uncompressedSize, 1)
+
+        // The deliberately tiny line ceiling would win if extraction were
+        // allowed to continue toward the broader policy limit. Declared-size
+        // enforcement must reject the second emitted byte first.
+        await assertReaderError(
+            .invalidArchive,
+            reader: ArchivedHistoryReader(policy: policy(maximumLineBytes: 8)),
+            archive: archive
+        )
+    }
+
     func testCancellationBeforeReadIsReported() async throws {
         let archive = try makeArchive(entries: [
             ("user.json", Data(#"{"username":"nabecite"}"#.utf8)),
@@ -289,6 +313,113 @@ final class ArchivedHistoryReaderTests: XCTestCase {
         )
     }
 
+    func testSearchReturnsNewestFirstAcrossMonthsAndTracksOnlyMalformedRows() async throws {
+        let archive = try makeArchive(entries: [
+            ("user.json", Data(#"{"username":"nabecite"}"#.utf8)),
+            ("listens/2026/8.jsonl", joinedJSONL([
+                listenJSON(timestamp: 100, msid: UUID(), mappingRecording: nil, title: "Older Song"),
+                Data(),
+                Data("not JSON".utf8)
+            ])),
+            ("listens/2026/9.jsonl", joinedJSONL([
+                listenJSON(timestamp: 200, msid: UUID(), mappingRecording: nil, artist: "Newest Artist"),
+                listenJSON(timestamp: 201, msid: UUID(), mappingRecording: nil, release: "Newest Release")
+            ]))
+        ])
+        defer { try? FileManager.default.removeItem(at: archive.fileURL) }
+
+        let result = try await ArchivedHistoryReader().search(
+            in: archive,
+            expectedUsername: "nabecite",
+            query: "newest"
+        )
+
+        XCTAssertEqual(result.matches.map(\.listen.listenedAt), [
+            Date(timeIntervalSince1970: 201),
+            Date(timeIntervalSince1970: 200)
+        ])
+        XCTAssertEqual(result.scannedMonthCount, 2)
+        XCTAssertEqual(result.totalMonthCount, 2)
+        XCTAssertEqual(result.malformedLineCount, 1)
+        XCTAssertFalse(result.isPartial)
+    }
+
+    func testSearchReportsPartialCoverageAtGlobalMatchAndScanLimits() async throws {
+        let rows = (0 ..< 3).map { index in
+            listenJSON(timestamp: 100 + index, msid: UUID(), mappingRecording: nil, title: "Find me")
+        }
+        let archive = try makeArchive(entries: [
+            ("user.json", Data(#"{"username":"nabecite"}"#.utf8)),
+            ("listens/2026/9.jsonl", joinedJSONL(rows)),
+            ("listens/2026/8.jsonl", joinedJSONL(rows))
+        ])
+        defer { try? FileManager.default.removeItem(at: archive.fileURL) }
+
+        let matchLimited = try await ArchivedHistoryReader(policy: policy(maximumSearchResults: 2)).search(
+            in: archive,
+            expectedUsername: "nabecite",
+            query: "find"
+        )
+        XCTAssertEqual(matchLimited.matches.count, 2)
+        XCTAssertTrue(matchLimited.matchLimitReached)
+        XCTAssertEqual(matchLimited.scannedMonthCount, 1)
+
+        let scanLimited = try await ArchivedHistoryReader(policy: policy(
+            maximumSearchProcessedLines: 100_000,
+            maximumSearchUncompressedBytes: 1_000_000
+        )).search(in: archive, expectedUsername: "nabecite", query: "missing")
+        XCTAssertTrue(scanLimited.scanLimitReached)
+        XCTAssertEqual(scanLimited.scannedMonthCount, 1)
+        XCTAssertEqual(scanLimited.totalMonthCount, 2)
+    }
+
+    func testSearchDoesNotClaimTruncationAtTheExactMatchLimit() async throws {
+        let archive = try makeArchive(entries: [
+            ("user.json", Data(#"{"username":"nabecite"}"#.utf8)),
+            ("listens/2026/9.jsonl", joinedJSONL([
+                listenJSON(timestamp: 100, msid: UUID(), mappingRecording: nil, title: "Find me"),
+                listenJSON(timestamp: 101, msid: UUID(), mappingRecording: nil, title: "Find me")
+            ]))
+        ])
+        defer { try? FileManager.default.removeItem(at: archive.fileURL) }
+
+        let result = try await ArchivedHistoryReader(policy: policy(maximumSearchResults: 2)).search(
+            in: archive,
+            expectedUsername: "nabecite",
+            query: "find"
+        )
+
+        XCTAssertEqual(result.matches.count, 2)
+        XCTAssertFalse(result.matchLimitReached)
+        XCTAssertFalse(result.isPartial)
+    }
+
+    func testSearchEnforcesCharacterMinimumAndUTF8ByteCeilingIndependently() async throws {
+        let archive = try makeArchive(entries: [
+            ("user.json", Data(#"{"username":"nabecite"}"#.utf8))
+        ])
+        defer { try? FileManager.default.removeItem(at: archive.fileURL) }
+        let threeByteReader = ArchivedHistoryReader(policy: policy(maximumSearchQueryBytes: 3))
+
+        for query in [" ", "a", "é", "éé", "four"] {
+            do {
+                _ = try await threeByteReader.search(
+                    in: archive,
+                    expectedUsername: "nabecite",
+                    query: query
+                )
+                XCTFail("Expected invalid query for \(query)")
+            } catch let error as ArchivedHistoryReaderError {
+                XCTAssertEqual(error, .invalidSearchQuery)
+            }
+        }
+
+        let exactMultibyteBoundary = try await ArchivedHistoryReader(
+            policy: policy(maximumSearchQueryBytes: 4)
+        ).search(in: archive, expectedUsername: "nabecite", query: "éé")
+        XCTAssertTrue(exactMultibyteBoundary.matches.isEmpty)
+    }
+
     private func assertReaderError(
         _ expected: ArchivedHistoryReaderError,
         reader: ArchivedHistoryReader,
@@ -342,6 +473,40 @@ final class ArchivedHistoryReaderTests: XCTestCase {
         try bytes.write(to: url, options: .atomic)
     }
 
+    private func replaceCentralDirectoryUncompressedSize(
+        for path: String,
+        with size: UInt32,
+        in url: URL
+    ) throws {
+        var bytes = try Data(contentsOf: url)
+        let signature = Data([0x50, 0x4B, 0x01, 0x02])
+        var searchStart = bytes.startIndex
+
+        while let range = bytes.range(of: signature, in: searchStart ..< bytes.endIndex) {
+            let header = range.lowerBound
+            guard header + 46 <= bytes.endIndex else { break }
+            let nameLength = Int(bytes.littleEndianUInt16(at: header + 28))
+            let extraLength = Int(bytes.littleEndianUInt16(at: header + 30))
+            let commentLength = Int(bytes.littleEndianUInt16(at: header + 32))
+            let nameStart = header + 46
+            let nameEnd = nameStart + nameLength
+            guard nameEnd <= bytes.endIndex else { break }
+
+            if String(data: bytes[nameStart ..< nameEnd], encoding: .utf8) == path {
+                var littleEndianSize = size.littleEndian
+                withUnsafeBytes(of: &littleEndianSize) { replacement in
+                    bytes.replaceSubrange(header + 24 ..< header + 28, with: replacement)
+                }
+                try bytes.write(to: url, options: .atomic)
+                return
+            }
+
+            searchStart = nameEnd + extraLength + commentLength
+        }
+
+        XCTFail("Central directory entry not found for \(path)")
+    }
+
     private func joinedJSONL(_ rows: [Data]) -> Data {
         rows.reduce(into: Data()) { output, row in
             output.append(row)
@@ -349,10 +514,17 @@ final class ArchivedHistoryReaderTests: XCTestCase {
         }
     }
 
-    private func listenJSON(timestamp: Int, msid: UUID, mappingRecording: UUID?) -> Data {
+    private func listenJSON(
+        timestamp: Int,
+        msid: UUID,
+        mappingRecording: UUID?,
+        title: String = "Track",
+        artist: String = "Artist",
+        release: String = "Release"
+    ) -> Data {
         let mapping = mappingRecording.map { "\"mbid_mapping\":{\"recording_mbid\":\"\($0.uuidString)\"}" } ?? "\"mbid_mapping\":null"
         return Data("""
-        {"inserted_at":\(timestamp + 1),"listened_at":\(timestamp),"recording_msid":"\(msid.uuidString)","track_metadata":{"artist_name":"Artist","track_name":"Track","release_name":"Release",\(mapping)}}
+        {"inserted_at":\(timestamp + 1),"listened_at":\(timestamp),"recording_msid":"\(msid.uuidString)","track_metadata":{"artist_name":"\(artist)","track_name":"\(title)","release_name":"\(release)",\(mapping)}}
         """.utf8)
     }
 
@@ -362,7 +534,11 @@ final class ArchivedHistoryReaderTests: XCTestCase {
         maximumRecords: Int = 50_000,
         maximumRetainedTextBytes: Int = 24 * 1_024 * 1_024,
         maximumProcessedLines: Int = 100_000,
-        extractionBufferSize: Int = 64 * 1_024
+        extractionBufferSize: Int = 64 * 1_024,
+        maximumSearchQueryBytes: Int = 256,
+        maximumSearchResults: Int = 500,
+        maximumSearchProcessedLines: Int = 5_000_000,
+        maximumSearchUncompressedBytes: UInt64 = 2 * 1_024 * 1_024 * 1_024
     ) -> ArchivedHistoryReaderPolicy {
         ArchivedHistoryReaderPolicy(
             maximumEntryCount: maximumEntryCount,
@@ -375,7 +551,17 @@ final class ArchivedHistoryReaderTests: XCTestCase {
             maximumRecords: maximumRecords,
             maximumRetainedTextBytes: maximumRetainedTextBytes,
             maximumProcessedLines: maximumProcessedLines,
-            extractionBufferSize: extractionBufferSize
+            extractionBufferSize: extractionBufferSize,
+            maximumSearchQueryBytes: maximumSearchQueryBytes,
+            maximumSearchResults: maximumSearchResults,
+            maximumSearchProcessedLines: maximumSearchProcessedLines,
+            maximumSearchUncompressedBytes: maximumSearchUncompressedBytes
         )
+    }
+}
+
+private extension Data {
+    func littleEndianUInt16(at offset: Int) -> UInt16 {
+        UInt16(self[offset]) | (UInt16(self[offset + 1]) << 8)
     }
 }

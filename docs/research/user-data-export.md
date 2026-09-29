@@ -1,6 +1,6 @@
 # Native account-data export
 
-Snapshot: ListenBrainz server `v-2026-09-24.0` (`71f92e1`).
+Snapshot: ListenBrainz server `v-2026-09-28.0` (`970f20b`).
 
 ## Contract
 
@@ -27,8 +27,10 @@ Snapshot: ListenBrainz server `v-2026-09-24.0` (`71f92e1`).
 ## Local history snapshot browser
 
 - A downloaded archive now offers an explicit **Browse history snapshot** action. It enumerates validated `listens/<year>/<month>.jsonl` members after verifying `user.json` belongs to the active account, then decodes only a selected month.
-- The browser is a separate read-only snapshot, not another `ListeningModel` source. It makes no ListenBrainz, MusicBrainz, artwork, or playback request; search is limited to the loaded month; archived rows expose no mutation or live-entity route.
+- The browser is a separate read-only snapshot, not another `ListeningModel` source. It makes no ListenBrainz, MusicBrainz, artwork, or playback request; archived rows expose no mutation or live-entity route.
+- **Search all history** is a separate explicit action. Submitting a query with at least two characters and no more than 256 UTF-8 bytes sequentially scans canonical months newest first and matches track, artist, or release text locally. Typing never starts work. The scan retains at most 500 newest matches, stops before 5,000,000 processed lines or 2 GiB of verified output, exposes cancellation, and labels partial coverage rather than implying completeness.
 - ZIPFoundation 0.9.20 is pinned only for file-backed enumeration and streaming consumer reads. For every yielded member, the app rejects unexpected, duplicate, non-ASCII, non-file, or noncanonical paths; bounds entry count, compressed/uncompressed totals, ratios, month/line/row sizes; checks actual emitted bytes, cancellation, timestamp order, and returned CRCs; skips bounded malformed rows; and preserves exact duplicate listens with source-line identity.
+- Every streamed entry is capped to its own declared uncompressed size and rejected unless the actual extracted byte count matches exactly. Whole-archive accounting uses that verified actual count, so a forged central-directory size cannot defer rejection until the broader monthly or aggregate ceiling.
 - A selected month retains only title, artist, release, timestamp, and source-line identity. It stops at 50,000 decoded listens, 24 MiB of retained UTF-8 display text, or 100,000 processed lines, preventing a valid but pathological archive from exhausting resident memory.
 - The first version is intentionally ephemeral and restricted to archives downloaded by Brainz. ZIPFoundation can stop enumeration at an encrypted or malformed central-directory entry, so arbitrary file import is deliberately unavailable; unseen payload is never extracted and the outer archive still has a 4 GiB ceiling. The browser does not extract paths, persist a second private index, reconcile after the archive changes, or pretend the downloaded copy is current. Existing 24-hour cleanup and account teardown therefore remain the sole private-file lifecycle owners.
 

@@ -43,6 +43,13 @@ struct ArchivedListenMonth: Hashable, Sendable {
     let listens: [ArchivedListen]
     let blankLineCount: Int
     let malformedLineCount: Int
+    /// Includes valid, blank, and malformed JSONL rows. This is intentionally
+    /// retained as a count only: a whole-archive search never needs to hold an
+    /// unbounded index of the source file in memory.
+    let processedLineCount: Int
+    /// The exact bytes produced by the verified ZIP extraction. Keeping this
+    /// separate from ZIP metadata lets aggregate scans enforce real work.
+    let processedByteCount: UInt64
 
     init(
         username: String,
@@ -50,7 +57,9 @@ struct ArchivedListenMonth: Hashable, Sendable {
         month: Int,
         listens: [ArchivedListen],
         blankLineCount: Int,
-        malformedLineCount: Int
+        malformedLineCount: Int,
+        processedLineCount: Int? = nil,
+        processedByteCount: UInt64 = 0
     ) {
         self.username = username
         self.year = year
@@ -58,5 +67,31 @@ struct ArchivedListenMonth: Hashable, Sendable {
         self.listens = listens
         self.blankLineCount = blankLineCount
         self.malformedLineCount = malformedLineCount
+        self.processedLineCount = processedLineCount ?? listens.count + blankLineCount + malformedLineCount
+        self.processedByteCount = processedByteCount
     }
+}
+
+/// A local match carries its source month so duplicate line numbers in
+/// different monthly files remain distinct without creating a remote identity.
+struct ArchivedHistorySearchMatch: Identifiable, Hashable, Sendable {
+    let listen: ArchivedListen
+    let year: Int
+    let month: Int
+
+    var id: String { "\(year)-\(month)-\(listen.sourceLineNumber)" }
+}
+
+/// The bounded result of an explicit, device-only archive scan. Limit flags
+/// are part of the model so the UI never presents a partial scan as complete.
+struct ArchivedHistorySearchResult: Hashable, Sendable {
+    let query: String
+    let matches: [ArchivedHistorySearchMatch]
+    let totalMonthCount: Int
+    let scannedMonthCount: Int
+    let malformedLineCount: Int
+    let matchLimitReached: Bool
+    let scanLimitReached: Bool
+
+    var isPartial: Bool { matchLimitReached || scanLimitReached }
 }

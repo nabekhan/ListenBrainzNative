@@ -70,6 +70,24 @@ struct ArchivedHistorySnapshotView: View {
         List {
             snapshotSummary(catalog)
 
+            if !catalog.months.isEmpty {
+                Section {
+                    NavigationLink {
+                        ArchivedHistorySearchView(
+                            archive: model.archive,
+                            expectedUsername: catalog.username,
+                            reader: reader
+                        )
+                    } label: {
+                        Label("Search all history", systemImage: "magnifyingglass")
+                            .font(.body.weight(.semibold))
+                    }
+                    Text("Find artists, albums, or tracks in this downloaded archive. Search stays on this device.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             if catalog.months.isEmpty {
                 Section {
                     ContentUnavailableView(
@@ -199,6 +217,180 @@ struct ArchivedHistorySnapshotView: View {
             .map { (year: $0.key, months: $0.value.sorted { $0.month > $1.month }) }
             .sorted { $0.year > $1.year }
     }
+}
+
+private struct ArchivedHistorySearchView: View {
+    @State private var model: ArchivedHistorySearchModel
+    @FocusState private var isSearchFocused: Bool
+
+    init(
+        archive: UserDataExportArchive,
+        expectedUsername: String,
+        reader: any ArchivedHistoryReading
+    ) {
+        _model = State(initialValue: ArchivedHistorySearchModel(
+            archive: archive,
+            expectedUsername: expectedUsername,
+            reader: reader
+        ))
+    }
+
+    var body: some View {
+        List {
+            Section {
+                TextField("Artist, album, or track", text: $model.query)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                    .focused($isSearchFocused)
+                    .submitLabel(.search)
+                    .onSubmit { submitSearch() }
+                    .disabled(model.isSearching)
+                    .accessibilityIdentifier("archived-history-search-field")
+
+                Text("Search stays on this device. It can take a moment for a large archive.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                if let validationMessage = model.validationMessage {
+                    Text(validationMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                }
+
+                Button("Search archive") {
+                    submitSearch()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(model.isSearching)
+                .accessibilityIdentifier("archived-history-search-submit")
+            }
+
+            if model.isSearching {
+                Section {
+                    HStack(spacing: 12) {
+                        ProgressView()
+                        Text("Searching your downloaded history")
+                    }
+                    Button("Cancel search", role: .cancel) { model.cancel() }
+                        .accessibilityIdentifier("archived-history-search-cancel")
+                }
+            } else if let errorMessage = model.errorMessage {
+                Section {
+                    ContentUnavailableView {
+                        Label("Search couldn’t finish", systemImage: "magnifyingglass.circle")
+                    } description: {
+                        Text(errorMessage)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 180)
+                }
+            } else if let result = model.result {
+                results(result)
+            } else {
+                Section {
+                    ContentUnavailableView(
+                        "Search your downloaded history",
+                        systemImage: "magnifyingglass",
+                        description: Text("Enter an artist, album, or track, then choose Search archive.")
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 220)
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Search all history")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { isSearchFocused = true }
+        .onDisappear { model.cancel() }
+        .accessibilityIdentifier("archived-history-search")
+    }
+
+    private func submitSearch() {
+        isSearchFocused = false
+        model.submit()
+    }
+
+    @ViewBuilder
+    private func results(_ result: ArchivedHistorySearchResult) -> some View {
+        Section {
+            if !result.matches.isEmpty {
+                Text(matchCountCopy(result.matches.count))
+                    .font(.headline)
+            }
+
+            Text("Searched \(result.scannedMonthCount) of \(result.totalMonthCount) months on this device.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            if result.isPartial {
+                Label(partialCopy(result), systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("archived-history-search-partial-warning")
+            }
+
+            if result.malformedLineCount > 0 {
+                Label(skippedRowsCopy(result.malformedLineCount), systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+            }
+        }
+
+        if result.matches.isEmpty {
+            Section {
+                ContentUnavailableView(
+                    result.isPartial ? "No matches in the scanned history" : "No matching listens",
+                    systemImage: "waveform.slash",
+                    description: Text(
+                        result.isPartial
+                            ? "This search reached a safety limit before every month could be scanned."
+                            : "Try another artist, album, or track."
+                    )
+                )
+                .frame(maxWidth: .infinity, minHeight: 220)
+            }
+        } else {
+            ForEach(groupedSearchMatches(result.matches)) { group in
+                Section(group.day.formatted(date: .complete, time: .omitted)) {
+                    ForEach(group.matches) { match in
+                        ArchivedListenRow(listen: match.listen, includesDateContext: true)
+                    }
+                }
+            }
+        }
+    }
+
+    private func partialCopy(_ result: ArchivedHistorySearchResult) -> String {
+        if result.matchLimitReached {
+            return String(localized: "Showing the newest 500 matches. Refine your search to see more.")
+        }
+        return String(localized: "Only the newest part of this archive was searched. Browse individual months to search older listens.")
+    }
+
+    private func matchCountCopy(_ count: Int) -> String {
+        count == 1
+            ? String(localized: "1 match")
+            : String(localized: "\(count) matches")
+    }
+
+    private func skippedRowsCopy(_ count: Int) -> String {
+        count == 1
+            ? String(localized: "1 unreadable listen was skipped.")
+            : String(localized: "\(count) unreadable listens were skipped.")
+    }
+
+    private func groupedSearchMatches(
+        _ matches: [ArchivedHistorySearchMatch]
+    ) -> [ArchivedHistorySearchDayGroup] {
+        Dictionary(grouping: matches) { Calendar.autoupdatingCurrent.startOfDay(for: $0.listen.listenedAt) }
+            .map { ArchivedHistorySearchDayGroup(day: $0.key, matches: $0.value) }
+            .sorted { $0.day > $1.day }
+    }
+}
+
+private struct ArchivedHistorySearchDayGroup: Identifiable {
+    let day: Date
+    let matches: [ArchivedHistorySearchMatch]
+    var id: Date { day }
 }
 
 private struct ArchivedHistoryMonthView: View {
@@ -348,6 +540,7 @@ private struct ArchivedListenDayGroup: Identifiable {
 private struct ArchivedListenRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let listen: ArchivedListen
+    var includesDateContext = false
 
     var body: some View {
         HStack(alignment: dynamicTypeSize.isAccessibilitySize ? .top : .center, spacing: 12) {
@@ -371,6 +564,7 @@ private struct ArchivedListenRow: View {
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
+        .accessibilityValue(includesDateContext ? fullTimestamp : "")
         .accessibilityHint("Saved in a read-only history snapshot")
     }
 
@@ -396,8 +590,14 @@ private struct ArchivedListenRow: View {
         Text(listen.listenedAt.formatted(date: .omitted, time: .shortened))
             .font(.caption.monospacedDigit())
             .foregroundStyle(.secondary)
+            .multilineTextAlignment(dynamicTypeSize.isAccessibilitySize ? .leading : .trailing)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
+            .accessibilityHidden(includesDateContext)
+    }
+
+    private var fullTimestamp: String {
+        listen.listenedAt.formatted(date: .complete, time: .shortened)
     }
 }
 
@@ -490,6 +690,42 @@ private func byteCount(_ value: UInt64) -> String {
                 ],
                 blankLineCount: 1,
                 malformedLineCount: 2
+            )
+        }
+
+        func search(
+            in _: UserDataExportArchive,
+            expectedUsername _: String,
+            query: String
+        ) async throws -> ArchivedHistorySearchResult {
+            let month = try await readMonth(
+                from: UserDataExportArchive(
+                    exportID: 0,
+                    range: .all,
+                    downloadedAt: .now,
+                    byteCount: 0,
+                    fileURL: URL(fileURLWithPath: "/tmp/visual-history-snapshot.zip")
+                ),
+                expectedUsername: "visual-listener",
+                year: 2026,
+                month: 9
+            )
+            let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+            let matches = month.listens.reversed().filter { listen in
+                listen.title.localizedCaseInsensitiveContains(normalizedQuery)
+                    || listen.artistName.localizedCaseInsensitiveContains(normalizedQuery)
+                    || (listen.releaseTitle?.localizedCaseInsensitiveContains(normalizedQuery) == true)
+            }
+            return ArchivedHistorySearchResult(
+                query: query,
+                matches: matches.map {
+                    .init(listen: $0, year: 2026, month: 9)
+                },
+                totalMonthCount: 3,
+                scannedMonthCount: 3,
+                malformedLineCount: 2,
+                matchLimitReached: false,
+                scanLimitReached: false
             )
         }
 

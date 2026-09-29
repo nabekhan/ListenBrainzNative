@@ -433,14 +433,14 @@ final class ReleaseLayoutUITests: XCTestCase {
         XCTAssertTrue(hero.waitForExistence(timeout: 15))
         assertVisibleFrame(hero, in: window)
         keepScreenshot(named: "Year-in-Music-hero-iPad-pseudo-localized")
-        reveal(firstCard, in: screen)
+        revealIncrementally(firstCard, in: screen)
         XCTAssertTrue(firstCard.waitForExistence(timeout: 5))
         assertVisibleFrame(firstCard, in: window)
         keepScreenshot(named: "Year-in-Music-identity-iPad-pseudo-localized")
-        reveal(origins, in: screen)
+        revealIncrementally(origins, in: screen)
         XCTAssertTrue(origins.waitForExistence(timeout: 5))
         assertVisibleFrame(origins, in: window)
-        reveal(listeners, in: screen)
+        revealIncrementally(listeners, in: screen)
         XCTAssertTrue(listeners.waitForExistence(timeout: 5))
         assertVisibleFrame(listeners, in: window)
         keepScreenshot(named: "Year-in-Music-secondary-context-iPad-pseudo-localized")
@@ -708,6 +708,47 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "Archived-history-snapshot-month")
     }
 
+    func testArchivedHistorySearchIsExplicitLocalAndAccessible() throws {
+        let app = launchFixture("-brainz-archive-history-demo")
+        let snapshot = app.collectionViews["archived-history-snapshot"]
+        XCTAssertTrue(snapshot.waitForExistence(timeout: 10))
+
+        let searchAll = app.buttons["Search all history"]
+        revealIncrementally(searchAll, in: snapshot)
+        XCTAssertTrue(searchAll.waitForExistence(timeout: 5))
+        searchAll.tap()
+
+        XCTAssertTrue(app.navigationBars["Search all history"].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts[
+                "Enter an artist, album, or track, then choose Search archive."
+            ].exists
+        )
+        let field = app.textFields["archived-history-search-field"]
+        XCTAssertTrue(field.exists)
+        field.tap()
+        field.typeText("al")
+        app.buttons["archived-history-search-submit"].tap()
+
+        let searchScreen = app.collectionViews["archived-history-search"]
+        XCTAssertTrue(searchScreen.waitForExistence(timeout: 5))
+        let newestDate = Date(timeIntervalSince1970: 1_790_625_600 + 86_400 + 1_500)
+            .formatted(date: .complete, time: .omitted)
+        let newestDateLabel = app.staticTexts[newestDate]
+        revealIncrementally(newestDateLabel, in: searchScreen)
+        XCTAssertTrue(newestDateLabel.waitForExistence(timeout: 10))
+        let archivedTrack = app.staticTexts["Archie, Marry Me"]
+        revealIncrementally(archivedTrack, in: searchScreen)
+        XCTAssertTrue(archivedTrack.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Love"].exists)
+        XCTAssertFalse(app.buttons["Delete listen"].exists)
+        try assertNoAccessibilityIssues(
+            in: app,
+            auditTypes: semanticAuditTypes.union(.elementDetection)
+        )
+        keepScreenshot(named: "Archived-history-search-local")
+    }
+
     func testSearchPaginationWaitsForExplicitLoadMoreAction() throws {
         let app = launchFixture(
             "-brainz-search-pagination-demo",
@@ -951,6 +992,15 @@ final class ReleaseLayoutUITests: XCTestCase {
         for _ in 0 ..< 6 {
             if element.exists, scrollView.frame.intersects(element.frame) { return }
             scrollView.swipeUp()
+        }
+    }
+
+    private func revealIncrementally(_ element: XCUIElement, in scrollView: XCUIElement) {
+        let start = scrollView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.78))
+        let end = scrollView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.38))
+        for _ in 0 ..< 20 {
+            if element.exists, scrollView.frame.intersects(element.frame) { return }
+            start.press(forDuration: 0.01, thenDragTo: end)
         }
     }
 

@@ -735,6 +735,16 @@
         }
       }
     },
+    "%lld matches": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld matches"
+          }
+        }
+      }
+    },
     "%lld min": {
       "localizations": {
         "en": {
@@ -1137,6 +1147,26 @@
           "stringUnit": {
             "state": "translated",
             "value": ", "
+          }
+        }
+      }
+    },
+    "1 match": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 match"
+          }
+        }
+      }
+    },
+    "1 unreadable listen was skipped.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 unreadable listen was skipped."
           }
         }
       }
@@ -2293,6 +2323,16 @@
         }
       }
     },
+    "Artist, album, or track": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Artist, album, or track"
+          }
+        }
+      }
+    },
     "Artists": {
       "localizations": {
         "en": {
@@ -2929,6 +2969,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cancel"
+          }
+        }
+      }
+    },
+    "Cancel search": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel search"
           }
         }
       }
@@ -5055,6 +5105,16 @@
         }
       }
     },
+    "Enter at least 2 characters and no more than 256 UTF-8 bytes.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter at least 2 characters and no more than 256 UTF-8 bytes."
+          }
+        }
+      }
+    },
     "Enter a ListenBrainz username.": {
       "localizations": {
         "en": {
@@ -5085,12 +5145,32 @@
         }
       }
     },
+    "Enter an artist, album, or track, then choose Search archive.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter an artist, album, or track, then choose Search archive."
+          }
+        }
+      }
+    },
     "Enter an artist.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Enter an artist."
+          }
+        }
+      }
+    },
+    "Enter at least 2 characters to search your archive.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter at least 2 characters to search your archive."
           }
         }
       }
@@ -5371,6 +5451,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Find a playlist"
+          }
+        }
+      }
+    },
+    "Find artists, albums, or tracks in this downloaded archive. Search stays on this device.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find artists, albums, or tracks in this downloaded archive. Search stays on this device."
           }
         }
       }
@@ -8747,6 +8837,16 @@
         }
       }
     },
+    "Make your search shorter, then try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make your search shorter, then try again."
+          }
+        }
+      }
+    },
     "Makes one authenticated ListenBrainz Radio request, then one batched metadata request when mapped recordings are present": {
       "localizations": {
         "en": {
@@ -9957,6 +10057,16 @@
         }
       }
     },
+    "No matches in the scanned history": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No matches in the scanned history"
+          }
+        }
+      }
+    },
     "No matching followers": {
       "localizations": {
         "en": {
@@ -10523,6 +10633,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Only reset it after reviewing the current track order. This affects this playlist and account only."
+          }
+        }
+      }
+    },
+    "Only the newest part of this archive was searched. Browse individual months to search older listens.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only the newest part of this archive was searched. Browse individual months to search older listens."
           }
         }
       }
@@ -13765,6 +13885,26 @@
         }
       }
     },
+    "Search all history": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search all history"
+          }
+        }
+      }
+    },
+    "Search archive": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search archive"
+          }
+        }
+      }
+    },
     "Search by track, artist, or recording ID.": {
       "localizations": {
         "en": {
@@ -13781,6 +13921,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Search category"
+          }
+        }
+      }
+    },
+    "Search couldn’t finish": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search couldn’t finish"
           }
         }
       }
@@ -13845,6 +13995,16 @@
         }
       }
     },
+    "Search stays on this device. It can take a moment for a large archive.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search stays on this device. It can take a moment for a large archive."
+          }
+        }
+      }
+    },
     "Search tags": {
       "localizations": {
         "en": {
@@ -13885,12 +14045,32 @@
         }
       }
     },
+    "Search your downloaded history": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search your downloaded history"
+          }
+        }
+      }
+    },
     "Search your music world": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Search your music world"
+          }
+        }
+      }
+    },
+    "Searched %lld of %lld months on this device.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Searched %1$lld of %2$lld months on this device."
           }
         }
       }
@@ -13911,6 +14091,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Searching MusicBrainz…"
+          }
+        }
+      }
+    },
+    "Searching your downloaded history": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Searching your downloaded history"
           }
         }
       }
@@ -14773,6 +14963,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Showing the first %lld results."
+          }
+        }
+      }
+    },
+    "Showing the newest 500 matches. Refine your search to see more.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showing the newest 500 matches. Refine your search to see more."
           }
         }
       }
@@ -16573,6 +16773,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "This result does not contain a valid ListenBrainz playlist ID."
+          }
+        }
+      }
+    },
+    "This search reached a safety limit before every month could be scanned.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This search reached a safety limit before every month could be scanned."
           }
         }
       }

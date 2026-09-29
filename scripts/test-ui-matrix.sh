@@ -314,6 +314,7 @@ run_tests "$ipad_destination" "$output_root/ipad-responsive.xcresult" ipad respo
     "-only-testing:$ui_test_class/testHomeFixtureUsesRegularWidthInPortrait" \
     "-only-testing:$ui_test_class/testHomeFixtureAdaptsToLandscape" \
     "-only-testing:$ui_test_class/testHistoryControlsFollowRightToLeftLayout" \
+    "-only-testing:$ui_test_class/testArchivedHistorySearchIsExplicitLocalAndAccessible" \
     "-only-testing:$ui_test_class/testFeedFixtureSurvivesRightToLeftLayout" \
     "-only-testing:$ui_test_class/testProfilePlaylistsFixtureSurvivesRightToLeftLayout" \
     "-only-testing:$ui_test_class/testHomeFixtureSurvivesExpandedPseudoLocalization"
@@ -324,6 +325,7 @@ run_tests "$iphone_destination" "$output_root/iphone-dark-accessibility.xcresult
     "-only-testing:$ui_test_class/testHomeFixtureExposesMetricSemantics" \
     "-only-testing:$ui_test_class/testCommunityChartsPageOnlyAfterExplicitLoadMoreAction" \
     "-only-testing:$ui_test_class/testFeedbackLibraryLoadsOnlyTheSelectedRatingAndPagesExplicitly" \
+    "-only-testing:$ui_test_class/testArchivedHistorySearchIsExplicitLocalAndAccessible" \
     "-only-testing:$ui_test_class/testYearInMusicFixtureSurvivesExpandedPseudoLocalization"
 
 print "UI simulator matrix completed successfully. Inspect: $output_root"

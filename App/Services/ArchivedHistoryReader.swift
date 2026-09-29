@@ -8,6 +8,7 @@ enum ArchivedHistoryReaderError: Error, Equatable {
     case monthUnavailable
     case limitExceeded
     case cancelled
+    case invalidSearchQuery
 }
 
 /// The narrow app-facing boundary for an explicitly selected local export.
@@ -25,6 +26,12 @@ protocol ArchivedHistoryReading: Sendable {
         year: Int,
         month: Int
     ) async throws -> ArchivedListenMonth
+
+    func search(
+        in export: UserDataExportArchive,
+        expectedUsername: String,
+        query: String
+    ) async throws -> ArchivedHistorySearchResult
 }
 
 /// Explicit limits for the small, read-only archive-browsing slice. They are
@@ -41,6 +48,10 @@ struct ArchivedHistoryReaderPolicy: Sendable {
     let maximumRetainedTextBytes: Int
     let maximumProcessedLines: Int
     let extractionBufferSize: Int
+    let maximumSearchQueryBytes: Int
+    let maximumSearchResults: Int
+    let maximumSearchProcessedLines: Int
+    let maximumSearchUncompressedBytes: UInt64
 
     static let `default` = ArchivedHistoryReaderPolicy(
         maximumEntryCount: 500,
@@ -56,7 +67,11 @@ struct ArchivedHistoryReaderPolicy: Sendable {
         maximumRecords: 50_000,
         maximumRetainedTextBytes: 24 * 1_024 * 1_024,
         maximumProcessedLines: 100_000,
-        extractionBufferSize: 64 * 1_024
+        extractionBufferSize: 64 * 1_024,
+        maximumSearchQueryBytes: 256,
+        maximumSearchResults: 500,
+        maximumSearchProcessedLines: 5_000_000,
+        maximumSearchUncompressedBytes: 2 * 1_024 * 1_024 * 1_024
     )
 }
 
@@ -113,6 +128,101 @@ actor ArchivedHistoryReader {
                 username: validated.username,
                 year: year,
                 month: month
+            )
+        } catch is CancellationError {
+            throw ArchivedHistoryReaderError.cancelled
+        } catch let error as ArchivedHistoryReaderError {
+            throw error
+        } catch {
+            throw ArchivedHistoryReaderError.invalidArchive
+        }
+    }
+
+    /// Searches a verified export in newest-month-first order. The export is
+    /// opened and account-checked once; each month's existing CRC-checked
+    /// decoder runs sequentially, then is released before the next month.
+    /// No index, network request, or archive-derived data is persisted.
+    func search(
+        in export: UserDataExportArchive,
+        expectedUsername: String,
+        query: String
+    ) throws -> ArchivedHistorySearchResult {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard query.count >= 2, query.utf8.count <= policy.maximumSearchQueryBytes else {
+            throw ArchivedHistoryReaderError.invalidSearchQuery
+        }
+
+        do {
+            let validated = try openValidatedArchive(from: export, expectedUsername: expectedUsername)
+            let descriptors = validated.entries.compactMap { path, entry in
+                monthDescriptor(path: path, entry: entry)
+            }
+            .sorted {
+                if $0.year != $1.year { return $0.year > $1.year }
+                return $0.month > $1.month
+            }
+
+            var matches: [ArchivedHistorySearchMatch] = []
+            var scannedMonths = 0
+            var processedLines = 0
+            var scannedBytes: UInt64 = 0
+            var malformedLines = 0
+            var matchLimitReached = false
+            var scanLimitReached = false
+
+            for descriptor in descriptors {
+                try Task.checkCancellation()
+                guard let entry = validated.entries["listens/\(descriptor.year)/\(descriptor.month).jsonl"] else {
+                    throw ArchivedHistoryReaderError.invalidArchive
+                }
+
+                // Do not start a month when its established decoder could push
+                // the search beyond the global scan bounds. This keeps the cap
+                // exact without weakening CRC validation or retaining a partial
+                // decoder state.
+                guard entry.uncompressedSize <= policy.maximumSearchUncompressedBytes,
+                      policy.maximumProcessedLines <= policy.maximumSearchProcessedLines,
+                      scannedBytes <= policy.maximumSearchUncompressedBytes - entry.uncompressedSize,
+                      processedLines <= policy.maximumSearchProcessedLines - policy.maximumProcessedLines
+                else {
+                    scanLimitReached = true
+                    break
+                }
+
+                let month = try decodeMonth(
+                    from: validated.archive,
+                    entry: entry,
+                    username: validated.username,
+                    year: descriptor.year,
+                    month: descriptor.month,
+                    maximumBytes: policy.maximumSearchUncompressedBytes - scannedBytes
+                )
+                scannedMonths += 1
+                scannedBytes += month.processedByteCount
+                processedLines += month.processedLineCount
+                malformedLines += month.malformedLineCount
+
+                for listen in month.listens.reversed() {
+                    try Task.checkCancellation()
+                    guard matchesListen(listen, query: query) else { continue }
+                    guard matches.count < policy.maximumSearchResults else {
+                        matchLimitReached = true
+                        break
+                    }
+                    matches.append(.init(listen: listen, year: descriptor.year, month: descriptor.month))
+                }
+                if matchLimitReached { break }
+            }
+
+            try Task.checkCancellation()
+            return ArchivedHistorySearchResult(
+                query: query,
+                matches: matches,
+                totalMonthCount: descriptors.count,
+                scannedMonthCount: scannedMonths,
+                malformedLineCount: malformedLines,
+                matchLimitReached: matchLimitReached,
+                scanLimitReached: scanLimitReached
             )
         } catch is CancellationError {
             throw ArchivedHistoryReaderError.cancelled
@@ -204,13 +314,19 @@ actor ArchivedHistoryReader {
         entry: Entry,
         username: String,
         year: Int,
-        month: Int
+        month: Int,
+        maximumBytes: UInt64? = nil
     ) throws -> ArchivedListenMonth {
-        guard entry.uncompressedSize <= policy.maximumMonthBytes else {
+        let byteLimit = min(maximumBytes ?? policy.maximumMonthBytes, policy.maximumMonthBytes)
+        guard entry.uncompressedSize <= byteLimit else {
             throw ArchivedHistoryReaderError.limitExceeded
         }
 
-        let state = MonthDecodeState(policy: policy)
+        // A policy ceiling bounds legitimate entries, while the entry's own
+        // declared size bounds the extractor itself. A forged central
+        // directory must not be allowed to expand to the broader policy cap
+        // before the exact-size check below rejects it.
+        let state = MonthDecodeState(policy: policy, maximumByteCount: entry.uncompressedSize)
 
         let checksum = try archive.extract(
             entry,
@@ -225,6 +341,9 @@ actor ArchivedHistoryReader {
         }
         try state.finish()
         let result = state.result()
+        guard result.processedByteCount == entry.uncompressedSize else {
+            throw ArchivedHistoryReaderError.invalidArchive
+        }
 
         return ArchivedListenMonth(
             username: username,
@@ -232,19 +351,28 @@ actor ArchivedHistoryReader {
             month: month,
             listens: result.listens,
             blankLineCount: result.blankLineCount,
-            malformedLineCount: result.malformedLineCount
+            malformedLineCount: result.malformedLineCount,
+            processedLineCount: result.processedLineCount,
+            processedByteCount: result.processedByteCount
         )
     }
 
     private func readData(from archive: Archive, entry: Entry, maximumBytes: UInt64) throws -> Data {
+        guard entry.uncompressedSize <= maximumBytes else {
+            throw ArchivedHistoryReaderError.limitExceeded
+        }
         let output = DataDecodeState()
         let checksum = try archive.extract(entry, bufferSize: policy.extractionBufferSize, skipCRC32: false, progress: nil) { chunk in
-            try output.append(chunk, maximumBytes: maximumBytes)
+            try output.append(chunk, expectedByteCount: entry.uncompressedSize)
         }
         guard checksum == entry.checksum else {
             throw ArchivedHistoryReaderError.invalidArchive
         }
-        return output.value()
+        let value = output.value()
+        guard UInt64(value.count) == entry.uncompressedSize else {
+            throw ArchivedHistoryReaderError.invalidArchive
+        }
+        return value
     }
 
     private func validArchivePath(_ path: String) -> Bool {
@@ -290,6 +418,12 @@ actor ArchivedHistoryReader {
 
     private func validYear(_ year: Int) -> Bool { (1970 ... 9_999).contains(year) }
 
+    private func matchesListen(_ listen: ArchivedListen, query: String) -> Bool {
+        listen.title.localizedCaseInsensitiveContains(query)
+            || listen.artistName.localizedCaseInsensitiveContains(query)
+            || (listen.releaseTitle?.localizedCaseInsensitiveContains(query) == true)
+    }
+
     private func adding(_ value: UInt64, to total: UInt64) throws -> UInt64 {
         let result = total.addingReportingOverflow(value)
         guard !result.overflow else { throw ArchivedHistoryReaderError.limitExceeded }
@@ -313,6 +447,7 @@ extension ArchivedHistoryReader: ArchivedHistoryReading {}
 private final class MonthDecodeState: @unchecked Sendable {
     private let lock = NSLock()
     private let policy: ArchivedHistoryReaderPolicy
+    private let maximumByteCount: UInt64
     private let decoder: JSONDecoder
     private var pending = Data()
     private var listens: [ArchivedListen] = []
@@ -323,8 +458,9 @@ private final class MonthDecodeState: @unchecked Sendable {
     private var totalByteCount: UInt64 = 0
     private var retainedTextByteCount = 0
 
-    init(policy: ArchivedHistoryReaderPolicy) {
+    init(policy: ArchivedHistoryReaderPolicy, maximumByteCount: UInt64) {
         self.policy = policy
+        self.maximumByteCount = maximumByteCount
         decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         decoder.dateDecodingStrategy = .secondsSince1970
@@ -335,9 +471,9 @@ private final class MonthDecodeState: @unchecked Sendable {
         defer { lock.unlock() }
         try Task.checkCancellation()
         let chunkByteCount = UInt64(chunk.count)
-        guard chunkByteCount <= policy.maximumMonthBytes,
-              totalByteCount <= policy.maximumMonthBytes - chunkByteCount
-        else { throw ArchivedHistoryReaderError.limitExceeded }
+        guard chunkByteCount <= maximumByteCount,
+              totalByteCount <= maximumByteCount - chunkByteCount
+        else { throw ArchivedHistoryReaderError.invalidArchive }
         totalByteCount += chunkByteCount
         pending.append(chunk)
 
@@ -366,10 +502,16 @@ private final class MonthDecodeState: @unchecked Sendable {
         pending.removeAll(keepingCapacity: false)
     }
 
-    func result() -> (listens: [ArchivedListen], blankLineCount: Int, malformedLineCount: Int) {
+    func result() -> (
+        listens: [ArchivedListen],
+        blankLineCount: Int,
+        malformedLineCount: Int,
+        processedLineCount: Int,
+        processedByteCount: UInt64
+    ) {
         lock.lock()
         defer { lock.unlock() }
-        return (listens, blankLineCount, malformedLineCount)
+        return (listens, blankLineCount, malformedLineCount, sourceLineNumber, totalByteCount)
     }
 
     private func consume(_ line: Data) throws {
@@ -440,13 +582,13 @@ private final class DataDecodeState: @unchecked Sendable {
     private let lock = NSLock()
     private var data = Data()
 
-    func append(_ chunk: Data, maximumBytes: UInt64) throws {
+    func append(_ chunk: Data, expectedByteCount: UInt64) throws {
         lock.lock()
         defer { lock.unlock() }
         try Task.checkCancellation()
-        guard UInt64(chunk.count) <= maximumBytes,
-              UInt64(data.count) <= maximumBytes - UInt64(chunk.count)
-        else { throw ArchivedHistoryReaderError.limitExceeded }
+        guard UInt64(chunk.count) <= expectedByteCount,
+              UInt64(data.count) <= expectedByteCount - UInt64(chunk.count)
+        else { throw ArchivedHistoryReaderError.invalidArchive }
         data.append(chunk)
     }
 

@@ -77,6 +77,65 @@ final class ArchivedHistorySnapshotModelTests: XCTestCase {
         XCTAssertNil(model.errorMessage)
     }
 
+    func testExplicitSearchPublishesBoundedResultAndCancellationSuppressesLateResult() async throws {
+        let result = ArchivedHistorySearchResult(
+            query: "track",
+            matches: [.init(
+                listen: .init(
+                    title: "Track",
+                    artistName: "Artist",
+                    releaseTitle: nil,
+                    listenedAt: Date(timeIntervalSince1970: 100),
+                    sourceLineNumber: 1
+                ),
+                year: 2026,
+                month: 9
+            )],
+            totalMonthCount: 1,
+            scannedMonthCount: 1,
+            malformedLineCount: 0,
+            matchLimitReached: false,
+            scanLimitReached: false
+        )
+        let reader = ArchivedHistoryModelReader(
+            catalogOutcomes: [],
+            searchOutcomes: [.success(result), .success(result)],
+            delay: .milliseconds(30)
+        )
+        let model = ArchivedHistorySearchModel(
+            archive: archive(),
+            expectedUsername: "nabecite",
+            reader: reader
+        )
+
+        model.query = "track"
+        model.submit()
+        XCTAssertTrue(model.isSearching)
+        model.cancel()
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertNil(model.result)
+        XCTAssertFalse(model.isSearching)
+
+        model.submit()
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(model.result?.matches.count, 1)
+        XCTAssertFalse(model.isSearching)
+    }
+
+    func testSearchRequiresExplicitValidQuery() async throws {
+        let reader = ArchivedHistoryModelReader(catalogOutcomes: [])
+        let model = ArchivedHistorySearchModel(
+            archive: archive(),
+            expectedUsername: "nabecite",
+            reader: reader
+        )
+
+        model.query = "a"
+        model.submit()
+        XCTAssertEqual(model.validationMessage, "Enter at least 2 characters to search your archive.")
+        XCTAssertFalse(model.isSearching)
+    }
+
     private func archive() -> UserDataExportArchive {
         UserDataExportArchive(
             exportID: 1,
@@ -96,16 +155,19 @@ private actor ArchivedHistoryModelReader: ArchivedHistoryReading {
 
     private var catalogOutcomes: [Outcome<ArchivedHistoryCatalog>]
     private var monthOutcomes: [Outcome<ArchivedListenMonth>]
+    private var searchOutcomes: [Outcome<ArchivedHistorySearchResult>]
     private let delay: Duration?
     private var catalogCalls = 0
 
     init(
         catalogOutcomes: [Outcome<ArchivedHistoryCatalog>],
         monthOutcomes: [Outcome<ArchivedListenMonth>] = [],
+        searchOutcomes: [Outcome<ArchivedHistorySearchResult>] = [],
         delay: Duration? = nil
     ) {
         self.catalogOutcomes = catalogOutcomes
         self.monthOutcomes = monthOutcomes
+        self.searchOutcomes = searchOutcomes
         self.delay = delay
     }
 
@@ -128,6 +190,16 @@ private actor ArchivedHistoryModelReader: ArchivedHistoryReading {
         if let delay { try? await Task.sleep(for: delay) }
         guard !monthOutcomes.isEmpty else { throw ArchivedHistoryReaderError.monthUnavailable }
         return try resolve(monthOutcomes.removeFirst())
+    }
+
+    func search(
+        in _: UserDataExportArchive,
+        expectedUsername _: String,
+        query _: String
+    ) async throws -> ArchivedHistorySearchResult {
+        if let delay { try? await Task.sleep(for: delay) }
+        guard !searchOutcomes.isEmpty else { throw ArchivedHistoryReaderError.invalidArchive }
+        return try resolve(searchOutcomes.removeFirst())
     }
 
     func catalogCallCount() -> Int { catalogCalls }
