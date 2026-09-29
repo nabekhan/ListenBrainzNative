@@ -1,6 +1,6 @@
 # Official Kotlin Multiplatform status
 
-Snapshot: 2026-09-27, Android checkout `3a0e4ef`; compared with ListenBrainz server `v-2026-09-24.0` (`71f92e1`).
+Snapshot: 2026-09-28, Android checkout `3a0e4ef`; compared with ListenBrainz server `v-2026-09-24.0` (`71f92e1`) and a targeted current-server audit at `970f20b`.
 
 ## What is shared now
 
@@ -29,6 +29,7 @@ Snapshot: 2026-09-27, Android checkout `3a0e4ef`; compared with ListenBrainz ser
 - Shared KMP currently exposes authenticated playlist-art transport/repository logic, but no generic stats-grid or artist-grid domain API. The native app therefore keeps the smaller typed Swift extension behind its provider boundary; KMP remains a behavior reference for playlist art rather than an iOS dependency.
 - Shared KMP does not currently expose a manual-mapping transport or native-ready workflow. The app therefore reuses the existing Swift ListenBrainzKit POST and keeps candidate search, precedence, and recovery behavior behind its app-facing provider.
 - Shared KMP does not currently expose the server's new account-data export endpoints. The native app therefore uses the smaller typed Swift extension; importing the full KMP graph would add no export coverage and would not solve its current iOS build failure.
+- Shared KMP and the current Android UI do not expose the server's entity-level do-not-recommend reads or mutations. The native app therefore keeps its small generic Swift client behind a distinct provider and ships only the recording action whose product value is established; no KMP framework adoption is justified.
 - Community Charts likewise does not justify KMP adoption: the native app uses the hardened Swift ranking models behind `CommunityChartsProviding`, so a future official implementation can replace transport without changing SwiftUI.
 
 ## UI migration status
