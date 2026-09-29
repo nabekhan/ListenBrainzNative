@@ -14,6 +14,9 @@ packages:
   Nuke:
     url: https://github.com/kean/Nuke.git
     exactVersion: 13.2.0
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation.git
+    exactVersion: 0.9.20
 
 settings:
   base:
@@ -38,6 +41,8 @@ targets:
         product: Nuke
       - package: Nuke
         product: NukeUI
+      - package: ZIPFoundation
+        product: ZIPFoundation
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.nabekhan.listenbrainznative
@@ -66,6 +71,8 @@ targets:
       - path: Tests
     dependencies:
       - target: ListenBrainzNative
+      - package: ZIPFoundation
+        product: ZIPFoundation
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.nabekhan.listenbrainznative.tests

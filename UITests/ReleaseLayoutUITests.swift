@@ -658,6 +658,56 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "User-data-export-iPad-private")
     }
 
+    func testArchivedHistorySnapshotIsReadOnlyLocalAndAccessible() throws {
+        let app = launchFixture("-brainz-archive-history-demo")
+        let screen = app.collectionViews["archived-history-snapshot"]
+
+        XCTAssertTrue(screen.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["History snapshot"].exists)
+        XCTAssertTrue(
+            app.staticTexts[
+                "This is a read-only copy. It won’t update or contact ListenBrainz while you browse."
+            ].exists
+        )
+        let archiveRange = app.staticTexts
+            .matching(NSPredicate(
+                format: "identifier == %@ AND label BEGINSWITH %@",
+                "archived-history-range",
+                "Archive range:"
+            ))
+            .firstMatch
+        XCTAssertTrue(archiveRange.exists)
+        try assertNoAccessibilityIssues(
+            in: app,
+            auditTypes: semanticAuditTypes.union(.elementDetection)
+        )
+        keepScreenshot(named: "Archived-history-snapshot-months")
+
+        let september = app.buttons
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "September 2026"))
+            .firstMatch
+        reveal(september, in: screen)
+        XCTAssertTrue(september.waitForExistence(timeout: 5))
+        september.tap()
+
+        XCTAssertTrue(app.navigationBars["September 2026"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Read-only snapshot"].exists)
+        XCTAssertTrue(app.staticTexts["2 unreadable listens were skipped."].exists)
+        let monthScreen = app.collectionViews["archived-history-month"]
+        XCTAssertTrue(monthScreen.waitForExistence(timeout: 5))
+        let archivedTrack = app.staticTexts["Archie, Marry Me"]
+        reveal(archivedTrack, in: monthScreen)
+        XCTAssertTrue(archivedTrack.exists)
+        XCTAssertFalse(app.buttons["Love"].exists)
+        XCTAssertFalse(app.buttons["Delete listen"].exists)
+
+        try assertNoAccessibilityIssues(
+            in: app,
+            auditTypes: semanticAuditTypes.union(.elementDetection)
+        )
+        keepScreenshot(named: "Archived-history-snapshot-month")
+    }
+
     func testSearchPaginationWaitsForExplicitLoadMoreAction() throws {
         let app = launchFixture(
             "-brainz-search-pagination-demo",

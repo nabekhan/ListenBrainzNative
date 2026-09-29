@@ -677,6 +677,8 @@ struct MainTabView: View {
                     )
                 }
                 .environment(pins)
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-archive-history-demo") {
+                ArchivedHistorySnapshotVisualQAScreen()
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-user-data-export-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-user-data-export-empty-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-user-data-export-failure-demo")

@@ -312,6 +312,19 @@ struct UserDataExportView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
+                NavigationLink {
+                    ArchivedHistorySnapshotView(
+                        archive: archive,
+                        expectedUsername: model.account.username
+                    )
+                } label: {
+                    Label("Browse history snapshot", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.accent)
+                .accessibilityHint("Opens the downloaded listening history without contacting ListenBrainz")
+
                 ShareLink(
                     item: archive,
                     subject: Text("ListenBrainz data archive"),
@@ -323,8 +336,7 @@ struct UserDataExportView: View {
                     Label("Share or save archive", systemImage: "square.and.arrow.up")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.accent)
+                .buttonStyle(.bordered)
                 .accessibilityHint("Opens the system share sheet. Anyone you choose can read the archive.")
 
                 Button("Remove downloaded copy", systemImage: "trash", role: .destructive) {

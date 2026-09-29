@@ -263,6 +263,7 @@ final class SessionModel {
                 || arguments.contains("-brainz-user-data-export-demo")
                 || arguments.contains("-brainz-user-data-export-empty-demo")
                 || arguments.contains("-brainz-user-data-export-failure-demo")
+                || arguments.contains("-brainz-archive-history-demo")
                 || arguments.contains("-brainz-settings-demo")
                 || arguments.contains("-brainz-settings-disconnect-demo")
                 || arguments.contains("-brainz-log-listen-demo")
