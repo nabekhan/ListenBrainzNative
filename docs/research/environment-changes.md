@@ -4,6 +4,13 @@ Updated: 2026-09-29
 
 This file tracks non-source artifacts created for reconnaissance, builds, and visual verification. No credentials are stored here.
 
+## Link listens — 2026-09-29
+
+- Product commit `e0b684f` adds the bounded native Link listens slice. It installed no host package, runtime, application, browser, credential, skill, or third-party dependency. Existing Xcode 27, the iOS 27 runtime, Apple command-line tools, `jq`, the existing UX Writing skill, and ephemeral `nix shell nixpkgs#xcodegen` were reused; Nix made no profile installation.
+- Local-only validation completed with full Kit 171/171 and app 794/794 suites, populated/empty/failure fixture states in ordinary light, populated true-dark/maximum-Dynamic-Type coverage, a compiler-backed 1,863-key localization match, byte-stable XcodeGen project/scheme output, and universal Release analysis (`x86_64` and `arm64`). No live ListenBrainz request, credential, or production mapping mutation was used.
+- The current ListenBrainz server was inspected as a behavior reference for `GET /1/missing/musicbrainz/user/{username}/`; no GPL source or UI was copied.
+- `/private/tmp/Brainz-NextSlice-20260929.GwhvTp` currently holds the shallow server reference clone, isolated builds, XCResults, screenshots, analyzer products, XcodeGen logs, and the final packaging workspace. `Packages/ListenBrainzKit/.build` is the disposable SwiftPM cache. Both exact paths are scheduled for post-package cleanup; source, Xcode, the runtime, shared Nix content, skills, simulator devices, credentials, user files, and unrelated Trash must be preserved.
+
 ## Offline exported-history snapshot — 2026-09-29
 
 - Product commit `ecd1768` adds an explicit **Browse history snapshot** action to completed local account exports. A separate local-only screen verifies `user.json` against the active account, discloses full or bounded export dates, lists canonical monthly members, streams only the selected JSONL file, groups and searches loaded rows locally, and exposes no mutation or live entity route. Rows retain only title, artist, release, timestamp, and source-line identity; 50,000 listens, 24 MiB of retained UTF-8 display text, 100,000 processed lines, actual decompressed bytes, CRC, path, entry, ratio, and archive totals are bounded. Retry work is SwiftUI-task-owned and cancellation-aware.

@@ -69,6 +69,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 - The current ListenBrainz API/website and official Android client informed the independently written entity Top Listeners card and its bounded local expansion. No GPL source or UI was copied.
 - The current ListenBrainz server/website and official Android/KMP client informed the Similar Artists endpoint shape, ordering, cap, and five-item expansion behavior. Minidisc/Cassette shelves and Volta supplied visual concepts only. The app-local transport, cache, models, and adaptive SwiftUI shelf are independently written; no GPL or donor source was copied.
 - Following Pins UI/state/provider are independently written from current ListenBrainz API/server behavior and the app's existing native pin/feed hierarchy. The typed transport is a local MPL-2.0 ListenBrainzKit extension; no GPL source or UI was copied.
+- Link listens uses an independently written local MPL-2.0 ListenBrainzKit extension plus native app code for the current public `GET /1/missing/musicbrainz/user/{username}/` contract. The current GPL ListenBrainz server was behavior reference only; no GPL server code or UI was copied. Reusing the app's existing manual-mapping sheet one listen at a time adds no third-party attribution.
 - Beans Music, Bòcan Music, Finale, and Discrobble: secondary UI/architecture references.
 
 See `docs/research/license-map.md` and `docs/research/repo-reuse-map.md` for the working audit.

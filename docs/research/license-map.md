@@ -24,6 +24,11 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 | UX Writing Skill | MIT | Development-process guidance only; no source ships in the app | No runtime dependency or app attribution required |
 | Spotify playback experiment | TBD pending exact repository identification | No code copied or dependency added | Separate branch only; audit license, Spotify Developer Terms, authentication, App Store eligibility, and maintenance before implementation |
 
+## Link listens provenance — 2026-09-29
+
+- The local `LBMissingMusicBrainzClient` extension and all Link listens app code are independently written under the project's/MPL-2.0 Kit licensing boundary. The current GPL ListenBrainz server was consulted only for the exact public `GET /1/missing/musicbrainz/user/{username}/` contract and behavior; no GPL server code or UI was copied.
+- The screen reuses the project's existing manual-mapping presentation by passing one selected retained listen at a time. This is internal project reuse, not third-party copying, and adds no attribution or dependency obligation.
+
 ## Planned tracked reuse
 
 - Nuke 13.2.0 is the app's only third-party artwork runtime. The unmodified package supplies request coalescing, cancellation, background image preparation, bounded memory caching, and LRU-managed disk caching behind the app-owned `ArtworkPipeline`; `ArtworkView` remains the single app-facing SwiftUI component. The exact version and revision are locked in Swift Package resolution, and the full MIT notice is retained in `THIRD_PARTY.md`.

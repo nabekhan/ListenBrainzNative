@@ -24,6 +24,7 @@ App-owned provider boundaries
   ├─ ProfilePlaylistsProviding → typed owned/collaborator playlist pages
   ├─ PopularityProviding → typed global entity counts
   ├─ CommunityChartsProviding → typed sitewide ranking requests through ListenBrainzKit
+  ├─ LinkListensProviding → one bounded public missing-MusicBrainz page
   ├─ RadioProviding → typed LB Radio generation + one batch metadata lookup
   ├─ RadioPlaylistSaveProviding → typed private populated-playlist creation
   ├─ ReleaseDetailProviding/PlaylistDetailProviding → typed LB metadata/JSPF reads
@@ -93,6 +94,12 @@ The single existing `ArtworkView` now delegates to an app-owned Nuke 13.2.0 pipe
 12. **Linked-service playlist export** extends the existing local-file sheet without making service export automatic. One lazy connected-services read determines eligible providers; the user chooses public/private and confirms one Spotify, Apple Music, or SoundCloud copy. A timestamp-only opaque reservation persists before transport, a process-wide claim blocks cross-window reset races, and every post-dispatch error remains indeterminate until the user checks the provider and explicitly allows another attempt. The typed Kit response admits only an exact provider HTTPS playlist URL. There is no poll, retry, post-success refresh, or ongoing sync, and fixtures deny transport. Import and service-track retrieval remain staged until their asynchronous/reconciliation behavior justifies a native workflow.
 
 13. **Exported-history snapshot browsing** closes the first complete-history gap without coupling the live History model to a private bulk import. After an archive is explicitly downloaded, a separate native screen validates account ownership, discloses the archive's date range, and lists only canonical monthly members; selecting one month streams and decodes that file with strict ZIP, byte, row, retained-text, cancellation, timestamp-order, and CRC checks. The local row retains only title, artist, release, timestamp, and source-line identity; 50,000 rows plus 24 MiB of display text are hard ceilings. Rows are read-only, artwork stays local, search covers only the loaded month, malformed rows are counted and bounded, retry work follows the view task lifecycle, and the flow makes zero API or metadata request. No archive path is extracted and no second private index survives the screen. Persistent indexing, arbitrary ZIP import, live reconciliation, feedback/pin archive views, and merging old listens into ordinary History remain separate later decisions.
+
+## Completed Link listens slice — 2026-09-29
+
+- Delivered a bounded Settings maintenance surface rather than a History preload: one anonymous `GET /1/missing/musicbrainz/user/{username}/` request at `offset=0&count=1000`, shared-gate admission, no pagination/polling/automatic retry/row hydration, and a 30-minute memory cache with explicit refresh.
+- The screen consolidates duplicate MSIDs, groups retained rows by release and artist, searches only that retained data, and reuses the existing manual-mapping sheet for one selected listen at a time. It intentionally does not claim to link all server rows beyond the retained page.
+- Product commit `e0b684f` passes 171/171 Kit tests, 794/794 app tests, populated/empty/failure fixture states in ordinary light, populated true-dark/maximum-Dynamic-Type coverage, and universal Release analysis (`x86_64`, `arm64`). This is local fixture/build validation; no live credential or ListenBrainz API use occurred.
 
 ## Constraints recorded
 

@@ -79,6 +79,12 @@ Snapshot: 2026-09-28. Repository/source inspection, Xcode 27 builds, simulator r
 | App identity and release privacy | Current Apple platform requirements + existing Brainz palette | Native asset catalog, one-source icon generation, bundled privacy manifest, resizable iPad configuration, and plain-language policy; no donor asset or official service mark copied | Original waveform/history icon, conservative data-flow declarations, app-only UserDefaults reason, archive inspection, and Home Screen visual QA |
 | Release layout and request QA | Native SF Symbols, XCTest/XCUIAutomation, existing local visual fixtures, and the app-owned request gate | Semantic forward/backward mirroring, device rotation, screenshots, pseudo-localization, and deterministic transport lifecycle evidence; no donor code copied | Six guarded iPad UI regressions, semantic RTL cleanup, privacy-safe Release request counters, and a DEBUG fail-fast transport boundary that exposed two hidden fixture reads |
 
+## Link listens reuse verdict — 2026-09-29
+
+- The current ListenBrainz server route `GET /1/missing/musicbrainz/user/{username}/` was inspected only to establish the public page contract and weekly-scan semantics. It is behavior reference material, not a source donor.
+- `Packages/ListenBrainzKit` owns the independently written, MPL-2.0 typed endpoint extension. App-local provider/model/view code owns the one anonymous top-1,000 request, shared-gate discipline, 30-minute in-memory cache, local release-and-artist grouping/search, and handoff to the pre-existing one-at-a-time manual-mapping sheet.
+- No GPL server, web, Android, KMP, or iOS source or UI was copied. No new third-party runtime dependency is required.
+
 ## Additional discovery verdict
 
 The strongest newly discovered candidates are Minidisc (current iPhone/iOS 26 polish), Bòcan (cache/robust scrobbling reference), FastScrobbler (Apple Music limitation evidence), and Finale (widgets/share concepts). None displaces first.fm for personality/IA or Cassette/Minidisc for current native media components.

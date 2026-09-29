@@ -67,11 +67,13 @@ Snapshot: 2026-09-28, including ListenBrainz server `v-2026-09-24.0` (`71f92e1`)
 | Timezone, recommendation, player preferences | Y | Y | Y | P | — | P | P2 | Native request-free Settings owns local appearance; server-side preferences remain a secure authenticated web handoff rather than speculative client toggles or eager reads |
 | Account data export | Y | Y | — | — | Y* | — | P1 | Native authenticated list/create/status/download flow with explicit refresh only, durable duplicate-create protection, bounded streamed ZIPs, protected local retention eligible for cleanup after 24 hours, explicit sharing, purge-before-disconnect, and an explicit offline monthly History snapshot browser. `Y*` is the local upstreamable Kit extension |
 | History import tasks | Y | Y | P | P | — | P | P3 | Current start/status/list/cancel routes are advanced migration tools; keep them staged until a deliberate native workflow can present progress and cancellation safely without polling abuse |
-| Missing MusicBrainz data | Y | ? | ? | ? | — | ? | P3 | Advanced per-user inspection is available at `/1/missing-musicbrainz-data/user/{user_name}/`; evaluate alongside mapping tools rather than loading it in ordinary History |
+| Missing MusicBrainz data | Y | ? | ? | ? | Y* | ? | P3 | Native **Link listens** is a Settings-only maintenance surface. It makes one anonymous bounded `GET /1/missing/musicbrainz/user/{username}/` read (`offset=0`, `count=1000`), then groups and searches retained results locally and reuses the existing one-at-a-time manual-mapping sheet. `Y*` is the local MPL-2.0 ListenBrainzKit extension; no pagination, polling, row hydration, automatic retry, or ordinary-History read is introduced. |
 | Account data deletion/maintenance | Y | Y | P | P | — | P | P3 | Keep canonical secure web controls until a concrete native workflow justifies new destructive handling |
 | Flairs/donor identity | Y | Y | — | — | — | — | P3 | Preserve when showing user identity |
 
 ## Current product findings
+
+- **Link listens** is complete as a narrow authenticated Settings entry point, although its data request itself is anonymous. The endpoint is exactly `GET /1/missing/musicbrainz/user/{username}/`, not the older `missing-musicbrainz-data` route. It takes one top-1,000 page through the shared request gate; the 30-minute in-memory cache avoids repeated navigation reads, while explicit refresh remains the only repeat-read action. The server's scan data is weekly and may be incomplete beyond the retained page.
 
 - The website treats **Feed**, **Dashboard**, and **Explore** as its three main areas. User pages add Stats, Taste, Playlists, Recommendations, and Year in Music.
 - The server has grown well beyond basic top lists: artist/genre/era/evolution activity, current and legacy Year in Music, social thanks, art generation, playlist import/export, Fresh Releases, Music Neighborhood, and AI Brainz are current surfaces.
