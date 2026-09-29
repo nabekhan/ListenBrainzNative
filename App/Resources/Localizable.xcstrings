@@ -3525,6 +3525,16 @@
         }
       }
     },
+    "Couldn’t Update Preference": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t Update Preference"
+          }
+        }
+      }
+    },
     "Couldn’t check your saved MusicBrainz match. Try again.": {
       "localizations": {
         "en": {
@@ -6507,6 +6517,16 @@
         }
       }
     },
+    "ListenBrainz couldn’t find this user’s preferences.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz couldn’t find this user’s preferences."
+          }
+        }
+      }
+    },
     "ListenBrainz couldn’t load these artist details.": {
       "localizations": {
         "en": {
@@ -6603,6 +6623,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ListenBrainz couldn’t start this archive. Refresh and check the date range."
+          }
+        }
+      }
+    },
+    "ListenBrainz couldn’t update this preference. Try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz couldn’t update this preference. Try again."
           }
         }
       }
@@ -8187,12 +8217,12 @@
         }
       }
     },
-    "Log a listen, add this recording to a playlist, or share it through ListenBrainz": {
+    "Log a listen, add this recording to a playlist, share it, or change a saved preference": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Log a listen, add this recording to a playlist, or share it through ListenBrainz"
+            "value": "Log a listen, add this recording to a playlist, share it, or change a saved preference"
           }
         }
       }
@@ -11137,6 +11167,26 @@
         }
       }
     },
+    "Preference Updated": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preference Updated"
+          }
+        }
+      }
+    },
+    "Preference saved to ListenBrainz.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preference saved to ListenBrainz."
+          }
+        }
+      }
+    },
     "Prepare again": {
       "localizations": {
         "en": {
@@ -11715,6 +11765,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Recommendation note"
+          }
+        }
+      }
+    },
+    "Recommendation settings": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recommendation settings"
           }
         }
       }
@@ -12353,6 +12413,16 @@
         }
       }
     },
+    "Remove “don’t recommend”": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove “don’t recommend”"
+          }
+        }
+      }
+    },
     "Removed %@ from “%@”.": {
       "localizations": {
         "en": {
@@ -12793,6 +12863,16 @@
         }
       }
     },
+    "Save Preference": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save Preference"
+          }
+        }
+      }
+    },
     "Save as playlist": {
       "localizations": {
         "en": {
@@ -12853,6 +12933,26 @@
         }
       }
     },
+    "Save “don’t recommend”": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save “don’t recommend”"
+          }
+        }
+      }
+    },
+    "Save “don’t recommend”?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save “don’t recommend”?"
+          }
+        }
+      }
+    },
     "Saved MusicBrainz match": {
       "localizations": {
         "en": {
@@ -12879,6 +12979,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saved history has no listens for %@. Updates aren’t available right now."
+          }
+        }
+      }
+    },
+    "Saved preference removed.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved preference removed."
           }
         }
       }
@@ -13491,6 +13601,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sent to %lld followers."
+          }
+        }
+      }
+    },
+    "Separate from Hate feedback.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Separate from Hate feedback."
           }
         }
       }
@@ -14147,12 +14267,12 @@
         }
       }
     },
-    "Sign in to log or share this recording": {
+    "Sign in to log, share, or change saved preferences": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in to log or share this recording"
+            "value": "Sign in to log, share, or change saved preferences"
           }
         }
       }
@@ -14183,6 +14303,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sign in to view the services linked to your ListenBrainz account."
+          }
+        }
+      }
+    },
+    "Sign in with a ListenBrainz token to change saved preferences.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in with a ListenBrainz token to change saved preferences."
           }
         }
       }
@@ -15683,6 +15813,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "This track is not mapped to a MusicBrainz recording"
+          }
+        }
+      }
+    },
+    "This track needs a MusicBrainz ID before you can save this preference.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This track needs a MusicBrainz ID before you can save this preference."
           }
         }
       }
@@ -17425,6 +17565,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Your ListenBrainz sign-in is no longer valid. Reconnect your token to tune recommendations."
+          }
+        }
+      }
+    },
+    "Your ListenBrainz sign-in is no longer valid. Reconnect your token to update this preference.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your ListenBrainz sign-in is no longer valid. Reconnect your token to update this preference."
           }
         }
       }

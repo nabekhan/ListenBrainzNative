@@ -532,6 +532,35 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "Recording-feedback-iPad-accessibility-audit")
     }
 
+    func testDoNotRecommendPreferenceIsLocalFixtureAndShowsInverseAction() throws {
+        let app = launchFixture("-brainz-recording-do-not-recommend-demo")
+        let actions = app.buttons["Recording actions"]
+
+        XCTAssertTrue(actions.waitForExistence(timeout: 10))
+        actions.tap()
+        let preference = app.buttons["recording-recommendation-preference"]
+        XCTAssertTrue(preference.waitForExistence(timeout: 5))
+        preference.tap()
+        let save = app.buttons["Save “don’t recommend”"]
+        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Remove “don’t recommend”"].exists)
+        save.tap()
+
+        let confirm = app.buttons["Save Preference"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        keepScreenshot(named: "Recording-do-not-recommend-confirmation")
+        confirm.tap()
+        XCTAssertTrue(app.staticTexts["Preference saved to ListenBrainz."].waitForExistence(timeout: 5))
+        app.buttons["OK"].tap()
+
+        actions.tap()
+        XCTAssertTrue(preference.waitForExistence(timeout: 5))
+        preference.tap()
+        XCTAssertTrue(app.buttons["Remove “don’t recommend”"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Save “don’t recommend”"].exists)
+        keepScreenshot(named: "Recording-do-not-recommend-local-fixture")
+    }
+
     func testCritiqueBrainzReaderLoadsOnlyAfterExplicitTap() throws {
         let app = launchFixture("-brainz-critiquebrainz-reader-demo")
         let loadMore = app.buttons["Load more reviews"]

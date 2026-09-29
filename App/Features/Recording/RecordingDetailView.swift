@@ -5,12 +5,14 @@ struct RecordingDetailView: View {
     @Bindable var model: ListeningModel
     @Environment(PinsModel.self) private var pins
     @State private var shareModel: RecordingShareModel
+    @State private var doNotRecommendModel: DoNotRecommendModel
     @State private var isPinEditorPresented = false
     @State private var isPersonalRecommendationPresented = false
     @State private var didPresentRecommendationPreview = false
     @State private var pinBlurb = ""
     @State private var isPlaylistAddPresented = false
     @State private var isLogListenPresented = false
+    @State private var isDoNotRecommendConfirmationPresented = false
 
     init(recording: Recording, model: ListeningModel) {
         self.recording = recording
@@ -18,6 +20,7 @@ struct RecordingDetailView: View {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo")
             || ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo")
+            || ProcessInfo.processInfo.arguments.contains("-brainz-recording-do-not-recommend-demo")
         {
             _shareModel = State(initialValue: RecordingShareModel(
                 account: Account(username: "visual-qa", token: "visual-qa"),
@@ -26,10 +29,19 @@ struct RecordingDetailView: View {
                 socialCache: UserSocialCache(),
                 feedCache: EntityDetailCache()
             ))
+            _doNotRecommendModel = State(initialValue: DoNotRecommendModel(
+                account: Account(username: "visual-qa", token: "visual-qa"),
+                recordingMBID: recording.identity.mbid,
+                provider: DoNotRecommendPreviewProvider()
+            ))
             return
         }
         #endif
         _shareModel = State(initialValue: RecordingShareModel(account: model.account, recording: recording))
+        _doNotRecommendModel = State(initialValue: DoNotRecommendModel(
+            account: model.account,
+            recordingMBID: recording.identity.mbid
+        ))
     }
 
     var body: some View {
@@ -88,6 +100,31 @@ struct RecordingDetailView: View {
         } message: {
             Text(shareModel.notice?.message ?? "")
         }
+        .alert(
+            doNotRecommendModel.notice?.kind == .confirmation
+                ? "Preference Updated"
+                : "Couldn’t Update Preference",
+            isPresented: Binding(
+                get: { doNotRecommendModel.notice != nil },
+                set: { if !$0 { doNotRecommendModel.dismissNotice() } }
+            )
+        ) {
+            Button("OK", role: .cancel) { doNotRecommendModel.dismissNotice() }
+        } message: {
+            Text(doNotRecommendModel.notice?.message ?? "")
+        }
+        .confirmationDialog(
+            "Save “don’t recommend”?",
+            isPresented: $isDoNotRecommendConfirmationPresented,
+            titleVisibility: .visible
+        ) {
+            Button("Save Preference") {
+                Task { await doNotRecommendModel.savePreference() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Separate from Hate feedback.")
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 recommendationMenu
@@ -131,19 +168,49 @@ struct RecordingDetailView: View {
                 Label("Recommend personally", systemImage: "person.crop.circle.badge.plus")
             }
             .disabled(!shareModel.canRecommend || shareModel.isSubmitting)
+
+            Divider()
+
+            Menu {
+                if doNotRecommendModel.isExcluded != true {
+                    Button(role: .destructive) {
+                        isDoNotRecommendConfirmationPresented = true
+                    } label: {
+                        Label("Save “don’t recommend”", systemImage: "nosign")
+                    }
+                    .accessibilityIdentifier("recording-save-do-not-recommend")
+                }
+
+                if doNotRecommendModel.isExcluded != false {
+                    Button {
+                        Task { await doNotRecommendModel.removePreference() }
+                    } label: {
+                        Label("Remove “don’t recommend”", systemImage: "checkmark.arrow.trianglehead.counterclockwise")
+                    }
+                    .accessibilityIdentifier("recording-remove-do-not-recommend")
+                }
+            } label: {
+                Label("Recommendation settings", systemImage: "slider.horizontal.3")
+            }
+            .accessibilityIdentifier("recording-recommendation-preference")
+            .disabled(!doNotRecommendModel.canChangePreference || doNotRecommendModel.isSubmitting)
         } label: {
-            if shareModel.isSubmitting {
+            if shareModel.isSubmitting || doNotRecommendModel.isSubmitting {
                 ProgressView()
             } else {
                 Image(systemName: "paperplane.circle")
             }
         }
         .accessibilityLabel("Recording actions")
-        .accessibilityHint(
-            model.account.isAuthenticated
-                ? "Log a listen, add this recording to a playlist, or share it through ListenBrainz"
-                : "Sign in to log or share this recording"
-        )
+        .accessibilityHint(Text(recordingActionsHint))
+    }
+
+    private var recordingActionsHint: LocalizedStringResource {
+        if model.account.isAuthenticated {
+            "Log a listen, add this recording to a playlist, share it, or change a saved preference"
+        } else {
+            "Sign in to log, share, or change saved preferences"
+        }
     }
 
     private var hero: some View {

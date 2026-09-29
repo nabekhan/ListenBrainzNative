@@ -699,6 +699,7 @@ actor RequestGate {
         case userDataExportList
         case userDataExportStatus
         case userDataExportDownload
+        case doNotRecommendEntries
     }
 
     struct ReadKey: Hashable, Sendable {
@@ -796,6 +797,7 @@ actor RequestGate {
         static func followingPins(_ scope: ReadScope, user: String, count: Int, offset: Int) -> Self { endpoint(scope, .pinsFollowing, [userID(user), String(count), String(offset)]) }
         static func profilePlaylists(_ scope: ReadScope, user: String, category: String, offset: Int, count: Int) -> Self { endpoint(scope, .profilePlaylists, [userID(user), category, String(offset), String(count)]) }
         static func profileFeedback(_ scope: ReadScope, user: String, score: Int, offset: Int, count: Int) -> Self { endpoint(scope, .profileFeedback, [userID(user), String(score), String(offset), String(count), "metadata:true"]) }
+        static func doNotRecommendEntries(_ scope: ReadScope, user: String, offset: Int, count: Int) -> Self { endpoint(scope, .doNotRecommendEntries, [userID(user), String(offset), String(count)]) }
         static func releaseGroup(_ scope: ReadScope, mbid: UUID) -> Self { endpoint(scope, .metadataRelease, [uuid(mbid), "artist", "tag"]) }
         static func manualMapping(_ scope: ReadScope, msid: UUID) -> Self { endpoint(scope, .metadataManualMapping, [uuid(msid)]) }
         static func playlistDetail(_ scope: ReadScope, mbid: UUID) -> Self { endpoint(scope, .playlistDetail, [uuid(mbid)]) }

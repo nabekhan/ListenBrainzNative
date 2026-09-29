@@ -11,6 +11,7 @@ public struct LBClient: Sendable {
     public let stats: LBStatisticsClient
     public let freshReleases: LBFreshReleasesClient
     public let recommendations: LBRecommendationsClient
+    public let doNotRecommend: LBDoNotRecommendClient
     public let pins: LBPinsClient
     public let social: LBSocialClient
     public let feed: LBFeedClient
@@ -38,6 +39,7 @@ public struct LBClient: Sendable {
         self.stats = LBStatisticsClient(client)
         self.freshReleases = LBFreshReleasesClient(client)
         self.recommendations = LBRecommendationsClient(client)
+        self.doNotRecommend = LBDoNotRecommendClient(client)
         self.pins = LBPinsClient(client)
         self.social = LBSocialClient(client)
         self.feed = LBFeedClient(client)

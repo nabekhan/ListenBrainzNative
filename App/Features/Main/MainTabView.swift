@@ -256,6 +256,7 @@ struct MainTabView: View {
             }
             if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-recording-do-not-recommend-demo")
             {
                 let visualAccount = Account(username: "visual-qa", token: "visual-qa")
                 let visualModel = ListeningModel(
@@ -280,7 +281,9 @@ struct MainTabView: View {
 
     var body: some View {
         #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo") {
+            if ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-recording-do-not-recommend-demo")
+            {
                 NavigationStack {
                     RecordingDetailView(
                         recording: Self.recommendationPreviewListen.recording,
@@ -710,6 +713,7 @@ struct MainTabView: View {
                     let arguments = ProcessInfo.processInfo.arguments
                     guard !arguments.contains("-brainz-recording-share-demo"),
                         !arguments.contains("-brainz-recording-feedback-demo"),
+                        !arguments.contains("-brainz-recording-do-not-recommend-demo"),
                         !arguments.contains("-brainz-external-source-demo"),
                         !arguments.contains("-brainz-feed-demo"),
                         !arguments.contains("-brainz-recommendations-demo")
@@ -755,7 +759,8 @@ struct MainTabView: View {
                         selectedTab = .history
                     }
                     if ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo")
-                        || ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo"),
+                        || ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo")
+                        || ProcessInfo.processInfo.arguments.contains("-brainz-recording-do-not-recommend-demo"),
                         presentedListen == nil
                     {
                         presentedListen = Self.recommendationPreviewListen
@@ -900,6 +905,7 @@ struct MainTabView: View {
         private var isRecordingDetailFixture: Bool {
             ProcessInfo.processInfo.arguments.contains("-brainz-recording-share-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-recording-do-not-recommend-demo")
         }
 
         private static func visualRadioSaveJournal() -> RadioPlaylistSaveJournal {
