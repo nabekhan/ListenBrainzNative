@@ -861,6 +861,57 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "Feedback-library-iPad-RTL")
     }
 
+    func testLinkListensGroupsRowsWithoutStartingNetworkTraffic() throws {
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        defer { device.orientation = .portrait }
+
+        let app = launchFixture("-brainz-link-listens-demo")
+        let list = app.collectionViews.firstMatch
+        let firstRow = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "First unmatched track")
+        ).firstMatch
+        let secondRow = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "Second unmatched track")
+        ).firstMatch
+
+        XCTAssertTrue(app.navigationBars["Link listens"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Match your listening history"].exists)
+        XCTAssertTrue(app.staticTexts["Unmatched listens"].exists)
+        XCTAssertTrue(list.exists)
+        reveal(firstRow, in: list)
+        XCTAssertTrue(firstRow.exists)
+        reveal(secondRow, in: list)
+        XCTAssertTrue(secondRow.exists)
+        try assertNoAccessibilityIssues(
+            in: app,
+            auditTypes: semanticAuditTypes.union(.elementDetection)
+        )
+        for _ in 0 ..< 6 {
+            list.swipeDown()
+        }
+        XCTAssertTrue(app.staticTexts["Match your listening history"].exists)
+        keepScreenshot(named: "Link-listens-populated")
+    }
+
+    func testLinkListensShowsTruthfulEmptyAndFailureStates() throws {
+        let empty = launchFixture("-brainz-link-listens-empty-demo")
+        XCTAssertTrue(empty.staticTexts["No unmatched listens"].waitForExistence(timeout: 10))
+        XCTAssertTrue(
+            empty.staticTexts["ListenBrainz didn’t find any in its latest scan."].exists
+        )
+        empty.terminate()
+
+        let failure = launchFixture("-brainz-link-listens-failure-demo")
+        XCTAssertTrue(
+            failure.staticTexts["Couldn’t load unmatched listens"].waitForExistence(timeout: 10)
+        )
+        XCTAssertTrue(failure.staticTexts["Check your connection, then try again."].exists)
+        XCTAssertFalse(failure.searchFields.firstMatch.exists)
+        XCTAssertTrue(failure.buttons["Try again"].isHittable)
+        keepScreenshot(named: "Link-listens-failure")
+    }
+
     private var semanticAuditTypes: XCUIAccessibilityAuditType {
         [
             .hitRegion,

@@ -700,6 +700,7 @@ actor RequestGate {
         case userDataExportStatus
         case userDataExportDownload
         case doNotRecommendEntries
+        case missingMusicBrainz
     }
 
     struct ReadKey: Hashable, Sendable {
@@ -858,6 +859,9 @@ actor RequestGate {
         }
         static func userDataExportDownload(_ scope: ReadScope, exportID: Int) -> Self {
             endpoint(scope, .userDataExportDownload, [String(exportID)])
+        }
+        static func missingMusicBrainz(_ scope: ReadScope, user: String, offset: Int, count: Int) -> Self {
+            endpoint(scope, .missingMusicBrainz, [userID(user), String(offset), String(count)])
         }
         private static func uuid(_ id: UUID) -> String { id.uuidString.lowercased() }
         private static func artOptions(_ value: LBArtGridOptions) -> [String] { [String(value.captions), String(value.skipMissing), String(value.showRank), String(value.showListenCount), String(value.showRelease), String(value.showArtist)] }

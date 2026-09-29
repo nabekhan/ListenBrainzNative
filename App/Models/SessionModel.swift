@@ -33,6 +33,7 @@ final class SessionModel {
         },
         beforeCredentialSave: @escaping @Sendable () async -> Void = {},
         purgePrivateAccountData: @escaping @Sendable () async throws -> Void = {
+            LinkListensCaches.pages.removeAll()
             try await UserDataExportAccountLifecycle.purgeAll()
         }
     ) {

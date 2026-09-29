@@ -197,6 +197,11 @@ struct SettingsView: View {
         Section {
             if account.isAuthenticated {
                 NavigationLink {
+                    LinkListensView(account: account)
+                } label: {
+                    Label("Link listens", systemImage: "link.badge.plus")
+                }
+                NavigationLink {
                     ConnectedServicesView(
                         account: account,
                         provider: connectedServicesProvider,

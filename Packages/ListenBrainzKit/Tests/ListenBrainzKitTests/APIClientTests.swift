@@ -40,6 +40,40 @@ import Testing
         #expect(request.url?.query?.contains("days=14") == true)
     }
 
+    @Test("Missing-MusicBrainz listens use one escaped public page request")
+    func missingMusicBrainzRequest() throws {
+        let client = ListenBrainzAPIClient(token: "", root: URL(string: "https://api.listenbrainz.org")!, userAgent: "TestClient/1.0 (+https://example.com)")
+        let request = try client.makeURLRequest(MissingMusicBrainzRequest(username: "listener/../other?#%", offset: -4, count: 5_000))
+        let url = try #require(request.url)
+        #expect(URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedPath == "/1/missing/musicbrainz/user/listener%2F%2E%2E%2Fother%3F%23%25/")
+        #expect(request.url?.query?.contains("offset=0") == true)
+        #expect(request.url?.query?.contains("count=1000") == true)
+        #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+    }
+
+    @Test("Missing-MusicBrainz payloads decode ISO dates and 204 is empty")
+    func missingMusicBrainzDecoding() throws {
+        let request = MissingMusicBrainzRequest(username: "listener", offset: 0, count: 1)
+        let response = try #require(HTTPURLResponse(url: URL(string: "https://api.listenbrainz.org/1/missing/musicbrainz/user/listener/")!, statusCode: 200, httpVersion: nil, headerFields: nil))
+        let page = try request.decodeResponse(
+            Data(
+                """
+                {"payload":{"user_name":"listener","last_updated":1790683200,"count":1,"total_data_count":1,"offset":0,"data":[{"artist_name":"Artist","recording_name":"Track","recording_msid":"11111111-1111-1111-1111-111111111111","listened_at":"2026-09-29T11:00:00.000Z"}]}}
+                """.utf8
+            ),
+            response: response
+        )
+        #expect(page.userName == "listener")
+        #expect(page.data.count == 1)
+        #expect(page.data.first?.releaseName == nil)
+        #expect(page.lastUpdated == Date(timeIntervalSince1970: 1_790_683_200))
+        #expect(page.data.first?.listenedAt == Date(timeIntervalSince1970: 1_790_679_600))
+        let emptyResponse = try #require(HTTPURLResponse(url: response.url!, statusCode: 204, httpVersion: nil, headerFields: nil))
+        let empty = try request.decodeResponse(Data(), response: emptyResponse)
+        #expect(empty.userName == "listener")
+        #expect(empty.data.isEmpty)
+    }
+
     @Test("Requests identify the application without sending an empty token")
     func requiredHeaders() throws {
         let userAgent = "TestClient/1.0 (+https://example.com)"

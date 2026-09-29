@@ -19,6 +19,7 @@ public struct LBClient: Sendable {
     public let art: LBArtClient
     public let radio: LBRadioClient
     public let userDataExports: LBUserDataExportClient
+    public let missingMusicBrainz: LBMissingMusicBrainzClient
 
     public init(
         token: String,
@@ -47,5 +48,6 @@ public struct LBClient: Sendable {
         self.art = LBArtClient(client)
         self.radio = LBRadioClient(client)
         self.userDataExports = LBUserDataExportClient(client)
+        self.missingMusicBrainz = LBMissingMusicBrainzClient(client)
     }
 }

@@ -281,7 +281,16 @@ struct MainTabView: View {
 
     var body: some View {
         #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo")
+            if ProcessInfo.processInfo.arguments.contains("-brainz-link-listens-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-link-listens-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-link-listens-failure-demo")
+            {
+                LinkListensVisualQAScreen(
+                    result: ProcessInfo.processInfo.arguments.contains("-brainz-link-listens-empty-demo")
+                        ? .empty
+                        : ProcessInfo.processInfo.arguments.contains("-brainz-link-listens-failure-demo") ? .failure : .populated
+                )
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-recording-feedback-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-recording-do-not-recommend-demo")
             {
                 NavigationStack {

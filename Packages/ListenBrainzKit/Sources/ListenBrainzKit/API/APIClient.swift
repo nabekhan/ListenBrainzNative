@@ -203,7 +203,14 @@ struct ListenBrainzAPIClient: APIClient {
             components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)
         }
         if request.data.preservesTrailingSlash && request.data.path.hasSuffix("/") {
-            components?.path += "/"
+            // Assigning through `path` decodes an already-escaped opaque
+            // segment (for example a username containing `/`). Keep the
+            // percent-encoded representation intact for slash-sensitive APIs.
+            if request.data.pathIsPercentEncoded {
+                components?.percentEncodedPath += "/"
+            } else {
+                components?.path += "/"
+            }
         }
         components?.queryItems = request.data.queryItems.flatMap { entry in
             entry.value.map { URLQueryItem(name: entry.key, value: $0) }
