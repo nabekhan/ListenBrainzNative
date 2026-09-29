@@ -9,6 +9,7 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 | Official iOS | README: GPL-3+; some Apache-2.0 sections | No copying without verifying per-file boundary | Behavior reference only |
 | ListenBrainzKit | MPL-2.0, file headers | Local fork permitted; modified covered files remain MPL | Preserve license, notices, source availability |
 | Nuke 13.2.0 | MIT, tag `13.2.0`, commit `30f7a7e` | Link unmodified `Nuke` and `NukeUI` products through Swift Package Manager | Full copyright and MIT notice retained in `THIRD_PARTY.md`; compatible with MPL-2.0 |
+| ZIPFoundation 0.9.20 | MIT, tag `0.9.20`, commit `22787ff` | Link unmodified `ZIPFoundation` product through Swift Package Manager | Full copyright and MIT notice retained in `THIRD_PARTY.md`; compatible with MPL-2.0 |
 | first.fm | MIT | Selected copying/adaptation permitted | Preserve copyright/license in `THIRD_PARTY.md` and adapted files where appropriate |
 | AppleMusicBottombarSwiftUI | No license found | Do not copy | Reimplement documented Apple-API behavior independently |
 | Cassette | MPL-2.0 | Selected file reuse permitted | Preserve notices; modified files remain MPL |
@@ -26,6 +27,8 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 ## Planned tracked reuse
 
 - Nuke 13.2.0 is the app's only third-party artwork runtime. The unmodified package supplies request coalescing, cancellation, background image preparation, bounded memory caching, and LRU-managed disk caching behind the app-owned `ArtworkPipeline`; `ArtworkView` remains the single app-facing SwiftUI component. The exact version and revision are locked in Swift Package resolution, and the full MIT notice is retained in `THIRD_PARTY.md`.
+
+- ZIPFoundation 0.9.20 is the archive snapshot browser's only ZIP runtime. The exact package is locked to tag `0.9.20` and revision `22787ffb59de99e5dc1fbfe80b19c97a904ad48d`; the app uses only file-backed read access plus the streaming consumer API and never extracts archive paths. The full MIT notice is bundled through `THIRD_PARTY.md`.
 
 - `Packages/ListenBrainzKit/`: upstream MPL-2.0 source at `c06b12f`, with reliability fixes and typed recommendation-read/feedback, entity-level do-not-recommend paging/mutations, public paginated and MSID-safe recording-feedback pages, public playlist-search page/offset metadata, social/feed-read/feed-mutation, Pins/Following Pins, detail, era/activity/evolution/artist-activity/entity-listener, current/archival Year in Music/generic Art, popularity, generated-radio, account-data export, and playlist create/edit/append/item-remove/item-move/copy/delete extensions isolated into reviewable commits. The current GPL server supplied only do-not-recommend contract/behavior evidence; no server source or UI was copied. Collaborator management reuses the typed edit/user-search surfaces; the GPL website and Android/KMP implementations supplied behavior evidence only.
 - Search paging state, caching, cancellation, validation, and native SwiftUI are independently written. Current GPL ListenBrainz server/web and official clients supplied contract and product-behavior evidence only; MusicBrainz supplied its public API contract. No GPL source or UI was copied, no runtime dependency was added, and the small playlist-page transport/model change remains MPL-2.0 inside ListenBrainzKit.
