@@ -34,6 +34,7 @@ final class SessionModel {
         beforeCredentialSave: @escaping @Sendable () async -> Void = {},
         purgePrivateAccountData: @escaping @Sendable () async throws -> Void = {
             LinkListensCaches.pages.removeAll()
+            PlaylistServiceImportCaches.values.removeAll()
             try await UserDataExportAccountLifecycle.purgeAll()
         }
     ) {
@@ -240,6 +241,11 @@ final class SessionModel {
                 || arguments.contains("-brainz-playlist-add-demo")
                 || arguments.contains("-brainz-playlist-copy-demo")
                 || arguments.contains("-brainz-playlist-export-demo")
+                || arguments.contains("-brainz-playlist-import-demo")
+                || arguments.contains("-brainz-playlist-import-empty-demo")
+                || arguments.contains("-brainz-playlist-import-failure-demo")
+                || arguments.contains("-brainz-playlist-import-recovery-demo")
+                || arguments.contains("-brainz-playlist-import-indeterminate-demo")
                 || arguments.contains("-brainz-playlist-delete-confirmation-demo")
                 || arguments.contains("-brainz-playlist-delete-confirmed-demo")
                 || arguments.contains("-brainz-playlist-delete-review-demo")

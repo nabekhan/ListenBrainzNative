@@ -1691,6 +1691,16 @@
         }
       }
     },
+    "Add playlist": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add playlist"
+          }
+        }
+      }
+    },
     "Add to Playlist": {
       "localizations": {
         "en": {
@@ -1979,6 +1989,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Allow another export?"
+          }
+        }
+      }
+    },
+    "Allow import": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow import"
           }
         }
       }
@@ -2593,6 +2613,26 @@
         }
       }
     },
+    "Brainz asks ListenBrainz for your Spotify playlists only after you tap Load.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brainz asks ListenBrainz for your Spotify playlists only after you tap Load."
+          }
+        }
+      }
+    },
+    "Brainz can’t read its duplicate-protection check for “%@”. Check Owned Playlists before allowing another import.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brainz can’t read its duplicate-protection check for “%@”. Check Owned Playlists before allowing another import."
+          }
+        }
+      }
+    },
     "Brainz can’t read its duplicate-protection check. Check %@ before allowing another export.": {
       "localizations": {
         "en": {
@@ -2703,6 +2743,16 @@
         }
       }
     },
+    "Brainz couldn’t reset duplicate protection. Importing this playlist again is still paused.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brainz couldn’t reset duplicate protection. Importing this playlist again is still paused."
+          }
+        }
+      }
+    },
     "Brainz couldn’t reset its deletion record. Restart the app and try again.": {
       "localizations": {
         "en": {
@@ -2793,6 +2843,16 @@
         }
       }
     },
+    "Brainz couldn’t save its duplicate-protection check, so the import didn’t start.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brainz couldn’t save its duplicate-protection check, so the import didn’t start."
+          }
+        }
+      }
+    },
     "Brainz couldn’t verify whether an earlier listen was sent. Reset only after checking History.": {
       "localizations": {
         "en": {
@@ -2839,6 +2899,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Brainz will remove the saved token, listening snapshot, and downloaded data archives from this device. Small records that prevent repeated changes may remain. Your ListenBrainz account and listening data won’t be deleted."
+          }
+        }
+      }
+    },
+    "Bring a Spotify playlist to ListenBrainz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bring a Spotify playlist to ListenBrainz"
           }
         }
       }
@@ -3073,12 +3143,32 @@
         }
       }
     },
+    "Check Owned Playlists before importing again": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check Owned Playlists before importing again"
+          }
+        }
+      }
+    },
     "Check Owned Playlists first": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Check Owned Playlists first"
+          }
+        }
+      }
+    },
+    "Check Owned Playlists first to avoid duplicates.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check Owned Playlists first to avoid duplicates."
           }
         }
       }
@@ -3271,6 +3361,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Choose a decade to inspect individual release years"
+          }
+        }
+      }
+    },
+    "Choose a linked playlist and create a separate ListenBrainz copy.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a linked playlist and create a separate ListenBrainz copy."
           }
         }
       }
@@ -3471,6 +3571,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Collaborating"
+          }
+        }
+      }
+    },
+    "Collaborative": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collaborative"
           }
         }
       }
@@ -3835,6 +3945,16 @@
         }
       }
     },
+    "Couldn’t import playlist": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t import playlist"
+          }
+        }
+      }
+    },
     "Couldn’t leave public profile": {
       "localizations": {
         "en": {
@@ -3861,6 +3981,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn’t load Owned Playlists. Reconnect, then check the list before saving this mix again."
+          }
+        }
+      }
+    },
+    "Couldn’t load Spotify playlists": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load Spotify playlists"
           }
         }
       }
@@ -3915,6 +4045,16 @@
         }
       }
     },
+    "Couldn’t load your Spotify playlists. Check your connection and try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load your Spotify playlists. Check your connection and try again."
+          }
+        }
+      }
+    },
     "Couldn’t load your data exports. Check your connection and try again.": {
       "localizations": {
         "en": {
@@ -3931,6 +4071,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn’t publish review"
+          }
+        }
+      }
+    },
+    "Couldn’t read your Spotify playlists. Reconnect Spotify or try again later.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t read your Spotify playlists. Reconnect Spotify or try again later."
           }
         }
       }
@@ -3971,6 +4121,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn’t refresh unmatched listens. Showing the previous list."
+          }
+        }
+      }
+    },
+    "Couldn’t refresh your Spotify playlists. Showing the last saved list.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t refresh your Spotify playlists. Showing the last saved list."
           }
         }
       }
@@ -4231,6 +4391,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Create"
+          }
+        }
+      }
+    },
+    "Create a Spotify playlist or reconnect Spotify on ListenBrainz, then refresh.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a Spotify playlist or reconnect Spotify on ListenBrainz, then refresh."
           }
         }
       }
@@ -6275,6 +6445,76 @@
         }
       }
     },
+    "Import again": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import again"
+          }
+        }
+      }
+    },
+    "Import again?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import again?"
+          }
+        }
+      }
+    },
+    "Import from Spotify": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import from Spotify"
+          }
+        }
+      }
+    },
+    "Import playlist": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import playlist"
+          }
+        }
+      }
+    },
+    "Import playlist?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import playlist?"
+          }
+        }
+      }
+    },
+    "Import “%@”?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import “%@”?"
+          }
+        }
+      }
+    },
+    "Importing playlist": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importing playlist"
+          }
+        }
+      }
+    },
     "In the currently loaded history": {
       "localizations": {
         "en": {
@@ -6371,6 +6611,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "JUL"
+          }
+        }
+      }
+    },
+    "Keep browsing": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep browsing"
           }
         }
       }
@@ -7197,6 +7447,16 @@
         }
       }
     },
+    "ListenBrainz creates a separate copy. Future Spotify changes won’t sync.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz creates a separate copy. Future Spotify changes won’t sync."
+          }
+        }
+      }
+    },
     "ListenBrainz creates a separate copy. Later changes won’t sync automatically.": {
       "localizations": {
         "en": {
@@ -7533,6 +7793,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "ListenBrainz is busy. Try again in about %lld seconds."
+          }
+        }
+      }
+    },
+    "ListenBrainz is busy. Wait a moment, then try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz is busy. Wait a moment, then try again."
+          }
+        }
+      }
+    },
+    "ListenBrainz is checking your linked account.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz is checking your linked account."
           }
         }
       }
@@ -8227,6 +8507,16 @@
         }
       }
     },
+    "Load Spotify playlists": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load Spotify playlists"
+          }
+        }
+      }
+    },
     "Load more": {
       "localizations": {
         "en": {
@@ -8297,12 +8587,32 @@
         }
       }
     },
+    "Load playlists when you’re ready": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load playlists when you’re ready"
+          }
+        }
+      }
+    },
     "Loaded listens only": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Loaded listens only"
+          }
+        }
+      }
+    },
+    "Loading Spotify playlists…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading Spotify playlists…"
           }
         }
       }
@@ -8807,6 +9117,16 @@
         }
       }
     },
+    "Loads playlists from your linked Spotify account": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loads playlists from your linked Spotify account"
+          }
+        }
+      }
+    },
     "Local time of day": {
       "localizations": {
         "en": {
@@ -8963,6 +9283,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Manage CritiqueBrainz connection"
+          }
+        }
+      }
+    },
+    "Manage Spotify connection on ListenBrainz": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage Spotify connection on ListenBrainz"
           }
         }
       }
@@ -9803,6 +10133,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No MusicBrainz match"
+          }
+        }
+      }
+    },
+    "No Spotify playlists found": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Spotify playlists found"
           }
         }
       }
@@ -11197,6 +11537,16 @@
         }
       }
     },
+    "Opens import confirmation": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens import confirmation"
+          }
+        }
+      }
+    },
     "Opens listener profile": {
       "localizations": {
         "en": {
@@ -11813,6 +12163,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Playlist file"
+          }
+        }
+      }
+    },
+    "Playlist imported": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist imported"
           }
         }
       }
@@ -12749,6 +13109,16 @@
         }
       }
     },
+    "Reconnect Spotify on ListenBrainz, then try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnect Spotify on ListenBrainz, then try again."
+          }
+        }
+      }
+    },
     "Recording": {
       "localizations": {
         "en": {
@@ -12875,6 +13245,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Refresh your exports before requesting another archive."
+          }
+        }
+      }
+    },
+    "Refreshing Spotify playlists…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refreshing Spotify playlists…"
           }
         }
       }
@@ -13185,6 +13565,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Releases with any selected tag stay hidden."
+          }
+        }
+      }
+    },
+    "Reloads playlists from Spotify": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reloads playlists from Spotify"
           }
         }
       }
@@ -14131,6 +14521,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Search MusicBrainz"
+          }
+        }
+      }
+    },
+    "Search Spotify playlists": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search Spotify playlists"
           }
         }
       }
@@ -15207,6 +15607,16 @@
         }
       }
     },
+    "Showing the first 100 playlists. Search applies to this list only.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showing the first 100 playlists. Search applies to this list only."
+          }
+        }
+      }
+    },
     "Showing the newest 500 matches. Refine your search to see more.": {
       "localizations": {
         "en": {
@@ -15383,6 +15793,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sign in to export through a linked music service."
+          }
+        }
+      }
+    },
+    "Sign in to import playlists from Spotify.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to import playlists from Spotify."
           }
         }
       }
@@ -15673,6 +16093,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spotify ID"
+          }
+        }
+      }
+    },
+    "Spotify must be linked with playlist permissions.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify must be linked with playlist permissions."
+          }
+        }
+      }
+    },
+    "Spotify playlist import isn’t available right now. Try again later.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify playlist import isn’t available right now. Try again later."
           }
         }
       }
@@ -16267,6 +16707,16 @@
         }
       }
     },
+    "The playlist was added, but duplicate protection couldn’t be cleared. Check Owned Playlists before importing it again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The playlist was added, but duplicate protection couldn’t be cleared. Check Owned Playlists before importing it again."
+          }
+        }
+      }
+    },
     "The playlist was deleted, but its safety record couldn’t be cleared. Check again before continuing.": {
       "localizations": {
         "en": {
@@ -16463,6 +16913,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "This Playing Now update was just sent."
+          }
+        }
+      }
+    },
+    "This Spotify playlist can’t be imported. Reload your playlists and try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This Spotify playlist can’t be imported. Reload your playlists and try again."
           }
         }
       }
@@ -16783,6 +17243,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "This month is no longer available in the downloaded snapshot."
+          }
+        }
+      }
+    },
+    "This music service isn’t available for import yet.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This music service isn’t available for import yet."
           }
         }
       }
@@ -18007,6 +18477,16 @@
         }
       }
     },
+    "Untitled Spotify playlist": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Untitled Spotify playlist"
+          }
+        }
+      }
+    },
     "Untitled recording": {
       "localizations": {
         "en": {
@@ -18265,6 +18745,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "View on CritiqueBrainz"
+          }
+        }
+      }
+    },
+    "View owned playlists": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View owned playlists"
           }
         }
       }
@@ -18889,6 +19379,16 @@
         }
       }
     },
+    "Your ListenBrainz sign-in needs attention. Sign in again to import playlists.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your ListenBrainz sign-in needs attention. Sign in again to import playlists."
+          }
+        }
+      }
+    },
     "Your ListenBrainz sign-in needs attention. Sign in again to manage data exports.": {
       "localizations": {
         "en": {
@@ -19479,12 +19979,32 @@
         }
       }
     },
+    "“%@” may already be in Owned Playlists. Check there before allowing another import.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” may already be in Owned Playlists. Check there before allowing another import."
+          }
+        }
+      }
+    },
     "“%@” still exists. You can delete it again when you’re ready.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "“%@” still exists. You can delete it again when you’re ready."
+          }
+        }
+      }
+    },
+    "“%@” was added to Owned Playlists.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” was added to Owned Playlists."
           }
         }
       }

@@ -26,6 +26,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Pin history and owner pin actions; complete playlist detail
 - Request-free export of an already-loaded playlist as a bounded, protected JSPF JSON file, with private-playlist disclosure before sharing
 - Explicit one-shot export of any loaded playlist to linked Spotify, Apple Music, or SoundCloud, with a privacy choice, duplicate-safe recovery, and no automatic retry or sync
+- Explicit authenticated import from Spotify: playlists load only on request into a bounded cache, search stays local, truncation is disclosed, and each confirmed separate copy uses one serialized no-retry request with durable recovery before another attempt
 - Lazy owned and collaborating Profile playlists with privacy-aware caching, server pagination, authenticated empty-playlist creation, owner metadata/privacy editing, and direct detail navigation
 - Safe append from Recording Detail to owned or collaborating playlists, with canonical-MBID gating, duplicate confirmation, and no automatic mutation replay
 - Authenticated duplication of any visible playlist, with a fresh source preflight, canonical returned-copy navigation, and a durable no-replay barrier for ambiguous responses

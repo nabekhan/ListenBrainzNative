@@ -12,23 +12,35 @@ struct ProfilePlaylistSection: View {
     @Binding var selection: ProfilePlaylistCategory
     let viewer: Account
     var mutationProvider: (any PlaylistMutationProviding)? = nil
+    var importProvider: (any PlaylistServiceImportProviding)? = nil
+    var importJournal: PlaylistServiceImportJournal = .shared
     private let mutationJournal = PlaylistMutationJournal.shared
     @State private var showsCreator = false
+    @State private var showsImporter = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
                 SectionHeader(title: "Playlists", subtitle: sectionSubtitle)
                 if canCreate {
-                    Button {
-                        showsCreator = true
+                    Menu {
+                        Button {
+                            showsCreator = true
+                        } label: {
+                            Label("Create playlist", systemImage: "plus")
+                        }
+                        Button {
+                            showsImporter = true
+                        } label: {
+                            Label("Import from Spotify", systemImage: "square.and.arrow.down")
+                        }
                     } label: {
                         Label("New", systemImage: "plus")
                             .font(.subheadline.weight(.semibold))
                     }
                     .buttonStyle(.bordered)
                     .buttonBorderShape(.capsule)
-                    .accessibilityLabel("Create playlist")
+                    .accessibilityLabel("Add playlist")
                 }
             }
 
@@ -60,6 +72,19 @@ struct ProfilePlaylistSection: View {
                 guard case .created = mutation else { return }
                 Task { await model.refreshAfterMutation() }
             }
+        }
+        .sheet(isPresented: $showsImporter) {
+            PlaylistServiceImportSheet(
+                account: viewer,
+                provider: importProvider,
+                journal: importJournal,
+                onImportConfirmed: { _ in
+                    Task { await model.refreshAfterMutation() }
+                },
+                onReviewOwnedPlaylists: {
+                    Task { await model.refreshAfterMutation() }
+                }
+            )
         }
     }
 

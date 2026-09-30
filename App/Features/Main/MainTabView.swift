@@ -55,6 +55,11 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-add-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-export-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-failure-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-recovery-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-indeterminate-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-confirmation-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-confirmed-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-review-demo")
@@ -338,6 +343,23 @@ struct MainTabView: View {
                 GenericArtVisualQAScreen(fixture: .failure)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-export-demo") {
                 PlaylistExportVisualQAScreen()
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-failure-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-recovery-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-indeterminate-demo")
+            {
+                PlaylistServiceImportVisualQAScreen(
+                    mode: ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-empty-demo")
+                        ? .empty
+                        : ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-failure-demo")
+                            ? .failure
+                            : ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-recovery-demo")
+                                ? .recovery
+                                : ProcessInfo.processInfo.arguments.contains("-brainz-playlist-import-indeterminate-demo")
+                                    ? .indeterminate
+                                    : .populated
+                )
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo") {
                 PlaylistCopyVisualQAScreen()
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-confirmation-demo") {

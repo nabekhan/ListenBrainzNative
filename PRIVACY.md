@@ -1,6 +1,6 @@
 # Brainz privacy policy
 
-Last updated: September 28, 2026.
+Last updated: September 30, 2026.
 
 Brainz is an independent, open-source iOS client for ListenBrainz. It is not operated by the MetaBrainz Foundation.
 
@@ -22,8 +22,9 @@ Brainz has no intermediary account service. It sends requests directly to the se
 - ListenBrainz and MusicBrainz receive searches and music identifiers needed to return results and metadata. Brainz deliberately omits your ListenBrainz token from user, playlist, artist, album, and track searches. MetaBrainz access logs may still contain request parameters and network information as described below.
 - Opening published reviews may send the canonical entity identifier directly to CritiqueBrainz. Publishing a review sends its text, optional rating, language, and canonical entity identity to ListenBrainz, which uses your linked CritiqueBrainz account to publish it publicly.
 - Requesting a data archive asks ListenBrainz to prepare it. Brainz checks its status only when you open or refresh the export screen; it does not poll. ListenBrainz keeps the server copy until its displayed expiry unless you remove it there.
-- Choosing **Show linked services** sends one authenticated request to ListenBrainz to check which supported services are connected. Exporting then sends one authenticated request; ListenBrainz creates a separate public or private copy in the Spotify, Apple Music, or SoundCloud account you linked there. Later changes do not sync automatically.
-- The Cover Art Archive, the Internet Archive, and Google Fonts may receive requests for artwork or generated-art resources when those features are opened.
+- Choosing **Show linked services** may send one authenticated request to ListenBrainz to check which supported services are connected. Confirming an export sends one authenticated request; ListenBrainz creates a separate public or private copy in the Spotify, Apple Music, or SoundCloud account you linked there. Later changes do not sync automatically.
+- Choosing **Load Spotify playlists** may send one authenticated request to ListenBrainz, which uses your linked Spotify account to retrieve playlist summaries. Visible playlist covers may load directly from Spotify's image CDN without your ListenBrainz token and are not saved in Brainz's artwork caches. Confirming an import sends the chosen Spotify playlist identifier to ListenBrainz, which creates a separate ListenBrainz copy. Later changes do not sync automatically.
+- The Cover Art Archive, the Internet Archive, Google Fonts, and Spotify's image CDN may receive the requested resource URL and ordinary network information, such as your IP address, when those features are opened.
 - Links to music services open only after you choose them. Those services then apply their own privacy policies.
 - Files leave Brainz only when you choose a destination in the system share sheet. Anyone you share a playlist or account-data archive with can read its contents. Treat a data archive as private because it may contain your complete listening history and account data.
 

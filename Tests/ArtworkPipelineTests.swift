@@ -20,6 +20,24 @@ final class ArtworkPipelineTests: XCTestCase {
         XCTAssertNil(ArtworkPipeline.request(for: URL(string: "https:///art.jpg")))
     }
 
+    func testSpotifyImportArtworkUsesRestrictedEphemeralRequest() throws {
+        let request = try XCTUnwrap(ArtworkPipeline.request(
+            for: URL(string: "https://i.scdn.co/image/private-playlist-cover"),
+            policy: .spotifyImport
+        ))
+
+        XCTAssertTrue(request.options.contains(.disableMemoryCache))
+        XCTAssertTrue(request.options.contains(.disableDiskCache))
+        XCTAssertNil(ArtworkPipeline.request(
+            for: URL(string: "https://example.com/private-playlist-cover"),
+            policy: .spotifyImport
+        ))
+        XCTAssertNil(ArtworkPipeline.request(
+            for: URL(string: "https://scdn.co/private-playlist-cover"),
+            policy: .spotifyImport
+        ))
+    }
+
     func testResponseValidationAcceptsOnlyHTTPS2xxImages() {
         let imageResponse = HTTPURLResponse(
             url: URL(string: "https://archive.org/art.jpg")!,
@@ -90,6 +108,22 @@ final class ArtworkPipelineTests: XCTestCase {
         var post = allowed
         post.httpMethod = "POST"
         XCTAssertNil(ArtworkRedirectDelegate.admittedRedirect(post))
+
+        XCTAssertNil(ArtworkRedirectDelegate.admittedRedirect(
+            allowed,
+            policy: .spotifyCDNOnly
+        ))
+        var spotifyCDN = allowed
+        spotifyCDN.url = URL(string: "https://image-cdn-ak.spotifycdn.com/image/cover")!
+        XCTAssertNotNil(ArtworkRedirectDelegate.admittedRedirect(
+            spotifyCDN,
+            policy: .spotifyCDNOnly
+        ))
+        spotifyCDN.url = URL(string: "https://i.scdn.co:8443/image/cover")!
+        XCTAssertNil(ArtworkRedirectDelegate.admittedRedirect(
+            spotifyCDN,
+            policy: .spotifyCDNOnly
+        ))
     }
 
     func testPipelineUsesConfiguredCachesAndBoundedLoads() throws {
@@ -109,7 +143,10 @@ final class ArtworkPipelineTests: XCTestCase {
         XCTAssertTrue(pipeline.configuration.isTaskCoalescingEnabled)
         XCTAssertTrue(pipeline.configuration.isDecompressionEnabled)
         let dataLoader = try XCTUnwrap(pipeline.configuration.dataLoader as? DataLoader)
-        XCTAssertNotNil(dataLoader.delegate as? ArtworkRedirectDelegate)
+        XCTAssertEqual(
+            (dataLoader.delegate as? ArtworkRedirectDelegate)?.policy,
+            .credentialFreeHTTPS
+        )
         XCTAssertFalse(dataLoader.session.configuration.httpShouldSetCookies)
         XCTAssertEqual(dataLoader.session.configuration.httpCookieAcceptPolicy, .never)
         XCTAssertNil(dataLoader.session.configuration.httpCookieStorage)
@@ -124,5 +161,13 @@ final class ArtworkPipelineTests: XCTestCase {
         )
         XCTAssertEqual((pipeline.configuration.dataCache as? DataCache)?.sizeLimit, ArtworkPipeline.diskCacheSizeLimit)
         XCTAssertEqual((pipeline.configuration.dataCache as? DataCache)?.path, cacheDirectory)
+
+        let spotifyDataLoader = try XCTUnwrap(
+            ArtworkPipeline.spotifyImport.configuration.dataLoader as? DataLoader
+        )
+        XCTAssertEqual(
+            (spotifyDataLoader.delegate as? ArtworkRedirectDelegate)?.policy,
+            .spotifyCDNOnly
+        )
     }
 }

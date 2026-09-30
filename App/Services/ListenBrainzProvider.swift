@@ -665,6 +665,7 @@ actor RequestGate {
         case feedPage
         case playlistList
         case playlistDetail
+        case playlistServiceImportList
         case metadataArtist
         case metadataRelease
         case metadataRecording
@@ -802,6 +803,9 @@ actor RequestGate {
         static func releaseGroup(_ scope: ReadScope, mbid: UUID) -> Self { endpoint(scope, .metadataRelease, [uuid(mbid), "artist", "tag"]) }
         static func manualMapping(_ scope: ReadScope, msid: UUID) -> Self { endpoint(scope, .metadataManualMapping, [uuid(msid)]) }
         static func playlistDetail(_ scope: ReadScope, mbid: UUID) -> Self { endpoint(scope, .playlistDetail, [uuid(mbid)]) }
+        static func playlistServiceImportList(_ scope: ReadScope, service: String) -> Self {
+            endpoint(scope, .playlistServiceImportList, [service])
+        }
         static func popularity(_ scope: ReadScope, kind: String, mbid: UUID) -> Self { endpoint(scope, .popularitySummary, [kind, uuid(mbid)]) }
         static func radioMetadata(_ scope: ReadScope, mbids: [UUID]) -> Self { endpoint(scope, .radioMetadata, mbids.map(uuid)) }
         static func recommendationMetadata(_ scope: ReadScope, mbids: [UUID]) -> Self { endpoint(scope, .recommendationsMetadata, mbids.map(uuid)) }

@@ -259,6 +259,42 @@ final class SessionModelTests: XCTestCase {
         XCTAssertEqual(session.state, .signedOut)
     }
 
+    func testDefaultSignOutPurgeClearsPrivatePlaylistImportSummaries() async throws {
+        let environment = try makeEnvironment()
+        let store = FixtureCredentialStore(
+            loaded: .account(.init(username: "listener", token: "stored-token"))
+        )
+        let session = SessionModel(
+            snapshotCache: environment.cache,
+            credentialStore: store,
+            defaults: environment.defaults,
+            validateToken: { _ in "unused" }
+        )
+        await session.restore()
+
+        let key = PlaylistServiceImportCacheKey(
+            username: "listener",
+            scope: .isolated(),
+            service: .spotify
+        )
+        let value = PlaylistServiceImportList(
+            service: .spotify,
+            playlists: [],
+            isTruncated: false
+        )
+        await PlaylistServiceImportCaches.values.removeAll()
+        await PlaylistServiceImportCaches.values.save(value, for: key)
+        let cachedBeforeSignOut = await PlaylistServiceImportCaches.values.value(for: key)
+
+        await session.signOut()
+
+        let cachedAfterSignOut = await PlaylistServiceImportCaches.values.value(for: key)
+        await PlaylistServiceImportCaches.values.removeAll()
+        XCTAssertNotNil(cachedBeforeSignOut)
+        XCTAssertNil(cachedAfterSignOut)
+        XCTAssertEqual(session.state, .signedOut)
+    }
+
     func testAccountReplacementPurgesPrivateExportsBeforeSavingCredential() async throws {
         let environment = try makeEnvironment()
         let events = SessionEventRecorder()

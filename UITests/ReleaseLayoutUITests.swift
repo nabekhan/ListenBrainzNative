@@ -503,6 +503,154 @@ final class ReleaseLayoutUITests: XCTestCase {
         keepScreenshot(named: "Playlist-service-export-confirmation")
     }
 
+    func testPlaylistImportLoadsOnlyAfterActionAndConfirmsSeparateCopy() throws {
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        defer { device.orientation = .portrait }
+
+        let app = launchFixture("-brainz-playlist-import-demo")
+        let scrollView = app.scrollViews.firstMatch
+        let load = app.buttons["playlist-import-load"]
+        let row = app.buttons["playlist-import-row-4NHQUGzhtTLFvgF5SZesLK"]
+
+        XCTAssertTrue(app.navigationBars["Import from Spotify"].waitForExistence(timeout: 10))
+        XCTAssertTrue(load.waitForExistence(timeout: 5))
+        XCTAssertFalse(row.exists)
+        load.tap()
+        reveal(row, in: scrollView)
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertTrue(row.isHittable)
+        row.tap()
+
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(alert.staticTexts["Import “Soft focus — late-night favorites”?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            alert.staticTexts[
+                "ListenBrainz creates a separate copy. Future Spotify changes won’t sync."
+            ].exists
+        )
+        XCTAssertTrue(alert.buttons["Import playlist"].exists)
+        XCTAssertTrue(alert.buttons["Cancel"].exists)
+        keepScreenshot(named: "Playlist-import-confirmation")
+    }
+
+    func testPlaylistImportShowsEmptyAndRetryableFailureStates() throws {
+        let emptyApp = launchFixture("-brainz-playlist-import-empty-demo")
+        let emptyLoad = emptyApp.buttons["playlist-import-load"]
+        XCTAssertTrue(emptyLoad.waitForExistence(timeout: 10))
+        emptyLoad.tap()
+        XCTAssertTrue(
+            emptyApp.descendants(matching: .any)["playlist-import-empty"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertFalse(emptyApp.searchFields["Search Spotify playlists"].exists)
+        keepScreenshot(named: "Playlist-import-empty")
+        emptyApp.terminate()
+
+        let failureApp = launchFixture("-brainz-playlist-import-failure-demo")
+        let failureLoad = failureApp.buttons["playlist-import-load"]
+        XCTAssertTrue(failureLoad.waitForExistence(timeout: 10))
+        failureLoad.tap()
+        XCTAssertTrue(
+            failureApp.descendants(matching: .any)["playlist-import-failed"]
+                .waitForExistence(timeout: 5)
+        )
+        let retry = failureApp.buttons["playlist-import-retry"]
+        XCTAssertTrue(retry.exists)
+        let retryEnabled = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "enabled == true"),
+            object: retry
+        )
+        XCTAssertEqual(XCTWaiter().wait(for: [retryEnabled], timeout: 5), .completed)
+        XCTAssertTrue(retry.isHittable)
+        keepScreenshot(named: "Playlist-import-failure")
+    }
+
+    func testPlaylistImportSuccessRemainsExplicitBeforeBrowsing() throws {
+        let app = launchFixture("-brainz-playlist-import-demo")
+        let scrollView = app.scrollViews.firstMatch
+        let load = app.buttons["playlist-import-load"]
+        let row = app.buttons["playlist-import-row-4NHQUGzhtTLFvgF5SZesLK"]
+
+        XCTAssertTrue(load.waitForExistence(timeout: 10))
+        load.tap()
+        reveal(row, in: scrollView)
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap()
+        let confirmation = app.alerts.firstMatch
+        XCTAssertTrue(confirmation.buttons["Import playlist"].waitForExistence(timeout: 5))
+        confirmation.buttons["Import playlist"].tap()
+
+        let success = app.alerts["Playlist imported"]
+        XCTAssertTrue(success.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            success.staticTexts[
+                "“Soft focus — late-night favorites” was added to Owned Playlists."
+            ].exists
+        )
+        XCTAssertTrue(success.buttons["View owned playlists"].exists)
+        XCTAssertTrue(success.buttons["Keep browsing"].exists)
+        keepScreenshot(named: "Playlist-import-success")
+    }
+
+    func testPlaylistImportRecoveryRequiresDuplicateReview() throws {
+        let app = launchFixture("-brainz-playlist-import-recovery-demo")
+        let load = app.buttons["playlist-import-load"]
+        let recovery = app.descendants(matching: .any)[
+            "playlist-import-recovery-4NHQUGzhtTLFvgF5SZesLK"
+        ]
+
+        XCTAssertTrue(load.waitForExistence(timeout: 10))
+        load.tap()
+        XCTAssertTrue(recovery.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.buttons["playlist-import-review-owned-4NHQUGzhtTLFvgF5SZesLK"].exists
+        )
+        let allowAgain = app.buttons[
+            "playlist-import-allow-again-4NHQUGzhtTLFvgF5SZesLK"
+        ]
+        XCTAssertTrue(allowAgain.exists)
+        allowAgain.tap()
+
+        let warning = app.alerts["Import again?"]
+        XCTAssertTrue(warning.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            warning.staticTexts[
+                "Check Owned Playlists first to avoid duplicates."
+            ].exists
+        )
+        XCTAssertTrue(warning.buttons["Allow import"].exists)
+        XCTAssertTrue(warning.buttons["Cancel"].exists)
+        keepScreenshot(named: "Playlist-import-recovery")
+    }
+
+    func testPlaylistImportIndeterminateResultKeepsReviewBarrier() throws {
+        let app = launchFixture("-brainz-playlist-import-indeterminate-demo")
+        let scrollView = app.scrollViews.firstMatch
+        let load = app.buttons["playlist-import-load"]
+        let row = app.buttons["playlist-import-row-4NHQUGzhtTLFvgF5SZesLK"]
+
+        XCTAssertTrue(load.waitForExistence(timeout: 10))
+        load.tap()
+        reveal(row, in: scrollView)
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap()
+        let confirmation = app.alerts.firstMatch
+        XCTAssertTrue(confirmation.buttons["Import playlist"].waitForExistence(timeout: 5))
+        confirmation.buttons["Import playlist"].tap()
+
+        let review = app.alerts["Check Owned Playlists"]
+        XCTAssertTrue(review.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            review.staticTexts[
+                "“Soft focus — late-night favorites” may already be in Owned Playlists. Check there before allowing another import."
+            ].exists
+        )
+        XCTAssertTrue(review.buttons["View owned playlists"].exists)
+        XCTAssertTrue(review.buttons["Not now"].exists)
+        keepScreenshot(named: "Playlist-import-indeterminate")
+    }
+
     func testHomeFixtureExposesMetricSemantics() throws {
         let device = XCUIDevice.shared
         device.orientation = .portrait

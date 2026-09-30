@@ -27,24 +27,38 @@ struct ListenBrainzAPIClient: APIClient {
             delegateQueue: nil
         )
     }()
+    private static let sharedNonRedirectingSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.urlCache = nil
+        configuration.httpCookieStorage = nil
+        configuration.httpShouldSetCookies = false
+        return URLSession(
+            configuration: configuration,
+            delegate: RejectingRedirectDelegate(),
+            delegateQueue: nil
+        )
+    }()
 
     let token: String
     let root: URL
     let userAgent: String
     private let allowsTokenToRoot: Bool
     private let session: URLSession
+    private let nonRedirectingSession: URLSession
 
     init(
         token: String,
         root: URL?,
         allowsTokenToCustomRoot: Bool = false,
         userAgent: String,
-        session: URLSession? = nil
+        session: URLSession? = nil,
+        nonRedirectingSession: URLSession? = nil
     ) {
         self.token = token
         self.root = root ?? Self.officialRoot
         self.userAgent = userAgent
         self.session = session ?? Self.sharedSession
+        self.nonRedirectingSession = nonRedirectingSession ?? Self.sharedNonRedirectingSession
         self.allowsTokenToRoot = root == nil
             || allowsTokenToCustomRoot
             || AuthenticatedRedirectDelegate.sameOrigin(self.root, Self.officialRoot)
@@ -52,11 +66,12 @@ struct ListenBrainzAPIClient: APIClient {
 
     func execute<Request: APIRequest>(_ request: Request) async throws -> Request.Result {
         let req = try makeURLRequest(request)
+        let requestSession = request.data.allowsRedirects ? session : nonRedirectingSession
         let data: Data
         let resp: URLResponse
 
         if let maximumResponseBytes = request.data.maximumResponseBytes {
-            let (bytes, response) = try await session.bytes(for: req)
+            let (bytes, response) = try await requestSession.bytes(for: req)
             if let httpResponse = response as? HTTPURLResponse,
                let error = responseError(from: httpResponse, for: request) {
                 throw error
@@ -79,7 +94,7 @@ struct ListenBrainzAPIClient: APIClient {
             data = boundedData
             resp = response
         } else {
-            (data, resp) = try await session.data(for: req)
+            (data, resp) = try await requestSession.data(for: req)
         }
 
         if let httpResp = resp as? HTTPURLResponse,
@@ -98,7 +113,8 @@ struct ListenBrainzAPIClient: APIClient {
         else { throw LBError.invalidParam }
 
         let req = try makeURLRequest(request)
-        let (bytes, response) = try await session.bytes(for: req)
+        let requestSession = request.data.allowsRedirects ? session : nonRedirectingSession
+        let (bytes, response) = try await requestSession.bytes(for: req)
         let maximumBytes = Int64(maximumDownloadBytes)
         try validateDownloadResponse(response: response, request: request, maximumDownloadBytes: maximumBytes)
 
@@ -263,6 +279,18 @@ struct ListenBrainzAPIClient: APIClient {
             return mappedError
         }
         return (200 ... 299).contains(response.statusCode) ? nil : .unknownError
+    }
+}
+
+final class RejectingRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping @Sendable (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
     }
 }
 

@@ -1,6 +1,16 @@
 import Foundation
 import Nuke
 
+enum ArtworkRequestPolicy: Equatable, Sendable {
+    case shared
+    case spotifyImport
+}
+
+enum ArtworkRedirectPolicy: Equatable, Sendable {
+    case credentialFreeHTTPS
+    case spotifyCDNOnly
+}
+
 enum ArtworkPipeline {
     static let maxConcurrentDataLoads = 2
     static let maximumResponseDataSize = 8 * 1_024 * 1_024
@@ -10,14 +20,29 @@ enum ArtworkPipeline {
     static let memoryCacheCountLimit = 120
 
     static let shared = makePipeline()
+    static let spotifyImport = makePipeline(redirectPolicy: .spotifyCDNOnly)
 
-    static func request(for url: URL?) -> ImageRequest? {
-        guard let url, isAllowedRemoteURL(url) else { return nil }
-        var request = ImageRequest(url: url)
+    static func request(
+        for url: URL?,
+        policy: ArtworkRequestPolicy = .shared
+    ) -> ImageRequest? {
+        guard
+            let url,
+            isAllowedRemoteURL(url),
+            policy != .spotifyImport || isAllowedSpotifyArtworkURL(url)
+        else { return nil }
+        let options: ImageRequest.Options = policy == .spotifyImport
+            ? [.disableMemoryCache, .disableDiskCache]
+            : []
+        var request = ImageRequest(url: url, options: options)
         request.thumbnail = ImageRequest.ThumbnailOptions(
             maxPixelSize: maximumDecodedPixelSize
         )
         return request
+    }
+
+    static func pipeline(for policy: ArtworkRequestPolicy) -> ImagePipeline {
+        policy == .spotifyImport ? spotifyImport : shared
     }
 
     static func isAllowedRemoteURL(_ url: URL) -> Bool {
@@ -26,6 +51,11 @@ enum ArtworkPipeline {
             && url.user == nil
             && url.password == nil
             && (url.port == nil || url.port == 443)
+    }
+
+    static func isAllowedSpotifyArtworkURL(_ url: URL) -> Bool {
+        guard isAllowedRemoteURL(url), let host = url.host?.lowercased() else { return false }
+        return host.hasSuffix(".scdn.co") || host.hasSuffix(".spotifycdn.com")
     }
 
     static func validate(response: URLResponse) -> (any Error)? {
@@ -45,7 +75,8 @@ enum ArtworkPipeline {
     }
 
     static func makePipeline(
-        cacheDirectory: URL? = nil
+        cacheDirectory: URL? = nil,
+        redirectPolicy: ArtworkRedirectPolicy = .credentialFreeHTTPS
     ) -> ImagePipeline {
         let sessionConfiguration = URLSessionConfiguration.ephemeral
         sessionConfiguration.urlCache = nil
@@ -59,7 +90,7 @@ enum ArtworkPipeline {
             configuration: sessionConfiguration,
             validate: validate(response:)
         )
-        dataLoader.delegate = ArtworkRedirectDelegate.shared
+        dataLoader.delegate = ArtworkRedirectDelegate(policy: redirectPolicy)
         var configuration = ImagePipeline.Configuration(dataLoader: dataLoader)
         configuration.isTaskCoalescingEnabled = true
         configuration.isDecompressionEnabled = true
@@ -101,12 +132,26 @@ enum ArtworkValidationError: Error, Equatable {
 }
 
 final class ArtworkRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
-    static let shared = ArtworkRedirectDelegate()
+    let policy: ArtworkRedirectPolicy
 
-    static func admittedRedirect(_ proposedRequest: URLRequest) -> URLRequest? {
+    init(policy: ArtworkRedirectPolicy) {
+        self.policy = policy
+    }
+
+    static func admittedRedirect(
+        _ proposedRequest: URLRequest,
+        policy: ArtworkRedirectPolicy = .credentialFreeHTTPS
+    ) -> URLRequest? {
         guard
             proposedRequest.httpMethod?.uppercased() == "GET",
-            proposedRequest.url.map(ArtworkPipeline.isAllowedRemoteURL) == true
+            proposedRequest.url.map({ url in
+                switch policy {
+                case .credentialFreeHTTPS:
+                    ArtworkPipeline.isAllowedRemoteURL(url)
+                case .spotifyCDNOnly:
+                    ArtworkPipeline.isAllowedSpotifyArtworkURL(url)
+                }
+            }) == true
         else {
             return nil
         }
@@ -126,6 +171,6 @@ final class ArtworkRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecke
         newRequest request: URLRequest,
         completionHandler: @escaping @Sendable (URLRequest?) -> Void
     ) {
-        completionHandler(Self.admittedRedirect(request))
+        completionHandler(Self.admittedRedirect(request, policy: policy))
     }
 }

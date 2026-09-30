@@ -37,6 +37,10 @@ struct APIRequestData<Body: Encodable> {
     /// Optional hard ceiling applied while the response body is received.
     /// Requests without a ceiling retain the normal URLSession data path.
     let maximumResponseBytes: Int?
+    /// Whether URLSession may follow an HTTP redirect for this request.
+    /// Creating GET endpoints must disable this so a redirect cannot replay
+    /// the mutation on a second wire request.
+    let allowsRedirects: Bool
     /// Optional hard ceiling applied after JSON encoding and before a request
     /// body is attached to a URL request. This is a final backstop for bounded
     /// mutation payloads whose textual inputs are validated earlier.
@@ -58,6 +62,7 @@ struct APIRequestData<Body: Encodable> {
          statusErrors: [Int: LBError] = [:],
          preservesTrailingSlash: Bool = false,
          maximumResponseBytes: Int? = nil,
+         allowsRedirects: Bool = true,
          maximumRequestBodyBytes: Int? = nil,
          maximumDownloadBytes: Int? = nil,
          pathIsPercentEncoded: Bool = false) {
@@ -69,6 +74,7 @@ struct APIRequestData<Body: Encodable> {
         self.statusErrors = statusErrors
         self.preservesTrailingSlash = preservesTrailingSlash
         self.maximumResponseBytes = maximumResponseBytes
+        self.allowsRedirects = allowsRedirects
         self.maximumRequestBodyBytes = maximumRequestBodyBytes
         self.maximumDownloadBytes = maximumDownloadBytes
         self.pathIsPercentEncoded = pathIsPercentEncoded

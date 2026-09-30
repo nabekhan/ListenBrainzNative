@@ -388,6 +388,34 @@ public struct LBCoreClient: Sendable {
         return url
     }
 
+    /// List up to 100 Spotify playlists available to import into the
+    /// authenticated ListenBrainz account.
+    ///
+    /// ListenBrainz's Spotify-listing endpoint has no pagination and fetches
+    /// all upstream Spotify pages server-side. This method therefore applies a
+    /// hard 2 MiB response ceiling and materializes at most the first 100
+    /// playlist summaries. It never makes a second request to fetch more.
+    public func spotifyPlaylistsForImport() async throws -> LBSpotifyPlaylistImportList {
+        try await apiClient.execute(SpotifyPlaylistImportListRequest())
+    }
+
+    /// Import a Spotify playlist into the authenticated user's ListenBrainz
+    /// collection.
+    ///
+    /// Although the server exposes this operation as GET, it creates a
+    /// ListenBrainz playlist and has no idempotency key. Callers must dispatch
+    /// it once, must not automatically retry after an ambiguous result, and
+    /// should reconcile before offering another explicit import.
+    ///
+    /// - Parameter spotifyPlaylistID: An opaque ASCII alphanumeric Spotify
+    ///   playlist ID.
+    /// - Returns: The MusicBrainz ID of the newly created ListenBrainz playlist.
+    public func importSpotifyPlaylist(spotifyPlaylistID: String) async throws -> UUID {
+        try await apiClient.execute(
+            ImportSpotifyPlaylistTracksRequest(spotifyPlaylistID: spotifyPlaylistID)
+        ).identifier
+    }
+
     /// Get playlists created for the given user
     /// - Parameters:
     ///   - username: User the playlists are created for

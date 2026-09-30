@@ -6,9 +6,10 @@ struct ArtworkView: View {
     let title: String
     var cornerRadius: CGFloat = 12
     var showsPlaceholderSymbol = true
+    var requestPolicy: ArtworkRequestPolicy = .shared
 
     var body: some View {
-        let request = ArtworkPipeline.request(for: url)
+        let request = ArtworkPipeline.request(for: url, policy: requestPolicy)
         LazyImage(
             request: request,
             transaction: .init(animation: .easeInOut(duration: 0.2))
@@ -25,7 +26,7 @@ struct ArtworkView: View {
                 placeholder
             }
         }
-        .pipeline(ArtworkPipeline.shared)
+        .pipeline(ArtworkPipeline.pipeline(for: requestPolicy))
         .clipShape(.rect(cornerRadius: cornerRadius, style: .continuous))
         .contentShape(.rect(cornerRadius: cornerRadius, style: .continuous))
         .accessibilityLabel(
