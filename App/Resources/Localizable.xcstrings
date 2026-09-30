@@ -1411,6 +1411,16 @@
         }
       }
     },
+    "A preference update may have changed this list. Refresh to check.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A preference update may have changed this list. Refresh to check."
+          }
+        }
+      }
+    },
     "A previous change may have moved or removed a track. Refresh the playlist before changing tracks again.": {
       "localizations": {
         "en": {
@@ -3765,16 +3775,6 @@
         }
       }
     },
-    "Couldn’t Update Preference": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn’t Update Preference"
-          }
-        }
-      }
-    },
     "Couldn’t check your saved MusicBrainz match. Try again.": {
       "localizations": {
         "en": {
@@ -3885,6 +3885,16 @@
         }
       }
     },
+    "Couldn’t load recommendation preferences. Try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load recommendation preferences. Try again."
+          }
+        }
+      }
+    },
     "Couldn’t load this day": {
       "localizations": {
         "en": {
@@ -3985,6 +3995,16 @@
         }
       }
     },
+    "Couldn’t refresh. Showing saved preferences.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t refresh. Showing saved preferences."
+          }
+        }
+      }
+    },
     "Couldn’t refresh. Showing saved rankings.": {
       "localizations": {
         "en": {
@@ -4011,6 +4031,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn’t refresh. Showing saved reviews."
+          }
+        }
+      }
+    },
+    "Couldn’t remove preference": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t remove preference"
           }
         }
       }
@@ -4071,6 +4101,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn’t update feed"
+          }
+        }
+      }
+    },
+    "Couldn’t update preference": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t update preference"
           }
         }
       }
@@ -5105,12 +5145,12 @@
         }
       }
     },
-    "Enter at least 2 characters and no more than 256 UTF-8 bytes.": {
+    "Ends %@": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enter at least 2 characters and no more than 256 UTF-8 bytes."
+            "value": "Ends %@"
           }
         }
       }
@@ -5161,6 +5201,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Enter an artist."
+          }
+        }
+      }
+    },
+    "Enter at least 2 characters and no more than 256 UTF-8 bytes.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter at least 2 characters and no more than 256 UTF-8 bytes."
           }
         }
       }
@@ -6341,6 +6391,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Keep downloaded copy"
+          }
+        }
+      }
+    },
+    "Keep preference": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep preference"
           }
         }
       }
@@ -7837,6 +7897,16 @@
         }
       }
     },
+    "ListenBrainz saves these choices. They may not affect every recommendation.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ListenBrainz saves these choices. They may not affect every recommendation."
+          }
+        }
+      }
+    },
     "ListenBrainz sent an unexpected response. Try again later.": {
       "localizations": {
         "en": {
@@ -8427,6 +8497,16 @@
         }
       }
     },
+    "Loading more preferences…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading more preferences…"
+          }
+        }
+      }
+    },
     "Loading more rankings…": {
       "localizations": {
         "en": {
@@ -8573,6 +8653,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loading published reviews…"
+          }
+        }
+      }
+    },
+    "Loading recommendation preferences…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading recommendation preferences…"
           }
         }
       }
@@ -9323,6 +9413,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "MusicBrainz"
+          }
+        }
+      }
+    },
+    "MusicBrainz ID %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz ID %@"
           }
         }
       }
@@ -10313,6 +10413,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No saved MusicBrainz match"
+          }
+        }
+      }
+    },
+    "No saved preferences": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No saved preferences"
           }
         }
       }
@@ -11887,12 +11997,12 @@
         }
       }
     },
-    "Preference Updated": {
+    "Preference removed": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preference Updated"
+            "value": "Preference removed"
           }
         }
       }
@@ -11903,6 +12013,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preference saved to ListenBrainz."
+          }
+        }
+      }
+    },
+    "Preference updated": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preference updated"
+          }
+        }
+      }
+    },
+    "Preferences changed while loading. Try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preferences changed while loading. Try again."
+          }
+        }
+      }
+    },
+    "Preferences changed. Refresh to see the latest list.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preferences changed. Refresh to see the latest list."
+          }
+        }
+      }
+    },
+    "Preferences couldn’t load": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preferences couldn’t load"
           }
         }
       }
@@ -12499,6 +12649,16 @@
         }
       }
     },
+    "Recommendation preferences": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recommendation preferences"
+          }
+        }
+      }
+    },
     "Recommendation settings": {
       "localizations": {
         "en": {
@@ -12585,6 +12745,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Recommended tracks, Weekly Jams, and exploration playlists"
+          }
+        }
+      }
+    },
+    "Recording": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recording"
           }
         }
       }
@@ -13143,6 +13313,26 @@
         }
       }
     },
+    "Remove preference": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove preference"
+          }
+        }
+      }
+    },
+    "Remove preference?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove preference?"
+          }
+        }
+      }
+    },
     "Remove “%@”?": {
       "localizations": {
         "en": {
@@ -13189,6 +13379,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Removes “%@” from your history, usually shortly after the next hour. Statistics may update later."
+          }
+        }
+      }
+    },
+    "Removing preference": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removing preference"
           }
         }
       }
@@ -13603,12 +13803,12 @@
         }
       }
     },
-    "Save Preference": {
+    "Save a choice from a recording to see it here.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Save Preference"
+            "value": "Save a choice from a recording to see it here."
           }
         }
       }
@@ -13633,6 +13833,26 @@
         }
       }
     },
+    "Save for 30 days": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save for 30 days"
+          }
+        }
+      }
+    },
+    "Save for 7 days": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save for 7 days"
+          }
+        }
+      }
+    },
     "Save match": {
       "localizations": {
         "en": {
@@ -13649,6 +13869,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Save order"
+          }
+        }
+      }
+    },
+    "Save permanently": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save permanently"
           }
         }
       }
@@ -13703,6 +13933,16 @@
         }
       }
     },
+    "Saved %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved %@"
+          }
+        }
+      }
+    },
     "Saved MusicBrainz match": {
       "localizations": {
         "en": {
@@ -13749,6 +13989,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saved preference removed."
+          }
+        }
+      }
+    },
+    "Saved preferences": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved preferences"
           }
         }
       }
@@ -14451,16 +14701,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sent to %lld followers."
-          }
-        }
-      }
-    },
-    "Separate from Hate feedback.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Separate from Hate feedback."
           }
         }
       }
@@ -16147,6 +16387,16 @@
         }
       }
     },
+    "The saved choice was removed from ListenBrainz.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The saved choice was removed from ListenBrainz."
+          }
+        }
+      }
+    },
     "The track order changed before anything was removed. Review the refreshed playlist and try again.": {
       "localizations": {
         "en": {
@@ -16413,6 +16663,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "This is already the current match. Nothing will be sent."
+          }
+        }
+      }
+    },
+    "This is separate from Hate feedback. You can remove it later.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is separate from Hate feedback. You can remove it later."
           }
         }
       }
@@ -16687,6 +16947,16 @@
         }
       }
     },
+    "This recording needs a MusicBrainz ID before you can save this preference.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This recording needs a MusicBrainz ID before you can save this preference."
+          }
+        }
+      }
+    },
     "This recording needs a MusicBrainz or MessyBrainz ID before it can be pinned": {
       "localizations": {
         "en": {
@@ -16757,6 +17027,16 @@
         }
       }
     },
+    "This removes the saved choice from ListenBrainz.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This removes the saved choice from ListenBrainz."
+          }
+        }
+      }
+    },
     "This request may have reached ListenBrainz. Check History or your profile before sending it again.": {
       "localizations": {
         "en": {
@@ -16813,16 +17093,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "This track is not mapped to a MusicBrainz recording"
-          }
-        }
-      }
-    },
-    "This track needs a MusicBrainz ID before you can save this preference.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This track needs a MusicBrainz ID before you can save this preference."
           }
         }
       }
@@ -17723,6 +17993,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Until %@"
+          }
+        }
+      }
+    },
+    "Until you remove it": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Until you remove it"
           }
         }
       }
@@ -18795,6 +19075,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Your review will be public under CC BY-SA 3.0. MetaBrainz may also license it commercially outside Creative Commons to support its work."
+          }
+        }
+      }
+    },
+    "Your saved choices": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your saved choices"
           }
         }
       }

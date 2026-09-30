@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct RecordingDetailView: View {
+    private enum RecommendationPreferenceAction: Equatable {
+        case save(RecommendationPreferenceDuration)
+        case remove
+    }
+
     let recording: Recording
     @Bindable var model: ListeningModel
     @Environment(PinsModel.self) private var pins
@@ -13,6 +18,7 @@ struct RecordingDetailView: View {
     @State private var isPlaylistAddPresented = false
     @State private var isLogListenPresented = false
     @State private var isDoNotRecommendConfirmationPresented = false
+    @State private var failedRecommendationPreferenceAction: RecommendationPreferenceAction?
 
     init(recording: Recording, model: ListeningModel) {
         self.recording = recording
@@ -102,14 +108,35 @@ struct RecordingDetailView: View {
         }
         .alert(
             doNotRecommendModel.notice?.kind == .confirmation
-                ? "Preference Updated"
-                : "Couldn’t Update Preference",
+                ? "Preference updated"
+                : "Couldn’t update preference",
             isPresented: Binding(
                 get: { doNotRecommendModel.notice != nil },
-                set: { if !$0 { doNotRecommendModel.dismissNotice() } }
+                set: {
+                    if !$0 {
+                        doNotRecommendModel.dismissNotice()
+                        failedRecommendationPreferenceAction = nil
+                    }
+                }
             )
         ) {
-            Button("OK", role: .cancel) { doNotRecommendModel.dismissNotice() }
+            if doNotRecommendModel.notice?.kind == .confirmation {
+                Button("Done", role: .cancel) {
+                    doNotRecommendModel.dismissNotice()
+                    failedRecommendationPreferenceAction = nil
+                }
+            } else {
+                Button("Try again") {
+                    guard let action = failedRecommendationPreferenceAction else { return }
+                    doNotRecommendModel.dismissNotice()
+                    failedRecommendationPreferenceAction = nil
+                    startRecommendationPreferenceAction(action)
+                }
+                Button("Not now", role: .cancel) {
+                    doNotRecommendModel.dismissNotice()
+                    failedRecommendationPreferenceAction = nil
+                }
+            }
         } message: {
             Text(doNotRecommendModel.notice?.message ?? "")
         }
@@ -118,12 +145,18 @@ struct RecordingDetailView: View {
             isPresented: $isDoNotRecommendConfirmationPresented,
             titleVisibility: .visible
         ) {
-            Button("Save Preference") {
-                Task { await doNotRecommendModel.savePreference() }
+            Button("Save permanently") {
+                startRecommendationPreferenceAction(.save(.permanent))
+            }
+            Button("Save for 7 days") {
+                startRecommendationPreferenceAction(.save(.sevenDays))
+            }
+            Button("Save for 30 days") {
+                startRecommendationPreferenceAction(.save(.thirtyDays))
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Separate from Hate feedback.")
+            Text("This is separate from Hate feedback. You can remove it later.")
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -183,7 +216,7 @@ struct RecordingDetailView: View {
 
                 if doNotRecommendModel.isExcluded != false {
                     Button {
-                        Task { await doNotRecommendModel.removePreference() }
+                        startRecommendationPreferenceAction(.remove)
                     } label: {
                         Label("Remove “don’t recommend”", systemImage: "checkmark.arrow.trianglehead.counterclockwise")
                     }
@@ -210,6 +243,25 @@ struct RecordingDetailView: View {
             "Log a listen, add this recording to a playlist, share it, or change a saved preference"
         } else {
             "Sign in to log, share, or change saved preferences"
+        }
+    }
+
+    private func startRecommendationPreferenceAction(_ action: RecommendationPreferenceAction) {
+        Task { @MainActor in
+            let succeeded: Bool
+            switch action {
+            case let .save(duration):
+                succeeded = await doNotRecommendModel.savePreference(duration: duration)
+            case .remove:
+                succeeded = await doNotRecommendModel.removePreference()
+            }
+
+            if !succeeded,
+               !Task.isCancelled,
+               doNotRecommendModel.notice?.kind == .error
+            {
+                failedRecommendationPreferenceAction = action
+            }
         }
     }
 

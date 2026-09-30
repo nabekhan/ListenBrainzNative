@@ -71,6 +71,9 @@ struct MainTabView: View {
                 || ProcessInfo.processInfo.arguments.contains("-brainz-connected-services-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-connected-services-empty-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-connected-services-failure-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-recommendation-preferences-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-recommendation-preferences-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-recommendation-preferences-failure-demo")
             {
                 let visualAccount = Account(username: "visual-listener", token: "visual-token")
                 _model = State(
@@ -688,6 +691,17 @@ struct MainTabView: View {
                 .environment(pins)
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-archive-history-demo") {
                 ArchivedHistorySnapshotVisualQAScreen()
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-recommendation-preferences-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-recommendation-preferences-empty-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-recommendation-preferences-failure-demo")
+            {
+                RecommendationPreferencesVisualQAScreen(
+                    state: ProcessInfo.processInfo.arguments.contains("-brainz-recommendation-preferences-empty-demo")
+                        ? .empty
+                        : ProcessInfo.processInfo.arguments.contains("-brainz-recommendation-preferences-failure-demo")
+                            ? .failure
+                            : .populated
+                )
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-user-data-export-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-user-data-export-empty-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-user-data-export-failure-demo")

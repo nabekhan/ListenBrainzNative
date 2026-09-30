@@ -79,6 +79,7 @@ struct SettingsView: View {
     private let connectedServicesProvider: (any ConnectedServicesProviding)?
     private let connectedServicesCache: EntityDetailCache<ConnectedServicesCacheKey, ConnectedServices>
     private let userDataExportProvider: (any UserDataExportProviding)?
+    private let recommendationPreferencesProvider: (any DoNotRecommendProviding)?
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage(AppAppearance.storageKey) private var appearance: AppAppearance = .system
@@ -91,6 +92,7 @@ struct SettingsView: View {
         connectedServicesProvider: (any ConnectedServicesProviding)? = nil,
         connectedServicesCache: EntityDetailCache<ConnectedServicesCacheKey, ConnectedServices> = ConnectedServicesCaches.values,
         userDataExportProvider: (any UserDataExportProviding)? = nil,
+        recommendationPreferencesProvider: (any DoNotRecommendProviding)? = nil,
         initiallyShowsDisconnectConfirmation: Bool = false
     ) {
         self.account = account
@@ -98,6 +100,7 @@ struct SettingsView: View {
         self.connectedServicesProvider = connectedServicesProvider
         self.connectedServicesCache = connectedServicesCache
         self.userDataExportProvider = userDataExportProvider
+        self.recommendationPreferencesProvider = recommendationPreferencesProvider
         _showsDisconnectConfirmation = State(initialValue: initiallyShowsDisconnectConfirmation)
     }
 
@@ -196,6 +199,14 @@ struct SettingsView: View {
     private var listenBrainzSection: some View {
         Section {
             if account.isAuthenticated {
+                NavigationLink {
+                    RecommendationPreferencesView(
+                        account: account,
+                        provider: recommendationPreferencesProvider
+                    )
+                } label: {
+                    Label("Recommendation preferences", systemImage: "slider.horizontal.3")
+                }
                 NavigationLink {
                     LinkListensView(account: account)
                 } label: {
@@ -344,6 +355,7 @@ struct SettingsView: View {
                     session: session,
                     connectedServicesProvider: SettingsVisualConnectedServicesProvider(),
                     connectedServicesCache: EntityDetailCache(),
+                    recommendationPreferencesProvider: RecommendationPreferencesVisualProvider(state: .populated),
                     initiallyShowsDisconnectConfirmation: showsDisconnectConfirmation
                 )
             }

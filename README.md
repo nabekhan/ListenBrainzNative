@@ -31,6 +31,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Authenticated duplication of any visible playlist, with a fresh source preflight, canonical returned-copy navigation, and a durable no-replay barrier for ambiguous responses
 - Canonical MusicBrainz edition pages with release-group links and ordered, multi-disc track lists
 - Authenticated recording feedback actions plus a public, lazy Loved/Hated library on own and visited profiles
+- Native Recommendation Preferences management for artist, release, release-group, and recording exclusions, with explicit paging, authenticated removal, and permanent/7-day/30-day recording choices
 - Native public CritiqueBrainz review publishing from Artist, Recording, and Release Group pages, with optional rating, language selection, explicit licensing consent, and durable duplicate-safe recovery
 - Public and multi-recipient personal recording recommendations, with follower-only selection and optional 280-character notes
 - Cached snapshots for useful cold starts and degraded-network behavior
@@ -99,7 +100,7 @@ scripts/test-ui-matrix.sh \
   --ipad-udid <IPAD_SIMULATOR_UDID>
 ```
 
-Pass `--output-root /absolute/path` to retain results somewhere specific. The script refuses an existing output directory, builds test products once, and retains three separate XCResult bundles: the full guarded iPhone fixture suite, the established six-test iPad responsive/RTL/pseudo-localization subset, and a focused dark-mode maximum-Dynamic-Type iPhone subset. It always excludes the opt-in live MetaBrainz sign-in route and each fixture denies shared request-gate transport, so it is credential-free and fails before any guarded ListenBrainz transport. That guard does not claim to intercept arbitrary future networking outside the required gate; fixture data and artwork must remain local when new cases are added.
+Pass `--output-root /absolute/path` to retain results somewhere specific. The script refuses an existing output directory, builds test products once, and retains three separate XCResult bundles: the full guarded iPhone fixture suite, a curated iPad responsive/RTL/pseudo-localization subset, and a focused dark-mode maximum-Dynamic-Type iPhone subset. It always excludes the opt-in live MetaBrainz sign-in route and each fixture denies shared request-gate transport, so it is credential-free and fails before any guarded ListenBrainz transport. That guard does not claim to intercept arbitrary future networking outside the required gate; fixture data and artwork must remain local when new cases are added.
 
 The matrix temporarily boots supplied simulators when needed, sets their appearance and content size, verifies those settings, then restores the original appearance, Dynamic Type category, and boot/shutdown state on normal exit or interruption. It does not replace physical-device, signed-build, real-authentication, or translated-language QA.
 

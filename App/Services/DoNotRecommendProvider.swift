@@ -2,30 +2,43 @@ import Foundation
 import ListenBrainzKit
 
 protocol DoNotRecommendProviding: Sendable {
-    func entries(username: String, offset: Int, count: Int) async throws -> LBDoNotRecommendPage
-    func addRecording(recordingMBID: UUID) async throws
-    func removeRecording(recordingMBID: UUID) async throws
+    func entries(username: String, offset: Int, count: Int) async throws -> RecommendationPreferencePage
+    func add(entity: RecommendationPreferenceEntity, entityMBID: UUID, until: Date?) async throws
+    func remove(entity: RecommendationPreferenceEntity, entityMBID: UUID) async throws
+}
+
+extension DoNotRecommendProviding {
+    func addRecording(recordingMBID: UUID, until: Date? = nil) async throws {
+        try await add(entity: .recording, entityMBID: recordingMBID, until: until)
+    }
+
+    func removeRecording(recordingMBID: UUID) async throws {
+        try await remove(entity: .recording, entityMBID: recordingMBID)
+    }
 }
 
 protocol DoNotRecommendTransport: Sendable {
     func entries(username: String, offset: Int, count: Int) async throws -> LBDoNotRecommendPage
-    func add(entity: LBDoNotRecommendEntity, entityMBID: UUID) async throws -> LBDoNotRecommendStatus
+    func add(entity: LBDoNotRecommendEntity, entityMBID: UUID, until: Date?) async throws -> LBDoNotRecommendStatus
     func remove(entity: LBDoNotRecommendEntity, entityMBID: UUID) async throws -> LBDoNotRecommendStatus
 }
 
 private struct LiveDoNotRecommendTransport: DoNotRecommendTransport {
-    let client: LBClient
+    /// Listing active preferences is a public endpoint. Keep it deliberately
+    /// separate from the authenticated mutation client.
+    let publicClient: LBClient
+    let mutationClient: LBClient
 
     func entries(username: String, offset: Int, count: Int) async throws -> LBDoNotRecommendPage {
-        try await client.doNotRecommend.entries(user: username, count: count, offset: offset)
+        try await publicClient.doNotRecommend.entries(user: username, count: count, offset: offset)
     }
 
-    func add(entity: LBDoNotRecommendEntity, entityMBID: UUID) async throws -> LBDoNotRecommendStatus {
-        try await client.doNotRecommend.add(entity: entity, entityMBID: entityMBID)
+    func add(entity: LBDoNotRecommendEntity, entityMBID: UUID, until: Date?) async throws -> LBDoNotRecommendStatus {
+        try await mutationClient.doNotRecommend.add(entity: entity, entityMBID: entityMBID, until: until)
     }
 
     func remove(entity: LBDoNotRecommendEntity, entityMBID: UUID) async throws -> LBDoNotRecommendStatus {
-        try await client.doNotRecommend.remove(entity: entity, entityMBID: entityMBID)
+        try await mutationClient.doNotRecommend.remove(entity: entity, entityMBID: entityMBID)
     }
 }
 
@@ -40,12 +53,13 @@ struct ListenBrainzDoNotRecommendProvider: DoNotRecommendProviding {
     private let readScope: RequestGate.ReadScope
 
     init(token: String, gate: RequestGate = .shared) {
-        transport = LiveDoNotRecommendTransport(client: LBClient(
-            token: token,
-            userAgent: "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"
-        ))
+        let userAgent = "ListenBrainzNative/0.1 (+https://github.com/nabekhan/ListenBrainzNative)"
+        transport = LiveDoNotRecommendTransport(
+            publicClient: LBClient(token: "", userAgent: userAgent),
+            mutationClient: LBClient(token: token, userAgent: userAgent)
+        )
         self.gate = gate
-        readScope = .authenticated(token: token)
+        readScope = .anonymous
     }
 
     init(
@@ -58,28 +72,86 @@ struct ListenBrainzDoNotRecommendProvider: DoNotRecommendProviding {
         self.readScope = readScope
     }
 
-    func entries(username: String, offset: Int = 0, count: Int = 25) async throws -> LBDoNotRecommendPage {
+    func entries(username: String, offset: Int = 0, count: Int = 25) async throws -> RecommendationPreferencePage {
         let safeOffset = max(offset, 0)
-        let safeCount = min(max(count, 0), 1_000)
-        return try await read(
+        let safeCount = min(max(count, 1), 25)
+        let raw = try await read(
             .doNotRecommendEntries(readScope, user: username, offset: safeOffset, count: safeCount)
         ) {
             try await transport.entries(username: username, offset: safeOffset, count: safeCount)
         }
+        return try Self.validatedPage(
+            raw,
+            requestedUsername: username,
+            requestedOffset: safeOffset,
+            requestedCount: safeCount
+        )
     }
 
-    func addRecording(recordingMBID: UUID) async throws {
+    func add(entity: RecommendationPreferenceEntity, entityMBID: UUID, until: Date? = nil) async throws {
         try await mutate {
-            let status = try await transport.add(entity: .recording, entityMBID: recordingMBID)
+            let status = try await transport.add(
+                entity: entity.listenBrainzValue,
+                entityMBID: entityMBID,
+                until: until
+            )
             guard status.status.lowercased() == "ok" else { throw DoNotRecommendProviderError.invalidMutationResponse }
         }
     }
 
-    func removeRecording(recordingMBID: UUID) async throws {
+    func remove(entity: RecommendationPreferenceEntity, entityMBID: UUID) async throws {
         try await mutate {
-            let status = try await transport.remove(entity: .recording, entityMBID: recordingMBID)
+            let status = try await transport.remove(
+                entity: entity.listenBrainzValue,
+                entityMBID: entityMBID
+            )
             guard status.status.lowercased() == "ok" else { throw DoNotRecommendProviderError.invalidMutationResponse }
         }
+    }
+
+    static func validatedPage(
+        _ raw: LBDoNotRecommendPage,
+        requestedUsername: String,
+        requestedOffset: Int,
+        requestedCount: Int
+    ) throws -> RecommendationPreferencePage {
+        let expectedUsername = normalizedUsername(requestedUsername)
+        let returnedUsername = normalizedUsername(raw.userID)
+        let (nextOffset, overflowed) = raw.offset.addingReportingOverflow(raw.count)
+
+        guard !expectedUsername.isEmpty,
+              returnedUsername == expectedUsername,
+              raw.offset == requestedOffset,
+              raw.offset >= 0,
+              raw.count >= 0,
+              raw.count == raw.entries.count,
+              raw.count <= requestedCount,
+              raw.totalCount >= 0,
+              !overflowed,
+              raw.totalCount >= nextOffset
+        else { throw DoNotRecommendProviderError.invalidReadResponse }
+
+        return RecommendationPreferencePage(
+            username: requestedUsername,
+            items: raw.entries.map {
+                RecommendationPreference(
+                    entity: $0.entity.preferenceValue,
+                    entityMBID: $0.entityMBID,
+                    createdAt: $0.created,
+                    expiresAt: $0.until
+                )
+            },
+            serverCount: raw.count,
+            offset: raw.offset,
+            totalCount: raw.totalCount
+        )
+    }
+
+    private static func normalizedUsername(_ value: String) -> String {
+        value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .precomposedStringWithCanonicalMapping
+            .lowercased()
     }
 
     private func read<Result: Sendable>(
@@ -104,7 +176,7 @@ struct ListenBrainzDoNotRecommendProvider: DoNotRecommendProviding {
         } catch let error as DoNotRecommendProviderError {
             throw error
         } catch {
-            throw DoNotRecommendProviderError.unavailable
+            throw DoNotRecommendProviderError.readUnavailable
         }
     }
 
@@ -129,17 +201,19 @@ struct ListenBrainzDoNotRecommendProvider: DoNotRecommendProviding {
         } catch let error as DoNotRecommendProviderError {
             throw error
         } catch {
-            throw DoNotRecommendProviderError.unavailable
+            throw DoNotRecommendProviderError.mutationUnavailable
         }
     }
 }
 
-enum DoNotRecommendProviderError: LocalizedError, Equatable {
+enum DoNotRecommendProviderError: LocalizedError, Equatable, Sendable {
     case invalidAuthentication
     case userNotFound
     case actionRejected
+    case invalidReadResponse
     case invalidMutationResponse
-    case unavailable
+    case readUnavailable
+    case mutationUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -147,23 +221,47 @@ enum DoNotRecommendProviderError: LocalizedError, Equatable {
             String(localized: "Your ListenBrainz sign-in is no longer valid. Reconnect your token to update this preference.")
         case .userNotFound:
             String(localized: "ListenBrainz couldn’t find this user’s preferences.")
-        case .actionRejected, .invalidMutationResponse, .unavailable:
+        case .invalidReadResponse, .readUnavailable:
+            String(localized: "Couldn’t load recommendation preferences. Try again.")
+        case .actionRejected, .invalidMutationResponse, .mutationUnavailable:
             String(localized: "ListenBrainz couldn’t update this preference. Try again.")
+        }
+    }
+}
+
+private extension RecommendationPreferenceEntity {
+    var listenBrainzValue: LBDoNotRecommendEntity {
+        switch self {
+        case .artist: .artist
+        case .release: .release
+        case .releaseGroup: .releaseGroup
+        case .recording: .recording
+        }
+    }
+}
+
+private extension LBDoNotRecommendEntity {
+    var preferenceValue: RecommendationPreferenceEntity {
+        switch self {
+        case .artist: .artist
+        case .release: .release
+        case .releaseGroup: .releaseGroup
+        case .recording: .recording
         }
     }
 }
 
 #if DEBUG
 struct DoNotRecommendPreviewProvider: DoNotRecommendProviding {
-    func entries(username: String, offset: Int, count: Int) async throws -> LBDoNotRecommendPage {
-        .init(entries: [], totalCount: 0, count: 0, offset: offset, userID: username)
+    func entries(username: String, offset: Int, count: Int) async throws -> RecommendationPreferencePage {
+        .init(username: username, items: [], serverCount: 0, offset: offset, totalCount: 0)
     }
 
-    func addRecording(recordingMBID: UUID) async throws {
+    func add(entity: RecommendationPreferenceEntity, entityMBID: UUID, until: Date?) async throws {
         try await Task.sleep(for: .milliseconds(250))
     }
 
-    func removeRecording(recordingMBID: UUID) async throws {
+    func remove(entity: RecommendationPreferenceEntity, entityMBID: UUID) async throws {
         try await Task.sleep(for: .milliseconds(250))
     }
 }

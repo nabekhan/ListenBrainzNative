@@ -581,12 +581,12 @@ final class ReleaseLayoutUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Remove “don’t recommend”"].exists)
         save.tap()
 
-        let confirm = app.buttons["Save Preference"]
+        let confirm = app.buttons["Save permanently"]
         XCTAssertTrue(confirm.waitForExistence(timeout: 5))
         keepScreenshot(named: "Recording-do-not-recommend-confirmation")
         confirm.tap()
         XCTAssertTrue(app.staticTexts["Preference saved to ListenBrainz."].waitForExistence(timeout: 5))
-        app.buttons["OK"].tap()
+        app.buttons["Done"].tap()
 
         actions.tap()
         XCTAssertTrue(preference.waitForExistence(timeout: 5))
@@ -594,6 +594,53 @@ final class ReleaseLayoutUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Remove “don’t recommend”"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Save “don’t recommend”"].exists)
         keepScreenshot(named: "Recording-do-not-recommend-local-fixture")
+    }
+
+    func testRecommendationPreferencesFixtureShowsCanonicalRowsAndRemoval() throws {
+        let app = launchFixture("-brainz-recommendation-preferences-demo")
+        let screen = app.scrollViews["recommendation-preferences-screen"]
+        XCTAssertTrue(screen.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Artist"].exists)
+        XCTAssertTrue(app.staticTexts["Until you remove it"].exists)
+        let remove = app.buttons.matching(identifier: "remove-recommendation-preference-artist-1f9df192-a621-4f54-8850-2c5373b7eac9").firstMatch
+        reveal(remove, in: screen)
+        XCTAssertTrue(remove.isHittable)
+        remove.tap()
+        let confirmRemoval = app.sheets["Remove preference?"].buttons["Remove preference"]
+        XCTAssertTrue(confirmRemoval.waitForExistence(timeout: 5))
+        keepScreenshot(named: "Recommendation-preferences-confirmation")
+        confirmRemoval.tap()
+        XCTAssertTrue(app.staticTexts["The saved choice was removed from ListenBrainz."].waitForExistence(timeout: 5))
+        keepScreenshot(named: "Recommendation-preferences-removed")
+        app.buttons["Done"].tap()
+        XCTAssertFalse(remove.exists)
+    }
+
+    func testRecommendationPreferencesEmptyFixtureExplainsHowToAddOne() throws {
+        let app = launchFixture("-brainz-recommendation-preferences-empty-demo")
+
+        XCTAssertTrue(app.scrollViews["recommendation-preferences-screen"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["No saved preferences"].exists)
+        XCTAssertTrue(app.staticTexts["Save a choice from a recording to see it here."].exists)
+        keepScreenshot(named: "Recommendation-preferences-empty")
+    }
+
+    func testRecommendationPreferencesFailureFixtureOffersRecovery() throws {
+        let app = launchFixture("-brainz-recommendation-preferences-failure-demo")
+
+        XCTAssertTrue(app.scrollViews["recommendation-preferences-screen"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Preferences couldn’t load"].exists)
+        XCTAssertTrue(app.buttons["Try again"].exists)
+        keepScreenshot(named: "Recommendation-preferences-failure")
+    }
+
+    func testSettingsRecommendationPreferencesDestinationUsesFixture() throws {
+        let app = launchFixture("-brainz-settings-demo")
+        let preferences = app.cells.containing(.staticText, identifier: "Recommendation preferences").firstMatch
+        XCTAssertTrue(preferences.waitForExistence(timeout: 10))
+        preferences.tap()
+        XCTAssertTrue(app.scrollViews["recommendation-preferences-screen"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Your saved choices"].exists)
     }
 
     func testCritiqueBrainzReaderLoadsOnlyAfterExplicitTap() throws {
