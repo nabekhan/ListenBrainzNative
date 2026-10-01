@@ -100,6 +100,60 @@ final class ReleaseLayoutUITests: XCTestCase {
         app.terminate()
     }
 
+    /// Lists the linked Spotify playlists once and deliberately stops before
+    /// selecting a row, showing a confirmation, or starting an import.
+    func testOptInLiveSpotifyPlaylistListingIsReadOnly() throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["BRAINZ_LIVE_SPOTIFY_LIST_SMOKE"] == "1",
+            "Set BRAINZ_LIVE_SPOTIFY_LIST_SMOKE=1 only for an intentional, read-only Spotify playlist listing check."
+        )
+        defer { clearSimulatorClipboard() }
+
+        let app = XCUIApplication()
+        app.launchArguments = ["-brainz-request-audit", "-brainz-live-spotify-listing"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+
+        if app.navigationBars["Welcome"].waitForExistence(timeout: 5) {
+            pasteSimulatorClipboardToken(into: app)
+            app.buttons["Continue with token"].tap()
+        }
+
+        XCTAssertTrue(
+            app.navigationBars["Import from Spotify"].waitForExistence(timeout: 20),
+            "The isolated Spotify listing route did not become ready."
+        )
+        guard requireExpectedLiveSpotifyAccount(in: app) else {
+            app.terminate()
+            return
+        }
+
+        let load = app.buttons["playlist-import-load"]
+        XCTAssertTrue(load.waitForExistence(timeout: 10))
+        load.tap()
+
+        let ready = app.descendants(matching: .any)["playlist-import-ready"]
+        let failed = app.descendants(matching: .any)["playlist-import-failed"]
+        if liveSpotifyExpectedState() == "reconnect" {
+            XCTAssertTrue(
+                failed.waitForExistence(timeout: 60),
+                "The expected linked-account recovery state did not appear."
+            )
+            XCTAssertTrue(
+                app.staticTexts["Reconnect Spotify on ListenBrainz, then try again."].exists
+            )
+            XCTAssertFalse(ready.exists)
+        } else {
+            XCTAssertTrue(
+                ready.waitForExistence(timeout: 60),
+                "The single read-only Spotify playlist listing did not settle successfully."
+            )
+            XCTAssertFalse(failed.exists)
+        }
+        XCTAssertFalse(app.alerts.firstMatch.exists)
+        app.terminate()
+    }
+
     func testLiveWebSignInReachesOfficialMetaBrainzPage() throws {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["BRAINZ_LIVE_AUTH_ROUTE"] == "1",
@@ -147,6 +201,50 @@ final class ReleaseLayoutUITests: XCTestCase {
         assertMatrixPortraitWidth(window)
         XCTAssertTrue(app.staticTexts["@visual-home"].waitForExistence(timeout: 10))
         keepScreenshot(named: "Home-iPad-portrait")
+    }
+
+    func testProfileSocialLinkOpensSelfGraphWithoutRelationshipControls() throws {
+        let app = launchFixture("-brainz-profile-social-demo")
+        let link = app.buttons["profile-social-link"]
+        let requestCount = app.descendants(matching: .any)["profile-social-request-count"]
+
+        XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 10))
+        XCTAssertTrue(requestCount.waitForExistence(timeout: 10))
+        XCTAssertEqual(accessibilityValue(of: requestCount), "0")
+        let profileScrollView = app.scrollViews["profile-screen"]
+        XCTAssertTrue(profileScrollView.waitForExistence(timeout: 10))
+        reveal(link, in: profileScrollView)
+        XCTAssertTrue(link.waitForExistence(timeout: 10))
+        XCTAssertTrue(link.isHittable)
+        XCTAssertEqual(link.label, "Listening connections, Followers, people you follow, and listeners with similar taste")
+        link.tap()
+
+        XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 10))
+        XCTAssertTrue(
+            app.descendants(matching: .any)["user-social-screen"].waitForExistence(timeout: 10)
+        )
+        XCTAssertTrue(app.staticTexts["Similar listeners"].waitForExistence(timeout: 10))
+        let socialList = app.collectionViews["user-social-screen"]
+        XCTAssertTrue(socialList.waitForExistence(timeout: 10))
+        let followers = app.buttons["Followers 3"]
+        let following = app.buttons["Following 2"]
+        revealIncrementally(followers, in: socialList)
+        XCTAssertTrue(followers.waitForExistence(timeout: 10))
+        XCTAssertTrue(followers.isHittable)
+        XCTAssertTrue(following.waitForExistence(timeout: 10))
+        XCTAssertTrue(following.isHittable)
+        XCTAssertFalse(app.staticTexts["Your match"].exists)
+        XCTAssertFalse(app.buttons["Follow"].exists)
+        let requestsSettled = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "3"),
+            object: requestCount
+        )
+        XCTAssertEqual(XCTWaiter().wait(for: [requestsSettled], timeout: 5), .completed)
+        try assertNoAccessibilityIssues(
+            in: app,
+            auditTypes: [.elementDetection, .hitRegion, .sufficientElementDescription]
+        )
+        keepScreenshot(named: "Profile-social-self")
     }
 
     func testHomeFixtureAdaptsToLandscape() throws {
@@ -1282,6 +1380,23 @@ final class ReleaseLayoutUITests: XCTestCase {
         assertExpectedUsername(expectedUsername, in: app)
     }
 
+    private func requireExpectedLiveSpotifyAccount(in app: XCUIApplication) -> Bool {
+        guard let expectedUsername = liveExpectedUsername() else {
+            XCTFail("Set BRAINZ_LIVE_EXPECTED_USERNAME before enabling the Spotify listing smoke test.")
+            return false
+        }
+        let account = app.descendants(matching: .any)["live-spotify-listing-account"]
+        guard account.waitForExistence(timeout: 10) else {
+            XCTFail("The authenticated account marker did not appear.")
+            return false
+        }
+        guard account.label == expectedUsername else {
+            XCTFail("The stored account does not match BRAINZ_LIVE_EXPECTED_USERNAME.")
+            return false
+        }
+        return true
+    }
+
     private func assertExpectedUsername(_ expectedUsername: String, in app: XCUIApplication) {
         XCTAssertTrue(
             app.staticTexts[expectedUsername].waitForExistence(timeout: 10),
@@ -1293,6 +1408,12 @@ final class ReleaseLayoutUITests: XCTestCase {
         let username = ProcessInfo.processInfo.environment["BRAINZ_LIVE_EXPECTED_USERNAME"]?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return username?.isEmpty == false ? username : nil
+    }
+
+    private func liveSpotifyExpectedState() -> String {
+        ProcessInfo.processInfo.environment["BRAINZ_LIVE_SPOTIFY_EXPECTED_STATE"] == "reconnect"
+            ? "reconnect"
+            : "ready"
     }
 
     private func clearSimulatorClipboard() {

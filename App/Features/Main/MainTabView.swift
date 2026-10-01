@@ -46,6 +46,7 @@ struct MainTabView: View {
             if ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-collab-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-profile-playlists-visitor-demo")
+                || ProcessInfo.processInfo.arguments.contains("-brainz-profile-social-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-empty-demo")
                 || ProcessInfo.processInfo.arguments.contains("-brainz-feedback-library-failure-demo")
@@ -360,6 +361,16 @@ struct MainTabView: View {
                                     ? .indeterminate
                                     : .populated
                 )
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-live-spotify-listing") {
+                PlaylistServiceImportSheet(account: account)
+                    .safeAreaInset(edge: .bottom) {
+                        Text(verbatim: account.username)
+                            .font(.caption2.bold())
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(.regularMaterial, in: .capsule)
+                            .accessibilityIdentifier("live-spotify-listing-account")
+                    }
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-copy-demo") {
                 PlaylistCopyVisualQAScreen()
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-playlist-delete-confirmation-demo") {
@@ -416,6 +427,8 @@ struct MainTabView: View {
                         "-brainz-profile-playlists-visitor-demo"
                     )
                 )
+            } else if ProcessInfo.processInfo.arguments.contains("-brainz-profile-social-demo") {
+                ProfileSocialVisualQAScreen()
             } else if ProcessInfo.processInfo.arguments.contains("-brainz-community-charts-demo") {
                 CommunityChartsVisualQAScreen(listeningModel: model)
                     .environment(pins)

@@ -232,6 +232,7 @@ final class SessionModel {
             if arguments.contains("-brainz-profile-playlists-demo")
                 || arguments.contains("-brainz-profile-playlists-collab-demo")
                 || arguments.contains("-brainz-profile-playlists-visitor-demo")
+                || arguments.contains("-brainz-profile-social-demo")
                 || arguments.contains("-brainz-feedback-library-demo")
                 || arguments.contains("-brainz-feedback-library-empty-demo")
                 || arguments.contains("-brainz-feedback-library-failure-demo")

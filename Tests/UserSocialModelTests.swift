@@ -4,6 +4,28 @@ import XCTest
 
 @MainActor
 final class UserSocialModelTests: XCTestCase {
+    func testAuthenticatedSelfLoadsOnlyPublicGraph() async {
+        let provider = SocialFixtureProvider()
+        let model = UserSocialModel(
+            target: SearchUser(username: " Listener "),
+            viewer: Account(username: "listener", token: "token"),
+            provider: provider,
+            cache: UserSocialCache()
+        )
+
+        await model.load()
+
+        XCTAssertTrue(model.isSelf)
+        XCTAssertFalse(model.canFollow)
+        XCTAssertNil(model.isFollowing)
+        XCTAssertEqual(model.compatibilityPhase, .idle)
+        let calls = await provider.calls
+        XCTAssertEqual(
+            calls,
+            ["followers: Listener ", "following: Listener ", "similar: Listener "]
+        )
+    }
+
     func testPublicViewerLoadsOnlyPublicGraphInOrder() async {
         let provider = SocialFixtureProvider()
         let model = UserSocialModel(

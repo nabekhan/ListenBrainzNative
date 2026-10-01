@@ -10,6 +10,8 @@ struct ProfileView: View {
     private let connectedServicesCache: EntityDetailCache<ConnectedServicesCacheKey, ConnectedServices>
     private let feedbackProvider: (any ProfileFeedbackProviding)?
     private let feedbackCache: EntityDetailCache<ProfileFeedbackPageKey, ProfileFeedbackPage>
+    private let socialProvider: (any SocialProviding)?
+    private let socialCache: UserSocialCache
 
     init(
         model: ListeningModel,
@@ -20,6 +22,8 @@ struct ProfileView: View {
         connectedServicesCache: EntityDetailCache<ConnectedServicesCacheKey, ConnectedServices> = ConnectedServicesCaches.values,
         feedbackProvider: (any ProfileFeedbackProviding)? = nil,
         feedbackCache: EntityDetailCache<ProfileFeedbackPageKey, ProfileFeedbackPage> = ProfileFeedbackCaches.pages,
+        socialProvider: (any SocialProviding)? = nil,
+        socialCache: UserSocialCache = .shared,
         initialPlaylistCategory: ProfilePlaylistCategory = .owned
     ) {
         _model = Bindable(wrappedValue: model)
@@ -34,6 +38,8 @@ struct ProfileView: View {
         self.connectedServicesCache = connectedServicesCache
         self.feedbackProvider = feedbackProvider
         self.feedbackCache = feedbackCache
+        self.socialProvider = socialProvider
+        self.socialCache = socialCache
     }
 
     var body: some View {
@@ -42,6 +48,11 @@ struct ProfileView: View {
                 LazyVStack(alignment: .leading, spacing: 30) {
                     profileHeader
                     CurrentPinSection(isOwner: model.account.isAuthenticated)
+                    ProfileSocialLink(
+                        account: model.account,
+                        provider: socialProvider,
+                        cache: socialCache
+                    )
                     ProfileFeedbackLink(
                         username: model.account.username,
                         isOwner: true,

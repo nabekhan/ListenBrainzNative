@@ -5835,6 +5835,16 @@
         }
       }
     },
+    "Followers, people you follow, and listeners with similar taste": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Followers, people you follow, and listeners with similar taste"
+          }
+        }
+      }
+    },
     "Followers, similar listeners, and your match": {
       "localizations": {
         "en": {
@@ -11703,6 +11713,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Opens your annual ListenBrainz retrospective"
+          }
+        }
+      }
+    },
+    "Opens your followers, following, and similar listeners": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens your followers, following, and similar listeners"
           }
         }
       }

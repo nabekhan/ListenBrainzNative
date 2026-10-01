@@ -23,6 +23,7 @@ Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening 
 - Music-first My Feed, Following, and Similar listening feeds with cached pagination, thanks, hide/unhide, and owner deletion
 - Native single-page user search plus explicit paginated artist, album, track, and public-playlist search, with cancellation, bounded caching, and no speculative loading
 - Visited-user profiles, followers/following, similar listeners, and compatibility
+- A request-free Listening connections card on your Profile, opening the same lazy followers/following/similar-listener graph without self-relationship requests
 - Pin history and owner pin actions; complete playlist detail
 - Request-free export of an already-loaded playlist as a bounded, protected JSPF JSON file, with private-playlist disclosure before sharing
 - Explicit one-shot export of any loaded playlist to linked Spotify, Apple Music, or SoundCloud, with a privacy choice, duplicate-safe recovery, and no automatic retry or sync
@@ -105,11 +106,15 @@ Pass `--output-root /absolute/path` to retain results somewhere specific. The sc
 
 The matrix temporarily boots supplied simulators when needed, sets their appearance and content size, verifies those settings, then restores the original appearance, Dynamic Type category, and boot/shutdown state on normal exit or interruption. It does not replace physical-device, signed-build, real-authentication, or translated-language QA.
 
-## Opt-in authenticated simulator smoke test
+## Opt-in authenticated simulator smoke tests
 
-The repository includes one intentionally skipped, read-only production smoke test: `ReleaseLayoutUITests/testOptInLiveAuthenticationSmokeIsReadOnlyAndRestoresSession`. It is excluded unless the UI-test runner has `BRAINZ_LIVE_AUTH_SMOKE=1`. Before running it, copy a disposable ListenBrainz token directly into the target simulator clipboard. The test opens the normal app, uses the system Paste menu when signed out, visits only Home, History, Discover, Taste, and Profile, then relaunches once to verify the Keychain-backed session restores. It does not press refresh, feedback, pin, follow, playlist, deletion, or submission controls.
+The repository includes an intentionally skipped, read-only production smoke test: `ReleaseLayoutUITests/testOptInLiveAuthenticationSmokeIsReadOnlyAndRestoresSession`. It is excluded unless the UI-test runner has `BRAINZ_LIVE_AUTH_SMOKE=1`. Before running it, copy a disposable ListenBrainz token directly into the target simulator clipboard. The test opens the normal app, uses the system Paste menu when signed out, visits only Home, History, Discover, Taste, and Profile, then relaunches once to verify the Keychain-backed session restores. It does not press refresh, feedback, pin, follow, playlist, deletion, or submission controls.
 
-Do not put a token in launch arguments, environment variables, scripts, source, screenshots, or XCResult attachments. An optional `BRAINZ_LIVE_EXPECTED_USERNAME` runner environment value can verify the signed-in account; it is not required for the smoke test. A live XCResult can contain UI metadata and must be treated as temporary private test evidence, then removed rather than committed or shared.
+A second opt-in test, `ReleaseLayoutUITests/testOptInLiveSpotifyPlaylistListingIsReadOnly`, isolates the authenticated Spotify-import sheet. Set both `BRAINZ_LIVE_SPOTIFY_LIST_SMOKE=1` and the exact nonsecret account name in `BRAINZ_LIVE_EXPECTED_USERNAME`; the test fails before loading anything if the stored account is absent or different. When deliberately validating an account whose Spotify link needs repair, also set `BRAINZ_LIVE_SPOTIFY_EXPECTED_STATE=reconnect`. The test presses **Load Spotify playlists** once and stops before selecting a row, confirming an import, or creating a playlist. It never retries or polls. A successful listing and the reconnect-required recovery state are distinct expected outcomes.
+
+Shell environment values passed to `xcodebuild` do not automatically enter the UI-test runner. Use Xcode's test configuration or an isolated copied `.xctestrun` beside its built products, and add only the nonsecret opt-in and expected-state values there. Never place a token in that file.
+
+Do not put a token in launch arguments, environment variables, scripts, source, screenshots, or XCResult attachments. `BRAINZ_LIVE_EXPECTED_USERNAME` is optional for the general authentication smoke but required for the Spotify-listing smoke. A live XCResult can contain UI metadata and must be treated as temporary private test evidence, then removed rather than committed or shared.
 
 The smoke test clears the simulator pasteboard immediately after using Paste and again on exit. If the Mac clipboard was used to transfer the token, clear it immediately after provisioning and verify both clipboards before and after the run:
 

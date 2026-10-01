@@ -476,6 +476,7 @@ struct PlaylistServiceImportSheet: View {
                 }
                 .disabled(model.isImporting || model.isListing || model.isRefreshCoolingDown)
                 .accessibilityHint("Reloads playlists from Spotify")
+                .accessibilityIdentifier("playlist-import-ready")
             }
         }
         ToolbarItem(placement: .confirmationAction) {
