@@ -59,3 +59,5 @@ Playlist item movement reaches the same conclusion. Shared KMP already models th
 Playlist item deletion's shared request model already carries `index` and `count`, but the current official Android ViewModel and UI always submit `count: 1`; the website also deletes one row at a time. The native app consumes the stable server count contract through its smaller Swift transport and exposes only one contiguous range per explicit action, with app-owned preflight, no-replay, and postflight safeguards. This does not justify importing the currently unbuildable shared framework.
 
 Evidence: `References/listenbrainz-android/shared/build.gradle.kts`, `shared/src/{commonMain,androidMain,iosMain}`, and official iOS/Android application source.
+
+The Android notification-listener scrobbler, background playback service, and Spotify App Remote integration remain useful behavior evidence only. They are not targets for this native iOS viewer/explorer.

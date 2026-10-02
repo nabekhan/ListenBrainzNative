@@ -1,6 +1,6 @@
 # Brainz for iOS
 
-Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening history, taste, discovery graph, and music identity. The project is a growing Phase 3 implementation: it connects to real ListenBrainz data and prioritizes a polished read experience before playback and scrobbling work.
+Brainz is a native SwiftUI client for exploring a ListenBrainz user's listening history, taste, discovery graph, and music identity. The project is a growing Phase 3 viewer/explorer with deliberate ListenBrainz interactions. Automatic device scrobbling and in-app playback are outside its scope.
 
 ## Current vertical slice
 
@@ -161,7 +161,7 @@ The public data-handling summary is in [`PRIVACY.md`](PRIVACY.md).
 
 Temporary clones, installed tooling, and cleanup instructions are recorded in `docs/research/environment-changes.md`.
 
-Spotify-linked in-app playback through a libspot/librespot-family implementation is deliberately deferred until the core read experience is complete. If pursued, it will begin only on a separate branch after the exact project, license, Spotify policy, authentication, maintenance, and App Store implications are audited.
+In-app playback, including libspot/librespot-family Spotify playback, is outside the project scope. Brainz keeps its strict, request-free handoff to valid external-service links already supplied by ListenBrainz metadata.
 
 ## License
 

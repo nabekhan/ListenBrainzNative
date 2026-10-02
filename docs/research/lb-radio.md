@@ -41,11 +41,11 @@ Snapshot: 2026-09-18.
 - Reuse the app's `RequestGate`, recording domain model, artwork resolver, canonical recording destination, and playlist-row hierarchy.
 - Adapt only the visual concept of Minidisc's MPL `ArtistStationCard`/Discover shelf if seed cards improve the screen; no internet-radio playback code applies to generated tracks.
 - Treat GPL ListenBrainz server/web/Android code as behavior and schema evidence only. No GPL UI or implementation code is copied.
-- Libspot/librespot-family Spotify playback stays deferred until the core client is complete and then only begins in a separate branch after license, account-policy, authentication, maintenance, and App Store review.
+- Generated LB Radio results are browse-and-save surfaces in this app. libspot/librespot and other in-app playback implementations are outside scope; supported external destinations may still be opened when present.
 
 ## Deferred
 
-- Automatic content resolution and playback queueing.
+- Automatic content resolution and playback queueing are outside scope.
 - Saving/copying/exporting a generated mix as a ListenBrainz playlist.
 - A complete visual editor for every Troi entity, weight, and option.
 - Radio entry points from artist, release, recording, playlist, and map screens until the destination is stable.

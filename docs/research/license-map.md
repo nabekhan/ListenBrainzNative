@@ -23,7 +23,7 @@ Intended application license: **MPL-2.0**. This keeps the whole project open, is
 | Finale | BSD-3-Clause | Permitted selectively | Preserve BSD notice |
 | Discrobble | MIT | Permitted | Documentation/ADR reference only so far |
 | UX Writing Skill | MIT | Development-process guidance only; no source ships in the app | No runtime dependency or app attribution required |
-| Spotify playback experiment | TBD pending exact repository identification | No code copied or dependency added | Separate branch only; audit license, Spotify Developer Terms, authentication, App Store eligibility, and maintenance before implementation |
+| Spotify playback experiment | No dependency selected | No code copied or dependency added | Out of scope; no branch or runtime dependency planned |
 
 ## Link listens provenance — 2026-09-29
 
