@@ -401,7 +401,7 @@ struct RadioView: View {
             }
 
             Label(
-                "LB Radio generates a playlist. Playback will appear only when a connected service can resolve a track legally and reliably.",
+                "Browse or save this mix. Open available tracks in another app.",
                 systemImage: "info.circle"
             )
             .font(.caption)

@@ -17,7 +17,7 @@ Snapshot: 2026-09-28.
 - The user chooses public or private, selects one linked service, and confirms that ListenBrainz will create a separate copy that does not stay in sync.
 - Confirmation admits exactly one serialized mutation. There is no polling, automatic retry, post-success refresh, or background continuation.
 - A successful response opens only an HTTPS playlist URL with the exact provider host and provider-specific path shape. User information, custom ports, fragments, encoded separators, non-playlist paths, and cross-provider URLs fail closed.
-- Apple Music/SoundCloud import, service-track retrieval, and playback remain separate staged workflows.
+- Apple Music/SoundCloud import and viewer-side service-track retrieval remain separate staged workflows; in-app playback and content resolution are out of scope.
 
 ## Format and compatibility
 

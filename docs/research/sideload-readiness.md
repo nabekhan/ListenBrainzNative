@@ -1,6 +1,6 @@
 # Sideload readiness
 
-Snapshot: 2026-09-29.
+Snapshot: 2026-10-01.
 
 ## Distribution contract
 
@@ -62,6 +62,8 @@ TestFlight and App Store Connect remain a later distribution path. This workflow
 The prior 2026-09-28 run packaged clean product checkpoint `c6fdc27` as `Brainz-0.1.0-3-c6fdc27-unsigned.ipa`. It was 7,514,682 bytes with SHA-256 `076eca4ee222fc46230142b64afba8153ddedf38fada5330c84df212f8fd6d7a`. Independent extraction found 12 unique entries beneath `Payload/`, one expected unencrypted unsigned arm64 iOS executable, bundle `dev.nabekhan.listenbrainznative`, version `0.1.0 (3)`, minimum iOS 18, both iPhone and iPad device families, only Apple system dependencies, and a privacy manifest byte-identical to source with SHA-256 `bd70e057eabd5df561467219da1f29a96230ddaa858965aa0db44e79a1c89428`. It found no unsafe ZIP path, duplicate, symlink, profile, entitlement, code-signature command or directory, nested code, unexpected executable, encryption, packaged test product, key, or credential file. Build 3 binds the payload to the accessibility-size Home fix and tracked guarded-matrix checkpoint; runtime XCResults remain the authoritative evidence for that behavior. Independent security review reports SHIP for this unsigned re-signing boundary. The reproducible IPA was removed after recording evidence; external signing and signed physical-device checks remain required.
 
 The latest 2026-09-29 run packaged clean documentation checkpoint `c419b88`, including product commit `e0b684f`, as `Brainz-0.1.0-3-c419b88-unsigned.ipa`. It was 8,170,266 bytes with SHA-256 `53357b7c890c5a0886ce811bed0f2af9c1e0c96e183fa6ef913764cb0ce14c83`. Independent inspection found 16 safe entries beneath `Payload/Brainz.app`, one unencrypted unsigned arm64 executable, bundle `dev.nabekhan.listenbrainznative`, version `0.1.0 (3)`, minimum iOS 18, both device families, only Apple/system dynamic dependencies, and source-identical privacy and third-party-notice files. It found no unsafe or duplicate path, symlink, profile, signature or entitlement residue, nested/unexpected executable, encryption, test product, private key, credential-like file, source/build path, or DEBUG fixture route. Independent review reports SHIP for the unsigned re-signing boundary. The IPA was removed after evidence was recorded; external signing and signed physical-device checks remain required.
+
+The 2026-10-01 viewer/explorer checkpoint `5bb86dd`, containing product commit `7e8977b`, packages reproducibly as `Brainz-0.1.0-3-5bb86dd-unsigned.ipa`. It is 8,404,229 bytes with SHA-256 `91211c17bb001ab9a7cd8b6fe4e180a1c94db2954a00dcf9ad83ede1062da03d`. Local extraction finds 16 unique safe entries beneath `Payload/Brainz.app`, one unencrypted unsigned arm64 executable, bundle `dev.nabekhan.listenbrainznative`, version `0.1.0 (3)`, minimum iOS 18, device families 1 and 2, only Apple/system dynamic dependencies, and source-identical privacy and third-party-notice files. It finds no unsafe or duplicate path, symlink, profile, signature command or directory, nested/unexpected executable, packaged test product, DEBUG fixture/live-route marker, or absolute workspace path. External signing and signed physical-device checks remain required.
 
 ## Cleanup
 

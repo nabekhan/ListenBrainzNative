@@ -6705,12 +6705,12 @@
         }
       }
     },
-    "LB Radio generates a playlist. Playback will appear only when a connected service can resolve a track legally and reliably.": {
+    "Browse or save this mix. Open available tracks in another app.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "LB Radio generates a playlist. Playback will appear only when a connected service can resolve a track legally and reliably."
+            "value": "Browse or save this mix. Open available tracks in another app."
           }
         }
       }
